@@ -13,10 +13,10 @@ public class TabManager {
     private final Map<Integer, Tab> tabs = new HashMap<>();
     private final List<GuiButton> buttonList;
     /**
-     * <p>The parent screen instance (the actual {@code GuiCreateWorld}).
+     * <p>The parent screen instance.
      * TabManager only knows it as vanilla {@code GuiScreen} — zero mixin dependency.</p>
-     * <p>父界面实例（实际是 {@code GuiCreateWorld}）。
-     * TabManager 只认它是原版 {@code GuiScreen}——零 mixin 依赖。</p>
+     * <p>父界面实例。
+     * TabManager 只认它是原版 {@code GuiScreen}——零 Mixin 依赖。</p>
      */
     private final GuiScreen screen;
     private int currentTabId = 100;

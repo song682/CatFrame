@@ -18,15 +18,15 @@ public final class ContentPanelRenderer {
 
     /** Header separator (top line), 32x2 tileable. / 顶部分隔线，32x2 可平铺 */
     public static final ResourceLocation HEADER_SEPARATOR =
-            new ResourceLocation("createworldui", "textures/gui/header_separator.png");
+            new ResourceLocation("catframe", "textures/gui/seperator/header_separator.png");
 
     /** Footer separator (bottom line), 32x2 tileable. / 底部分隔线，32x2 可平铺 */
     public static final ResourceLocation FOOTER_SEPARATOR =
-            new ResourceLocation("createworldui", "textures/gui/footer_separator.png");
+            new ResourceLocation("catframe", "textures/gui/seperator/footer_separator.png");
 
     /** Panel background, 16x16 tileable. / 面板背景，16x16 可平铺 */
     public static final ResourceLocation PANEL_BACKGROUND =
-            new ResourceLocation("createworldui", "textures/gui/panel_background.png");
+            new ResourceLocation("catframe", "textures/gui/seperator/panel_background.png");
 
     /** Separator height in GUI pixels. / 分隔线在 GUI 中的高度（像素） */
     public static final int SEPARATOR_HEIGHT = 2;

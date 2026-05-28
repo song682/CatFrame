@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.ui.tab;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.EnumDifficulty;
 
 import java.util.ArrayList;
@@ -15,6 +16,9 @@ public abstract class AbstractScreenTab implements Tab {
     protected boolean visible = true;
     protected int tabId;
     protected String tabNameKey;
+
+    /** Tab button texture.  Defaults to {@code catframe:textures/gui/tabs.png}. / Tab 按钮纹理。默认 {@code catframe:textures/gui/tabs.png}。 */
+    protected ResourceLocation tabTexture = new ResourceLocation("catframe", "textures/gui/tabs.png");
 
     public AbstractScreenTab(int tabId, String tabNameKey) {
         this.tabId = tabId;
@@ -49,5 +53,18 @@ public abstract class AbstractScreenTab implements Tab {
     protected void addButton(GuiButton button) {
         tabButtons.add(button);
         tabManager.addButton(button);
+    }
+
+    @Override
+    public ResourceLocation getTabTexture() {
+        return tabTexture;
+    }
+
+    /**
+     * Set a custom tab button texture for this tab.
+     * <p>为此 Tab 设置自定义按钮纹理。</p>
+     */
+    public void setTabTexture(ResourceLocation texture) {
+        this.tabTexture = texture;
     }
 }

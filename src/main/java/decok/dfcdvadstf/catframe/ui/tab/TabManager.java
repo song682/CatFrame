@@ -22,9 +22,27 @@ public class TabManager {
     private int currentTabId = 100;
     private Tab currentTab;
 
+    /** Optional TabBar that provides background rendering and tab container. / 可选的 TabBar，提供背景绘制和 Tab 容器。 */
+    private TabBar tabBar;
+
+    /**
+     * Create a TabManager without a TabBar (no custom background).
+     * <p>创建不带 TabBar 的 TabManager（无自定义背景）。</p>
+     */
     public TabManager(GuiScreen screen, List<GuiButton> buttonList, int width, int height) {
+        this(screen, buttonList, width, height, null);
+    }
+
+    /**
+     * Create a TabManager with an optional TabBar for background and tab container.
+     * <p>创建可带 TabBar 的 TabManager，用于背景绘制和 Tab 容器。</p>
+     *
+     * @param tabBar The TabBar to use, or {@code null} to skip. / 使用的 TabBar，或 {@code null} 跳过。
+     */
+    public TabManager(GuiScreen screen, List<GuiButton> buttonList, int width, int height, TabBar tabBar) {
         this.buttonList = buttonList;
         this.screen = screen;
+        this.tabBar = tabBar;
 
         // Freeze registry to prevent further registration
         // 冻结注册表，阻止后续注册
@@ -37,6 +55,11 @@ public class TabManager {
         for (TabRegistry.TabEntry entry : TabRegistry.getEntries()) {
             Tab tab = entry.factory.get();
             registerTab(tab);
+            // Register the entry into TabBar if present (lazy instantiation)
+            // 如果有 TabBar，将 entry 注册到其中（延迟实例化）
+            if (tabBar != null) {
+                tabBar.registerEntry(entry);
+            }
         }
 
         // Initialize all tabs
@@ -110,6 +133,11 @@ public class TabManager {
         if (currentTab != null) {
             currentTab.setVisible(true);
         }
+    }
+
+    /** @return The TabBar associated with this manager, or {@code null}. / 与此管理器关联的 TabBar，或 {@code null}。 */
+    public TabBar getTabBar() {
+        return tabBar;
     }
 
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {

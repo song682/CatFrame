@@ -14,34 +14,34 @@ import java.util.Map;
  * Supports both "variants" and "multipart" formats like Minecraft 1.8+.
  *
  * === Variants format ===
- * {
- *   "variants": {
- *     "normal": { "model": "block/stone" },
- *     "facing=north": { "model": "block/furnace", "y": 0 },
- *     "facing=east":  { "model": "block/furnace", "y": 90 },
- *     "facing=south": { "model": "block/furnace", "y": 180 },
- *     "facing=west":  { "model": "block/furnace", "y": 270 }
+ * {<br>
+ *   "variants": {<br>
+ *     "normal": { "model": "block/stone" },<br>
+ *     "facing=north": { "model": "block/furnace", "y": 0 },<br>
+ *     "facing=east":  { "model": "block/furnace", "y": 90 },<br>
+ *     "facing=south": { "model": "block/furnace", "y": 180 },<br>
+ *     "facing=west":  { "model": "block/furnace", "y": 270 }<br>
  *   }
  * }
  *
  * Variant value can also be an array for weighted random selection:
- * {
+ * {<br>
  *   "variants": {
- *     "normal": [
+ *     "normal": [<br>
  *       { "model": "block/stone", "weight": 1 },
- *       { "model": "block/stone_mirrored", "weight": 1 }
- *     ]
- *   }
- * }
+ *       { "model": "block/stone_mirrored", "weight": 1 }<br>
+ *     ]<br>
+ *   }<br>
+ * }<br>
  *
  * === Multipart format ===
- * {
+ * {<br>
  *   "multipart": [
- *     { "apply": { "model": "block/fence_post" } },
- *     { "when": { "north": "true" }, "apply": { "model": "block/fence_side" } },
- *     { "when": { "south": "true" }, "apply": { "model": "block/fence_side", "y": 180 } }
- *   ]
- * }
+ *     { "apply": { "model": "block/fence_post" } },<br>
+ *     { "when": { "north": "true" }, "apply": { "model": "block/fence_side" } },<br>
+ *     { "when": { "south": "true" }, "apply": { "model": "block/fence_side", "y": 180 } }<br>
+ *   ]<br>
+ * }<br>
  */
 public class BlockstateJson {
   /** Variants-based model mapping. Key is property combination (e.g., "facing=north,half=upper") */

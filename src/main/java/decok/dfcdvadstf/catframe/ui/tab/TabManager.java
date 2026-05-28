@@ -147,8 +147,8 @@ public class TabManager {
     }
 
     public void actionPerformed(GuiButton button) {
-        // 首先处理标签页切换
-        if (button.id >= 100 && button.id <= 102) {
+        // 首先处理标签页切换（动态判断，不限内置 ID）
+        if (isTabButton(button.id)) {
             switchToTab(button.id);
             return;
         }

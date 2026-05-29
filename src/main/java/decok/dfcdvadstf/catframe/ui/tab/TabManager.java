@@ -26,33 +26,51 @@ public class TabManager {
     private TabBar tabBar;
 
     /**
-     * Create a TabManager without a TabBar (no custom background).
-     * <p>创建不带 TabBar 的 TabManager（无自定义背景）。</p>
-     */
-    public TabManager(GuiScreen screen, List<GuiButton> buttonList, int width, int height) {
-        this(screen, buttonList, width, height, null);
-    }
-
-    /**
-     * Create a TabManager with an optional TabBar for background and tab container.
-     * <p>创建可带 TabBar 的 TabManager，用于背景绘制和 Tab 容器。</p>
-     *
-     * @param tabBar The TabBar to use, or {@code null} to skip. / 使用的 TabBar，或 {@code null} 跳过。
+     * Create a TabManager with a TabBar.  The barId is taken from the TabBar and
+     * only entries registered to that barId will be loaded.
+     * <p>通过 TabBar 创建 TabManager。barId 取自 TabBar，仅加载注册到该 barId 的条目。</p>
      */
     public TabManager(GuiScreen screen, List<GuiButton> buttonList, int width, int height, TabBar tabBar) {
+        if (tabBar == null) {
+            throw new IllegalArgumentException("tabBar must not be null — use the barId overload if you don't need a TabBar instance");
+        }
         this.buttonList = buttonList;
         this.screen = screen;
         this.tabBar = tabBar;
 
-        // Freeze registry to prevent further registration
-        // 冻结注册表，阻止后续注册
-        if (!TabRegistry.isFrozen()) {
-            TabRegistry.freeze();
+        String barId = tabBar.getBarId();
+        initFromRegistry(barId, width, height);
+    }
+
+    /**
+     * Create a TabManager without a TabBar, identified by a bare barId.
+     * <p>不带 TabBar 创建 TabManager，仅通过 barId 标识。</p>
+     */
+    public TabManager(GuiScreen screen, List<GuiButton> buttonList, int width, int height, String barId) {
+        if (barId == null || barId.isEmpty()) {
+            throw new IllegalArgumentException("barId must not be null or empty");
+        }
+        this.buttonList = buttonList;
+        this.screen = screen;
+        this.tabBar = null;
+
+        initFromRegistry(barId, width, height);
+    }
+
+    /**
+     * Internal: freeze the bar, load entries from registry, initialise tabs.
+     * <p>内部方法：冻结对应 bar，从注册表加载条目并初始化 Tab。</p>
+     */
+    private void initFromRegistry(String barId, int width, int height) {
+        // Freeze this bar to prevent further registration
+        // 冻结该 bar 的注册表，阻止后续注册
+        if (!TabRegistry.isFrozen(barId)) {
+            TabRegistry.freeze(barId);
         }
 
-        // Create all registered tabs
-        // 创建所有已注册的标签页
-        for (TabRegistry.TabEntry entry : TabRegistry.getEntries()) {
+        // Create all registered tabs for this bar
+        // 创建此 bar 下所有已注册的标签页
+        for (TabRegistry.TabEntry entry : TabRegistry.getEntries(barId)) {
             Tab tab = entry.factory.get();
             registerTab(tab);
             // Register the entry into TabBar if present (lazy instantiation)

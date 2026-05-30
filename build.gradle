@@ -1,4 +1,4 @@
-﻿buildscript {
+buildscript {
     repositories {
         mavenLocal()
         mavenCentral()
@@ -73,6 +73,11 @@ repositories {
     maven {
         name "Modrinth Maven"
         url "https://api.modrinth.com/maven"
+    }
+
+    maven {
+        name "JitPack"
+        url "https://jitpack.io"
     }
 }
 

@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "axis=y,wood=acacia":    { "model": "minecraft:block/acacia_log" },
+    "axis=x,wood=acacia":    { "model": "minecraft:block/acacia_log", "x": 90, "y": 90 },
+    "axis=z,wood=acacia":    { "model": "minecraft:block/acacia_log", "x": 90 },
+    "axis=y,wood=dark_oak":  { "model": "minecraft:block/dark_oak_log" },
+    "axis=x,wood=dark_oak":  { "model": "minecraft:block/dark_oak_log", "x": 90, "y": 90 },
+    "axis=z,wood=dark_oak":  { "model": "minecraft:block/dark_oak_log", "x": 90 }
+  }
+}

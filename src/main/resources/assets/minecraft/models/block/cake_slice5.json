@@ -1,0 +1,22 @@
+{
+    "textures": {
+        "particle": "minecraft:blocks/cake_side",
+        "bottom": "minecraft:blocks/cake_bottom",
+        "top": "minecraft:blocks/cake_top",
+        "side": "minecraft:blocks/cake_side",
+        "inside": "minecraft:blocks/cake_inner"
+    },
+    "elements": [
+        {   "from": [ 11, 0, 1 ],
+            "to": [ 15, 8, 15 ],
+            "faces": {
+                "down":  { "texture": "#bottom", "cullface": "down" },
+                "up":    { "texture": "#top" },
+                "north": { "texture": "#side" },
+                "south": { "texture": "#side" },
+                "west":  { "texture": "#inside" },
+                "east":  { "texture": "#side" }
+            }
+        }
+    ]
+}

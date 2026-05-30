@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "0": { "model": "minecraft:block/stonebrick" },
+    "1": { "model": "minecraft:block/mossy_stonebrick" },
+    "2": { "model": "minecraft:block/cracked_stonebrick" },
+    "3": { "model": "minecraft:block/chiseled_stonebrick" }
+  }
+}

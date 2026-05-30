@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "0":  { "model": "minecraft:block/trapdoor_bottom" },
+    "1":  { "model": "minecraft:block/trapdoor_bottom", "y": 180 },
+    "2":  { "model": "minecraft:block/trapdoor_bottom", "y": 90 },
+    "3":  { "model": "minecraft:block/trapdoor_bottom", "y": 270 },
+    "4":  { "model": "minecraft:block/trapdoor_open" },
+    "5":  { "model": "minecraft:block/trapdoor_open", "y": 180 },
+    "6":  { "model": "minecraft:block/trapdoor_open", "y": 90 },
+    "7":  { "model": "minecraft:block/trapdoor_open", "y": 270 },
+    "8":  { "model": "minecraft:block/trapdoor_top" },
+    "9":  { "model": "minecraft:block/trapdoor_top", "y": 180 },
+    "10": { "model": "minecraft:block/trapdoor_top", "y": 90 },
+    "11": { "model": "minecraft:block/trapdoor_top", "y": 270 },
+    "12": { "model": "minecraft:block/trapdoor_open" },
+    "13": { "model": "minecraft:block/trapdoor_open", "y": 180 },
+    "14": { "model": "minecraft:block/trapdoor_open", "y": 90 },
+    "15": { "model": "minecraft:block/trapdoor_open", "y": 270 }
+  }
+}

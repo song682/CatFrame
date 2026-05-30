@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "0":  { "model": "minecraft:block/slab_stone" },
+    "1":  { "model": "minecraft:block/slab_sandstone" },
+    "2":  { "model": "minecraft:block/slab_wood" },
+    "3":  { "model": "minecraft:block/slab_cobblestone" },
+    "4":  { "model": "minecraft:block/slab_brick" },
+    "5":  { "model": "minecraft:block/slab_stone_brick" },
+    "6":  { "model": "minecraft:block/slab_nether_brick" },
+    "7":  { "model": "minecraft:block/slab_quartz" },
+    "8":  { "model": "minecraft:block/slab_stone_top" },
+    "9":  { "model": "minecraft:block/slab_sandstone_top" },
+    "10": { "model": "minecraft:block/slab_wood_top" },
+    "11": { "model": "minecraft:block/slab_cobblestone_top" },
+    "12": { "model": "minecraft:block/slab_brick_top" },
+    "13": { "model": "minecraft:block/slab_stone_brick_top" },
+    "14": { "model": "minecraft:block/slab_nether_brick_top" },
+    "15": { "model": "minecraft:block/slab_quartz_top" }
+  }
+}

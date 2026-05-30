@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "0":  { "model": "minecraft:block/comparator_on", "y": 180 },
+    "1":  { "model": "minecraft:block/comparator_on", "y": 270 },
+    "2":  { "model": "minecraft:block/comparator_on" },
+    "3":  { "model": "minecraft:block/comparator_on", "y": 90 },
+    "4":  { "model": "minecraft:block/comparator_on_subtract", "y": 180 },
+    "5":  { "model": "minecraft:block/comparator_on_subtract", "y": 270 },
+    "6":  { "model": "minecraft:block/comparator_on_subtract" },
+    "7":  { "model": "minecraft:block/comparator_on_subtract", "y": 90 }
+  }
+}

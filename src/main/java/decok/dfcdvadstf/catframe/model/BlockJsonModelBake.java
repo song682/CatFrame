@@ -71,6 +71,7 @@ public class BlockJsonModelBake {
     }
     q.icon = icon;
     q.face = facing;
+    q.tintIndex = f.tintIndex;
     q.faceNormal = normal(q.vx, q.vy, q.vz);
     out.add(q);
   }
@@ -183,5 +184,7 @@ public class BlockJsonModelBake {
     public double[] faceNormal = new double[3];
     public IIcon icon;
     public EnumFacing face;
+    /** Tint index from JSON face. -1 = no tint, 0+ = use block.colorMultiplier for biome color. */
+    public int tintIndex = -1;
   }
 }

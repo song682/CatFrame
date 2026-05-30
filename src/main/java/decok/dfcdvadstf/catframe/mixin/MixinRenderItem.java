@@ -26,7 +26,7 @@ public class MixinRenderItem {
         if (itemStack == null) return;
         Item item = itemStack.getItem();
         if (item != null && VanillaModelManager.hasItemModel(item)) {
-            VanillaModelManager.renderItem(item, itemStack.getItemDamage());
+            VanillaModelManager.renderItem(itemStack);
             ci.cancel();
         }
     }

@@ -32,7 +32,7 @@ public class MixinItemRenderer {
         if (itemStack == null) return;
         Item item = itemStack.getItem();
         if (item != null && VanillaModelManager.hasItemModel(item)) {
-            VanillaModelManager.renderItemInHand(item, itemStack.getItemDamage());
+            VanillaModelManager.renderItemInHand(itemStack);
             ci.cancel();
         }
     }

@@ -5,12 +5,16 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
+import decok.dfcdvadstf.catframe.model.render.RenderContext;
+import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
@@ -47,6 +51,16 @@ public class VanillaModelManager {
   /** Block -> loaded BlockstateJson */
   private static final Map<Block, BlockstateJson> stateBlockData = new HashMap<>();
 
+  // ==================== Metadata → Properties Mapper Registry ====================
+
+  /** Block -> metadata-to-properties mapper for vanilla blocks */
+  private static final Map<Block, IMetadataMapper> metadataMappers = new HashMap<>();
+
+  // ==================== Model Bake Cache ====================
+
+  /** Cache key "modelPath@rotY" -> baked quads. Shared by bake path and dynamic path. */
+  private static final Map<String, List<BakedQuad>> bakedModelCache = new HashMap<>();
+
   // ==================== Item Models ====================
 
   /** Item -> damage -> list of baked quads */
@@ -65,6 +79,8 @@ public class VanillaModelManager {
   private static final Map<String, Map<String, BlockstateJson>> loadedBlockstates = new HashMap<>();
   /** namespace -> ModelMappings (blocks + items) */
   private static final Map<String, ModelMappings> loadedMappings = new HashMap<>();
+  /** namespace -> blockName -> Map<metadata, Map<property, value>> (from metadata_map.json) */
+  private static final Map<String, Map<String, Map<Integer, Map<String, String>>>> loadedMetadataMaps = new HashMap<>();
   /** Registered namespaces */
   private static final List<String> namespaces = new ArrayList<>();
 
@@ -147,6 +163,32 @@ public class VanillaModelManager {
   }
 
   /**
+   * Register a metadata-to-properties mapper for a vanilla block.
+   * This allows blockstate JSON files to use 1.16.5-style property keys
+   * (e.g. {@code "variant=granite"}) instead of raw metadata numbers.
+   *
+   * <p>The mapper is called during baking — for each metadata value 0–15,
+   * the returned property map is used to look up the variant entry in the
+   * blockstate JSON.  Function-based registration always takes priority
+   * over {@code metadata_map.json} entries.
+   *
+   * <p>This has no effect on blocks that implement {@link IBlockStateProvider}.
+   *
+   * @param block  the vanilla block (must NOT be an {@link IBlockStateProvider})
+   * @param mapper function that converts metadata to a property map
+   */
+  public static void registerMetadataMapping(Block block, IMetadataMapper mapper) {
+    if (mapper == null) {
+      CatFrame.logger.warn("VanillaModelManager: registerMetadataMapping called with null mapper for {}", block);
+      return;
+    }
+    if (!metadataMappers.containsKey(block)) {
+      metadataMappers.put(block, mapper);
+      CatFrame.logger.debug("VanillaModelManager: registered metadata mapper for {}", block);
+    }
+  }
+
+  /**
    * Load blockstate data for a registered IBlockStateProvider block.
    */
   private static void loadStateProviderBlock(Block block) {
@@ -171,6 +213,8 @@ public class VanillaModelManager {
     loadModelMappings(namespace);
     // Load blockstates
     loadBlockstatesFromMappings(namespace);
+    // Load metadata_map.json (auxiliary mapping for vanilla blocks)
+    loadMetadataMaps(namespace);
   }
 
   /**
@@ -238,14 +282,21 @@ public class VanillaModelManager {
     if (namespace.equals("minecraft") && nsBlockstates.isEmpty()) {
       String[] commonBlocks = {
           "stone", "dirt", "grass", "cobblestone", "planks", "sand", "gravel",
-          "gold_ore", "iron_ore", "coal_ore", "log", "leaves", "glass",
+          "gold_ore", "iron_ore", "coal_ore", "log", "log2", "leaves", "leaves2", "glass",
           "lapis_ore", "lapis_block", "sandstone", "wool", "gold_block",
           "iron_block", "brick_block", "tnt", "bookshelf", "mossy_cobblestone",
           "obsidian", "diamond_ore", "diamond_block", "crafting_table",
           "furnace", "redstone_ore", "ice", "snow", "clay", "netherrack",
           "soul_sand", "glowstone", "stonebrick", "melon_block", "nether_brick",
           "end_stone", "emerald_ore", "emerald_block", "quartz_block",
-          "hardened_clay", "hay_block", "coal_block"
+          "hardened_clay", "stained_hardened_clay", "hay_block", "coal_block",
+          "cobblestone_wall", "stained_glass", "trapdoor",
+          "torch", "redstone_torch", "unlit_redstone_torch", "redstone_wire",
+          "unpowered_repeater", "powered_repeater",
+          "unpowered_comparator", "powered_comparator",
+          "redstone_lamp", "lit_redstone_lamp", "redstone_block",
+          "cauldron", "double_stone_slab", "stone_slab",
+          "double_wooden_slab", "wooden_slab", "cactus", "anvil"
       };
       for (String name : commonBlocks) {
         BlockstateJson bs = loadSingleBlockstate(namespace, name);
@@ -255,6 +306,48 @@ public class VanillaModelManager {
 
     if (!nsBlockstates.isEmpty()) {
       loadedBlockstates.put(namespace, nsBlockstates);
+    }
+  }
+
+  /**
+   * Load metadata_map.json for a namespace as an auxiliary data-driven
+   * metadata-to-properties mapping.  Function-based registration via
+   * {@link #registerMetadataMapping} always takes priority.
+   */
+  private static void loadMetadataMaps(String namespace) {
+    String path = "/assets/" + namespace + "/metadata_map.json";
+    try (InputStream stream = VanillaModelManager.class.getResourceAsStream(path)) {
+      if (stream == null) return;
+      InputStreamReader reader = new InputStreamReader(stream);
+
+      // Format: { "blockName": { "0": {"prop":"val"}, "1": {...} }, ... }
+      @SuppressWarnings("unchecked")
+      Map<String, Map<String, Map<String, String>>> data = gson.fromJson(reader, Map.class);
+      if (data == null) return;
+
+      Map<String, Map<Integer, Map<String, String>>> nsMap = new HashMap<>();
+      for (Map.Entry<String, Map<String, Map<String, String>>> blockEntry : data.entrySet()) {
+        String blockName = blockEntry.getKey();
+        Map<Integer, Map<String, String>> metaMap = new HashMap<>();
+        for (Map.Entry<String, Map<String, String>> metaEntry : blockEntry.getValue().entrySet()) {
+          try {
+            int meta = Integer.parseInt(metaEntry.getKey());
+            metaMap.put(meta, metaEntry.getValue());
+          } catch (NumberFormatException e) {
+            CatFrame.logger.warn("metadata_map.json [{}] invalid metadata key '{}'", blockName, metaEntry.getKey());
+          }
+        }
+        if (!metaMap.isEmpty()) {
+          nsMap.put(blockName, metaMap);
+        }
+      }
+
+      if (!nsMap.isEmpty()) {
+        loadedMetadataMaps.put(namespace, nsMap);
+        CatFrame.logger.info("Loaded metadata_map.json for namespace: {} ({} blocks)", namespace, nsMap.size());
+      }
+    } catch (Exception e) {
+      CatFrame.logger.debug("No metadata_map.json for namespace {}: {}", namespace, e.getMessage());
     }
   }
 
@@ -348,6 +441,7 @@ public class VanillaModelManager {
     bakedBlockModels.clear();
     bakedItemModels.clear();
     blockRotations.clear();
+    bakedModelCache.clear();
 
     // Bake from blockstates
     for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry : loadedBlockstates.entrySet()) {
@@ -357,6 +451,14 @@ public class VanillaModelManager {
         BlockstateJson bs = bsEntry.getValue();
         Block block = findBlock(namespace, blockName);
         if (block != null) {
+          // Auto-register mapper from metadata_map.json if no function-based mapper exists
+          if (!metadataMappers.containsKey(block)) {
+            IMetadataMapper jsonMapper = findMetadataMapEntry(namespace, blockName);
+            if (jsonMapper != null) {
+              metadataMappers.put(block, jsonMapper);
+              CatFrame.logger.debug("Auto-registered metadata mapper from metadata_map.json for {}:{}", namespace, blockName);
+            }
+          }
           bakeBlockstateForBlock(block, bs);
         }
       }
@@ -457,38 +559,99 @@ public class VanillaModelManager {
     Map<Integer, List<BakedQuad>> metaMap = new HashMap<>();
     Map<Integer, Integer> rotMap = new HashMap<>();
 
+    // --- Get the effective mapper (function-based takes priority) ---
+    IMetadataMapper mapper = metadataMappers.get(block);
+
     if (bs.variants != null) {
-      for (Map.Entry<String, BlockstateJson.VariantEntry> entry : bs.variants.entrySet()) {
-        String key = entry.getKey();
-        BlockstateJson.VariantEntry varEntry = entry.getValue();
+      if (mapper != null) {
+        // 1.16.5 path: enumerate metadata, convert via mapper, match property keys
+        for (int meta = 0; meta < 16; meta++) {
+          Map<String, String> props = mapper.map(meta);
+          String variantKey = buildVariantKey(props);
+          BlockstateJson.VariantEntry varEntry = bs.variants.get(variantKey);
+          if (varEntry == null) {
+            varEntry = bs.variants.get("normal");
+          }
+          if (varEntry == null) continue;
 
-        // Determine metadata from key
-        int meta = parseMetadataFromKey(key);
+          int seed = meta * 31;
+          BlockstateJson.Variant variant = varEntry.getVariant(seed);
+          if (variant == null || variant.model == null) continue;
 
-        BlockstateJson.Variant variant = varEntry.getVariant(0);
-        if (variant == null || variant.model == null) continue;
+          List<BakedQuad> quads = bakeModel(variant.model, variant.y);
+          if (quads != null && !quads.isEmpty()) {
+            metaMap.put(meta, quads);
+            rotMap.put(meta, variant.y);
+          }
+        }
+      } else {
+        // Compat path: iterate variant entries directly, parse metadata from key
+        boolean hasNumberKeys = false;
+        for (Map.Entry<String, BlockstateJson.VariantEntry> entry : bs.variants.entrySet()) {
+          String key = entry.getKey();
+          BlockstateJson.VariantEntry varEntry = entry.getValue();
 
-        List<BakedQuad> quads = bakeModel(variant.model, variant.y);
-        if (quads != null) {
-          metaMap.put(meta, quads);
-          rotMap.put(meta, variant.y);
+          int meta = parseMetadataFromKey(key);
+          if (isMetadataNumberKey(key)) {
+            hasNumberKeys = true;
+          }
+
+          BlockstateJson.Variant variant = varEntry.getVariant(0);
+          if (variant == null || variant.model == null) continue;
+
+          List<BakedQuad> quads = bakeModel(variant.model, variant.y);
+          if (quads != null) {
+            metaMap.put(meta, quads);
+            rotMap.put(meta, variant.y);
+          }
+        }
+        if (hasNumberKeys) {
+          CatFrame.logger.warn(
+              "VanillaModelManager: blockstate for '{}' uses deprecated metadata-number variant keys. "
+              + "Consider registering an IMetadataMapper and switching to property keys (e.g. \"variant=granite\").",
+              Block.blockRegistry.getNameForObject(block));
         }
       }
     }
 
     if (bs.multipart != null) {
-      // For multipart, we bake all unconditional parts for meta 0
-      List<BakedQuad> allQuads = new ArrayList<>();
-      for (BlockstateJson.MultipartCase mpc : bs.multipart) {
-        if (mpc.when == null && mpc.apply != null) {
-          List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.y);
-          if (partQuads != null) {
-            allQuads.addAll(partQuads);
+      if (mapper != null) {
+        // Multipart with mapper: enumerate all metadata values, evaluate when conditions
+        for (int meta = 0; meta < 16; meta++) {
+          Map<String, String> props = mapper.map(meta);
+          List<BakedQuad> allQuads = new ArrayList<>();
+          int rotation = 0;
+
+          for (BlockstateJson.MultipartCase mpc : bs.multipart) {
+            boolean applies = (mpc.when == null) || mpc.when.matches(props);
+            if (applies && mpc.apply != null) {
+              List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.y);
+              if (partQuads != null) {
+                allQuads.addAll(partQuads);
+                if (mpc.apply.y != 0) rotation = mpc.apply.y;
+              }
+            }
+          }
+
+          if (!allQuads.isEmpty()) {
+            metaMap.put(meta, allQuads);
+            rotMap.put(meta, rotation);
           }
         }
-      }
-      if (!allQuads.isEmpty()) {
-        metaMap.put(0, allQuads);
+      } else {
+        // Compat: bake all unconditional parts for meta 0
+        List<BakedQuad> allQuads = new ArrayList<>();
+        for (BlockstateJson.MultipartCase mpc : bs.multipart) {
+          if (mpc.when == null && mpc.apply != null) {
+            List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.y);
+            if (partQuads != null) {
+              allQuads.addAll(partQuads);
+            }
+          }
+        }
+        if (!allQuads.isEmpty()) {
+          metaMap.put(0, allQuads);
+        }
       }
     }
 
@@ -501,7 +664,10 @@ public class VanillaModelManager {
   /**
    * Parse metadata value from a variant key.
    * Supports: "normal" -> 0, "0" -> 0, "1" -> 1, "facing=north" -> property-based
+   *
+   * @deprecated pure-number variant keys are legacy; use an IMetadataMapper + property keys instead
    */
+  @Deprecated
   private static int parseMetadataFromKey(String key) {
     if (key.equals("normal") || key.isEmpty()) return 0;
     try {
@@ -513,11 +679,28 @@ public class VanillaModelManager {
     }
   }
 
+  /** Check whether a variant key is a raw metadata number (legacy compat). */
+  private static boolean isMetadataNumberKey(String key) {
+    if (key.equals("normal") || key.isEmpty()) return false;
+    try {
+      Integer.parseInt(key);
+      return true;
+    } catch (NumberFormatException e) {
+      return false;
+    }
+  }
+
   /**
    * Bake a model into quads with the given rotation.
+   * Results are cached by {@code modelPath@rotationY}.
    */
   private static List<BakedQuad> bakeModel(String modelPath, int rotationY) {
     if (modelPath == null) return null;
+
+    String cacheKey = modelPath + "@" + rotationY;
+    List<BakedQuad> cached = bakedModelCache.get(cacheKey);
+    if (cached != null) return cached;
+
     ModelJson resolved = ModelResolver.resolve(modelPath);
     if (resolved == null || resolved.elements == null) return null;
 
@@ -546,6 +729,7 @@ public class VanillaModelManager {
     for (ModelJson.Element element : resolved.elements) {
       quads.addAll(BlockJsonModelBake.bakeElement(element, iconMap));
     }
+    bakedModelCache.put(cacheKey, quads);
     return quads;
   }
 
@@ -580,6 +764,30 @@ public class VanillaModelManager {
     if (item != null) return item;
     item = (Item) Item.itemRegistry.getObject(name);
     return item;
+  }
+
+  /**
+   * Try to find a metadata_map.json entry for the given block and build an
+   * {@link IMetadataMapper} from it.  Returns null if no entry exists.
+   */
+  private static IMetadataMapper findMetadataMapEntry(String namespace, String blockName) {
+    // Search the same namespace first, then fallback to all registered namespaces
+    Map<Integer, Map<String, String>> metaMap = null;
+    Map<String, Map<Integer, Map<String, String>>> nsData = loadedMetadataMaps.get(namespace);
+    if (nsData != null) {
+      metaMap = nsData.get(blockName);
+    }
+    if (metaMap == null) {
+      for (Map.Entry<String, Map<String, Map<Integer, Map<String, String>>>> e : loadedMetadataMaps.entrySet()) {
+        metaMap = e.getValue().get(blockName);
+        if (metaMap != null) break;
+      }
+    }
+    if (metaMap == null) return null;
+
+    // Build a mapper lambda from the data
+    final Map<Integer, Map<String, String>> finalMap = metaMap;
+    return metadata -> finalMap.getOrDefault(metadata, Collections.emptyMap());
   }
 
   // ==================== Public Render API ====================
@@ -701,18 +909,31 @@ public class VanillaModelManager {
 
   /**
    * Render a list of baked quads at the given block position.
+   * 每个 quad 都会过一遍 {@link ModelRenderRegistry} 扩展链，扩展可改
+   * 颜色 / 亮度 / 剔除该面，从而支持 tint、阴影、面剔除等通用渲染特性。
    */
   private static void renderQuads(IBlockAccess world, int x, int y, int z, Block block, List<BakedQuad> quads, int rotationDeg) {
+    Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
     Tessellator t = Tessellator.instance;
     double a = Math.toRadians(rotationDeg);
     double cos = Math.cos(a);
     double sin = Math.sin(a);
 
     for (BakedQuad q : quads) {
-      int brightness = getFaceBrightness(world, x, y, z, block, q.face);
-      t.setBrightness(brightness);
-      float shade = shadeByNormal(q.faceNormal);
-      t.setColorOpaque_F(shade, shade, shade);
+      int baseBrightness = getFaceBrightness(world, x, y, z, block, q.face);
+      float baseShade = shadeByNormal(q.faceNormal);
+
+      // 走通用扩展链（内建 TintRenderExtension 在链头处理 tintindex）
+      RenderContext ctx = new RenderContext(RenderPhase.BLOCK_WORLD, q,
+          world, x, y, z, block, null, baseBrightness, baseShade);
+      ModelRenderRegistry.apply(ctx);
+      if (ctx.skip) continue;
+
+      t.setBrightness(ctx.effectiveBrightness());
+      float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
+      float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
+      float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
+      t.setColorOpaque_F(cr, cg, cb);
 
       IIcon icon = q.icon;
       for (int i = 0; i < 4; i++) {
@@ -732,66 +953,98 @@ public class VanillaModelManager {
     }
   }
 
-  /** Render an item using its JSON model */
-  public static void renderItem(Item item, int damage) {
+  /**
+   * Render an item using its JSON model (GUI / inventory context).
+   * 接收 ItemStack 以便扩展能读取 NBT / damage / 附魔等完整上下文。
+   */
+  public static void renderItem(ItemStack stack) {
+    if (stack == null) return;
+    Item item = stack.getItem();
+    if (item == null) return;
     Map<Integer, List<BakedQuad>> damageMap = bakedItemModels.get(item);
     if (damageMap == null) return;
 
+    int damage = stack.getItemDamage();
     List<BakedQuad> quads = damageMap.get(damage);
     if (quads == null) quads = damageMap.get(0);
     if (quads == null || quads.isEmpty()) return;
 
-    Tessellator t = Tessellator.instance;
-    GL11.glPushMatrix();
-    Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
-    t.startDrawingQuads();
-    t.setColorOpaque_F(1, 1, 1);
-    t.setBrightness(255);
+    drawItemQuads(quads, stack, RenderPhase.ITEM_GUI, 255, false);
+  }
 
-    for (BakedQuad q : quads) {
-      IIcon icon = q.icon;
-      for (int i = 0; i < 4; i++) {
-        double U = icon.getInterpolatedU(q.up[i]);
-        double V = icon.getInterpolatedV(q.vp[i]);
-        t.addVertexWithUV(q.vx[i], q.vy[i], q.vz[i], U, V);
-      }
-    }
-
-    t.draw();
-    GL11.glPopMatrix();
+  /** 旧接口兼容薄包装：无 NBT 上下文，扩展仅能看到 item+damage。 */
+  public static void renderItem(Item item, int damage) {
+    if (item == null) return;
+    renderItem(new ItemStack(item, 1, damage));
   }
 
   /**
    * Render an item's JSON model as a 3D model for in-hand rendering.
-   * Unlike {@link #renderItem(Item, int)} which is designed for 2D GUI
+   * Unlike {@link #renderItem(ItemStack)} which is designed for 2D GUI
    * context, this method renders the model at the current GL origin with
    * proper 3D centering — the caller ({@code ItemRenderer#renderItem})
    * has already set up the hand position / rotation transforms.
    */
-  public static void renderItemInHand(Item item, int damage) {
+  public static void renderItemInHand(ItemStack stack) {
+    if (stack == null) return;
+    Item item = stack.getItem();
+    if (item == null) return;
     Map<Integer, List<BakedQuad>> damageMap = bakedItemModels.get(item);
     if (damageMap == null) return;
 
+    int damage = stack.getItemDamage();
     List<BakedQuad> quads = damageMap.get(damage);
     if (quads == null) quads = damageMap.get(0);
     if (quads == null || quads.isEmpty()) return;
 
+    drawItemQuads(quads, stack, RenderPhase.ITEM_HAND, 15728880, true);
+  }
+
+  /** 旧接口兼容薄包装。 */
+  public static void renderItemInHand(Item item, int damage) {
+    if (item == null) return;
+    renderItemInHand(new ItemStack(item, 1, damage));
+  }
+
+  /**
+   * 物品端公用绘制逻辑：绑定方块纹理集、过扩展链、提交 Tessellator。
+   *
+   * @param baseBrightness 默认亮度 (GUI=255, 手持=full bright)
+   * @param centered       是否把原点偏移到方块中心 (手持需要)
+   */
+  private static void drawItemQuads(List<BakedQuad> quads, ItemStack stack,
+                                    RenderPhase phase, int baseBrightness, boolean centered) {
     Tessellator t = Tessellator.instance;
+    if (!centered) GL11.glPushMatrix();
     Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
     t.startDrawingQuads();
-    t.setColorOpaque_F(1, 1, 1);
 
     for (BakedQuad q : quads) {
-      t.setBrightness(15728880);
+      float baseShade = shadeByNormal(q.faceNormal);
+      RenderContext ctx = new RenderContext(phase, q,
+          null, 0, 0, 0, null, stack, baseBrightness, baseShade);
+      ModelRenderRegistry.apply(ctx);
+      if (ctx.skip) continue;
+
+      // 物品不受周围光照影响，以 baseBrightness 为准，但扩展可覆盖
+      t.setBrightness(ctx.effectiveBrightness());
+      float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
+      float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
+      float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
+      t.setColorOpaque_F(cr, cg, cb);
+
       IIcon icon = q.icon;
       for (int i = 0; i < 4; i++) {
         double U = icon.getInterpolatedU(q.up[i]);
         double V = icon.getInterpolatedV(q.vp[i]);
-        t.addVertexWithUV(q.vx[i] - 0.5, q.vy[i] - 0.5, q.vz[i] - 0.5, U, V);
+        double vx = q.vx[i], vy = q.vy[i], vz = q.vz[i];
+        if (centered) { vx -= 0.5; vy -= 0.5; vz -= 0.5; }
+        t.addVertexWithUV(vx, vy, vz, U, V);
       }
     }
 
     t.draw();
+    if (!centered) GL11.glPopMatrix();
   }
 
   // ==================== Lighting Helpers ====================

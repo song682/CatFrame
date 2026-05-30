@@ -39,6 +39,9 @@ public class ModelJson {
     public String texture;
     public String rotation;
     public String cullface;
+    /** Tint index for biome-based coloring (e.g. grass top). -1 means no tint. */
+    @SerializedName("tintindex")
+    public int tintIndex = -1;
   }
 
   /** Transform applied when rendering in a specific context (gui, hand, ground, etc.) */

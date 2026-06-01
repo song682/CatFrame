@@ -20,7 +20,7 @@ build
 .gradle
 
 # minecraft
-.minecraft/
+.minecraft
 eclipse
 run
 

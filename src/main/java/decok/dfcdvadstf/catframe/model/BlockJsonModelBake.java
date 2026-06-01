@@ -10,6 +10,9 @@ import java.util.Map;
 public class BlockJsonModelBake {
   public static List<BakedQuad> bakeElement(ModelJson.Element e, Map<String, IIcon> iconMap) {
     List<BakedQuad> out = new ArrayList<>();
+    // 保存原始 from/to（像素坐标），UV 计算依赖原始未旋转的 bounds
+    final float[] elemFrom = e.from;
+    final float[] elemTo = e.to;
     double x0 = e.from[0] / 16.0, y0 = e.from[1] / 16.0, z0 = e.from[2] / 16.0;
     double x1 = e.to[0] / 16.0, y1 = e.to[1] / 16.0, z1 = e.to[2] / 16.0;
     double[][] C = new double[8][3];
@@ -36,16 +39,17 @@ public class BlockJsonModelBake {
         C[i][2] = r[2];
       }
     }
-    emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, EnumFacing.NORTH);
-    emitFaceFromCorners(out, e.faces.south, iconMap, C, new int[]{idx(0, 1, 1), idx(0, 0, 1), idx(1, 0, 1), idx(1, 1, 1)}, EnumFacing.SOUTH);
-    emitFaceFromCorners(out, e.faces.west, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 0, 0), idx(0, 0, 1), idx(0, 1, 1)}, EnumFacing.WEST);
-    emitFaceFromCorners(out, e.faces.east, iconMap, C, new int[]{idx(1, 1, 1), idx(1, 0, 1), idx(1, 0, 0), idx(1, 1, 0)}, EnumFacing.EAST);
-    emitFaceFromCorners(out, e.faces.down, iconMap, C, new int[]{idx(0, 0, 1), idx(0, 0, 0), idx(1, 0, 0), idx(1, 0, 1)}, EnumFacing.DOWN);
-    emitFaceFromCorners(out, e.faces.up, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 1, 1), idx(1, 1, 1), idx(1, 1, 0)}, EnumFacing.UP);
+    emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, EnumFacing.NORTH, elemFrom, elemTo);
+    emitFaceFromCorners(out, e.faces.south, iconMap, C, new int[]{idx(0, 1, 1), idx(0, 0, 1), idx(1, 0, 1), idx(1, 1, 1)}, EnumFacing.SOUTH, elemFrom, elemTo);
+    emitFaceFromCorners(out, e.faces.west, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 0, 0), idx(0, 0, 1), idx(0, 1, 1)}, EnumFacing.WEST, elemFrom, elemTo);
+    emitFaceFromCorners(out, e.faces.east, iconMap, C, new int[]{idx(1, 1, 1), idx(1, 0, 1), idx(1, 0, 0), idx(1, 1, 0)}, EnumFacing.EAST, elemFrom, elemTo);
+    emitFaceFromCorners(out, e.faces.down, iconMap, C, new int[]{idx(0, 0, 1), idx(0, 0, 0), idx(1, 0, 0), idx(1, 0, 1)}, EnumFacing.DOWN, elemFrom, elemTo);
+    emitFaceFromCorners(out, e.faces.up, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 1, 1), idx(1, 1, 1), idx(1, 1, 0)}, EnumFacing.UP, elemFrom, elemTo);
     return out;
   }
 
-  private static void emitFaceFromCorners(List<BakedQuad> out, ModelJson.Face f, Map<String, IIcon> iconMap, double[][] C, int[] id, EnumFacing facing) {
+  private static void emitFaceFromCorners(List<BakedQuad> out, ModelJson.Face f, Map<String, IIcon> iconMap, double[][] C, int[] id, EnumFacing facing,
+                                            float[] elemFrom, float[] elemTo) {
     if (f == null) {
       return;
     }
@@ -60,7 +64,7 @@ public class BlockJsonModelBake {
       vz[i] = C[id[i]][2];
     }
     float[] up = new float[4], vp = new float[4];
-    assignUVForFace(f, facing, id, up, vp);
+    assignUVForFace(f, facing, id, up, vp, elemFrom, elemTo);
     BakedQuad q = new BakedQuad();
     for (int i = 0; i < 4; i++) {
       q.vx[i] = vx[i];
@@ -76,7 +80,12 @@ public class BlockJsonModelBake {
     out.add(q);
   }
 
-  private static void assignUVForFace(ModelJson.Face f, EnumFacing face, int[] ids, float[] outU, float[] outV) {
+  private static void assignUVForFace(ModelJson.Face f, EnumFacing face, int[] ids, float[] outU, float[] outV,
+                                        float[] elemFrom, float[] elemTo) {
+    // Auto-compute default UV from element from/to (pixel space) if not specified in JSON
+    if (f.uv == null) {
+      f.uv = computeDefaultUV(elemFrom, elemTo, face);
+    }
     final float u0 = f.uv[0], v0 = f.uv[1], u1 = f.uv[2], v1 = f.uv[3];
     final float du = u1 - u0, dv = v1 - v0;
     int steps = (f.rotation == null) ? 0 : ((Integer.parseInt(f.rotation) / 90) & 3);
@@ -136,6 +145,24 @@ public class BlockJsonModelBake {
       }
       outU[i] = u0 + du * ss;
       outV[i] = v0 + dv * tt;
+    }
+  }
+
+  /**
+   * Compute default UV from element bounds in pixel space (0-16).
+   * Independent of rotation — matches vanilla Minecraft behavior.
+   */
+  private static float[] computeDefaultUV(float[] from, float[] to, EnumFacing face) {
+    float x0 = from[0], y0 = from[1], z0 = from[2];
+    float x1 = to[0], y1 = to[1], z1 = to[2];
+    switch (face) {
+      case NORTH: return new float[]{x0, 16 - y1, x1, 16 - y0};
+      case SOUTH: return new float[]{16 - x1, 16 - y1, 16 - x0, 16 - y0};
+      case EAST:  return new float[]{16 - z1, 16 - y1, 16 - z0, 16 - y0};
+      case WEST:  return new float[]{z0, 16 - y1, z1, 16 - y0};
+      case DOWN:  return new float[]{x0, 16 - z1, x1, 16 - z0};
+      case UP:    return new float[]{x0, z0, x1, z1};
+      default:    return new float[]{0, 0, 16, 16};
     }
   }
 

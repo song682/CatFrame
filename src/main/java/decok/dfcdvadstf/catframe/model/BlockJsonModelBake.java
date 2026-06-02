@@ -50,7 +50,7 @@ public class BlockJsonModelBake {
 
   private static void emitFaceFromCorners(List<BakedQuad> out, ModelJson.Face f, Map<String, IIcon> iconMap, double[][] C, int[] id, EnumFacing facing,
                                             float[] elemFrom, float[] elemTo) {
-    if (f == null) {
+    if (f == null || f.texture == null) {
       return;
     }
     IIcon icon = iconMap.get(f.texture.substring(1));

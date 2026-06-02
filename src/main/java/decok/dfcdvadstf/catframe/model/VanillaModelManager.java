@@ -714,7 +714,16 @@ public class VanillaModelManager {
           if (icon == null) {
             String iconName = resolveTextureName(value);
             if (iconName != null) {
+              // Try blocks texture map first, then items texture map
               icon = Minecraft.getMinecraft().getTextureMapBlocks().getAtlasSprite(iconName);
+              if (icon == null) {
+                net.minecraft.client.renderer.texture.TextureMap itemMap = 
+                    (net.minecraft.client.renderer.texture.TextureMap) Minecraft.getMinecraft().getTextureManager()
+                        .getTexture(TextureMap.locationItemsTexture);
+                if (itemMap != null) {
+                  icon = itemMap.getAtlasSprite(iconName);
+                }
+              }
             }
           }
           if (icon != null) {
@@ -737,16 +746,23 @@ public class VanillaModelManager {
 
   private static String resolveTextureName(String texturePath) {
     if (texturePath == null) return null;
+    
+    // Keep namespace if present, only strip 'blocks/' or 'items/' prefix
+    String namespace = "";
+    String pathPart = texturePath;
+    
     if (texturePath.contains(":")) {
-      texturePath = texturePath.substring(texturePath.indexOf(':') + 1);
+      namespace = texturePath.substring(0, texturePath.indexOf(':') + 1);
+      pathPart = texturePath.substring(texturePath.indexOf(':') + 1);
     }
-    if (texturePath.startsWith("blocks/")) {
-      texturePath = texturePath.substring("blocks/".length());
+    
+    if (pathPart.startsWith("blocks/")) {
+      pathPart = pathPart.substring("blocks/".length());
+    } else if (pathPart.startsWith("items/")) {
+      pathPart = pathPart.substring("items/".length());
     }
-    if (texturePath.startsWith("items/")) {
-      texturePath = texturePath.substring("items/".length());
-    }
-    return texturePath;
+    
+    return namespace + pathPart;
   }
 
   // ==================== Block/Item Lookup ====================

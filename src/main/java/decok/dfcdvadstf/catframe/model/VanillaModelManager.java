@@ -951,7 +951,7 @@ public class VanillaModelManager {
       float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
       t.setColorOpaque_F(cr, cg, cb);
 
-      IIcon icon = q.icon;
+      IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
       for (int i = 0; i < 4; i++) {
         double vx = q.vx[i], vy = q.vy[i], vz = q.vz[i];
 
@@ -1049,7 +1049,7 @@ public class VanillaModelManager {
       float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
       t.setColorOpaque_F(cr, cg, cb);
 
-      IIcon icon = q.icon;
+      IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
       for (int i = 0; i < 4; i++) {
         double U = icon.getInterpolatedU(q.up[i]);
         double V = icon.getInterpolatedV(q.vp[i]);

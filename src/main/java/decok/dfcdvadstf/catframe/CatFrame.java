@@ -9,6 +9,9 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.JsonBlock;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
+import decok.dfcdvadstf.catframe.model.render.LeavesGraphicsExtension;
+import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
+import decok.dfcdvadstf.catframe.model.render.tint.LeavesTintRegistration;
 import net.minecraft.init.Blocks;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -32,6 +35,11 @@ public class CatFrame {
         if (event.getSide() == Side.CLIENT) {
             registerVanillaMetadataMappings();
             VanillaModelManager.init();
+
+            // 注册树叶染色
+            LeavesTintRegistration.register();
+            // 注册树叶画质纹理切换扩展
+            ModelRenderRegistry.register(new LeavesGraphicsExtension());
         }
 
         logger.info("Pre initialization logic complete");
@@ -71,6 +79,8 @@ public class CatFrame {
         if (event.map.getTextureType() == 0) {
             // Register vanilla model textures before atlas is stitched
             JsonBlock.registerVanillaTextures(event.map);
+            // Register _opaque leaf textures
+            LeavesGraphicsExtension.registerTextures(event.map);
         }
     }
 
@@ -80,6 +90,8 @@ public class CatFrame {
         if (event.map.getTextureType() == 0) {
             // Collect IIcon references and bake models
             JsonBlock.onTextureStitchPost(event.map);
+            // Resolve _opaque leaf IIcons
+            LeavesGraphicsExtension.onTextureStitchPost(event.map);
             // Process custom block render requests
             JsonBlock.event();
         }

@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.model.render;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 /**
@@ -46,6 +47,13 @@ public final class RenderContext {
   public int color = 0xFFFFFF;
   public int brightnessOverride = -1;
   public float shade;
+
+  /**
+   * 纹理覆盖。当此字段非 null 时，渲染器将使用此 IIcon 代替
+   * {@link BakedQuad#icon} 进行 UV 采样。
+   * 适用于运行时的纹理切换（例如根据画质切换树叶纹理）。
+   */
+  public IIcon iconOverride = null;
 
   public RenderContext(RenderPhase phase, BakedQuad quad,
                        IBlockAccess world, int x, int y, int z, Block block,

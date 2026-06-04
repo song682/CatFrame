@@ -935,36 +935,74 @@ public class VanillaModelManager {
     double cos = Math.cos(a);
     double sin = Math.sin(a);
 
+    // 逐顶点 AO 的临时缓冲区（复用，避免每次 new）
+    int[] vAO = new int[4];
+    float[] vAOMul = new float[4];
+
     for (BakedQuad q : quads) {
+      // 1. 计算逐顶点 AO（模拟原版 renderStandardBlockWithAmbientOcclusion）
+      for (int i = 0; i < 4; i++) { vAO[i] = -1; vAOMul[i] = 1.0f; }
+      computeVertexAO(world, x, y, z, block, q, vAO, vAOMul);
+
       int baseBrightness = getFaceBrightness(world, x, y, z, block, q.face);
       float baseShade = shadeByNormal(q.faceNormal);
 
-      // 走通用扩展链（内建 TintRenderExtension 在链头处理 tintindex）
+      // 2. 走通用扩展链
       RenderContext ctx = new RenderContext(RenderPhase.BLOCK_WORLD, q,
           world, x, y, z, block, null, baseBrightness, baseShade);
+
+      // 注入逐顶点数据供扩展读写
+      System.arraycopy(vAO, 0, ctx.aoBrightness, 0, 4);
+      System.arraycopy(vAOMul, 0, ctx.aoColorMul, 0, 4);
+
       ModelRenderRegistry.apply(ctx);
       if (ctx.skip) continue;
 
-      t.setBrightness(ctx.effectiveBrightness());
-      float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
-      float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
-      float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
-      t.setColorOpaque_F(cr, cg, cb);
+      // 3. 渲染 — 检查扩展链后是否仍有逐顶点数据
+      boolean hasVertexAO = ctx.aoBrightness[0] >= 0;
 
       IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
-      for (int i = 0; i < 4; i++) {
-        double vx = q.vx[i], vy = q.vy[i], vz = q.vz[i];
 
-        if (rotationDeg != 0) {
-          double px = vx - 0.5;
-          double pz = vz - 0.5;
-          vx = px * cos - pz * sin + 0.5;
-          vz = px * sin + pz * cos + 0.5;
+      if (hasVertexAO) {
+        // 逐顶点发射：每个顶点独立 brightness + color（与原版 enableAO 分支对应）
+        for (int i = 0; i < 4; i++) {
+          t.setBrightness(ctx.aoBrightness[i]);
+          float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade * ctx.aoColorMul[i];
+          float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade * ctx.aoColorMul[i];
+          float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade * ctx.aoColorMul[i];
+          t.setColorOpaque_F(cr, cg, cb);
+
+          double vx = q.vx[i], vy = q.vy[i], vz = q.vz[i];
+          if (rotationDeg != 0) {
+            double px = vx - 0.5;
+            double pz = vz - 0.5;
+            vx = px * cos - pz * sin + 0.5;
+            vz = px * sin + pz * cos + 0.5;
+          }
+          double U = icon.getInterpolatedU(q.up[i]);
+          double V = icon.getInterpolatedV(q.vp[i]);
+          t.addVertexWithUV(x + vx, y + vy, z + vz, U, V);
         }
+      } else {
+        // 退化到 uniform 渲染（物品 / AO 禁用等场景）
+        t.setBrightness(ctx.effectiveBrightness());
+        float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
+        float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
+        float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
+        t.setColorOpaque_F(cr, cg, cb);
 
-        double U = icon.getInterpolatedU(q.up[i]);
-        double V = icon.getInterpolatedV(q.vp[i]);
-        t.addVertexWithUV(x + vx, y + vy, z + vz, U, V);
+        for (int i = 0; i < 4; i++) {
+          double vx = q.vx[i], vy = q.vy[i], vz = q.vz[i];
+          if (rotationDeg != 0) {
+            double px = vx - 0.5;
+            double pz = vz - 0.5;
+            vx = px * cos - pz * sin + 0.5;
+            vz = px * sin + pz * cos + 0.5;
+          }
+          double U = icon.getInterpolatedU(q.up[i]);
+          double V = icon.getInterpolatedV(q.vp[i]);
+          t.addVertexWithUV(x + vx, y + vy, z + vz, U, V);
+        }
       }
     }
   }
@@ -1065,17 +1103,128 @@ public class VanillaModelManager {
 
   // ==================== Lighting Helpers ====================
 
-  private static int getFaceBrightness(IBlockAccess w, int x, int y, int z, Block b, EnumFacing face) {
-    if (face == null) return b.getMixedBrightnessForBlock(w, x, y, z);
+  /**
+   * 逐顶点 AO 计算 — 模拟原版 renderStandardBlockWithAmbientOcclusion 的算法。
+   *
+   * <p>对每个 quad 的 4 个顶点，根据其所在的面及角部位置，采样 3 个相邻方块
+   * 的亮度（{@link Block#getMixedBrightnessForBlock}）和 AO 遮挡值
+   * （{@link Block#getAmbientOcclusionLightValue}），再与面外方块混合得出
+   * 逐顶点的亮度 packed int 和 AO 颜色乘数。</p>
+   *
+   * <p>仅 {@link RenderPhase#BLOCK_WORLD} 调用（world 非 null），
+   * 物品渲染不需要 AO。</p>
+   */
+  private static void computeVertexAO(IBlockAccess world, int bx, int by, int bz,
+                                        Block block, BakedQuad q,
+                                        int[] outBrightness, float[] outAO) {
+    EnumFacing face = q.face;
+    if (face == null) return;
+
+    // 面的两个边轴（在面平面内的两个方向）
+    int e1Axis, e2Axis;
     switch (face) {
-      case UP:    return w.getLightBrightnessForSkyBlocks(x, y + 1, z, 0);
-      case DOWN:  return w.getLightBrightnessForSkyBlocks(x, y - 1, z, 0);
-      case NORTH: return w.getLightBrightnessForSkyBlocks(x, y, z - 1, 0);
-      case SOUTH: return w.getLightBrightnessForSkyBlocks(x, y, z + 1, 0);
-      case WEST:  return w.getLightBrightnessForSkyBlocks(x - 1, y, z, 0);
-      case EAST:  return w.getLightBrightnessForSkyBlocks(x + 1, y, z, 0);
-      default:    return b.getMixedBrightnessForBlock(w, x, y, z);
+      case DOWN:
+      case UP:
+        e1Axis = 0;
+        e2Axis = 2;
+        break; // X, Z
+      case NORTH:
+      case SOUTH:
+        e1Axis = 0;
+        e2Axis = 1;
+        break; // X, Y
+      case EAST:
+      case WEST:
+        e1Axis = 2;
+        e2Axis = 1;
+        break; // Z, Y
+      default:
+        return;
     }
+
+    // 面法线方向（朝外的方块坐标）
+    int cbx = bx + face.getFrontOffsetX();
+    int cby = by + face.getFrontOffsetY();
+    int cbz = bz + face.getFrontOffsetZ();
+    int centerBrightness = block.getMixedBrightnessForBlock(world, cbx, cby, cbz);
+    float centerAO = world.getBlock(cbx, cby, cbz).getAmbientOcclusionLightValue();
+
+    // 在面平面内找 min/max 确定四个角
+    double minE1 = Double.MAX_VALUE, maxE1 = -Double.MAX_VALUE;
+    double minE2 = Double.MAX_VALUE, maxE2 = -Double.MAX_VALUE;
+    for (int v = 0; v < 4; v++) {
+      double v1 = (e1Axis == 0) ? q.vx[v] : (e1Axis == 1) ? q.vy[v] : q.vz[v];
+      double v2 = (e2Axis == 0) ? q.vx[v] : (e2Axis == 1) ? q.vy[v] : q.vz[v];
+      if (v1 < minE1) minE1 = v1;
+      if (v1 > maxE1) maxE1 = v1;
+      if (v2 < minE2) minE2 = v2;
+      if (v2 > maxE2) maxE2 = v2;
+    }
+
+    for (int v = 0; v < 4; v++) {
+      double v1 = (e1Axis == 0) ? q.vx[v] : (e1Axis == 1) ? q.vy[v] : q.vz[v];
+      double v2 = (e2Axis == 0) ? q.vx[v] : (e2Axis == 1) ? q.vy[v] : q.vz[v];
+
+      boolean isMinE1 = Math.abs(v1 - minE1) < 0.0001;
+      boolean isMinE2 = Math.abs(v2 - minE2) < 0.0001;
+
+      int s1 = isMinE1 ? -1 : 1;
+      int s2 = isMinE2 ? -1 : 1;
+
+      // 3 个相邻位置 offset（与原版 YNEG 算法对应）
+      int[] off1 = new int[3];
+      off1[e1Axis] = s1;
+      off1[e2Axis] = s2; // 对角：s1+e2 方向
+      int[] off2 = new int[3];
+      off2[e1Axis] = s1; // 边：仅 e1
+      int[] off3 = new int[3];
+      off3[e2Axis] = s2; // 边：仅 e2
+
+      int nx1 = bx + off1[0], ny1 = by + off1[1], nz1 = bz + off1[2];
+      int nx2 = bx + off2[0], ny2 = by + off2[1], nz2 = bz + off2[2];
+      int nx3 = bx + off3[0], ny3 = by + off3[1], nz3 = bz + off3[2];
+
+      // 采样对角位置：若两侧都不是实体方块则回退到边采样（与原版 getCanBlockGrass 检查对应）
+      boolean solid1 = world.getBlock(nx2, ny2, nz2).getCanBlockGrass();
+      boolean solid2 = world.getBlock(nx3, ny3, nz3).getCanBlockGrass();
+
+      int b1 = block.getMixedBrightnessForBlock(world, nx1, ny1, nz1);
+      int b2 = block.getMixedBrightnessForBlock(world, nx2, ny2, nz2);
+      int b3 = block.getMixedBrightnessForBlock(world, nx3, ny3, nz3);
+
+      float ao1, ao2, ao3;
+      if (!solid1 && !solid2) {
+        // 对角位置两侧都非实体，用边位置的 AO 代替对角
+        ao1 = world.getBlock(nx2, ny2, nz2).getAmbientOcclusionLightValue();
+        ao2 = ao1;
+        ao3 = world.getBlock(nx3, ny3, nz3).getAmbientOcclusionLightValue();
+      } else {
+        ao1 = world.getBlock(nx1, ny1, nz1).getAmbientOcclusionLightValue();
+        ao2 = world.getBlock(nx2, ny2, nz2).getAmbientOcclusionLightValue();
+        ao3 = world.getBlock(nx3, ny3, nz3).getAmbientOcclusionLightValue();
+      }
+
+      // AO 遮挡系数 = 4 个点平均（与原版一致）
+      outAO[v] = (ao1 + ao2 + ao3 + centerAO) / 4.0f;
+      // 混合亮度（模拟原版 getAoBrightness）
+      outBrightness[v] = mixAoBrightness(b1, b2, b3, centerBrightness);
+    }
+  }
+
+  /**
+   * 混合 4 个亮度值为 1 个 — 与原版 {@code RenderBlocks.getAoBrightness} 等效。
+   * 值为 0 的分量用 center 代替（亮度为 0 意味着该方向无光，应回退到面中心值）。
+   */
+  private static int mixAoBrightness(int a, int b, int c, int center) {
+    if (a == 0) a = center;
+    if (b == 0) b = center;
+    if (c == 0) c = center;
+    return (a + b + c + center) >> 2 & 0xFF00FF;
+  }
+
+  private static int getFaceBrightness(IBlockAccess w, int x, int y, int z, Block b, EnumFacing face) {
+    // 使用本方块位置的混合亮度（模拟原版 AO）
+    return b.getMixedBrightnessForBlock(w, x, y, z);
   }
 
   private static float shadeByNormal(double[] n) {

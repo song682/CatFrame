@@ -22,6 +22,8 @@ import net.minecraft.world.IBlockAccess;
  *           -1 表示沿用 {@link #baselineBrightness}。</li>
  *       <li>{@link #shade}：方向光照系数（顶面 1.0、侧面 0.8、底面 0.5 等），
  *           会与 color 一起送入 Tessellator。</li>
+ *       <li>{@link #aoBrightness} 和 {@link #aoColorMul}：逐顶点 AO 数据（每面 4 个值），
+ *           仅 BLOCK_WORLD 阶段可用。当所有值为 -1 时退化到 uniform 渲染。</li>
  *     </ul>
  *   </li>
  * </ul>
@@ -47,6 +49,19 @@ public final class RenderContext {
   public int color = 0xFFFFFF;
   public int brightnessOverride = -1;
   public float shade;
+
+  /**
+   * 逐顶点 AO 亮度（packed int，skyLight<<16 | blockLight 格式）。
+   * -1 表示该顶点无逐顶点数据，退化到 {@link #effectiveBrightness()} 统一亮度。
+   * 仅 {@link RenderPhase#BLOCK_WORLD} 阶段由 VanillaModelManager 填入。
+   */
+  public final int[] aoBrightness = {-1, -1, -1, -1};
+
+  /**
+   * 逐顶点 AO 遮挡系数（0.0~1.0，1.0=无遮挡），与原版 block.getAmbientOcclusionLightValue() 等效。
+   * 渲染时会乘入最终颜色：{@code finalColor = color * shade * aoColorMul[i]}。
+   */
+  public final float[] aoColorMul = {1.0f, 1.0f, 1.0f, 1.0f};
 
   /**
    * 纹理覆盖。当此字段非 null 时，渲染器将使用此 IIcon 代替

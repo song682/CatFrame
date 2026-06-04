@@ -18,6 +18,10 @@ import java.util.List;
  *
  * <h3>内建扩展</h3>
  * <ul>
+ *   <li>{@link FaceCullExtension}：处理 JSON face 中的 {@code "cullface"}，
+ *       根据相邻方块是否完整不透明自动剔除隐藏面。</li>
+ *   <li>{@link AOShadeExtension}：处理 JSON element 中的 {@code "ambientocclusion"} 和 {@code "shade"}，
+ *       为自发光/均匀照明方块提供亮度和方向阴影控制。</li>
  *   <li>{@link TintRenderExtension}：处理 JSON face 中的 {@code "tintindex"}，
  *       自动调用 {@link decok.dfcdvadstf.catframe.model.render.tint.TintRegistry}
  *       为草方块/树叶/水/染色物品等提供生物群系或 NBT 染色。</li>
@@ -73,6 +77,8 @@ public final class ModelRenderRegistry {
   private static void ensureDefaults() {
     if (defaultsInstalled) return;
     defaultsInstalled = true;
+    EXTS.add(new FaceCullExtension());
+    EXTS.add(new AOShadeExtension());
     EXTS.add(new TintRenderExtension());
   }
 }

@@ -13,6 +13,9 @@ public class BlockJsonModelBake {
     // 保存原始 from/to（像素坐标），UV 计算依赖原始未旋转的 bounds
     final float[] elemFrom = e.from;
     final float[] elemTo = e.to;
+    // 获取元素级别的 ambientocclusion 和 shade 设置
+    final Boolean elemAO = e.ambientocclusion;
+    final Boolean elemShade = e.shade;
     double x0 = e.from[0] / 16.0, y0 = e.from[1] / 16.0, z0 = e.from[2] / 16.0;
     double x1 = e.to[0] / 16.0, y1 = e.to[1] / 16.0, z1 = e.to[2] / 16.0;
     double[][] C = new double[8][3];
@@ -39,17 +42,17 @@ public class BlockJsonModelBake {
         C[i][2] = r[2];
       }
     }
-    emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, EnumFacing.NORTH, elemFrom, elemTo);
-    emitFaceFromCorners(out, e.faces.south, iconMap, C, new int[]{idx(0, 1, 1), idx(0, 0, 1), idx(1, 0, 1), idx(1, 1, 1)}, EnumFacing.SOUTH, elemFrom, elemTo);
-    emitFaceFromCorners(out, e.faces.west, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 0, 0), idx(0, 0, 1), idx(0, 1, 1)}, EnumFacing.WEST, elemFrom, elemTo);
-    emitFaceFromCorners(out, e.faces.east, iconMap, C, new int[]{idx(1, 1, 1), idx(1, 0, 1), idx(1, 0, 0), idx(1, 1, 0)}, EnumFacing.EAST, elemFrom, elemTo);
-    emitFaceFromCorners(out, e.faces.down, iconMap, C, new int[]{idx(0, 0, 1), idx(0, 0, 0), idx(1, 0, 0), idx(1, 0, 1)}, EnumFacing.DOWN, elemFrom, elemTo);
-    emitFaceFromCorners(out, e.faces.up, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 1, 1), idx(1, 1, 1), idx(1, 1, 0)}, EnumFacing.UP, elemFrom, elemTo);
+    emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, EnumFacing.NORTH, elemFrom, elemTo, elemAO, elemShade);
+    emitFaceFromCorners(out, e.faces.south, iconMap, C, new int[]{idx(0, 1, 1), idx(0, 0, 1), idx(1, 0, 1), idx(1, 1, 1)}, EnumFacing.SOUTH, elemFrom, elemTo, elemAO, elemShade);
+    emitFaceFromCorners(out, e.faces.west, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 0, 0), idx(0, 0, 1), idx(0, 1, 1)}, EnumFacing.WEST, elemFrom, elemTo, elemAO, elemShade);
+    emitFaceFromCorners(out, e.faces.east, iconMap, C, new int[]{idx(1, 1, 1), idx(1, 0, 1), idx(1, 0, 0), idx(1, 1, 0)}, EnumFacing.EAST, elemFrom, elemTo, elemAO, elemShade);
+    emitFaceFromCorners(out, e.faces.down, iconMap, C, new int[]{idx(0, 0, 1), idx(0, 0, 0), idx(1, 0, 0), idx(1, 0, 1)}, EnumFacing.DOWN, elemFrom, elemTo, elemAO, elemShade);
+    emitFaceFromCorners(out, e.faces.up, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 1, 1), idx(1, 1, 1), idx(1, 1, 0)}, EnumFacing.UP, elemFrom, elemTo, elemAO, elemShade);
     return out;
   }
 
   private static void emitFaceFromCorners(List<BakedQuad> out, ModelJson.Face f, Map<String, IIcon> iconMap, double[][] C, int[] id, EnumFacing facing,
-                                            float[] elemFrom, float[] elemTo) {
+                                            float[] elemFrom, float[] elemTo, Boolean elemAO, Boolean elemShade) {
     if (f == null || f.texture == null) {
       return;
     }
@@ -76,7 +79,11 @@ public class BlockJsonModelBake {
     q.icon = icon;
     q.face = facing;
     q.tintIndex = f.tintIndex;
+    q.cullface = parseCullface(f.cullface);
     q.faceNormal = normal(q.vx, q.vy, q.vz);
+    // 传递元素级别的 AO 和 shade 设置
+    q.ambientOcclusion = elemAO;
+    q.shadeEnabled = elemShade;
     out.add(q);
   }
 
@@ -194,6 +201,20 @@ public class BlockJsonModelBake {
     return new double[]{rx + ox, ry + oy, rz + oz};
   }
 
+  /** Parse cullface string (e.g. "south", "up") to EnumFacing. Returns null if invalid or null. */
+  private static EnumFacing parseCullface(String cullface) {
+    if (cullface == null || cullface.isEmpty()) return null;
+    switch (cullface.toLowerCase()) {
+      case "down":  return EnumFacing.DOWN;
+      case "up":    return EnumFacing.UP;
+      case "north": return EnumFacing.NORTH;
+      case "south": return EnumFacing.SOUTH;
+      case "west":  return EnumFacing.WEST;
+      case "east":  return EnumFacing.EAST;
+      default:      return null;
+    }
+  }
+
   public static double[] normal(double[] vx, double[] vy, double[] vz) {
     double ax = vx[1] - vx[0], ay = vy[1] - vy[0], az = vz[1] - vz[0];
     double bx = vx[2] - vx[0], by = vy[2] - vy[0], bz = vz[2] - vz[0];
@@ -213,5 +234,11 @@ public class BlockJsonModelBake {
     public EnumFacing face;
     /** Tint index from JSON face. -1 = no tint, 0+ = use block.colorMultiplier for biome color. */
     public int tintIndex = -1;
+    /** Cullface direction from JSON face. null means no cullface. */
+    public EnumFacing cullface;
+    /** 环境光遮蔽标记: null 表示使用模型级别默认值, true=启用 AO, false=禁用 AO */
+    public Boolean ambientOcclusion = null;
+    /** 方向阴影标记: null 表示使用模型级别默认值, true=启用, false=禁用(自发光) */
+    public Boolean shadeEnabled = null;
   }
 }

@@ -22,6 +22,13 @@ public class ModelJson {
     public float[] to;
     public Rotation rotation;
     public Faces faces;
+    
+    /** 环境光遮蔽: true(默认) 启用逐顶点 AO(采样相邻方块亮度), false 禁用 AO(自发光) */
+    @SerializedName("ambientocclusion")
+    public Boolean ambientocclusion;
+    
+    /** 方向阴影: true(默认) 根据法线应用方向光照衰减(top=1.0/side=0.8/bottom=0.5), false 均匀照明 */
+    public Boolean shade;
   }
 
   public static class Rotation {

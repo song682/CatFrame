@@ -33,12 +33,12 @@ import java.util.Map;
 @FunctionalInterface
 public interface IMetadataMapper {
 
-  /**
-   * Produce a property map for the given metadata value.
-   * Values must be strings (matching the blockstate JSON variant keys).
-   *
-   * @param metadata the metadata value (0–15)
-   * @return property map (e.g. {@code {"variant":"granite"}}), never null
-   */
-  Map<String, String> map(int metadata);
+    /**
+     * Produce a property map for the given metadata value.
+     * Values must be strings (matching the blockstate JSON variant keys).
+     *
+     * @param metadata the metadata value (0–15)
+     * @return property map (e.g. {@code {"variant":"granite"}}), never null
+     */
+    Map<String, String> map(int metadata);
 }

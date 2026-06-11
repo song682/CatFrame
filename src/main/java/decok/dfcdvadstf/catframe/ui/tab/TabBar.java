@@ -12,45 +12,53 @@ import java.util.Map;
 
 /**
  * <p>
- *     Tab 容器条 —— 抽象基类。<br>
- *     子类必须提供 {@code barId}，并可自定义背景（纯色填充 + 可选贴图平铺，
- *     默认纯黑填充）。<br>
- *     外部模组在 {@code preInit} 中通过 {@link TabRegistry#registerTab} 注册
- *     Tab 后，在 GUI 初始化时将注册的 Tab 装载到此 Bar 中。
+ * Tab 容器条 —— 抽象基类。<br>
+ * 子类必须提供 {@code barId}，并可自定义背景（纯色填充 + 可选贴图平铺，
+ * 默认纯黑填充）。<br>
+ * 外部模组在 {@code preInit} 中通过 {@link TabRegistry#registerTab} 注册
+ * Tab 后，在 GUI 初始化时将注册的 Tab 装载到此 Bar 中。
  * </p>
  * <p>
- *     Tab container bar — abstract base class.<br>
- *     Subclasses must supply a {@code barId} and may customise the background
- *     (solid colour fill + optional tiled texture; defaults to solid black).<br>
- *     External mods register their tabs via {@link TabRegistry#registerTab} during
- *     {@code preInit}, then the tabs are loaded into this Bar at GUI initialisation.
+ * Tab container bar — abstract base class.<br>
+ * Subclasses must supply a {@code barId} and may customise the background
+ * (solid colour fill + optional tiled texture; defaults to solid black).<br>
+ * External mods register their tabs via {@link TabRegistry#registerTab} during
+ * {@code preInit}, then the tabs are loaded into this Bar at GUI initialisation.
  * </p>
  */
 public abstract class TabBar {
 
-    /** Default tab button texture path. / 默认 Tab 按钮纹理路径。 */
+    /**
+     * Default tab button texture path. / 默认 Tab 按钮纹理路径。
+     */
     public static final ResourceLocation DEFAULT_TAB_TEXTURE =
             new ResourceLocation("catframe", "textures/gui/tabs.png");
 
-    /** Default tile size for background texture. / 背景贴图默认平铺块大小。 */
+    /**
+     * Default tile size for background texture. / 背景贴图默认平铺块大小。
+     */
     protected static final int DEFAULT_TILE_SIZE = 16;
-
-    private final String barId;
-
-    /** Solid background colour (ARGB).  Default: opaque black. / 纯色背景（ARGB）。默认：不透明黑色。 */
-    protected int backgroundColor = 0xFF000000;
-
-    /** Optional tiled background texture.  {@code null} = no texture. / 可选平铺背景贴图。{@code null} = 无贴图。 */
-    protected ResourceLocation backgroundTexture;
-
-    /** Texture used for tab buttons in this bar. / 此 Bar 的 Tab 按钮使用的纹理。 */
-    protected ResourceLocation tabTexture = DEFAULT_TAB_TEXTURE;
-
-    /** Entries registered to this bar (from TabRegistry), keyed by tab ID. / 注册到此 Bar 的 TabEntry（来自 TabRegistry），以 tab ID 为键。 */
+    /**
+     * Entries registered to this bar (from TabRegistry), keyed by tab ID. / 注册到此 Bar 的 TabEntry（来自 TabRegistry），以 tab ID 为键。
+     */
     protected final Map<Integer, TabRegistry.TabEntry> entries = new LinkedHashMap<>();
-
-    /** Tabs instantiated from entries, keyed by tab ID. / 从 entries 实例化出的 Tab，以 tab ID 为键。 */
+    /**
+     * Tabs instantiated from entries, keyed by tab ID. / 从 entries 实例化出的 Tab，以 tab ID 为键。
+     */
     protected final Map<Integer, Tab> tabs = new LinkedHashMap<>();
+    private final String barId;
+    /**
+     * Solid background colour (ARGB).  Default: opaque black. / 纯色背景（ARGB）。默认：不透明黑色。
+     */
+    protected int backgroundColor = 0xFF000000;
+    /**
+     * Optional tiled background texture.  {@code null} = no texture. / 可选平铺背景贴图。{@code null} = 无贴图。
+     */
+    protected ResourceLocation backgroundTexture;
+    /**
+     * Texture used for tab buttons in this bar. / 此 Bar 的 Tab 按钮使用的纹理。
+     */
+    protected ResourceLocation tabTexture = DEFAULT_TAB_TEXTURE;
 
     /**
      * @param barId Unique identifier for this bar. / 此 Bar 的唯一标识符。
@@ -64,21 +72,34 @@ public abstract class TabBar {
 
     // ==================== ID ====================
 
-    /** @return The unique bar identifier. / 此 Bar 的唯一标识符。 */
+    /**
+     * @return The unique bar identifier. / 此 Bar 的唯一标识符。
+     */
     public String getBarId() {
         return barId;
     }
 
     // ==================== Background configuration ====================
 
-    /** @param color Solid background colour in ARGB format. / ARGB 格式的纯色背景。 */
+    /**
+     * @return Current solid background colour. / 当前纯色背景色。
+     */
+    public int getBackgroundColor() {
+        return backgroundColor;
+    }
+
+    /**
+     * @param color Solid background colour in ARGB format. / ARGB 格式的纯色背景。
+     */
     public void setBackgroundColor(int color) {
         this.backgroundColor = color;
     }
 
-    /** @return Current solid background colour. / 当前纯色背景色。 */
-    public int getBackgroundColor() {
-        return backgroundColor;
+    /**
+     * @return The background texture, or {@code null} if none. / 背景贴图，无则为 {@code null}。
+     */
+    public ResourceLocation getBackgroundTexture() {
+        return backgroundTexture;
     }
 
     /**
@@ -89,21 +110,20 @@ public abstract class TabBar {
         this.backgroundTexture = texture;
     }
 
-    /** @return The background texture, or {@code null} if none. / 背景贴图，无则为 {@code null}。 */
-    public ResourceLocation getBackgroundTexture() {
-        return backgroundTexture;
-    }
-
     // ==================== Tab texture ====================
 
-    /** @param texture Texture used when rendering tab buttons for this bar. */
-    public void setTabTexture(ResourceLocation texture) {
-        this.tabTexture = texture;
-    }
-
-    /** @return Texture used when rendering tab buttons. */
+    /**
+     * @return Texture used when rendering tab buttons.
+     */
     public ResourceLocation getTabTexture() {
         return tabTexture;
+    }
+
+    /**
+     * @param texture Texture used when rendering tab buttons for this bar.
+     */
+    public void setTabTexture(ResourceLocation texture) {
+        this.tabTexture = texture;
     }
 
     // ==================== Tab entry management (from TabRegistry) ====================
@@ -118,12 +138,16 @@ public abstract class TabBar {
         entries.put(entry.tabId, entry);
     }
 
-    /** @return All registered entries in this bar. / 此 Bar 中所有已注册的条目。 */
+    /**
+     * @return All registered entries in this bar. / 此 Bar 中所有已注册的条目。
+     */
     public Collection<TabRegistry.TabEntry> getAllEntries() {
         return entries.values();
     }
 
-    /** @return The entry for the given tab ID, or {@code null}. */
+    /**
+     * @return The entry for the given tab ID, or {@code null}.
+     */
     public TabRegistry.TabEntry getEntry(int tabId) {
         return entries.get(tabId);
     }
@@ -157,22 +181,30 @@ public abstract class TabBar {
         return tab;
     }
 
-    /** @return A tab by its ID, or {@code null} if not found / not yet created. */
+    /**
+     * @return A tab by its ID, or {@code null} if not found / not yet created.
+     */
     public Tab getTab(int tabId) {
         return tabs.get(tabId);
     }
 
-    /** @return All tab instances in this bar (ordered by insertion). */
+    /**
+     * @return All tab instances in this bar (ordered by insertion).
+     */
     public Collection<Tab> getAllTabs() {
         return tabs.values();
     }
 
-    /** @return Number of tab instances in this bar. */
+    /**
+     * @return Number of tab instances in this bar.
+     */
     public int getTabCount() {
         return tabs.size();
     }
 
-    /** @return Whether this bar contains a tab with the given ID. */
+    /**
+     * @return Whether this bar contains a tab with the given ID.
+     */
     public boolean containsTab(int tabId) {
         return tabs.containsKey(tabId);
     }

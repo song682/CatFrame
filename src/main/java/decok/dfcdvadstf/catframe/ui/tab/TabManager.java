@@ -3,11 +3,7 @@ package decok.dfcdvadstf.catframe.ui.tab;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class TabManager {
     private final Map<Integer, Tab> tabs = new HashMap<>();
@@ -22,7 +18,9 @@ public class TabManager {
     private int currentTabId = 100;
     private Tab currentTab;
 
-    /** Optional TabBar that provides background rendering and tab container. / 可选的 TabBar，提供背景绘制和 Tab 容器。 */
+    /**
+     * Optional TabBar that provides background rendering and tab container. / 可选的 TabBar，提供背景绘制和 Tab 容器。
+     */
     private TabBar tabBar;
 
     /**
@@ -105,12 +103,12 @@ public class TabManager {
 
     /**
      * <p>
-     *     注册一个标签页<br>
-     *     内部使用，外部模组应通过 {@link TabRegistry#registerTab} 注册
+     * 注册一个标签页<br>
+     * 内部使用，外部模组应通过 {@link TabRegistry#registerTab} 注册
      * </p>
      * <p>
-     *     Register a tab<br>
-     *     For internal use; external mods should use {@link TabRegistry#registerTab}
+     * Register a tab<br>
+     * For internal use; external mods should use {@link TabRegistry#registerTab}
      * </p>
      */
     public void registerTab(Tab tab) {
@@ -119,8 +117,8 @@ public class TabManager {
 
     /**
      * <p>
-     *     检查指定ID是否为标签页按钮ID<br>
-     *     Check if the given ID belongs to a tab button
+     * 检查指定ID是否为标签页按钮ID<br>
+     * Check if the given ID belongs to a tab button
      * </p>
      */
     public boolean isTabButton(int id) {
@@ -129,8 +127,8 @@ public class TabManager {
 
     /**
      * <p>
-     *     获取按顺序排列的所有标签页ID<br>
-     *     Get all tab IDs in sorted order
+     * 获取按顺序排列的所有标签页ID<br>
+     * Get all tab IDs in sorted order
      * </p>
      */
     public List<Integer> getSortedTabIds() {
@@ -153,7 +151,9 @@ public class TabManager {
         }
     }
 
-    /** @return The TabBar associated with this manager, or {@code null}. / 与此管理器关联的 TabBar，或 {@code null}。 */
+    /**
+     * @return The TabBar associated with this manager, or {@code null}. / 与此管理器关联的 TabBar，或 {@code null}。
+     */
     public TabBar getTabBar() {
         return tabBar;
     }
@@ -191,7 +191,8 @@ public class TabManager {
 
     /**
      * 重新初始化标签页，在窗口大小改变时调用以保持当前选中的标签页
-     * @param width 新的窗口宽度
+     *
+     * @param width  新的窗口宽度
      * @param height 新的窗口高度
      */
     public void reinitializeTabs(int width, int height) {
@@ -207,12 +208,14 @@ public class TabManager {
         switchToTab(savedTabId);
     }
 
-    public GuiScreen getScreen() { return screen; }
+    public GuiScreen getScreen() {
+        return screen;
+    }
 
     /**
      * <p>
-     *     获取指定ID的标签页在其排序位置中的索引<br>
-     *     Get the sorted index of the tab with the given ID
+     * 获取指定ID的标签页在其排序位置中的索引<br>
+     * Get the sorted index of the tab with the given ID
      * </p>
      */
     public int getTabIndex(int tabId) {
@@ -220,7 +223,15 @@ public class TabManager {
         return sortedIds.indexOf(tabId);
     }
 
-    public int getCurrentTabId() { return currentTabId; }
-    public int getTabCount() { return tabs.size(); }
-    public Map<Integer, Tab> getAllTabs() { return tabs; }
+    public int getCurrentTabId() {
+        return currentTabId;
+    }
+
+    public int getTabCount() {
+        return tabs.size();
+    }
+
+    public Map<Integer, Tab> getAllTabs() {
+        return tabs;
+    }
 }

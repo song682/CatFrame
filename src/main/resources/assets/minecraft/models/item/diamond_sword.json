@@ -1,6 +1,1 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "minecraft:items/diamond_sword"
-  }
-}
+{"parent":"item/handheld","textures":{"layer0":"minecraft:items/diamond_sword"}}

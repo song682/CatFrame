@@ -5,13 +5,16 @@ import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.langguage.LanguageRegister;
+import decok.dfcdvadstf.catframe.langguage.LocalizationManager;
 import decok.dfcdvadstf.catframe.model.JsonBlock;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
-import decok.dfcdvadstf.catframe.model.render.LeavesGraphicsExtension;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
-import decok.dfcdvadstf.catframe.model.render.tint.LeavesTintRegistration;
+import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
+import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintRegistration;
 import net.minecraft.init.Blocks;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -25,32 +28,12 @@ import java.util.Map;
 public class CatFrame {
     public static Logger logger = LogManager.getLogger(Tags.NAME);
 
-    @EventHandler
-    public void preInit(FMLPreInitializationEvent event) {
-        // Pre initialization logic
-        logger = event.getModLog();
-        MinecraftForge.EVENT_BUS.register(this);
-
-        // --- Register vanilla metadata-to-property mappings (1.7.10 compat) ---
-        if (event.getSide() == Side.CLIENT) {
-            registerVanillaMetadataMappings();
-            VanillaModelManager.init();
-
-            // 注册树叶染色
-            LeavesTintRegistration.register();
-            // 注册树叶画质纹理切换扩展
-            ModelRenderRegistry.register(new LeavesGraphicsExtension());
-        }
-
-        logger.info("Pre initialization logic complete");
-    }
-
     @SideOnly(Side.CLIENT)
     private static void registerVanillaMetadataMappings() {
         // log: low 2 bits = wood type, high 2 bits = rotation (0=y, 1=x, 2=z, 3=bark→y)
         final String[] woods = {"oak", "spruce", "birch", "jungle"};
-        final String[] axes  = {"y", "x", "z"};
-        VanillaModelManager.registerMetadataMapping(Blocks.log, meta -> {
+        final String[] axes = {"y", "x", "z"};
+        VanillaModelManager.DataLoading.registerMetadataMapping(Blocks.log, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("wood", woods[meta & 3]);
             props.put("axis", axes[(meta >> 2) % 3]);
@@ -59,12 +42,57 @@ public class CatFrame {
 
         // log2: low 1 bit = wood type, high 2 bits = rotation (same scheme)
         final String[] woods2 = {"acacia", "dark_oak"};
-        VanillaModelManager.registerMetadataMapping(Blocks.log2, meta -> {
+        VanillaModelManager.DataLoading.registerMetadataMapping(Blocks.log2, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("wood", woods2[meta & 1]);
             props.put("axis", axes[(meta >> 2) % 3]);
             return props;
         });
+    }
+
+    @EventHandler
+    public void preInit(FMLPreInitializationEvent event) {
+        // Pre initialization logic
+        logger = event.getModLog();
+        MinecraftForge.EVENT_BUS.register(this);
+
+        // ==================== 配置加载 ====================
+        CatFrameConfig.init(event);
+
+        // ==================== Bluey 物品注册（受配置控制）====================
+        BlueyPlushyItem blueyPlushy = null;
+        if (CatFrameConfig.enableBlueyPlushy) {
+            blueyPlushy = new BlueyPlushyItem();
+            GameRegistry.registerItem(blueyPlushy, "bluey_plushy");
+        }
+
+        // --- Register vanilla metadata-to-property mappings (1.7.10 compat) ---
+        if (event.getSide() == Side.CLIENT) {
+            // 注册本 mod 的语言域，然后初始化 JSON 本地化系统
+            LanguageRegister.domain(Tags.MODID, "assets/catframe/lang");
+            LocalizationManager.Loader.load();
+
+            registerVanillaMetadataMappings();
+            VanillaModelManager.DataLoading.registerNamespace("catframe");
+            VanillaModelManager.DataLoading.init();
+
+            // ==================== Bluey 客户端注册（在 DataLoading.init 之后）====================
+            if (blueyPlushy != null) {
+                // 收集物品纹理 → 注册到 item atlas（type 1）
+                VanillaModelManager.TextureManagement.collectTextures("item/bluey", true);
+                VanillaModelManager.TextureManagement.collectTextures("item/bluey_inventory", true);
+                // 注册自定义 ItemModel（快捷栏 2D + 手持 3D）
+                VanillaModelManager.ModelRegistration.registerItemModel(blueyPlushy, new BlueyPlushyItemModel());
+            }
+
+            // 注册树叶染色
+            LeavesTintRegistration.register();
+            // 注册树叶画质纹理切换扩展
+            ModelRenderRegistry.register(new LeavesGraphicsExtension());
+        }
+
+        logger.info("Pre initialization logic complete");
+
     }
 
     @EventHandler
@@ -81,6 +109,9 @@ public class CatFrame {
             JsonBlock.registerVanillaTextures(event.map);
             // Register _opaque leaf textures
             LeavesGraphicsExtension.registerTextures(event.map);
+        } else if (event.map.getTextureType() == 1) {
+            // Register item textures on the item atlas
+            VanillaModelManager.TextureManagement.registerItemTextures(event.map);
         }
     }
 
@@ -94,6 +125,9 @@ public class CatFrame {
             LeavesGraphicsExtension.onTextureStitchPost(event.map);
             // Process custom block render requests
             JsonBlock.event();
+        } else if (event.map.getTextureType() == 1) {
+            // item atlas 缝合完成后更新 item 纹理 IIcon 引用并重新烘焙
+            VanillaModelManager.TextureManagement.onTextureStitchPostItem(event.map);
         }
     }
 }

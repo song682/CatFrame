@@ -2,12 +2,12 @@ package decok.dfcdvadstf.catframe.ui.tab;
 
 /**
  * <p>
- *     标签页状态枚举<br>
- *     定义标签页在不同交互状态下的纹理坐标和文本颜色
+ * 标签页状态枚举<br>
+ * 定义标签页在不同交互状态下的纹理坐标和文本颜色
  * </p>
  * <p>
- *     Tab state enumeration<br>
- *     Defines texture coordinates and text colors for tabs in different interaction states
+ * Tab state enumeration<br>
+ * Defines texture coordinates and text colors for tabs in different interaction states
  * </p>
  *
  */
@@ -56,8 +56,9 @@ public enum TabState {
     /**
      * 构造标签页状态<br>
      * Constructor for tab state
-     * @param u 纹理X坐标 / Texture X coordinate
-     * @param v 纹理Y坐标 / Texture Y coordinate
+     *
+     * @param u         纹理X坐标 / Texture X coordinate
+     * @param v         纹理Y坐标 / Texture Y coordinate
      * @param textColor 文本颜色 / Text color
      */
     TabState(int u, int v, int textColor) {

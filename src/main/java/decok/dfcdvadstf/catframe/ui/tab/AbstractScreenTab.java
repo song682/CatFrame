@@ -4,7 +4,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.EnumDifficulty;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +16,9 @@ public abstract class AbstractScreenTab implements Tab {
     protected int tabId;
     protected String tabNameKey;
 
-    /** Tab button texture.  Defaults to {@code catframe:textures/gui/tabs.png}. / Tab 按钮纹理。默认 {@code catframe:textures/gui/tabs.png}。 */
+    /**
+     * Tab button texture.  Defaults to {@code catframe:textures/gui/tabs.png}. / Tab 按钮纹理。默认 {@code catframe:textures/gui/tabs.png}。
+     */
     protected ResourceLocation tabTexture = new ResourceLocation("catframe", "textures/gui/tabs.png");
 
     public AbstractScreenTab(int tabId, String tabNameKey) {

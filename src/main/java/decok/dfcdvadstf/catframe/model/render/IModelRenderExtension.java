@@ -29,9 +29,9 @@ package decok.dfcdvadstf.catframe.model.render;
  * }</pre>
  */
 public interface IModelRenderExtension {
-  /**
-   * 处理单个 quad 的上下文。
-   * 若设置了 {@link RenderContext#skip skip=true}，后续扩展将被跳过且该 quad 不渲染。
-   */
-  void apply(RenderContext ctx);
+    /**
+     * 处理单个 quad 的上下文。
+     * 若设置了 {@link RenderContext#skip skip=true}，后续扩展将被跳过且该 quad 不渲染。
+     */
+    void apply(RenderContext ctx);
 }

@@ -29,76 +29,78 @@ import net.minecraft.world.IBlockAccess;
  * </ul>
  */
 public final class RenderContext {
-  // ==================== Inputs ====================
-  public final RenderPhase phase;
-  public final BakedQuad quad;
+    // ==================== Inputs ====================
+    public final RenderPhase phase;
+    public final BakedQuad quad;
 
-  // Block-world only (item phases: world=null, x=y=z=0, block=null)
-  public final IBlockAccess world;
-  public final int x, y, z;
-  public final Block block;
+    // Block-world only (item phases: world=null, x=y=z=0, block=null)
+    public final IBlockAccess world;
+    public final int x, y, z;
+    public final Block block;
 
-  // Item phases only (block phase: stack=null)
-  public final ItemStack stack;
+    // Item phases only (block phase: stack=null)
+    public final ItemStack stack;
 
-  /** 由渲染器预先计算的基础亮度（来自相邻方块光照）。扩展可读不改。 */
-  public final int baselineBrightness;
+    /**
+     * 由渲染器预先计算的基础亮度（来自相邻方块光照）。扩展可读不改。
+     */
+    public final int baselineBrightness;
+    /**
+     * 逐顶点 AO 亮度（packed int，skyLight<<16 | blockLight 格式）。
+     * -1 表示该顶点无逐顶点数据，退化到 {@link #effectiveBrightness()} 统一亮度。
+     * 仅 {@link RenderPhase#BLOCK_WORLD} 阶段由 VanillaModelManager 填入。
+     */
+    public final int[] aoBrightness = {-1, -1, -1, -1};
+    /**
+     * 逐顶点 AO 遮挡系数（0.0~1.0，1.0=无遮挡），与原版 block.getAmbientOcclusionLightValue() 等效。
+     * 渲染时会乘入最终颜色：{@code finalColor = color * shade * aoColorMul[i]}。
+     */
+    public final float[] aoColorMul = {1.0f, 1.0f, 1.0f, 1.0f};
+    // ==================== Outputs (mutable) ====================
+    public boolean skip = false;
+    public int color = 0xFFFFFF;
+    public int brightnessOverride = -1;
+    public float shade;
+    /**
+     * 纹理覆盖。当此字段非 null 时，渲染器将使用此 IIcon 代替
+     * {@link BakedQuad#icon} 进行 UV 采样。
+     * 适用于运行时的纹理切换（例如根据画质切换树叶纹理）。
+     */
+    public IIcon iconOverride = null;
 
-  // ==================== Outputs (mutable) ====================
-  public boolean skip = false;
-  public int color = 0xFFFFFF;
-  public int brightnessOverride = -1;
-  public float shade;
+    public RenderContext(RenderPhase phase, BakedQuad quad,
+                         IBlockAccess world, int x, int y, int z, Block block,
+                         ItemStack stack,
+                         int baselineBrightness, float defaultShade) {
+        this.phase = phase;
+        this.quad = quad;
+        this.world = world;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.block = block;
+        this.stack = stack;
+        this.baselineBrightness = baselineBrightness;
+        this.shade = defaultShade;
+    }
 
-  /**
-   * 逐顶点 AO 亮度（packed int，skyLight<<16 | blockLight 格式）。
-   * -1 表示该顶点无逐顶点数据，退化到 {@link #effectiveBrightness()} 统一亮度。
-   * 仅 {@link RenderPhase#BLOCK_WORLD} 阶段由 VanillaModelManager 填入。
-   */
-  public final int[] aoBrightness = {-1, -1, -1, -1};
+    /**
+     * 将给定 0xRRGGBB 颜色按通道乘入当前 {@link #color}。
+     * 适合"叠加"风格的扩展（如 Tint + 暗化护甲）。
+     */
+    public void mulColor(int rgb) {
+        int r0 = (color >> 16) & 0xFF, g0 = (color >> 8) & 0xFF, b0 = color & 0xFF;
+        int r1 = (rgb >> 16) & 0xFF, g1 = (rgb >> 8) & 0xFF, b1 = rgb & 0xFF;
+        int r = (r0 * r1) / 255;
+        int g = (g0 * g1) / 255;
+        int b = (b0 * b1) / 255;
+        this.color = (r << 16) | (g << 8) | b;
+    }
 
-  /**
-   * 逐顶点 AO 遮挡系数（0.0~1.0，1.0=无遮挡），与原版 block.getAmbientOcclusionLightValue() 等效。
-   * 渲染时会乘入最终颜色：{@code finalColor = color * shade * aoColorMul[i]}。
-   */
-  public final float[] aoColorMul = {1.0f, 1.0f, 1.0f, 1.0f};
-
-  /**
-   * 纹理覆盖。当此字段非 null 时，渲染器将使用此 IIcon 代替
-   * {@link BakedQuad#icon} 进行 UV 采样。
-   * 适用于运行时的纹理切换（例如根据画质切换树叶纹理）。
-   */
-  public IIcon iconOverride = null;
-
-  public RenderContext(RenderPhase phase, BakedQuad quad,
-                       IBlockAccess world, int x, int y, int z, Block block,
-                       ItemStack stack,
-                       int baselineBrightness, float defaultShade) {
-    this.phase = phase;
-    this.quad = quad;
-    this.world = world;
-    this.x = x; this.y = y; this.z = z;
-    this.block = block;
-    this.stack = stack;
-    this.baselineBrightness = baselineBrightness;
-    this.shade = defaultShade;
-  }
-
-  /**
-   * 将给定 0xRRGGBB 颜色按通道乘入当前 {@link #color}。
-   * 适合"叠加"风格的扩展（如 Tint + 暗化护甲）。
-   */
-  public void mulColor(int rgb) {
-    int r0 = (color >> 16) & 0xFF, g0 = (color >> 8) & 0xFF, b0 = color & 0xFF;
-    int r1 = (rgb   >> 16) & 0xFF, g1 = (rgb   >> 8) & 0xFF, b1 = rgb   & 0xFF;
-    int r = (r0 * r1) / 255;
-    int g = (g0 * g1) / 255;
-    int b = (b0 * b1) / 255;
-    this.color = (r << 16) | (g << 8) | b;
-  }
-
-  /** 当前使用的最终亮度（override 优先，否则 baseline）。 */
-  public int effectiveBrightness() {
-    return brightnessOverride >= 0 ? brightnessOverride : baselineBrightness;
-  }
+    /**
+     * 当前使用的最终亮度（override 优先，否则 baseline）。
+     */
+    public int effectiveBrightness() {
+        return brightnessOverride >= 0 ? brightnessOverride : baselineBrightness;
+    }
 }

@@ -20,34 +20,38 @@ import java.util.List;
  * Vanilla only supports 1 or 2 passes; ItemModern supports N passes.
  * Each pass renders a separate full-brightness flat quad in the GUI.
  *
- * <h3>2. Inconsistent rendering (2D GUI / 3D hand)</h3>
- * Vanilla already provides this behaviour: {@code isFull3D() == true}
- * makes items render as 3D models when held in the player's hand, while
- * inventory / GUI rendering always uses flat 2D quads.
- * ItemModern calls {@link #setFull3D()} in its constructor.
- * Subclasses may call {@link #setRender3DInHand(boolean)} to toggle.
+ * <h3>2. Handheld 3D via JSON Model System</h3>
+ * Handheld 3D rendering is fully managed by CatFrame's JSON model system.
+ * When an ItemModern has a registered JSON model, the {@link UniformRenderPipeline}
+ * applies per-context display transforms (gui / firstperson_righthand /
+ * thirdperson_righthand) automatically based on {@link RenderPhase}.
+ * When no JSON model is registered, the vanilla {@code isFull3D()} flag
+ * (set in the constructor) controls hand rendering.
  *
  * <h3>Model system compatibility</h3>
  * ItemModern is a plain {@link Item} subclass — it works transparently
  * with {@link VanillaModelManager} and the existing JSON model pipeline.
  * When an ItemModern is registered via {@code model_mappings.json},
- * {@link VanillaModelManager#hasItemModel(Item)} returns {@code true}
+ * {@link VanillaModelManager.ModelRegistration#hasItemModel(Item)} returns {@code true}
  * and the model-baked quads override the vanilla icon path.
  */
 public class ModernItem extends Item {
 
-    /** Icons for each render layer, populated during {@link #registerIcons}. */
+    /**
+     * Icons for each render layer, populated during {@link #registerIcons}.
+     */
     @SideOnly(Side.CLIENT)
     protected IIcon[] layerIcons;
 
-    /** Texture name strings for each layer, set by subclasses before registration. */
+    /**
+     * Texture name strings for each layer, set by subclasses before registration.
+     */
     protected String[] layerIconNames;
 
-    /** Number of render passes (default 1). */
+    /**
+     * Number of render passes (default 1).
+     */
     protected int layerCount;
-
-    /** Whether this item should render as a 3D model when held in hand. */
-    protected boolean render3DInHand = true;
 
     // ==================== Constructors ====================
 
@@ -62,13 +66,15 @@ public class ModernItem extends Item {
         this.layerCount = Math.max(1, layers);
         this.layerIcons = new IIcon[this.layerCount];
         this.layerIconNames = new String[this.layerCount];
-        this.setFull3D();               // 3D when held in hand
+        this.setFull3D();               // Enable vanilla 3D-in-hand; JSON models override with display transforms
         this.setHasSubtypes(true);      // allow damage-based sub-items by default
     }
 
     // ==================== Layer configuration ====================
 
-    /** @return number of render passes (layers) this item uses. */
+    /**
+     * @return number of render passes (layers) this item uses.
+     */
     public int getLayerCount() {
         return layerCount;
     }
@@ -99,29 +105,6 @@ public class ModernItem extends Item {
         this.layerIconNames = names;
         this.setTextureName(names[0]);   // compatibility with vanilla iconString
         return this;
-    }
-
-    // ==================== 3D-in-hand toggle ====================
-
-    /**
-     * When {@code true} (default), the item is rendered as a 3D model
-     * while held in the player's hand.  GUI / inventory rendering is
-     * always flat 2D regardless of this flag — that is vanilla behaviour.
-     */
-    public ModernItem setRender3DInHand(boolean value) {
-        this.render3DInHand = value;
-        if (value) {
-            this.setFull3D();
-        } else {
-            // There is no vanilla un-setFull3D; we can only override the
-            // behaviour in mixins.  For now we keep the field as-is and
-            // let subclasses / mixins inspect render3DInHand.
-        }
-        return this;
-    }
-
-    public boolean shouldRender3DInHand() {
-        return render3DInHand;
     }
 
     // ==================== Vanilla Item overrides ====================
@@ -182,7 +165,9 @@ public class ModernItem extends Item {
 
     // ==================== Convenience ====================
 
-    /** Direct read access for a specific layer icon (client side only). */
+    /**
+     * Direct read access for a specific layer icon (client side only).
+     */
     @SideOnly(Side.CLIENT)
     public IIcon getLayerIcon(int layer) {
         if (layer >= 0 && layer < layerIcons.length) {

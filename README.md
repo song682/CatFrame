@@ -8,10 +8,21 @@ Designed as a foundational library for mods that require modern visuals and stru
 
 ## **✨ Features Overview**
 
+### v0.3.0+
+- **Type-safe BlockState Property System** — `Property<T>`, `BooleanProperty`, `IntegerProperty`, `EnumProperty`
+- **CatBlockState** — state holder with O(1) neighbor jump-table (`setValue()` is a direct array lookup)
+- **CatStateDefinition** — builder-pattern state manager with Cartesian-product state generation
+- **StateBlockModel** — property-based model dispatch using `CatBlockState.toVariantKey()`
+- **Backward-compatible** — all existing `IBlockStateProvider`, metadata, and model mappings still work
+
+### v0.2.0+
 - **1.8‑style JSON model system** (inheritance, elements, textures, display transforms)
 - **Blockstate JSON** with variants, rotations, weighted randomness, multipart logic
 - **Runtime state mapping** via `IBlockStateProvider`
 - **Automatic model baking** into `BakedQuad`
+- **Unified BlockStateModel / ItemModel interfaces** — clean dispatch, easy to extend
+- **BlockStateModelPart** — direction-grouped quads
+- **UniformRenderPipeline** — centralized AO → extension chain → Tessellator
 - **Enhanced item rendering** with unlimited texture layers (`ItemModern`)
 - **Modular UI framework** (Cyclable buttons, content panels, tab system)
 - **Namespace‑based resource loading**
@@ -195,14 +206,27 @@ assets/<namespace>/
 
 ---
 
-# **🔧 Architecture Overview**
+## **🔧 Architecture Overview**
 
-- **VanillaModelManager** — core loader, baker, renderer  
-- **ModelResolver** — parent chain resolution  
-- **BlockJsonModelBake** — element → BakedQuad  
-- **MixinRenderBlocks / MixinRenderItem** — rendering hooks  
-- **ItemModern** — enhanced item renderer  
-- **UI Components** — cycling buttons, panels, tabs  
+- **VanillaModelManager** — core loader, baker, renderer; orchestrates BlockStateModel/ItemModel dispatch
+- **Property / BooleanProperty / IntegerProperty / EnumProperty** (v0.3.0) — type-safe block state properties
+- **CatBlockState** (v0.3.0) — state holder with O(1) neighbor jump-table, `toVariantKey()` for JSON matching
+- **CatStateDefinition** (v0.3.0) — builder-pattern state definition manager
+- **BlockStateModel** — block model interface: `collectParts(world, x, y, z, meta)` / `collectParts(world, x, y, z, state)`
+  - `SingleBlockModel` — static model wrapper
+  - `MetadataBlockModel` — metadata → variant dispatch
+  - `StateProviderBlockModel` — dynamic IBlockStateProvider resolution (string maps)
+  - **`StateBlockModel`** (v0.3.0) — property-based dispatch via `CatBlockState.toVariantKey()`
+  - `MultipartBlockModel` — conditional multipart composition
+- **BlockStateModelPart** — direction-grouped quad container
+- **ItemModel** — item render interface
+  - `ItemModelWrapper` — reuses BlockStateModel for item rendering
+- **UniformRenderPipeline** — unified rendering: per-vertex AO → extension chain → Tessellator
+- **ModelResolver** — parent chain resolution
+- **BlockJsonModelBake** — element → BakedQuad
+- **MixinRenderBlocks / MixinRenderItem** — rendering hooks
+- **ItemModern** — enhanced item renderer
+- **UI Components** — cycling buttons, panels, tabs
 
 ---
 

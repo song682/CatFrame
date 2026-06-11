@@ -18,18 +18,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(RenderBlocks.class)
 public class MixinRenderBlocks {
 
-  @Shadow
-  public IBlockAccess blockAccess;
+    @Shadow
+    public IBlockAccess blockAccess;
 
-  /**
-   * Inject at the head of renderBlockByRenderType to check if we should
-   * override the block's rendering with our JSON model system.
-   */
-  @Inject(method = "renderBlockByRenderType", at = @At("HEAD"), cancellable = true)
-  private void catframe$onRenderBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
-    if (VanillaModelManager.hasModel(block)) {
-      boolean result = VanillaModelManager.renderBlock(blockAccess, x, y, z, block, (RenderBlocks) (Object) this);
-      cir.setReturnValue(result);
+    /**
+     * Inject at the head of renderBlockByRenderType to check if we should
+     * override the block's rendering with our JSON model system.
+     */
+    @Inject(method = "renderBlockByRenderType", at = @At("HEAD"), cancellable = true)
+    private void catframe$onRenderBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
+        if (VanillaModelManager.ModelRegistration.hasModel(block)) {
+            boolean result = VanillaModelManager.PublicRenderAPI.renderBlock(blockAccess, x, y, z, block, (RenderBlocks) (Object) this);
+            cir.setReturnValue(result);
+        }
     }
-  }
 }

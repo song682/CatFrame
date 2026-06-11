@@ -23,60 +23,14 @@ public class GuiCyclableButton<T> extends GuiButton {
 
     // ──── Interfaces ────
 
-    /**
-     * Provides the list of values to cycle through.
-     * Supports dynamic value lists (e.g. different values when Alt is held).
-     * <p>
-     * 提供循环值列表的接口。
-     * 支持动态值列表（例如按住 Alt 时显示不同的值）。
-     */
-    public interface Values<T> {
-        List<T> getCurrent();
-        List<T> getDefaults();
-
-        /**
-         * Creates a simple static Values instance from a collection.
-         * <p>
-         * 从集合创建一个简单的静态 Values 实例。
-         */
-        static <T> Values<T> of(Collection<T> values) {
-            final List<T> list = new ArrayList<>(values);
-            return new Values<T>() {
-                @Override public List<T> getCurrent() { return list; }
-                @Override public List<T> getDefaults() { return list; }
-            };
-        }
-    }
-
-    /**
-     * Converts a value of type T to its display text.
-     * <p>
-     * 将类型 T 的值转换为显示文本。
-     */
-    public interface ValueToText<T> {
-        String apply(T value);
-    }
-
-    /**
-     * Callback invoked when the button's value changes via cycling.
-     * <p>
-     * 按钮值通过循环切换变更时调用的回调。
-     */
-    public interface UpdateCallback<T> {
-        void onValueChange(GuiCyclableButton<T> button, T value);
-    }
-
-    // ──── Fields ────
-
-    private int index;
-    private T value;
     private final Values<T> values;
     private final ValueToText<T> valueToText;
     private final UpdateCallback<T> callback;
+
+    // ──── Fields ────
     private final String label;
-
-    // ──── Constructor (used by Builder) ────
-
+    private int index;
+    private T value;
     GuiCyclableButton(int id, int x, int y, int width, int height,
                       String label, int index, T value,
                       Values<T> values, ValueToText<T> valueToText,
@@ -91,7 +45,28 @@ public class GuiCyclableButton<T> extends GuiButton {
         updateText();
     }
 
-    // ──── Cycling logic ────
+    /**
+     * Creates a new Builder for a GuiCyclableButton with the given value-to-text function.
+     * <p>
+     * 使用给定的值到文本函数创建新的 Builder。
+     *
+     * @param valueToText function that converts T to display text / 将 T 转换为显示文本的函数
+     */
+    public static <T> Builder<T> builder(ValueToText<T> valueToText) {
+        return new Builder<>(valueToText);
+    }
+
+    /**
+     * Convenience builder for Boolean on/off cycling.
+     * <p>
+     * Boolean 开/关循环的便捷构建器。
+     */
+    public static Builder<Boolean> onOffBuilder() {
+        return new Builder<Boolean>(value -> value ? "ON" : "OFF")
+                .values(Arrays.asList(Boolean.TRUE, Boolean.FALSE));
+    }
+
+    // ──── Constructor (used by Builder) ────
 
     /**
      * Cycles forward or backward through the value list.
@@ -108,6 +83,8 @@ public class GuiCyclableButton<T> extends GuiButton {
             callback.onValueChange(this, newValue);
         }
     }
+
+    // ──── Cycling logic ────
 
     /**
      * Handles mouse scroll input.
@@ -139,8 +116,6 @@ public class GuiCyclableButton<T> extends GuiButton {
         return false;
     }
 
-    // ──── Value access ────
-
     /**
      * Gets the current value.
      * <p>
@@ -149,6 +124,8 @@ public class GuiCyclableButton<T> extends GuiButton {
     public T getValue() {
         return this.value;
     }
+
+    // ──── Value access ────
 
     /**
      * Sets the current value programmatically (syncs index from values list).
@@ -185,27 +162,57 @@ public class GuiCyclableButton<T> extends GuiButton {
         }
     }
 
+    /**
+     * Provides the list of values to cycle through.
+     * Supports dynamic value lists (e.g. different values when Alt is held).
+     * <p>
+     * 提供循环值列表的接口。
+     * 支持动态值列表（例如按住 Alt 时显示不同的值）。
+     */
+    public interface Values<T> {
+        /**
+         * Creates a simple static Values instance from a collection.
+         * <p>
+         * 从集合创建一个简单的静态 Values 实例。
+         */
+        static <T> Values<T> of(Collection<T> values) {
+            final List<T> list = new ArrayList<>(values);
+            return new Values<T>() {
+                @Override
+                public List<T> getCurrent() {
+                    return list;
+                }
+
+                @Override
+                public List<T> getDefaults() {
+                    return list;
+                }
+            };
+        }
+
+        List<T> getCurrent();
+
+        List<T> getDefaults();
+    }
+
     // ──── Builder ────
 
     /**
-     * Creates a new Builder for a GuiCyclableButton with the given value-to-text function.
+     * Converts a value of type T to its display text.
      * <p>
-     * 使用给定的值到文本函数创建新的 Builder。
-     *
-     * @param valueToText function that converts T to display text / 将 T 转换为显示文本的函数
+     * 将类型 T 的值转换为显示文本。
      */
-    public static <T> Builder<T> builder(ValueToText<T> valueToText) {
-        return new Builder<>(valueToText);
+    public interface ValueToText<T> {
+        String apply(T value);
     }
 
     /**
-     * Convenience builder for Boolean on/off cycling.
+     * Callback invoked when the button's value changes via cycling.
      * <p>
-     * Boolean 开/关循环的便捷构建器。
+     * 按钮值通过循环切换变更时调用的回调。
      */
-    public static Builder<Boolean> onOffBuilder() {
-        return new Builder<Boolean>(value -> value ? "ON" : "OFF")
-                .values(Arrays.asList(Boolean.TRUE, Boolean.FALSE));
+    public interface UpdateCallback<T> {
+        void onValueChange(GuiCyclableButton<T> button, T value);
     }
 
     /**
@@ -272,7 +279,7 @@ public class GuiCyclableButton<T> extends GuiButton {
          * 使用标签前缀构建按钮（显示为 "label: valueText"）。
          */
         public GuiCyclableButton<T> build(int id, int x, int y, int width, int height,
-                                           String label, UpdateCallback<T> callback) {
+                                          String label, UpdateCallback<T> callback) {
             if (this.values == null || this.values.getDefaults().isEmpty()) {
                 throw new IllegalStateException("No values for cycle button");
             }
@@ -288,7 +295,7 @@ public class GuiCyclableButton<T> extends GuiButton {
          * 不使用标签构建按钮（valueToText 产生完整的显示字符串）。
          */
         public GuiCyclableButton<T> build(int id, int x, int y, int width, int height,
-                                           UpdateCallback<T> callback) {
+                                          UpdateCallback<T> callback) {
             return build(id, x, y, width, height, "", callback);
         }
     }

@@ -1,6 +1,8 @@
 package decok.dfcdvadstf.catframe.model.state;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 枚举属性。值域为枚举类型的一个子集。

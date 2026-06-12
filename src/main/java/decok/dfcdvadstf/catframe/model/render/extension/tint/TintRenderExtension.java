@@ -24,7 +24,8 @@ public final class TintRenderExtension implements IModelRenderExtension {
                 rgb = TintRegistry.getBlockTint(ctx.world, ctx.x, ctx.y, ctx.z, ctx.block, idx);
                 break;
             case ITEM_GUI:
-            case ITEM_HAND:
+            case ITEM_HAND_FIRST_PERSON:
+            case ITEM_HAND_THIRD_PERSON:
                 rgb = TintRegistry.getItemTint(ctx.stack, idx);
                 break;
             default:

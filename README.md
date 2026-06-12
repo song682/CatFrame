@@ -239,3 +239,7 @@ assets/<namespace>/
 - Model System
 - ItemModern
 - UI Components
+
+# **🤲 Credits**
+
+- [AmarokIce](https://github.com/AmarokIce) for the [json model system](https://github.com/AmarokIce/JsonModellegacy), licensed under MIT. 

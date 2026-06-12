@@ -4,7 +4,6 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
-import org.apache.logging.log4j.Level;
 
 import java.io.File;
 

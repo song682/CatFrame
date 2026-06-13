@@ -230,6 +230,32 @@ public class BlockJsonModelBake {
     }
 
     /**
+     * 对一组 BakedQuad 应用 Y 轴旋转（绕方块中心 0.5, 0.5）。
+     * 同时旋转顶点坐标和 faceNormal，保持 UV 不变。
+     *
+     * @param quads   待旋转的 quad 列表（会被原地修改）
+     * @param degY    Y 轴旋转角度（0/90/180/270）
+     */
+    public static void applyYRotation(List<BakedQuad> quads, int degY) {
+        if (quads == null || quads.isEmpty() || degY == 0) return;
+        double a = Math.toRadians(degY);
+        double cos = Math.cos(a), sin = Math.sin(a);
+        for (BakedQuad q : quads) {
+            for (int i = 0; i < 4; i++) {
+                double px = q.vx[i] - 0.5, pz = q.vz[i] - 0.5;
+                q.vx[i] = px * cos - pz * sin + 0.5;
+                q.vz[i] = px * sin + pz * cos + 0.5;
+            }
+            // 旋转法线
+            if (q.faceNormal != null) {
+                double nx = q.faceNormal[0], nz = q.faceNormal[2];
+                q.faceNormal[0] = nx * cos - nz * sin;
+                q.faceNormal[2] = nx * sin + nz * cos;
+            }
+        }
+    }
+
+    /**
      * Parse cullface string (e.g. "south", "up") to EnumFacing. Returns null if invalid or null.
      */
     private static EnumFacing parseCullface(String cullface) {
@@ -295,5 +321,12 @@ public class BlockJsonModelBake {
          * </ul>
          */
         public String guiLight = null;
+
+        /**
+         * 模型级别的 display transforms（烘焙时从 ModelJson 传播）。
+         * 键为 display 场景（"gui", "firstperson_righthand", "thirdperson_righthand" 等）。
+         * 由 DisplayTransformExtension 在渲染时读取并应用。
+         */
+        public Map<String, ModelJson.DisplayTransform> modelDisplay = null;
     }
 }

@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.model.render;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.render.extension.AOShadeExtension;
+import decok.dfcdvadstf.catframe.model.render.extension.AoComputeExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.FaceCullExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.GuiLightExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRenderExtension;
@@ -19,12 +20,17 @@ import java.util.List;
  * 调用 {@link #apply(RenderContext)}，扩展只需根据 {@link RenderContext#phase}
  * 决定是否生效。
  *
- * <h3>内建扩展</h3>
+ * <h3>内建扩展（按注册顺序）</h3>
  * <ul>
+ *   <li>{@link decok.dfcdvadstf.catframe.model.render.extension.AoComputeExtension}：链头扩展，
+ *       在 BLOCK_WORLD 阶段执行逐顶点 AO 计算，将结果写入 {@link RenderContext#aoBrightness} 和
+ *       {@link RenderContext#aoColorMul}。</li>
  *   <li>{@link FaceCullExtension}：处理 JSON face 中的 {@code "cullface"}，
  *       根据相邻方块是否完整不透明自动剔除隐藏面。</li>
  *   <li>{@link AOShadeExtension}：处理 JSON element 中的 {@code "ambientocclusion"} 和 {@code "shade"}，
  *       为自发光/均匀照明方块提供亮度和方向阴影控制。</li>
+ *   <li>{@link GuiLightExtension}：处理 JSON model 中的 {@code "gui_light"}，
+ *       控制方向阴影和 GL_LIGHTING 状态。</li>
  *   <li>{@link TintRenderExtension}：处理 JSON face 中的 {@code "tintindex"}，
  *       自动调用 {@link decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry}
  *       为草方块/树叶/水/染色物品等提供生物群系或 NBT 染色。</li>
@@ -87,6 +93,7 @@ public final class ModelRenderRegistry {
     private static void ensureDefaults() {
         if (defaultsInstalled) return;
         defaultsInstalled = true;
+        EXTS.add(0, new AoComputeExtension());
         EXTS.add(new FaceCullExtension());
         EXTS.add(new AOShadeExtension());
         EXTS.add(new GuiLightExtension());

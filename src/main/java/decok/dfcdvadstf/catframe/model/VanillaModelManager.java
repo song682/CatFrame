@@ -928,22 +928,23 @@ public class VanillaModelManager {
                     for (int meta = 0; meta < 16; meta++) {
                         Map<String, String> props = mapper.map(meta);
                         List<BakedQuad> allQuads = new ArrayList<>();
-                        int rotation = 0;
 
                         for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                             boolean applies = (mpc.when == null) || mpc.when.matches(props);
                             if (applies && mpc.apply != null) {
                                 List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.y);
                                 if (partQuads != null) {
+                                    // 将 apply.y 旋转烘焙到 quad 顶点中（而不是依赖运行时全局旋转）
+                                    BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                                     allQuads.addAll(partQuads);
-                                    if (mpc.apply.y != 0) rotation = mpc.apply.y;
                                 }
                             }
                         }
 
                         if (!allQuads.isEmpty()) {
                             metaMap.put(meta, allQuads);
-                            rotMap.put(meta, rotation);
+                            // multipart 各部分的旋转已烘焙到顶点中，运行时不需要额外旋转
+                            rotMap.put(meta, 0);
                         }
                     }
                 } else {
@@ -953,6 +954,7 @@ public class VanillaModelManager {
                         if (mpc.when == null && mpc.apply != null) {
                             List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.y);
                             if (partQuads != null) {
+                                BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                                 allQuads.addAll(partQuads);
                             }
                         }
@@ -1104,6 +1106,12 @@ public class VanillaModelManager {
             if (resolved.guiLight != null) {
                 for (BakedQuad q : quads) {
                     q.guiLight = resolved.guiLight;
+                }
+            }
+            // 传递模型级别的 display transforms 到所有 quad
+            if (resolved.display != null) {
+                for (BakedQuad q : quads) {
+                    q.modelDisplay = resolved.display;
                 }
             }
             CatFrame.logger.info("[VMM] bakeModel: baked '{}' | elements={} | quads={} | iconMapKeys={}",
@@ -1406,22 +1414,22 @@ public class VanillaModelManager {
                 }
 
                 java.util.List<BakedQuad> allQuads = new java.util.ArrayList<>();
-                int rotation = 0;
 
                 for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                     boolean applies = (mpc.when == null) || mpc.when.matches(propMap);
                     if (applies && mpc.apply != null) {
                         java.util.List<BakedQuad> partQuads = ModelBaking.bakeModel(mpc.apply.model, mpc.apply.y);
                         if (partQuads != null) {
+                            // 将 apply.y 烘焙到 quad 顶点中
+                            BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                             allQuads.addAll(partQuads);
-                            if (mpc.apply.y != 0) rotation = mpc.apply.y;
                         }
                     }
                 }
 
                 if (allQuads.isEmpty()) return false;
                 BlockStateModelPart part = BlockStateModelPart.fromQuads(allQuads);
-                UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, rotation);
+                UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, 0);
                 return true;
             }
 
@@ -1463,22 +1471,21 @@ public class VanillaModelManager {
             } else if (bs.multipart != null) {
                 // Multipart: combine all matching parts
                 List<BakedQuad> allQuads = new ArrayList<>();
-                int rotation = 0;
 
                 for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                     boolean applies = (mpc.when == null) || mpc.when.matches(properties);
                     if (applies && mpc.apply != null) {
                         List<BakedQuad> partQuads = ModelBaking.bakeModel(mpc.apply.model, mpc.apply.y);
                         if (partQuads != null) {
+                            BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                             allQuads.addAll(partQuads);
-                            if (mpc.apply.y != 0) rotation = mpc.apply.y;
                         }
                     }
                 }
 
                 if (allQuads.isEmpty()) return false;
                 BlockStateModelPart part = BlockStateModelPart.fromQuads(allQuads);
-                UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, rotation);
+                UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, 0);
                 return true;
             }
 

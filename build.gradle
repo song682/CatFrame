@@ -74,6 +74,10 @@ repositories {
         name "Modrinth Maven"
         url "https://api.modrinth.com/maven"
     }
+
+    maven {
+         url = uri("https://maven.pkg.github.com")
+    }
 }
 
 dependencies {

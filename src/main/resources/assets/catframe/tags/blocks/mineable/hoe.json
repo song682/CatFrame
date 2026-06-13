@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:leaves",
+    "minecraft:leaves2",
+    "minecraft:sponge",
+    "minecraft:hay_block"
+  ]
+}

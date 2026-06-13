@@ -1,0 +1,30 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:planks",
+    "minecraft:log",
+    "minecraft:log2",
+    "minecraft:bookshelf",
+    "minecraft:chest",
+    "minecraft:trapped_chest",
+    "minecraft:crafting_table",
+    "minecraft:fence",
+    "minecraft:fence_gate",
+    "minecraft:wooden_door",
+    "minecraft:trapdoor",
+    "minecraft:wooden_pressure_plate",
+    "minecraft:wooden_button",
+    "minecraft:noteblock",
+    "minecraft:jukebox",
+    "minecraft:ladder",
+    "minecraft:sign",
+    "minecraft:wall_sign",
+    "minecraft:wooden_slab",
+    "minecraft:double_wooden_slab",
+    "minecraft:daylight_detector",
+    "minecraft:melon_block",
+    "minecraft:pumpkin",
+    "minecraft:lit_pumpkin",
+    "minecraft:cocoa"
+  ]
+}

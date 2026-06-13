@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:coal",
+    "minecraft:blaze_rod",
+    "#catframe:planks",
+    "#catframe:logs"
+  ]
+}

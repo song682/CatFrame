@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:planks",
+    "minecraft:wooden_slab",
+    "minecraft:double_wooden_slab"
+  ]
+}

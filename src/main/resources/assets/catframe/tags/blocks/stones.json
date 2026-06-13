@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:stone",
+    "minecraft:cobblestone",
+    "minecraft:mossy_cobblestone",
+    "minecraft:stonebrick",
+    "minecraft:stone_slab",
+    "minecraft:double_stone_slab",
+    "minecraft:sandstone",
+    "minecraft:nether_brick",
+    "minecraft:quartz_block",
+    "minecraft:brick_block"
+  ]
+}

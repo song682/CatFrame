@@ -9,6 +9,7 @@ import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.langguage.LanguageRegister;
+import decok.dfcdvadstf.catframe.tags.CatFrameTags;
 import decok.dfcdvadstf.catframe.langguage.LocalizationManager;
 import decok.dfcdvadstf.catframe.model.JsonBlock;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
@@ -64,6 +65,7 @@ public class CatFrame {
         if (CatFrameConfig.enableBlueyPlushy) {
             blueyPlushy = new BlueyPlushyItem();
             GameRegistry.registerItem(blueyPlushy, "bluey_plushy");
+            CatFrameTags.add("plushy", blueyPlushy);
         }
 
         // --- Register vanilla metadata-to-property mappings (1.7.10 compat) ---

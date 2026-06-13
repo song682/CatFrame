@@ -316,7 +316,15 @@ public final class UniformRenderPipeline {
     // ==================== 光照与AO辅助 ====================
 
     /**
-     * 逐顶点 AO 计算 — 模拟原版 renderStandardBlockWithAmbientOcclusion 的算法。
+     * 逐顶点 AO 计算 — 模拟 26.1 BlockModelLighter.prepareQuadAmbientOcclusion 的采样算法。
+     * <p>
+     * 对满方块面（faceCubic），采样面平面上的 9 个位置：
+     * <ul>
+     *   <li>center：被渲染方块自身 (bx, by, bz)</li>
+     *   <li>edge0~3：面平面上的 4 个边缘邻居</li>
+     *   <li>corner0~3：面平面上的 4 个对角邻居（含透明回退逻辑）</li>
+     * </ul>
+     * 每个顶点的 AO = (center + 2个边缘 + 1个对角) / 4。
      */
     private static void computeVertexAO(IBlockAccess world, int bx, int by, int bz,
                                         Block block, BakedQuad q,
@@ -328,29 +336,28 @@ public final class UniformRenderPipeline {
         switch (face) {
             case DOWN:
             case UP:
-                e1Axis = 0;
-                e2Axis = 2;
+                e1Axis = 0;  // X
+                e2Axis = 2;  // Z
                 break;
             case NORTH:
             case SOUTH:
-                e1Axis = 0;
-                e2Axis = 1;
+                e1Axis = 0;  // X
+                e2Axis = 1;  // Y
                 break;
             case EAST:
             case WEST:
-                e1Axis = 2;
-                e2Axis = 1;
+                e1Axis = 2;  // Z
+                e2Axis = 1;  // Y
                 break;
             default:
                 return;
         }
 
-        int cbx = bx + face.getFrontOffsetX();
-        int cby = by + face.getFrontOffsetY();
-        int cbz = bz + face.getFrontOffsetZ();
-        int centerBrightness = block.getMixedBrightnessForBlock(world, cbx, cby, cbz);
-        float centerAO = world.getBlock(cbx, cby, cbz).getAmbientOcclusionLightValue();
+        // center = 被渲染的方块自身（26.1 faceCubic 路径：shadeCenter 取自方块本身）
+        float centerAO = block.getAmbientOcclusionLightValue();
+        int centerBrightness = block.getMixedBrightnessForBlock(world, bx, by, bz);
 
+        // 计算面在两个切线轴上的顶点包围盒
         double minE1 = Double.MAX_VALUE, maxE1 = -Double.MAX_VALUE;
         double minE2 = Double.MAX_VALUE, maxE2 = -Double.MAX_VALUE;
         for (int v = 0; v < 4; v++) {
@@ -366,44 +373,52 @@ public final class UniformRenderPipeline {
             double v1 = (e1Axis == 0) ? q.vx[v] : (e1Axis == 1) ? q.vy[v] : q.vz[v];
             double v2 = (e2Axis == 0) ? q.vx[v] : (e2Axis == 1) ? q.vy[v] : q.vz[v];
 
+            // 确定该顶点在两个切线轴上朝向哪个边缘邻居
             boolean isMinE1 = Math.abs(v1 - minE1) < 0.0001;
             boolean isMinE2 = Math.abs(v2 - minE2) < 0.0001;
 
             int s1 = isMinE1 ? -1 : 1;
             int s2 = isMinE2 ? -1 : 1;
 
-            int[] off1 = new int[3];
-            off1[e1Axis] = s1;
-            off1[e2Axis] = s2;
-            int[] off2 = new int[3];
-            off2[e1Axis] = s1;
-            int[] off3 = new int[3];
-            off3[e2Axis] = s2;
+            // 面平面内的 3 个采样偏移（不含法线轴分量）
+            int[] offDiag = new int[3];  // 对角：两个切线轴都有偏移
+            offDiag[e1Axis] = s1;
+            offDiag[e2Axis] = s2;
+            int[] offEdge1 = new int[3]; // 边缘1：仅 e1 轴偏移
+            offEdge1[e1Axis] = s1;
+            int[] offEdge2 = new int[3]; // 边缘2：仅 e2 轴偏移
+            offEdge2[e2Axis] = s2;
 
-            int nx1 = bx + off1[0], ny1 = by + off1[1], nz1 = bz + off1[2];
-            int nx2 = bx + off2[0], ny2 = by + off2[1], nz2 = bz + off2[2];
-            int nx3 = bx + off3[0], ny3 = by + off3[1], nz3 = bz + off3[2];
+            int diagX = bx + offDiag[0],  diagY = by + offDiag[1],  diagZ = bz + offDiag[2];
+            int e1X   = bx + offEdge1[0], e1Y   = by + offEdge1[1], e1Z   = bz + offEdge1[2];
+            int e2X   = bx + offEdge2[0], e2Y   = by + offEdge2[1], e2Z   = bz + offEdge2[2];
 
-            boolean solid1 = world.getBlock(nx2, ny2, nz2).getCanBlockGrass();
-            boolean solid2 = world.getBlock(nx3, ny3, nz3).getCanBlockGrass();
+            // 边缘邻居是否遮挡（26.1: !isViewBlocking ≈ getCanBlockGrass）
+            boolean solid1 = world.getBlock(e1X, e1Y, e1Z).getCanBlockGrass();
+            boolean solid2 = world.getBlock(e2X, e2Y, e2Z).getCanBlockGrass();
 
-            int b1 = block.getMixedBrightnessForBlock(world, nx1, ny1, nz1);
-            int b2 = block.getMixedBrightnessForBlock(world, nx2, ny2, nz2);
-            int b3 = block.getMixedBrightnessForBlock(world, nx3, ny3, nz3);
+            // 亮度采样
+            int bDiag  = block.getMixedBrightnessForBlock(world, diagX, diagY, diagZ);
+            int bEdge1 = block.getMixedBrightnessForBlock(world, e1X, e1Y, e1Z);
+            int bEdge2 = block.getMixedBrightnessForBlock(world, e2X, e2Y, e2Z);
 
-            float ao1, ao2, ao3;
+            // AO 采样 — 26.1 透明角落回退逻辑
+            float aoDiag, aoEdge1, aoEdge2;
             if (!solid1 && !solid2) {
-                ao1 = world.getBlock(nx2, ny2, nz2).getAmbientOcclusionLightValue();
-                ao2 = ao1;
-                ao3 = world.getBlock(nx3, ny3, nz3).getAmbientOcclusionLightValue();
+                // 两个边缘块都不遮挡 → 读取对角块（26.1: 取更远一格的方块）
+                aoDiag  = world.getBlock(diagX, diagY, diagZ).getAmbientOcclusionLightValue();
+                aoEdge1 = aoDiag;
+                aoEdge2 = aoDiag;
             } else {
-                ao1 = world.getBlock(nx1, ny1, nz1).getAmbientOcclusionLightValue();
-                ao2 = world.getBlock(nx2, ny2, nz2).getAmbientOcclusionLightValue();
-                ao3 = world.getBlock(nx3, ny3, nz3).getAmbientOcclusionLightValue();
+                // 至少一个边缘遮挡 → 各读各的
+                aoDiag  = world.getBlock(diagX, diagY, diagZ).getAmbientOcclusionLightValue();
+                aoEdge1 = world.getBlock(e1X, e1Y, e1Z).getAmbientOcclusionLightValue();
+                aoEdge2 = world.getBlock(e2X, e2Y, e2Z).getAmbientOcclusionLightValue();
             }
 
-            outAO[v] = (ao1 + ao2 + ao3 + centerAO) / 4.0f;
-            outBrightness[v] = mixAoBrightness(b1, b2, b3, centerBrightness);
+            // 每顶点 AO = (center + edge1 + edge2 + diagonal) / 4
+            outAO[v] = (centerAO + aoEdge1 + aoEdge2 + aoDiag) / 4.0f;
+            outBrightness[v] = mixAoBrightness(centerBrightness, bEdge1, bEdge2, bDiag);
         }
     }
 

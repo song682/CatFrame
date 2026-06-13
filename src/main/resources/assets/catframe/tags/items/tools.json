@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "#catframe:swords",
+    "#catframe:axes",
+    "#catframe:pickaxes",
+    "#catframe:shovels",
+    "#catframe:hoes",
+    "minecraft:shears",
+    "minecraft:flint_and_steel",
+    "minecraft:compass",
+    "minecraft:clock",
+    "minecraft:fishing_rod"
+  ]
+}

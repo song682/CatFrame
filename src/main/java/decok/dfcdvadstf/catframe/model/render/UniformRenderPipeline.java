@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render;
 
+import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.ModelJson;
@@ -29,6 +30,8 @@ public final class UniformRenderPipeline {
 
     private UniformRenderPipeline() {
     }
+
+
 
     // ==================== 方块世界/GUI 渲染 ====================
 
@@ -103,11 +106,26 @@ public final class UniformRenderPipeline {
             IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
 
             if (hasVertexAO && !isGui) {
+//                // --- 调试日志：记录第一个有 AO 面的实际提交值 ---
+//                boolean submitLog = !isGui && q.face != null
+//                        && CatFrameConfig.shouldLogDebug();
+//                if (submitLog) {
+//                    System.out.println("[AO-DBG] SUBMIT face=" + q.face
+//                            + " color=0x" + Integer.toHexString(ctx.color)
+//                            + " shade=" + ctx.shade);
+//                }
                 for (int i = 0; i < 4; i++) {
                     t.setBrightness(ctx.aoBrightness[i]);
                     float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade * ctx.aoColorMul[i];
                     float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade * ctx.aoColorMul[i];
                     float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade * ctx.aoColorMul[i];
+//                    if (submitLog && i == 0) {
+//                        System.out.println("[AO-DBG]   v0 GPU: cr=" + String.format("%.3f", cr)
+//                                + " cg=" + String.format("%.3f", cg)
+//                                + " cb=" + String.format("%.3f", cb)
+//                                + " bright=" + ctx.aoBrightness[0]
+//                                + " aoMul=" + String.format("%.3f", ctx.aoColorMul[0]));
+//                    }
                     t.setColorOpaque_F(cr, cg, cb);
 
                     double vx = q.vx[i], vy = q.vy[i], vz = q.vz[i];
@@ -316,15 +334,18 @@ public final class UniformRenderPipeline {
     // ==================== 光照与 AO 辅助 ====================
 
     /**
-     * 逐顶点 AO 计算 — 对齐 26.1 {@code BlockModelLighter.prepareQuadAmbientOcclusion} 算法。
+     * 逐顶点 AO 计算 — 算法结构对齐 26.1 {@code BlockModelLighter.prepareQuadAmbientOcclusion}，
+     * shade 值与边角回退逻辑对齐 1.7.10 原版 {@code RenderBlocks}。
      *
-     * <p>相比旧版 (1.7.10 RenderBlocks 风格) 的改进：
+     * <p>核心特性：
      * <ol>
      *   <li>面形状分析：区分 faceCubic（满块面）和 facePartial（部分面如台阶侧面）</li>
      *   <li>中心位置逻辑：满块面取面外侧，非满块面取方块自身（若外侧不透明则取外侧亮度）</li>
-     *   <li>透明边角回退：两个边邻居均透明时才读取对角位置，否则复用边邻居 shade</li>
+     *   <li>边/角采样统一在面外侧层（对齐 1.7.10 原版 RenderBlocks — 先偏移至面外侧层再采样）</li>
+     *   <li>边角回退：对齐 1.7.10 原版 — 至少一边不透明时读取对角，双透明时复用边邻居</li>
      *   <li>部分面加权混合：用 faceShape 包围盒数据对 4 个候选 AO 值做双线性插值</li>
-     *   <li>shadeBrightness：完整方块 0.2、非完整 1.0（对齐 26.1 getShadeBrightness）</li>
+     *   <li>shade：使用 1.7.10 {@code getAmbientOcclusionLightValue}（不透明→0.0、透明→1.0），
+     *       与 1.7.10 静态 LightMap 管线校准（26.1 的 0.2 需要动态 LightMap 补偿，不适用于 1.7.10）</li>
      * </ol>
      */
     private static void computeVertexAO(IBlockAccess world, int bx, int by, int bz,
@@ -379,13 +400,13 @@ public final class UniformRenderPipeline {
         if (faceCubic) {
             // 满块面：取面外侧
             centerBrightness = block.getMixedBrightnessForBlock(world, cbx, cby, cbz);
-            centerShade = aoShadeBrightness(outsideBlock);
+            centerShade = outsideBlock.getAmbientOcclusionLightValue();
         } else {
             // 非满块面：亮度取自身；shade 取自身，但若外侧不透明则取外侧
             centerBrightness = block.getMixedBrightnessForBlock(world, bx, by, bz);
-            centerShade = aoShadeBrightness(world.getBlock(bx, by, bz));
+            centerShade = world.getBlock(bx, by, bz).getAmbientOcclusionLightValue();
             if (outsideBlock.isOpaqueCube()) {
-                centerShade = aoShadeBrightness(outsideBlock);
+                centerShade = outsideBlock.getAmbientOcclusionLightValue();
             }
         }
 
@@ -405,51 +426,61 @@ public final class UniformRenderPipeline {
             // 边偏移 3 = 仅 e2方向
             int[] off3 = new int[3]; off3[e2Axis] = s2;
 
-            int nx1 = bx + off1[0], ny1 = by + off1[1], nz1 = bz + off1[2];
-            int nx2 = bx + off2[0], ny2 = by + off2[1], nz2 = bz + off2[2];
-            int nx3 = bx + off3[0], ny3 = by + off3[1], nz3 = bz + off3[2];
+            // 关键修正（对齐 1.7.10 原版 RenderBlocks）：所有边/角采样加面法线偏移
+            // 原版对每个面先将坐标偏移至面外侧层（--y / ++y / --z / ++z / --x / ++x），
+            // 然后在该层采样 4 个边+4 个角邻居。不加此偏移会采样到方块自身层（错误），
+            // 导致邻居全是实心方块 → AO 值系统性偏低 → 整体偏暗。
+            int nx1 = bx + off1[0] + foX, ny1 = by + off1[1] + foY, nz1 = bz + off1[2] + foZ;
+            int nx2 = bx + off2[0] + foX, ny2 = by + off2[1] + foY, nz2 = bz + off2[2] + foZ;
+            int nx3 = bx + off3[0] + foX, ny3 = by + off3[1] + foY, nz3 = bz + off3[2] + foZ;
 
             // 采样亮度
             int b1 = block.getMixedBrightnessForBlock(world, nx1, ny1, nz1);
             int b2 = block.getMixedBrightnessForBlock(world, nx2, ny2, nz2);
             int b3 = block.getMixedBrightnessForBlock(world, nx3, ny3, nz3);
 
-            // 采样 shade brightness (26.1: 完整方块→0.2, 非完整→1.0)
-            float shade1 = aoShadeBrightness(world.getBlock(nx1, ny1, nz1));
-            float shade2 = aoShadeBrightness(world.getBlock(nx2, ny2, nz2));
-            float shade3 = aoShadeBrightness(world.getBlock(nx3, ny3, nz3));
+            // 采样 shade (1.7.10: 不透明→0.0, 透明→1.0)
+            float shade1 = world.getBlock(nx1, ny1, nz1).getAmbientOcclusionLightValue();
+            float shade2 = world.getBlock(nx2, ny2, nz2).getAmbientOcclusionLightValue();
+            float shade3 = world.getBlock(nx3, ny3, nz3).getAmbientOcclusionLightValue();
 
-            // 透明边角回退 (对齐 26.1 corner fallback)
-            // solid = edge neighbor is opaque (blocks light / grass)
+            // 边角回退 (对齐 1.7.10 原版 RenderBlocks 逻辑)
+            // 1.7.10: 至少一边不透明 → 读取对角；双透明 → 复用边邻居
+            // (与 26.1 相反：26.1 在双透明时读对角，有不透明边时复用边)
             boolean solid2 = world.getBlock(nx2, ny2, nz2).isOpaqueCube();
             boolean solid3 = world.getBlock(nx3, ny3, nz3).isOpaqueCube();
 
-            float cornerShade;
-            int cornerBrightness;
-            if (!solid2 && !solid3) {
-                // 两边邻居均透明 → 读取对角位置
-                cornerBrightness = b1;
-                cornerShade = shade1;
-            } else {
-                // 至少一边不透明 → 复用 edge2 的 shade（26.1: cornerX2 = shadeX when solid）
-                cornerBrightness = b2;
-                cornerShade = shade2;
-            }
+            // 始终读取对角位置（取消原版边角回退，否则对角线阴影会被丢弃）
+            // 原版 1.7.10 和 26.1 都有 fallback 逻辑：双透明边 → 复用边值，
+            // 这会导致对角线上的方块阴影丢失，两条阴影在交接处出现缝隙
+            float cornerShade = shade1;
+            int cornerBrightness = b1;
+
+//            // --- 调试日志：记录每个面的完整 AO 计算过程 ---
+//            boolean aoLog = CatFrameConfig.shouldLogDebug();
+//            if (aoLog && v == 0) {
+//                System.out.println("[AO-DBG] === face=" + face + " pos=(" + bx + "," + by + "," + bz + ") ===");
+//                System.out.println("[AO-DBG] faceCubic=" + faceCubic + " facePartial=" + facePartial
+//                        + " faceAtEdge=" + faceAtEdge);
+//                System.out.println("[AO-DBG] outsideBlock=" + outsideBlock
+//                        + " centerBright=" + unpackBright(centerBrightness)
+//                        + " centerShade=" + centerShade);
+//            }
 
             // --- 计算顶点 AO shade ---
             if (!facePartial) {
-                // 非部分面：简单平均 (shade2 + shade3 + cornerShade + centerShade) / 4
+                // 非部分面：简单平均 (edge2 + edge3 + corner + center) / 4
                 outAO[v] = (shade2 + shade3 + cornerShade + centerShade) * 0.25f;
                 outBrightness[v] = mixAoBrightness(b2, b3, cornerBrightness, centerBrightness);
             } else {
                 // 部分面：4 个候选值 + 双线性加权混合
+                // 使用 cornerShade 统一：corner=read 时=shade1, corner=edge 时=shade2
                 float t1 = (shade3 + shade2 + cornerShade + centerShade) * 0.25f;
-                float t2 = (shade3 + shade1 + cornerShade + centerShade) * 0.25f; // shade1 替代 shade2
-                float t3 = (shade2 + shade1 + cornerShade + centerShade) * 0.25f; // shade1 替代 shade3
-                float t4 = (shade3 + shade2 + cornerShade + centerShade) * 0.25f; // 同 t1 (fallback)
+                float t2 = (shade3 + cornerShade + cornerShade + centerShade) * 0.25f;
+                float t3 = (shade2 + cornerShade + cornerShade + centerShade) * 0.25f;
+                float t4 = (shade3 + shade2 + cornerShade + centerShade) * 0.25f;
 
-                // 双线性权重 (对齐 26.1 faceShape 权重)
-                // isMinE1=true, isMinE2=true → vertex at (min,min) → w3 dominates (opposite corner)
+                // 双线性权重 (对齐 faceShape 权重)
                 double wE1Min = fs[5]; // 1-minE1 (weight toward max side)
                 double wE1Max = fs[0]; // minE1 (weight toward min side)
                 double wE2Min = fs[7]; // 1-minE2
@@ -468,22 +499,35 @@ public final class UniformRenderPipeline {
                 float ao = (float) ((t1 * w1 + t2 * w2 + t3 * w3 + t4 * w4) / wSum);
                 outAO[v] = Math.max(0f, Math.min(1f, ao));
 
-                // 亮度也用加权混合
+                // 亮度加权混合
                 outBrightness[v] = mixAoBrightness(b2, b3, cornerBrightness, centerBrightness);
             }
+//            if (aoLog) {
+//                System.out.println("[AO-DBG]   v" + v + " sample pos=(" + nx1 + "," + ny1 + "," + nz1 + ")"
+//                        + " corner_blk=" + world.getBlock(nx1, ny1, nz1)
+//                        + " b1=" + unpackBright(b1) + " shade1=" + shade1
+//                       + " | edge2=(" + nx2 + "," + ny2 + "," + nz2 + ")"
+//                        + " b2=" + unpackBright(b2) + " shade2=" + shade2 + " solid2=" + solid2
+//                        + " | edge3=(" + nx3 + "," + ny3 + "," + nz3 + ")"
+//                        + " b3=" + unpackBright(b3) + " shade3=" + shade3 + " solid3=" + solid3);
+//                System.out.println("[AO-DBG]   v" + v + " cornerFallback=" + (solid2 || solid3)
+//                        + " cornerBright=" + unpackBright(cornerBrightness)
+//                        + " cornerShade=" + cornerShade
+//                        + " \u2192 aoMul=" + outAO[v] + " bright=" + unpackBright(outBrightness[v]));
+//            }
         }
     }
 
+    /** 将 packed brightness 解包为可读字符串 */
+    private static String unpackBright(int packed) {
+        if (packed == 0) return "0(sk=0,bl=0)";
+        int sky = (packed >> 20) & 15;
+        int blk = (packed >> 4) & 15;
+        return packed + "(sk=" + sky + ",bl=" + blk + ")";
+    }
     /** 取顶点在指定轴上的坐标值 */
     private static double axisVal(double vx, double vy, double vz, int axis) {
         return axis == 0 ? vx : axis == 1 ? vy : vz;
-    }
-
-    /**
-     * 26.1 getShadeBrightness 等价：完整不透明方块 → 0.2（产生阴影），其余 → 1.0。
-     */
-    private static float aoShadeBrightness(Block b) {
-        return b.isOpaqueCube() ? 0.2f : 1.0f;
     }
 
     /**

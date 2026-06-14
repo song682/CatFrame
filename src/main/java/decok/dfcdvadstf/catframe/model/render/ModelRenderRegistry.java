@@ -2,8 +2,9 @@ package decok.dfcdvadstf.catframe.model.render;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.model.render.extension.AOShadeExtension;
-import decok.dfcdvadstf.catframe.model.render.extension.AoComputeExtension;
+import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.render.extension.ao.AOShadeExtension;
+import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.FaceCullExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.GuiLightExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRenderExtension;
@@ -22,7 +23,7 @@ import java.util.List;
  *
  * <h3>内建扩展（按注册顺序）</h3>
  * <ul>
- *   <li>{@link decok.dfcdvadstf.catframe.model.render.extension.AoComputeExtension}：链头扩展，
+ *   <li>{@link AOComputeExtension}：链头扩展，
  *       在 BLOCK_WORLD 阶段执行逐顶点 AO 计算，将结果写入 {@link RenderContext#aoBrightness} 和
  *       {@link RenderContext#aoColorMul}。</li>
  *   <li>{@link FaceCullExtension}：处理 JSON face 中的 {@code "cullface"}，
@@ -76,6 +77,28 @@ public final class ModelRenderRegistry {
     }
 
     /**
+     * 渲染器内部使用：按注册顺序对 quad 列表调用每个扩展的 {@link IModelRenderExtension#beforePart}。
+     * 在各 quad 处理循环之前调用一次。
+     */
+    public static void applyBeforePart(List<BakedQuad> allQuads, RenderPhase phase) {
+        ensureDefaults();
+        for (int i = 0, n = EXTS.size(); i < n; i++) {
+            EXTS.get(i).beforePart(allQuads, phase);
+        }
+    }
+
+    /**
+     * 渲染器内部使用：按注册顺序调用每个扩展的 {@link IModelRenderExtension#afterPart}。
+     * 在各 quad 处理循环之后调用一次。
+     */
+    public static void applyAfterPart() {
+        ensureDefaults();
+        for (int i = 0, n = EXTS.size(); i < n; i++) {
+            EXTS.get(i).afterPart();
+        }
+    }
+
+    /**
      * 渲染器内部使用：按注册顺序应用所有扩展。
      * 若 {@link RenderContext#skip} 被置 true，链立即终止。
      */
@@ -93,7 +116,7 @@ public final class ModelRenderRegistry {
     private static void ensureDefaults() {
         if (defaultsInstalled) return;
         defaultsInstalled = true;
-        EXTS.add(0, new AoComputeExtension());
+        EXTS.add(0, new AOComputeExtension());
         EXTS.add(new FaceCullExtension());
         EXTS.add(new AOShadeExtension());
         EXTS.add(new GuiLightExtension());

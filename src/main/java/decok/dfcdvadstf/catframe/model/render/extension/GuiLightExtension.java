@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.model.render.extension;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
+import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import org.lwjgl.opengl.GL11;
 
 import java.util.List;
@@ -13,76 +14,71 @@ import java.util.List;
  * <p>根据 JSON model 的 {@code gui_light} 设置来控制方向阴影和 OpenGL GL_LIGHTING 状态：
  * <ul>
  *   <li>{@code "front"} — 正面光照，无方向阴影（{@link RenderContext#shade} = 1.0），
- *       关闭 GL_LIGHTING（平面光照，如物品）</li>
- *   <li>{@code "side"} — 侧面光照，保留默认方向阴影，
- *       保持 GL_LIGHTING 开启（立体光照，如方块）</li>
- *   <li>未设置 — 默认 {@code "side"}，保留默认方向阴影</li>
+ *       关闭 GL_LIGHTING（平面光照，如物品）。{@code afterPart} 自动恢复。</li>
+ *   <li>{@code "side"} — 侧面光照，保留默认方向阴影（{@code shade} 由法线决定），
+ *       不修改 GL_LIGHTING 状态。</li>
+ *   <li>未设置 — 默认 {@code "side"} 行为。</li>
  * </ul>
  *
- * <h3>GL_LIGHTING 生命周期</h3>
- * <p>GL_LIGHTING 状态的开关由 {@link UniformRenderPipeline} 在渲染前/后调用静态方法管理：
- * <ul>
- *   <li>{@link #needsFrontLighting(List)} — 检查模型是否需要正面光照（关闭 GL_LIGHTING）</li>
- *   <li>{@link #setupGLLighting(boolean)} — 设置 GL_LIGHTING 状态</li>
- *   <li>{@link #restoreGLLighting(boolean)} — 恢复 GL_LIGHTING 状态</li>
- * </ul>
+ * <h3>与原版对齐</h3>
+ * <p>原版 {@code RenderBlocks} 在 {@code renderStandardBlockWithColorMultiplier}
+ * 和 {@code renderStandardBlockWithAmbientOcclusion} 中均不管理 GL_LIGHTING 状态，
+ * GL_LIGHTING 由外层 {@code RenderGlobal/EntityRenderer} 统一管理。
+ * 本扩展仅模拟原版 {@code RenderItem} 中为 gui_light="front" 物品关闭 GL_LIGHTING 的行为，
+ * 绝不主动开启 GL_LIGHTING，避免破坏外层已设定的 OpenGL 光照状态。</p>
+ *
+ * <h3>生命周期</h3>
+ * <p>本扩展通过 {@link IModelRenderExtension#beforePart(List, RenderPhase)} 和
+ * {@link IModelRenderExtension#afterPart()} 生命周期回调管理 GL_LIGHTING 状态，
+ * 由 {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry} 统一调度。
  */
 public final class GuiLightExtension implements IModelRenderExtension {
 
-   @Override
+    /** {@code true} 表示 {@code beforePart} 修改了 GL_LIGHTING 状态，{@code afterPart} 需要恢复 */
+    private boolean changedLighting = false;
+
+    @Override
+    public void beforePart(List<BakedQuad> allQuads, RenderPhase phase) {
+        boolean frontLight = needsFrontLighting(allQuads);
+        if (frontLight) {
+            changedLighting = true;
+            GL11.glDisable(GL11.GL_LIGHTING);
+        } else {
+            // 绝不主动开启 GL_LIGHTING！外层管线（EntityRenderer/RenderItem）
+            // 已设置了正确的 GL 状态，此处不可覆盖。
+            // 参考：原版 RenderBlocks 全程不碰 GL_LIGHTING。
+            changedLighting = false;
+        }
+    }
+
+    @Override
     public void apply(RenderContext ctx) {
         String guiLight = ctx.quad.guiLight;
-        if (guiLight == null) {
-            // 未显式设置 gui_light 时默认 "side"（侧面光照，保留 GL_LIGHTING）
-            ctx.quad.guiLight = "side";
-            return;
-        }
 
         // "front" 光照模式：无方向阴影，所有面均匀受光
         if ("front".equals(guiLight)) {
             ctx.shade = 1.0f;
+            return;
         }
-        // "side" 模式：保留默认方向阴影（由 shadeByNormal 计算）
+
+        // "side" 或 null：保留默认方向阴影（由 shadeByNormal 计算）
+        // 注意：不修改 ctx.quad.guiLight，避免副作用影响其他渲染通道
     }
 
-    // ==================== GL_LIGHTING 生命周期管理（供管线调用） ====================
+    @Override
+    public void afterPart() {
+        if (changedLighting) {
+            GL11.glEnable(GL11.GL_LIGHTING);
+            changedLighting = false;
+        }
+    }
 
     /**
      * 检查模型的 quads 是否需要正面光照（{@code gui_light = "front"}）。
-     * <p>管线在开始渲染前调用此方法，决定是否需要关闭 GL_LIGHTING。
-     *
-     * @param quads 模型的全部 BakedQuad 列表
-     * @return true 如果模型需要正面光照（应关闭 GL_LIGHTING）
+     * 根据原版惯例，只需检查第一个 quad 的 guiLight 即可判定整个模型的光照模式。
      */
-    public static boolean needsFrontLighting(List<BakedQuad> quads) {
+    private static boolean needsFrontLighting(List<BakedQuad> quads) {
         if (quads == null || quads.isEmpty()) return false;
         return "front".equals(quads.get(0).guiLight);
-    }
-
-    /**
-     * 根据是否需要正面光照来设置 GL_LIGHTING 状态。
-     *
-     * @param frontLighting true=关闭 GL_LIGHTING（正面光照），false=开启（侧面光照）
-     * @return 修改前的 GL_LIGHTING 状态（用于后续恢复），true=之前是开启的
-     */
-    public static boolean setupGLLighting(boolean frontLighting) {
-        boolean wasEnabled = GL11.glGetBoolean(GL11.GL_LIGHTING);
-        if (frontLighting) {
-            GL11.glDisable(GL11.GL_LIGHTING);
-        } else {
-            GL11.glEnable(GL11.GL_LIGHTING);
-        }
-        return wasEnabled;
-    }
-
-    /**
-     * 恢复 GL_LIGHTING 状态。
-     *
-     * @param reEnable true=开启 GL_LIGHTING
-     */
-    public static void restoreGLLighting(boolean reEnable) {
-        if (reEnable) {
-            GL11.glEnable(GL11.GL_LIGHTING);
-        }
     }
 }

@@ -1,9 +1,25 @@
 package decok.dfcdvadstf.catframe.model.render;
 
+import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
+
+import java.util.List;
+
 /**
  * 模组可注册的渲染扩展接口。每个被烘焙的 quad 在送进 Tessellator 之前，
  * 都会按注册顺序遍历所有扩展，每个扩展通过修改 {@link RenderContext} 字段
  * 来影响最终渲染（着色、亮度、是否剔除等）。
+ *
+ * <h3>生命周期</h3>
+ * <ol>
+ *   <li>{@link #beforePart(List, RenderPhase)} — 处理一组 quad 之前调用一次，
+ *       适用于 GL 状态设置等全局操作。</li>
+ *   <li>{@link #apply(RenderContext)} — 对每个 quad 依次调用。</li>
+ *   <li>{@link #afterPart()} — 一组 quad 全部处理完后调用一次，
+ *       适用于 GL 状态恢复等清理操作。</li>
+ * </ol>
+ *
+ * <p>除了 {@link #apply(RenderContext)} 为强制实现外，其余两个方法都有默认空实现，
+ * 扩展只需按需覆写。
  *
  * <h3>常见用法示例</h3>
  * <pre>{@code
@@ -29,9 +45,31 @@ package decok.dfcdvadstf.catframe.model.render;
  * }</pre>
  */
 public interface IModelRenderExtension {
+
+    /**
+     * 处理一组 quad 之前的生命周期回调。在遍历 quad 列表前调用一次。
+     * <p>
+     * 适用于需要在处理所有 quad 之前执行的全局操作，
+     * 例如检测模型光照模式并设置 GL_LIGHTING 状态。
+     *
+     * @param allQuads 当前部件的所有 BakedQuad
+     * @param phase    当前渲染阶段
+     */
+    default void beforePart(List<BakedQuad> allQuads, RenderPhase phase) {
+    }
+
     /**
      * 处理单个 quad 的上下文。
      * 若设置了 {@link RenderContext#skip skip=true}，后续扩展将被跳过且该 quad 不渲染。
      */
     void apply(RenderContext ctx);
+
+    /**
+     * 一组 quad 全部处理完后的生命周期回调。
+     * <p>
+     * 适用于需要在处理完所有 quad 之后执行的清理操作，
+     * 例如恢复 {@code beforePart} 中修改的 GL 状态。
+     */
+    default void afterPart() {
+    }
 }

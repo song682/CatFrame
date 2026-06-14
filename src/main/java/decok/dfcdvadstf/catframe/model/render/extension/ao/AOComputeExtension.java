@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.model.render.extension;
+package decok.dfcdvadstf.catframe.model.render.extension.ao;
 
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
@@ -22,7 +22,7 @@ import net.minecraft.world.IBlockAccess;
  * <p>本扩展强制为扩展链的第一个扩展，确保后续扩展（如 AOShadeExtension）
  * 可以读取/修改 AO 计算结果。
  */
-public final class AoComputeExtension implements IModelRenderExtension {
+public final class AOComputeExtension implements IModelRenderExtension {
 
     @Override
     public void apply(RenderContext ctx) {
@@ -87,7 +87,18 @@ public final class AoComputeExtension implements IModelRenderExtension {
             if (v2 > maxE2) maxE2 = v2;
         }
 
-        int foX = face.getFrontOffsetX(), foY = face.getFrontOffsetY(), foZ = face.getFrontOffsetZ();
+        // 手动计算面法线偏移，绕过 1.7.10 EnumFacing.getFrontOffsetX() 的东西反向 Bug
+        // （EAST.getFrontOffsetX() 返回 -1，WEST.getFrontOffsetX() 返回 +1）
+        int foX, foY, foZ;
+        switch (face) {
+            case DOWN:  foX = 0; foY = -1; foZ = 0; break;
+            case UP:    foX = 0; foY =  1; foZ = 0; break;
+            case NORTH: foX = 0; foY =  0; foZ = -1; break;
+            case SOUTH: foX = 0; foY =  0; foZ =  1; break;
+            case WEST:  foX = -1; foY = 0; foZ = 0; break;
+            case EAST:  foX =  1; foY = 0; foZ = 0; break;
+            default:    foX = 0; foY = 0; foZ = 0;
+        }
         // 面法线轴 = face 方向的轴（与 e1Axis/e2Axis 正交的第三个轴）
         int faceAxis = (foX != 0) ? 0 : (foY != 0) ? 1 : 2;
         // 取面上任一顶点在面法线轴上的坐标（同一面所有顶点该值相同）

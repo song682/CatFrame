@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.model.render.extension;
+package decok.dfcdvadstf.catframe.model.render.extension.ao;
 
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;

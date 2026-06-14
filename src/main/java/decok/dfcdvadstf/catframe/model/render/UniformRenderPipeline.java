@@ -3,8 +3,8 @@ package decok.dfcdvadstf.catframe.model.render;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.ModelJson;
+import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
-import decok.dfcdvadstf.catframe.model.render.extension.GuiLightExtension;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
@@ -38,7 +38,7 @@ public final class UniformRenderPipeline {
 
     /**
      * 渲染方块的 quads（世界或 GUI），包含扩展链处理和 Tessellator 提交。
-     * AO 计算由 {@link decok.dfcdvadstf.catframe.model.render.extension.AoComputeExtension}
+     * AO 计算由 {@link AOComputeExtension}
      * 在扩展链中完成。
      *
      * @param part        渲染部件
@@ -78,6 +78,9 @@ public final class UniformRenderPipeline {
 
         // 获取所有 quad（用于 AO 前置检测和遍历）
         List<BakedQuad> allQuads = part.getAllQuads();
+
+        // 生命周期：quad 处理前
+        ModelRenderRegistry.applyBeforePart(allQuads, phase);
 
         for (BakedQuad q : allQuads) {
             int baseBrightness = isGui ? 255 : getFaceBrightness(world, x, y, z, block, q.face);
@@ -136,6 +139,9 @@ public final class UniformRenderPipeline {
         if (isGui) {
             GL11.glPopMatrix();
         }
+
+        // 生命周期：quad 处理后
+        ModelRenderRegistry.applyAfterPart();
     }
 
     /**
@@ -199,9 +205,8 @@ public final class UniformRenderPipeline {
 
         Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.locationItemsTexture);
 
-        // --- GL_LIGHTING 管理（委托给 GuiLightExtension） ---
-        boolean frontLight = GuiLightExtension.needsFrontLighting(allQuads);
-        boolean glWasEnabled = GuiLightExtension.setupGLLighting(frontLight);
+        // 生命周期：quad 处理前（GuiLightExtension 在此管理 GL_LIGHTING）
+        ModelRenderRegistry.applyBeforePart(allQuads, phase);
 
         try {
             t.startDrawingQuads();
@@ -237,8 +242,8 @@ public final class UniformRenderPipeline {
 
             t.draw();
         } finally {
-            // 恢复 GL_LIGHTING 状态
-            GuiLightExtension.restoreGLLighting(glWasEnabled);
+            // 生命周期：quad 处理后（GuiLightExtension 在此恢复 GL_LIGHTING）
+            ModelRenderRegistry.applyAfterPart();
         }
         if (dt != null || !centered) {
             GL11.glPopMatrix();

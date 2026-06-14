@@ -15,7 +15,7 @@ import decok.dfcdvadstf.catframe.model.JsonBlock;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
-import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintRegistration;
+import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
 import net.minecraft.init.Blocks;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -88,7 +88,7 @@ public class CatFrame {
             }
 
             // 注册树叶染色
-            LeavesTintRegistration.register();
+            LeavesTintProvider.register();
             // 注册树叶画质纹理切换扩展
             ModelRenderRegistry.register(new LeavesGraphicsExtension());
         }

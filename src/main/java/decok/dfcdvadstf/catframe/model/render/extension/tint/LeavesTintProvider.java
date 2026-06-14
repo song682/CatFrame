@@ -12,20 +12,21 @@ import net.minecraft.world.IBlockAccess;
 /**
  * 树叶方块染色注册。通过 {@link TintRegistry} 为所有树叶方块注册生物群系着色和固定色。
  *
- * <p>完全对齐原版 {@link net.minecraft.block.BlockLeaves} 行为：
+ * <p>完全对齐原版 1.7.10 {@link net.minecraft.block.BlockOldLeaf} / {@link net.minecraft.block.BlockNewLeaf} 行为：
  * <ul>
- *   <li>橡木/丛林木：3x3 区域平均生物群系 foliage 色；</li>
- *   <li>云杉：{@link ColorizerFoliage#getFoliageColorPine()}；</li>
- *   <li>白桦：{@link ColorizerFoliage#getFoliageColorBirch()}；</li>
+ *   <li>橡木 (meta 0) / 丛林木 (meta 3)：3x3 区域平均生物群系 foliage 色；</li>
+ *   <li>云杉 (meta 1)：{@link ColorizerFoliage#getFoliageColorPine()}；</li>
+ *   <li>白桦 (meta 2)：{@link ColorizerFoliage#getFoliageColorBirch()}；</li>
+ *   <li>金合欢 / 深色橡木 (leaves2)：3x3 区域平均（BlockNewLeaf 未覆写颜色方法）；</li>
  *   <li>物品形态：{@link ColorizerFoliage#getFoliageColorBasic()}。</li>
  * </ul>
  */
 @SideOnly(Side.CLIENT)
-public final class LeavesTintRegistration {
+public final class LeavesTintProvider {
 
     private static boolean registered = false;
 
-    private LeavesTintRegistration() {
+    private LeavesTintProvider() {
     }
 
     /**
@@ -52,10 +53,15 @@ public final class LeavesTintRegistration {
             return getBlockColor(block, meta, world, x, y, z);
         });
 
-        // ——— 物品染色 ———
+        // ——— 物品染色（对齐 BlockOldLeaf.getRenderColor） ———
         Item item = Item.getItemFromBlock(Blocks.leaves);
         if (item != null) {
-            TintRegistry.registerItemTint(item, (stack, tintIndex) -> ColorizerFoliage.getFoliageColorBasic());
+            TintRegistry.registerItemTint(item, (stack, tintIndex) -> {
+                int meta = stack.getItemDamage() & 3;
+                if (meta == 1) return ColorizerFoliage.getFoliageColorPine();
+                if (meta == 2) return ColorizerFoliage.getFoliageColorBirch();
+                return ColorizerFoliage.getFoliageColorBasic();
+            });
         }
     }
 
@@ -65,9 +71,12 @@ public final class LeavesTintRegistration {
         Block leaves2 = getLeaves2Block();
         if (leaves2 == null) return;
 
+        // BlockNewLeaf 未覆写 colorMultiplier，与 BlockLeaves 基类一致：全部 3x3 平均
         TintRegistry.registerBlockTint(leaves2, (world, x, y, z, block, tintIndex) -> {
-            int meta = world.getBlockMetadata(x, y, z) & 3;
-            return getBlockColor(block, meta, world, x, y, z);
+            if (world != null) {
+                return averageFoliageColor(world, x, y, z);
+            }
+            return ColorizerFoliage.getFoliageColorBasic();
         });
 
         Item item = Item.getItemFromBlock(leaves2);
@@ -76,53 +85,36 @@ public final class LeavesTintRegistration {
         }
     }
 
-    // ==================== 颜色查询（对齐原版 BlockLeaves） ====================
+    // ==================== 颜色查询（对齐原版 BlockOldLeaf / BlockNewLeaf） ====================
 
     /**
      * 根据方块类型、metadata 和世界位置获取树叶颜色。
+     * <p>仅用于 Blocks.leaves（BlockOldLeaf）。
      *
-     * @param block 方块实例（用于区分 leaves vs leaves2）
+     * @param block 方块实例
      * @param meta  方块 metadata（已 masking & 3）
      * @param world 世界引用（可为 null，null 时返回默认 foliage 色）
      * @param x,y,z 方块坐标
      * @return 0xRRGGBB 颜色
      */
     private static int getBlockColor(Block block, int meta, IBlockAccess world, int x, int y, int z) {
-        // 优先判断方块类型
-        Block leaves2 = getLeaves2Block();
-        if (leaves2 != null && block == leaves2) {
-            return getLeaves2Color(meta);
-        }
-        // Blocks.leaves
+        // BlockOldLeaf.colorMultiplier 逻辑:
+        //   meta 1 (spruce) → getFoliageColorPine()
+        //   meta 2 (birch)  → getFoliageColorBirch()
+        //   meta 0 (oak), 3 (jungle) → super.colorMultiplier (3x3 avg)
         switch (meta) {
-            case 0:
-            case 3:
-                if (world != null) {
-                    return averageFoliageColor(world, x, y, z);
-                }
-                return ColorizerFoliage.getFoliageColorBasic();
-
             case 1:
                 return ColorizerFoliage.getFoliageColorPine();
 
             case 2:
                 return ColorizerFoliage.getFoliageColorBirch();
 
-            default:
-                return ColorizerFoliage.getFoliageColorBasic();
-        }
-    }
-
-    /**
-     * leaves2 的固定色（金合欢 == 白桦色，深色橡木 == 深绿）。
-     */
-    private static int getLeaves2Color(int meta) {
-        switch (meta) {
             case 0:
-                return ColorizerFoliage.getFoliageColorBirch();
-            case 1:
-                return 0x597C3B;
+            case 3:
             default:
+                if (world != null) {
+                    return averageFoliageColor(world, x, y, z);
+                }
                 return ColorizerFoliage.getFoliageColorBasic();
         }
     }

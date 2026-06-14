@@ -49,6 +49,20 @@ public class CatFrame {
             props.put("axis", axes[(meta >> 2) % 3]);
             return props;
         });
+
+        // leaves: meta & 3 = variant (oak/spruce/birch/jungle), bits 4-15 = decay state
+        VanillaModelManager.DataLoading.registerMetadataMapping(Blocks.leaves, meta -> {
+            Map<String, String> props = new HashMap<>();
+            props.put("variant", woods[meta & 3]);
+            return props;
+        });
+
+        // leaves2: meta & 3 = variant (acacia/dark_oak), bits 4-15 = decay state
+        VanillaModelManager.DataLoading.registerMetadataMapping(Blocks.leaves2, meta -> {
+            Map<String, String> props = new HashMap<>();
+            props.put("variant", woods2[meta & 3]);
+            return props;
+        });
     }
 
     @EventHandler

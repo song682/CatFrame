@@ -8,14 +8,11 @@ Designed as a foundational library for mods that require modern visuals and stru
 
 ## **✨ Features Overview**
 
-### v0.3.0+
 - **Type-safe BlockState Property System** — `Property<T>`, `BooleanProperty`, `IntegerProperty`, `EnumProperty`
 - **CatBlockState** — state holder with O(1) neighbor jump-table (`setValue()` is a direct array lookup)
 - **CatStateDefinition** — builder-pattern state manager with Cartesian-product state generation
 - **StateBlockModel** — property-based model dispatch using `CatBlockState.toVariantKey()`
 - **Backward-compatible** — all existing `IBlockStateProvider`, metadata, and model mappings still work
-
-### v0.2.0+
 - **1.8‑style JSON model system** (inheritance, elements, textures, display transforms)
 - **Blockstate JSON** with variants, rotations, weighted randomness, multipart logic
 - **Runtime state mapping** via `IBlockStateProvider`

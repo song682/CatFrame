@@ -50,8 +50,19 @@ public class CatFrame {
             return props;
         });
 
-        // leaves / leaves2 / wool / stained_glass / planks 等方块的 metadata→property 映射
-        // 已在 metadata_map.json 中声明，VanillaModelManager 烘焙时自动注册，无需手写 Java。
+        // leaves: meta & 3 = variant (oak/spruce/birch/jungle), bits 4-15 = decay state
+        VanillaModelManager.DataLoading.registerMetadataMapping(Blocks.leaves, meta -> {
+            Map<String, String> props = new HashMap<>();
+            props.put("variant", woods[meta & 3]);
+            return props;
+        });
+
+        // leaves2: meta & 1 = variant (acacia/dark_oak), bits 4-15 = decay state
+        VanillaModelManager.DataLoading.registerMetadataMapping(Blocks.leaves2, meta -> {
+            Map<String, String> props = new HashMap<>();
+            props.put("variant", woods2[meta & 1]);
+            return props;
+        });
     }
 
     @EventHandler

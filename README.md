@@ -242,7 +242,7 @@ Third-party character assets are excluded from the project's open-source license
 - Model System
 - ItemModern
 - UI Components
-Joe Brumm
+
 # 🤲 Credits
 
 - [AmarokIce](https://github.com/AmarokIce) for the [json model system](https://github.com/AmarokIce/JsonModellegacy), licensed under MIT. 

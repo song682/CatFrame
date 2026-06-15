@@ -3,10 +3,10 @@ package decok.dfcdvadstf.catframe.model.render;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.render.extension.ao.AOShadeExtension;
-import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.FaceCullExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.GuiLightExtension;
+import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
+import decok.dfcdvadstf.catframe.model.render.extension.ao.AOShadeExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRenderExtension;
 
 import java.util.ArrayList;

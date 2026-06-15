@@ -31,29 +31,11 @@
     "0":  {"variant": "oak"},
     "1":  {"variant": "spruce"},
     "2":  {"variant": "birch"},
-    "3":  {"variant": "jungle"},
-    "4":  {"variant": "oak"},
-    "5":  {"variant": "spruce"},
-    "6":  {"variant": "birch"},
-    "7":  {"variant": "jungle"},
-    "8":  {"variant": "oak"},
-    "9":  {"variant": "spruce"},
-    "10": {"variant": "birch"},
-    "11": {"variant": "jungle"},
-    "12": {"variant": "oak"},
-    "13": {"variant": "spruce"},
-    "14": {"variant": "birch"},
-    "15": {"variant": "jungle"}
+    "3":  {"variant": "jungle"}
   },
   "leaves2": {
     "0":  {"variant": "acacia"},
-    "1":  {"variant": "dark_oak"},
-    "4":  {"variant": "acacia"},
-    "5":  {"variant": "dark_oak"},
-    "8":  {"variant": "acacia"},
-    "9":  {"variant": "dark_oak"},
-    "12": {"variant": "acacia"},
-    "13": {"variant": "dark_oak"}
+    "1":  {"variant": "dark_oak"}
   },
   "glass_pane": {
     "0":  {"north": "false", "east": "false", "south": "false", "west": "false"},

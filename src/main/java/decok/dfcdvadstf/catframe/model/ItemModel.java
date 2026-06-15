@@ -1,5 +1,7 @@
 package decok.dfcdvadstf.catframe.model;
 
+import decok.dfcdvadstf.catframe.mixin.MixinItemRenderer;
+import decok.dfcdvadstf.catframe.mixin.MixinRenderItem;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import net.minecraft.item.ItemStack;
 
@@ -7,7 +9,8 @@ import net.minecraft.item.ItemStack;
  * 物品模型接口。类似于 1.21.5 的 ItemModel，
  * 定义物品在不同渲染上下文中的渲染行为。
  *
- * <p>通过 {@link VanillaModelManager.#registerItemModel} 注册。
+ public static class ModelRegistration {
+ * <p>通过 {@link VanillaModelManager.ModelRegistration#registerItemModel} 注册。
  */
 public interface ItemModel {
 

@@ -2,7 +2,6 @@ package decok.dfcdvadstf.catframe.tags;
 
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
-import net.minecraft.util.ResourceLocation;
 
 import java.util.Set;
 

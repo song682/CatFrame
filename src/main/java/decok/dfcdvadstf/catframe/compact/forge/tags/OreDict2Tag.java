@@ -1,5 +1,7 @@
-package decok.dfcdvadstf.catframe.forgecompact.tags;
+package decok.dfcdvadstf.catframe.compact.forge.tags;
 
+import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.TagLoader;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
@@ -9,10 +11,10 @@ import net.minecraftforge.oredict.OreDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
-import decok.dfcdvadstf.catframe.tags.TagLoader;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 ///
 /// OreDict ↔ Tag 双向转换器<br>

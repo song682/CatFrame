@@ -3,6 +3,8 @@ package decok.dfcdvadstf.catframe;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
+import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.Item;

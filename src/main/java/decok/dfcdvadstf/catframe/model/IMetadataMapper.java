@@ -6,7 +6,7 @@ import java.util.Map;
  * Converts a vanilla block's metadata integer into a property map for
  * blockstate variant matching (1.16.5+ property-key style).
  *
- * <p>Register via {@link VanillaModelManager#registerMetadataMapping}.
+ * <p>Register via {@link VanillaModelManager.DataLoading#registerMetadataMapping}.
  *
  * <p>Example for stone (metadata 0=stone, 1=granite, 3=diorite, 5=andesite):
  * <pre>{@code
@@ -28,7 +28,7 @@ import java.util.Map;
  * });
  * }</pre>
  *
- * @see VanillaModelManager#registerMetadataMapping
+ * @see VanillaModelManager.DataLoading#registerMetadataMapping
  */
 @FunctionalInterface
 public interface IMetadataMapper {

@@ -189,7 +189,7 @@ TabRegistry.registerTab(MyTab::new, 103, "mymod.tab.custom", 5);
 
 ---
 
-# **📁 Resource Structure**
+# 📁 Resource Structure
 
 ```
 assets/<namespace>/
@@ -198,12 +198,13 @@ assets/<namespace>/
 │   ├── block/
 │   ├── item/
 │   └── builtin/
+├── metadata_mappings.json
 └── model_mappings.json
 ```
 
 ---
 
-## **🔧 Architecture Overview**
+## 🔧 Architecture Overview
 
 - **VanillaModelManager** — core loader, baker, renderer; orchestrates BlockStateModel/ItemModel dispatch
 - **Property / BooleanProperty / IntegerProperty / EnumProperty** (v0.3.0) — type-safe block state properties
@@ -227,16 +228,22 @@ assets/<namespace>/
 
 ---
 
-# **📜 License**
-[MIT License](LICENSE).
+# 📜 License
+
+**Source Code**: Under [MIT License](LICENSE).   
+Third-Party Assets / Example Assets (Bluey plushy):   
+This project contains fan-made assets inspired by the charactor "Bluey", Bluey and related charactors, names, trademarks, and intellectual property ar owned by their respective Copyright holders, including Ludo Studio, Joe Brumm, and other rights holders.   
+The Bluey plushy json model, textures and minecraft assets included in this project were independently created by me (as the author) as a fan-made content and examples.
+Third-party character assets are excluded from the project's open-source license and may not be redistributed or used separately without appropriate permission from the respective rights holders.
 
 ---
 
-# **📚 Related**
+# 📚 Related
 - Model System
 - ItemModern
 - UI Components
-
-# **🤲 Credits**
+Joe Brumm
+# 🤲 Credits
 
 - [AmarokIce](https://github.com/AmarokIce) for the [json model system](https://github.com/AmarokIce/JsonModellegacy), licensed under MIT. 
+- **Character**: Bluey, **original creators**: Joe Brumm, **production**: Ludo Studio, **rights**:Bluey and related intellectual property belong to their respective rights holders.

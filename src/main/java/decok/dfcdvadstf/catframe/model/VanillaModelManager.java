@@ -1219,6 +1219,13 @@ public class VanillaModelManager {
         }
 
         /**
+         * Get the registered BlockStateModel for a block, or null if not registered.
+         */
+        public static BlockStateModel getBlockModel(Block block) {
+            return registeredBlockModels.get(block);
+        }
+
+        /**
          * Register a rotation for a block/metadata combination.
          */
         public static void registerBlockRotation(Block block, int metadata, int rotationDeg) {

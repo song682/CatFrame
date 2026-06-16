@@ -101,6 +101,7 @@ public class JsonBlock {
             });
         }
 
+        // Bake quads for VMM registration (ISBRH no longer stores its own copy)
         List<List<BakedQuad>> quads = Lists.newArrayList();
         for (int s = 0; s < size; s++) {
             List<BakedQuad> bakedQuadsTemp = new ArrayList<>();
@@ -109,8 +110,9 @@ public class JsonBlock {
             }
             quads.add(s, bakedQuadsTemp);
         }
-        RenderingRegistry.registerBlockHandler(RR.ID, new RenderJsonBlockModel(quads, RR.ID,
-                RR.autoRotationY, RR.autoOverlay, RR.rotation, RR.randomRotation, RR.renderItem));
+
+        // Register ISBRH — delegates rendering to VMM + UniformRenderPipeline
+        RenderingRegistry.registerBlockHandler(RR.ID, new RenderJsonBlockModel(RR.ID, RR.renderItem));
 
         // --- New path: also register in BlockStateModel system ---
         // Find the block that uses this render ID
@@ -128,7 +130,10 @@ public class JsonBlock {
                 VanillaModelManager.ModelRegistration.registerBlockModel(block,
                         new MetadataBlockModel(partMap, fallback));
 
-                // Register per-metadata rotation
+                // Register per-metadata rotation & overlay flags
+                if (RR.autoOverlay) {
+                    VanillaModelManager.ModelRegistration.markAutoOverlay(block);
+                }
                 if (RR.randomRotation) {
                     VanillaModelManager.ModelRegistration.markRandomRotation(block);
                     VanillaModelManager.ModelRegistration.registerBlockRotation(block, 0, 0);

@@ -161,9 +161,9 @@ public final class OreDict2Tag {
         
         ResourceLocation tagLocation = new ResourceLocation(FORGE_NAMESPACE, tagName);
         
-        // 获取或创建 Tag 内容集合
-        Set<Item> items = itemLoader.getTagContents(tagLocation);
-        Set<Block> blocks = blockLoader.getTagContents(tagLocation);
+        // 获取或创建 Tag 内容集合（可修改）
+        Set<Item> items = itemLoader.getOrCreateTagContents(tagLocation);
+        Set<Block> blocks = blockLoader.getOrCreateTagContents(tagLocation);
         
         // 将所有 ItemStack 转换为 Item/Block 并添加到 Tag
         for (ItemStack stack : ores) {

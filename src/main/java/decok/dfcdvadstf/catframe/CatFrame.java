@@ -75,7 +75,6 @@ public class CatFrame {
     @EventHandler
     public void init(FMLInitializationEvent event) {
         ODorTag.onInit();
-        // Initialization logic
         logger.info("Initialization logic complete");
     }
 }

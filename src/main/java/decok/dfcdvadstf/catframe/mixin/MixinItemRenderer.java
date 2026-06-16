@@ -25,7 +25,13 @@ public class MixinItemRenderer {
      * 第一人称手持调用 {@code renderItem(e, s, 0, EQUIPPED_FIRST_PERSON)}，
      * 第三人称/掉落物经由 3-param → 4-param(EQUIPPED)，两者均由此处拦截。
      * <p>
-     * 统一判断逻辑：先问 {@link ItemModel#handles(RenderPhase)} 决定是否接管。
+     * 精确控制策略 — {@link ItemModel#handles(RenderPhase)} 是唯一的门控：
+     * <ol>
+     *   <li>注册了 ItemModel？否 → 走原版</li>
+     *   <li>{@code handles(phase)} 返回 true？否 → 走原版</li>
+     *   <li>是 → 取消原版，走自定义渲染</li>
+     * </ol>
+     * 不再使用 {@code hasItemModel} 布尔值判断。
      */
     @Inject(method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
             at = @At("HEAD"), cancellable = true, remap = false)
@@ -37,35 +43,34 @@ public class MixinItemRenderer {
         if (itemStack == null) return;
         Item item = itemStack.getItem();
         if (item == null) return;
-        boolean hasModel = VanillaModelManager.ModelRegistration.hasItemModel(item);
-        int thirdPersonView = Minecraft.getMinecraft().gameSettings.thirdPersonView;
-        if (CatFrameConfig.shouldLogDebug()) {
-            CatFrame.logger.info("[MixinItemRenderer] renderItem(4) | item={} | type={} | thirdPersonView={} | hasItemModel={}",
-                    Item.itemRegistry.getNameForObject(item),
-                    type,
-                    thirdPersonView,
-                    hasModel);
-        }
-        if (hasModel) {
-            // 判断渲染阶段：第一人称手持有单独的 phase
-            boolean isFirstPerson = (entity == Minecraft.getMinecraft().thePlayer
-                    && thirdPersonView == 0);
-            RenderPhase phase = isFirstPerson
-                    ? RenderPhase.ITEM_HAND_FIRST_PERSON
-                    : RenderPhase.ITEM_HAND_THIRD_PERSON;
 
-            ItemModel itemModel = VanillaModelManager.ModelRegistration.getRegisteredItemModel(item);
-            if (itemModel != null && !itemModel.handles(phase)) {
-                // ItemModel 不接管此阶段 → 走原版渲染
-                if (CatFrameConfig.shouldLogDebug()) {
-                    CatFrame.logger.info("[MixinItemRenderer] ItemModel.handles({})=false, letting vanilla render",
-                            phase);
-                }
-                return;
+        // 没有注册 ItemModel → 完全走原版（不用 hasItemModel 布尔值）
+        ItemModel itemModel = VanillaModelManager.ModelRegistration.getRegisteredItemModel(item);
+        if (itemModel == null) return;
+
+        // 判断渲染阶段
+        int thirdPersonView = Minecraft.getMinecraft().gameSettings.thirdPersonView;
+        boolean isFirstPerson = (entity == Minecraft.getMinecraft().thePlayer
+                && thirdPersonView == 0);
+        RenderPhase phase = isFirstPerson
+                ? RenderPhase.ITEM_HAND_FIRST_PERSON
+                : RenderPhase.ITEM_HAND_THIRD_PERSON;
+
+        // handles() 是精确控制面 — ItemModel 自己决定此阶段是否接管
+        if (!itemModel.handles(phase)) {
+            if (CatFrameConfig.shouldLogDebug()) {
+                CatFrame.logger.info("[MixinItemRenderer] ItemModel.handles({})=false for {}, vanilla fallback",
+                        phase, Item.itemRegistry.getNameForObject(item));
             }
-            // ItemModel 接管 → cancel 原版，走自定义渲染
-            VanillaModelManager.PublicRenderAPI.renderItemInHand(itemStack, isFirstPerson);
-            ci.cancel();
+            return;
         }
+
+        // 接管 → cancel 原版，走自定义渲染
+        if (CatFrameConfig.shouldLogDebug()) {
+            CatFrame.logger.info("[MixinItemRenderer] rendering {} | phase={} | firstPerson={}",
+                    Item.itemRegistry.getNameForObject(item), phase, isFirstPerson);
+        }
+        VanillaModelManager.PublicRenderAPI.renderItemInHand(itemStack, isFirstPerson);
+        ci.cancel();
     }
 }

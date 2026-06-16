@@ -7,7 +7,6 @@ import net.minecraftforge.oredict.OreDictionary;
 
 public class ODorTag {
 
-    @SubscribeEvent
     public static void onInit() {
         CatFrame.logger.info("Converting all existing OreDict entries to CatFrame Tags...");
         OreDict2Tag.convertAllOreDictToTags();
@@ -15,19 +14,8 @@ public class ODorTag {
 
     @SubscribeEvent
     public static void onOreRegistered(OreDictionary.OreRegisterEvent event){
-        String[] universalOreDicts={
-                // ingot
-                "ingotCopper", "ingotBronze", "ingotTin", "ingotAluminum", "ingotAluminium",
-                "ingotAluminumBrass", "ingotAluminiumBrass", "ingotNetherite", "ingotCobalt",
-                "ingotSilver", "ingotLead", "ingotNickel",
-                // ore
-                "oreCopper", "oreTin", "oreAluminum", "oreAluminium", "oreCobalt",
-                "oreSilver", "oreLead", "oreNickel",
-                // block
-                "blockCopper", "blockBronze", "blockTin", "blockAluminum", "blockAluminium",
-                "blockAluminumBrass", "blockAluminiumBrass", "blockNetherite", "blockCobalt",
-                "blockSilver", "blockLead", "blockNickel",
-        };
-        OreDict2Tag.convertOreDictToTags(universalOreDicts);
+        String oreName = event.Name;
+        CatFrame.logger.info("Ore registered: " + oreName);
+        OreDict2Tag.convertOreDictToTags(oreName);
     }
 }

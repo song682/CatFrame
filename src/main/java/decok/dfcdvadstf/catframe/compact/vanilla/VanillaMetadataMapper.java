@@ -11,7 +11,6 @@ import java.util.Map;
 
 public class VanillaMetadataMapper {
 
-    @SubscribeEvent
     @SideOnly(Side.CLIENT)
     public static void registerVanillaMetadataMappings() {
         // log: low 2 bits = wood type, high 2 bits = rotation (0=y, 1=x, 2=z, 3=bark→y)

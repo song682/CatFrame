@@ -5,10 +5,8 @@
   "compatibilityLevel": "JAVA_8",
   "mixins": [],
   "client": [
-    "MixinItemRenderer",
     "MixinLanguageManager",
     "MixinRenderBlocks",
-    "MixinRenderItem",
     "MixinStringTranslate"
   ],
   "server": []

@@ -1,0 +1,13 @@
+{
+  "item.example.name": "Example Item",
+  "item.bluey_plushy.name": "Bluey Plushy",
+  "ui.layouts.default": "Default",
+  "ui.layouts.centered": "Centered",
+  "ui.layouts.fill": "Fill",
+  "item.example.count": "%d / %d items",
+  "ui.tab.previous": "Previous",
+  "ui.tab.next": "Next",
+  "ui.button.on": "ON",
+  "ui.button.off": "OFF",
+  "menu.paused": "Paused"
+}

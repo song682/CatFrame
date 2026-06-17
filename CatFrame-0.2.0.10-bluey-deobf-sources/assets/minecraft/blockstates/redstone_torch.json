@@ -1,0 +1,9 @@
+{
+  "variants": {
+    "1": { "model": "minecraft:block/redstone_torch_wall" },
+    "2": { "model": "minecraft:block/redstone_torch_wall", "y": 180 },
+    "3": { "model": "minecraft:block/redstone_torch_wall", "y": 90 },
+    "4": { "model": "minecraft:block/redstone_torch_wall", "y": 270 },
+    "5": { "model": "minecraft:block/redstone_torch" }
+  }
+}

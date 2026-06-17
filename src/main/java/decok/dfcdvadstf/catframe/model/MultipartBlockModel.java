@@ -1,5 +1,7 @@
 package decok.dfcdvadstf.catframe.model;
 
+import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.world.IBlockAccess;
 

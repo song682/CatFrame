@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "0": { "model": "minecraft:block/cobblestone_wall_post" },
+    "1": { "model": "minecraft:block/mossy_cobblestone_wall_post" }
+  }
+}

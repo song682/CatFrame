@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "0": { "model": "minecraft:block/double_slab_stone" },
+    "1": { "model": "minecraft:block/double_slab_sandstone" },
+    "2": { "model": "minecraft:block/double_slab_wood" },
+    "3": { "model": "minecraft:block/double_slab_cobblestone" },
+    "4": { "model": "minecraft:block/double_slab_brick" },
+    "5": { "model": "minecraft:block/double_slab_stone_brick" },
+    "6": { "model": "minecraft:block/double_slab_nether_brick" },
+    "7": { "model": "minecraft:block/double_slab_quartz" }
+  }
+}

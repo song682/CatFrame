@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe;
 import decok.dfcdvadstf.catframe.model.*;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.item.ItemStack;
 
 import java.util.Map;

@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "0": { "model": "minecraft:block/double_slab_oak" },
+    "1": { "model": "minecraft:block/double_slab_spruce" },
+    "2": { "model": "minecraft:block/double_slab_birch" },
+    "3": { "model": "minecraft:block/double_slab_jungle" }
+  }
+}

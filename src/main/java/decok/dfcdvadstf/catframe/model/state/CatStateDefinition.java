@@ -1,5 +1,7 @@
 package decok.dfcdvadstf.catframe.model.state;
 
+import decok.dfcdvadstf.catframe.model.state.property.Property;
+
 import java.util.*;
 
 /**
@@ -249,6 +251,11 @@ public final class CatStateDefinition<O> {
 
             // 构建邻居跳表
             CatStateDefinition<O> definition = new CatStateDefinition<>(owner, properties, states, propIndexMap, states[0]);
+
+            // 回补所有 state 的 definition（initial state 创建时 definition 尚未构建）
+            for (CatBlockState state : states) {
+                state.setDefinition(definition);
+            }
 
             for (int stateIdx = 0; stateIdx < states.length; stateIdx++) {
                 CatBlockState state = states[stateIdx];

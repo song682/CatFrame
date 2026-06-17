@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.model.render;
 
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.BlockStateModelPart;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.ModelJson;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
@@ -60,15 +60,25 @@ public final class UniformRenderPipeline {
         boolean isGui = (phase == RenderPhase.BLOCK_GUI);
 
         // --- 应用 display transform（GUI 模式） ---
-        boolean hasDisplay = (display != null && !display.isEmpty());
+        // 优先从 quad 自带的 modelDisplay 读取，fallback 到传入的 display
+        List<BakedQuad> allQuads = part.getAllQuads();
+        Map<String, ModelJson.DisplayTransform> effectiveDisplay = display;
+        if ((effectiveDisplay == null || effectiveDisplay.isEmpty())
+                && !allQuads.isEmpty() && allQuads.get(0).modelDisplay != null) {
+            effectiveDisplay = allQuads.get(0).modelDisplay;
+        }
+        boolean hasDisplay = (effectiveDisplay != null && !effectiveDisplay.isEmpty());
         String displayKey = isGui ? "gui" : null;
-        ModelJson.DisplayTransform dt = (hasDisplay && displayKey != null) ? display.get(displayKey) : null;
+        ModelJson.DisplayTransform dt = (hasDisplay && displayKey != null) ? effectiveDisplay.get(displayKey) : null;
 
         if (isGui) {
             GL11.glPushMatrix();
             if (dt != null) {
                 DisplayTransformExtension.applyTransform(dt);
             }
+            // GUI 方块渲染：启用混合以支持纹理 alpha 通道（如玻璃、树叶透明边缘）
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         }
 
         Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
@@ -77,12 +87,20 @@ public final class UniformRenderPipeline {
         double cos = Math.cos(a), sin = Math.sin(a);
 
         // 获取所有 quad（用于 AO 前置检测和遍历）
-        List<BakedQuad> allQuads = part.getAllQuads();
+        // （已在上方 display transform 查找中获取）
 
-        // 生命周期：quad 处理前
-        ModelRenderRegistry.applyBeforePart(allQuads, phase);
+        try {
 
-        for (BakedQuad q : allQuads) {
+            // 生命周期：quad 处理前（GuiLightExtension 在此管理 GL_LIGHTING）
+            ModelRenderRegistry.applyBeforePart(allQuads, phase);
+
+            // BLOCK_GUI 需要自行管理 Tessellator 绘制周期
+            boolean drewAny = false;
+            if (isGui) {
+                t.startDrawingQuads();
+            }
+
+            for (BakedQuad q : allQuads) {
             int baseBrightness = isGui ? 255 : getFaceBrightness(world, x, y, z, block, q.face);
             float baseShade = shadeByNormal(q.faceNormal);
 
@@ -91,6 +109,7 @@ public final class UniformRenderPipeline {
                     world, x, y, z, block, null, baseBrightness, baseShade);
             ModelRenderRegistry.apply(ctx);
             if (ctx.skip) continue;
+            drewAny = true;
 
             // 提交到 Tessellator
             boolean hasVertexAO = ctx.aoBrightness[0] >= 0;
@@ -119,9 +138,14 @@ public final class UniformRenderPipeline {
                 float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
                 float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
                 float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
-                t.setColorOpaque_F(cr, cg, cb);
 
                 IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
+                if (isGui) {
+                    // GUI 模式使用 RGBA 以正确处理纹理 alpha 通道
+                    t.setColorRGBA_F(cr, cg, cb, 1.0f);
+                } else {
+                    t.setColorOpaque_F(cr, cg, cb);
+                }
                 for (int i = 0; i < 4; i++) {
                     double vx = q.vx[i], vy = q.vy[i], vz = q.vz[i];
                     if (rotationDeg != 0) {
@@ -136,12 +160,21 @@ public final class UniformRenderPipeline {
             }
         }
 
-        if (isGui) {
-            GL11.glPopMatrix();
+        // Tessellator 绘制与 GL 状态恢复
+        if (isGui && drewAny) {
+            t.draw();
         }
 
-        // 生命周期：quad 处理后
-        ModelRenderRegistry.applyAfterPart();
+        } finally {
+            if (isGui) {
+                GL11.glDisable(GL11.GL_BLEND);
+            }
+            // 生命周期：quad 处理后（GuiLightExtension 在此恢复 GL_LIGHTING）
+            ModelRenderRegistry.applyAfterPart();
+            if (isGui) {
+                GL11.glPopMatrix();
+            }
+        }
     }
 
     /**
@@ -203,18 +236,36 @@ public final class UniformRenderPipeline {
             DisplayTransformExtension.applyTransform(dt);
         }
 
-        Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.locationItemsTexture);
+        // 根据物品类型绑定正确的 atlas：方块物品用 blocks atlas（spriteNumber=0），
+        // 非方块物品用 items atlas（spriteNumber=1）。
+        // Forge 在 ForgeHooksClient.renderInventoryItem 中已提前绑定，
+        // 但手持渲染等路径不会，所以这里统一处理。
+        int spriteNumber = (stack != null && stack.getItem() != null)
+                ? stack.getItem().getSpriteNumber() : 1;
+        Minecraft.getMinecraft().getTextureManager().bindTexture(
+                spriteNumber == 0
+                        ? TextureMap.locationBlocksTexture
+                        : TextureMap.locationItemsTexture);
 
-        // 生命周期：quad 处理前（GuiLightExtension 在此管理 GL_LIGHTING）
-        ModelRenderRegistry.applyBeforePart(allQuads, phase);
+        boolean gui = (phase == RenderPhase.ITEM_GUI);
 
         try {
+            // 生命周期：quad 处理前（GuiLightExtension 在此管理 GL_LIGHTING）
+            ModelRenderRegistry.applyBeforePart(allQuads, phase);
+
+            // GUI 全景：启用混合使纹理 alpha 通道生效（如透明背景），
+            // 并禁用方向 shade（GUI 不需要 3D 面光照效果）。
+            if (gui) {
+                GL11.glEnable(GL11.GL_BLEND);
+                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            }
+
             t.startDrawingQuads();
 
-            int baseBrightness = (phase == RenderPhase.ITEM_GUI) ? 255 : 15728880;
+            int baseBrightness = gui ? 255 : 15728880;
 
             for (BakedQuad q : allQuads) {
-                float baseShade = shadeByNormal(q.faceNormal);
+                float baseShade = gui ? 1.0f : shadeByNormal(q.faceNormal);
                 RenderContext ctx = new RenderContext(phase, q,
                         null, 0, 0, 0, null, stack, baseBrightness, baseShade);
                 ModelRenderRegistry.apply(ctx);
@@ -224,7 +275,11 @@ public final class UniformRenderPipeline {
                 float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
                 float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
                 float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
-                t.setColorOpaque_F(cr, cg, cb);
+                if (gui) {
+                    t.setColorRGBA_F(cr, cg, cb, 1.0f);
+                } else {
+                    t.setColorOpaque_F(cr, cg, cb);
+                }
 
                 IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
                 for (int i = 0; i < 4; i++) {
@@ -242,6 +297,9 @@ public final class UniformRenderPipeline {
 
             t.draw();
         } finally {
+            if (gui) {
+                GL11.glDisable(GL11.GL_BLEND);
+            }
             // 生命周期：quad 处理后（GuiLightExtension 在此恢复 GL_LIGHTING）
             ModelRenderRegistry.applyAfterPart();
         }

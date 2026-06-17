@@ -1,5 +1,9 @@
 package decok.dfcdvadstf.catframe.model;
 
+import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.model.state.IBlockStateProvider;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.Map;

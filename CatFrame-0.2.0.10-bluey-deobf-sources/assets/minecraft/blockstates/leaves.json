@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "0": { "model": "minecraft:block/oak_leaves" },
+    "1": { "model": "minecraft:block/spruce_leaves" },
+    "2": { "model": "minecraft:block/birch_leaves" },
+    "3": { "model": "minecraft:block/jungle_leaves" }
+  }
+}

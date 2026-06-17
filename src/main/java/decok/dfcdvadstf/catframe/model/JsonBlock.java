@@ -13,6 +13,7 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonBlockModel;
 import decok.dfcdvadstf.catframe.model.render.RenderRequest;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -108,7 +109,7 @@ public class JsonBlock {
             for (ModelJson.Element e : RR.models[s].elements) {
                 bakedQuadsTemp.addAll(BlockJsonModelBake.bakeElement(e, iconMapTemp));
             }
-            quads.add(s, bakedQuadsTemp);
+            quads.add(bakedQuadsTemp);  // 顺序添加，避免空洞导致 IndexOutOfBounds
         }
 
         // Register ISBRH — delegates rendering to VMM + UniformRenderPipeline

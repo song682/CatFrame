@@ -5,11 +5,11 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.render.RenderJsonItemRenderer;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
-import decok.dfcdvadstf.catframe.model.state.CatBlockState;
-import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
-import decok.dfcdvadstf.catframe.model.state.Property;
+import decok.dfcdvadstf.catframe.model.state.*;
+import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -18,6 +18,8 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraftforge.client.event.TextureStitchEvent;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -853,6 +855,16 @@ public class VanillaModelManager {
             CatFrame.logger.info("VanillaModelManager: Baked {} block models, {} item models, registered {} BlockStateModels, {} ItemModels",
                     bakedBlockModels.size(), bakedItemModels.size(),
                     registeredBlockModels.size(), registeredItemModels.size());
+
+            // 为所有拥有 CatFrame ItemModel 的物品注册 Forge IItemRenderer。
+            // IdentityHashMap 的特性保证了同一 Item 实例重复注册只会覆盖旧值。
+            int forgeRegistered = 0;
+            for (Item item : registeredItemModels.keySet()) {
+                MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemRenderer.INSTANCE);
+                forgeRegistered++;
+            }
+            CatFrame.logger.info("VanillaModelManager: Registered {} items with Forge IItemRenderer",
+                    forgeRegistered);
         }
 
         private static void bakeBlockstateForBlock(Block block, BlockstateJson bs) {
@@ -935,7 +947,7 @@ public class VanillaModelManager {
                                 List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.y);
                                 if (partQuads != null) {
                                     // 将 apply.y 旋转烘焙到 quad 顶点中（而不是依赖运行时全局旋转）
-                                    BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
+                                    partQuads = BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                                     allQuads.addAll(partQuads);
                                 }
                             }
@@ -954,7 +966,7 @@ public class VanillaModelManager {
                         if (mpc.when == null && mpc.apply != null) {
                             List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.y);
                             if (partQuads != null) {
-                                BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
+                                partQuads = BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                                 allQuads.addAll(partQuads);
                             }
                         }
@@ -1251,9 +1263,14 @@ public class VanillaModelManager {
 
         /**
          * Register an ItemModel for an item.
+         * Also immediately registers the Forge IItemRenderer if the model system has been initialized.
          */
         public static void registerItemModel(Item item, ItemModel model) {
             registeredItemModels.put(item, model);
+            // 如果烘焙已完成，立即注册 Forge IItemRenderer
+            if (initialized) {
+                MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemRenderer.INSTANCE);
+            }
         }
 
         /**
@@ -1428,7 +1445,7 @@ public class VanillaModelManager {
                         java.util.List<BakedQuad> partQuads = ModelBaking.bakeModel(mpc.apply.model, mpc.apply.y);
                         if (partQuads != null) {
                             // 将 apply.y 烘焙到 quad 顶点中
-                            BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
+                            partQuads = BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                             allQuads.addAll(partQuads);
                         }
                     }
@@ -1484,7 +1501,7 @@ public class VanillaModelManager {
                     if (applies && mpc.apply != null) {
                         List<BakedQuad> partQuads = ModelBaking.bakeModel(mpc.apply.model, mpc.apply.y);
                         if (partQuads != null) {
-                            BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
+                            partQuads = BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                             allQuads.addAll(partQuads);
                         }
                     }

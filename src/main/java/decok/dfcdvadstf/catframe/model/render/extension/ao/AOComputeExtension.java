@@ -179,9 +179,9 @@ public final class AOComputeExtension implements IModelRenderExtension {
             } else {
                 // 部分面：4 个候选值 + 双线性加权混合
                 float t1 = (shade3 + shade2 + cornerShade + centerShade) * 0.25f;
-                float t2 = (shade3 + cornerShade + cornerShade + centerShade) * 0.25f;
-                float t3 = (shade2 + cornerShade + cornerShade + centerShade) * 0.25f;
-                float t4 = (shade3 + shade2 + cornerShade + centerShade) * 0.25f;
+                float t2 = (shade2 + shade2 + cornerShade + centerShade) * 0.25f;
+                float t3 = (shade3 + shade3 + cornerShade + centerShade) * 0.25f;
+                float t4 = (cornerShade + cornerShade + cornerShade + centerShade) * 0.25f;
 
                 double wE1Min = fs[5]; // 1-minE1 (weight toward max side)
                 double wE1Max = fs[0]; // minE1 (weight toward min side)
@@ -217,9 +217,11 @@ public final class AOComputeExtension implements IModelRenderExtension {
      * 分别对 block 和 sky 分量做平均。
      */
     private static int mixAoBrightness(int a, int b, int c, int center) {
-        if (a == 0) a = center;
-        if (b == 0) b = center;
-        if (c == 0) c = center;
+        // 注意：亮度值 0 是合法的（完全黑暗处），不应回退为 center。
+        // 仅对区块链边界缺失（负值标志）做回退。
+        if (a < 0) a = center;
+        if (b < 0) b = center;
+        if (c < 0) c = center;
         int blockAvg = (((a >> 4) & 15) + ((b >> 4) & 15) + ((c >> 4) & 15) + ((center >> 4) & 15)) >> 2;
         int skyAvg   = (((a >> 20) & 15) + ((b >> 20) & 15) + ((c >> 20) & 15) + ((center >> 20) & 15)) >> 2;
         return (blockAvg << 4) | (skyAvg << 20);

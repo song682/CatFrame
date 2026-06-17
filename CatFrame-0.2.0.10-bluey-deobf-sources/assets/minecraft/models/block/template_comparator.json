@@ -1,0 +1,60 @@
+{
+    "parent": "block/block",
+    "ambientocclusion": false,
+    "textures": {
+        "particle": "#top"
+    },
+    "elements": [
+        {   "__comment": "Base slab",
+            "from": [ 0, 0, 0 ],
+            "to": [ 16, 2, 16 ],
+            "faces": {
+                "down":  { "uv": [ 0, 0, 16, 16 ], "texture": "#side", "cullface": "down" },
+                "up":    { "uv": [ 0, 0, 16, 16 ], "texture": "#top" },
+                "north": { "uv": [ 0, 14, 16, 16 ], "texture": "#side" },
+                "south": { "uv": [ 0, 14, 16, 16 ], "texture": "#side" },
+                "west":  { "uv": [ 0, 14, 16, 16 ], "texture": "#side" },
+                "east":  { "uv": [ 0, 14, 16, 16 ], "texture": "#side" }
+            }
+        },
+        {   "__comment": "Back torch left (input side)",
+            "from": [ 3, 2, 2 ],
+            "to": [ 5, 7, 4 ],
+            "shade": false,
+            "faces": {
+                "down":  { "uv": [ 7, 6, 9, 8 ], "texture": "#back_torch" },
+                "up":    { "uv": [ 7, 6, 9, 8 ], "texture": "#back_torch" },
+                "north": { "uv": [ 7, 6, 9, 13 ], "texture": "#back_torch" },
+                "south": { "uv": [ 7, 6, 9, 13 ], "texture": "#back_torch" },
+                "west":  { "uv": [ 7, 6, 9, 13 ], "texture": "#back_torch" },
+                "east":  { "uv": [ 7, 6, 9, 13 ], "texture": "#back_torch" }
+            }
+        },
+        {   "__comment": "Back torch right (input side)",
+            "from": [ 11, 2, 2 ],
+            "to": [ 13, 7, 4 ],
+            "shade": false,
+            "faces": {
+                "down":  { "uv": [ 7, 6, 9, 8 ], "texture": "#back_torch" },
+                "up":    { "uv": [ 7, 6, 9, 8 ], "texture": "#back_torch" },
+                "north": { "uv": [ 7, 6, 9, 13 ], "texture": "#back_torch" },
+                "south": { "uv": [ 7, 6, 9, 13 ], "texture": "#back_torch" },
+                "west":  { "uv": [ 7, 6, 9, 13 ], "texture": "#back_torch" },
+                "east":  { "uv": [ 7, 6, 9, 13 ], "texture": "#back_torch" }
+            }
+        },
+        {   "__comment": "Front torch (output side)",
+            "from": [ 7, 2, 12 ],
+            "to": [ 9, 7, 14 ],
+            "shade": false,
+            "faces": {
+                "down":  { "uv": [ 7, 6, 9, 8 ], "texture": "#front_torch" },
+                "up":    { "uv": [ 7, 6, 9, 8 ], "texture": "#front_torch" },
+                "north": { "uv": [ 7, 6, 9, 13 ], "texture": "#front_torch" },
+                "south": { "uv": [ 7, 6, 9, 13 ], "texture": "#front_torch" },
+                "west":  { "uv": [ 7, 6, 9, 13 ], "texture": "#front_torch" },
+                "east":  { "uv": [ 7, 6, 9, 13 ], "texture": "#front_torch" }
+            }
+        }
+    ]
+}

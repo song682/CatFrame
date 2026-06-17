@@ -1,0 +1,9 @@
+{
+  "variants": {
+    "0": { "model": "minecraft:block/quartz_block" },
+    "1": { "model": "minecraft:block/quartz_chiseled" },
+    "2": { "model": "minecraft:block/quartz_pillar" },
+    "3": { "model": "minecraft:block/quartz_pillar", "x": 90, "y": 90 },
+    "4": { "model": "minecraft:block/quartz_pillar", "x": 90 }
+  }
+}

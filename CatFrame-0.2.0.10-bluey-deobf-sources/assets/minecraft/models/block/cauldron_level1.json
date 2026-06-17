@@ -1,0 +1,6 @@
+{
+  "parent": "block/template_cauldron_level1",
+  "textures": {
+    "content": "minecraft:blocks/water_still"
+  }
+}

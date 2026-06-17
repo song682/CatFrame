@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "0":  { "model": "minecraft:block/repeater_1tick_on", "y": 180 },
+    "1":  { "model": "minecraft:block/repeater_1tick_on", "y": 270 },
+    "2":  { "model": "minecraft:block/repeater_1tick_on" },
+    "3":  { "model": "minecraft:block/repeater_1tick_on", "y": 90 },
+    "4":  { "model": "minecraft:block/repeater_2tick_on", "y": 180 },
+    "5":  { "model": "minecraft:block/repeater_2tick_on", "y": 270 },
+    "6":  { "model": "minecraft:block/repeater_2tick_on" },
+    "7":  { "model": "minecraft:block/repeater_2tick_on", "y": 90 },
+    "8":  { "model": "minecraft:block/repeater_3tick_on", "y": 180 },
+    "9":  { "model": "minecraft:block/repeater_3tick_on", "y": 270 },
+    "10": { "model": "minecraft:block/repeater_3tick_on" },
+    "11": { "model": "minecraft:block/repeater_3tick_on", "y": 90 },
+    "12": { "model": "minecraft:block/repeater_4tick_on", "y": 180 },
+    "13": { "model": "minecraft:block/repeater_4tick_on", "y": 270 },
+    "14": { "model": "minecraft:block/repeater_4tick_on" },
+    "15": { "model": "minecraft:block/repeater_4tick_on", "y": 90 }
+  }
+}

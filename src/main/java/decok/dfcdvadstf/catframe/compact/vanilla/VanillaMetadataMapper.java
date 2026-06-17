@@ -1,6 +1,5 @@
 package decok.dfcdvadstf.catframe.compact.vanilla;
 
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;

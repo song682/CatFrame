@@ -3,6 +3,8 @@ package decok.dfcdvadstf.catframe.model;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.item.ItemStack;
 
 import java.util.List;

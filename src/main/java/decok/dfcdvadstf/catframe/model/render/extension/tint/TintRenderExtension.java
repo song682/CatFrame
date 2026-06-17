@@ -23,6 +23,15 @@ public final class TintRenderExtension implements IModelRenderExtension {
             case BLOCK_WORLD:
                 rgb = TintRegistry.getBlockTint(ctx.world, ctx.x, ctx.y, ctx.z, ctx.block, idx);
                 break;
+            case BLOCK_GUI:
+                // GUI 中方块无世界上下文，使用 Block.getRenderColor(0) 获取默认染色
+                // （与原版 renderBlockAsItem 行为一致；metadata 信息在渲染管线中不可用，使用 0 作为默认变体）
+                if (ctx.block != null) {
+                    rgb = ctx.block.getRenderColor(0) & 0xFFFFFF;
+                } else {
+                    return;
+                }
+                break;
             case ITEM_GUI:
             case ITEM_HAND_FIRST_PERSON:
             case ITEM_HAND_THIRD_PERSON:

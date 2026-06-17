@@ -1,9 +1,8 @@
 package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.state.CatBlockState;
-import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
-import decok.dfcdvadstf.catframe.model.state.Property;
+import decok.dfcdvadstf.catframe.model.state.*;
+import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.world.IBlockAccess;
 
@@ -42,7 +41,7 @@ public class StateBlockModel implements BlockStateModel {
 
     @Override
     public BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z,
-                                             CatBlockState state) {
+                                            CatBlockState state) {
         if (blockstate == null) return BlockStateModelPart.empty();
 
         if (blockstate.variants != null) {

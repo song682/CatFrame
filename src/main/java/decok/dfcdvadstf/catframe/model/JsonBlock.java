@@ -103,13 +103,18 @@ public class JsonBlock {
         }
 
         // Bake quads for VMM registration (ISBRH no longer stores its own copy)
+        // [C9 修复] 使用追加模式 + 空值检查，避免 metadata 空洞时 IndexOutOfBoundsException
         List<List<BakedQuad>> quads = Lists.newArrayList();
         for (int s = 0; s < size; s++) {
+            if (RR.models[s] == null || RR.models[s].elements == null) {
+                quads.add(new ArrayList<>());
+                continue;
+            }
             List<BakedQuad> bakedQuadsTemp = new ArrayList<>();
             for (ModelJson.Element e : RR.models[s].elements) {
                 bakedQuadsTemp.addAll(BlockJsonModelBake.bakeElement(e, iconMapTemp));
             }
-            quads.add(bakedQuadsTemp);  // 顺序添加，避免空洞导致 IndexOutOfBounds
+            quads.add(bakedQuadsTemp);
         }
 
         // Register ISBRH — delegates rendering to VMM + UniformRenderPipeline

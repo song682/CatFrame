@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.model.render;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.ModelJson;
-import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -39,7 +38,8 @@ public final class UniformRenderPipeline {
     /**
      * 渲染方块的 quads（世界或 GUI），包含扩展链处理和 Tessellator 提交。
      * AO 计算由 {@link AOComputeExtension}
-     * 在扩展链中完成。
+     * 在扩展链中完成。Display transform 由 {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
+     * 在扩展链中管理 GL 矩阵生命周期。
      *
      * @param part        渲染部件
      * @param world       世界（GUI 时可传 null）
@@ -49,67 +49,65 @@ public final class UniformRenderPipeline {
      * @param block       方块
      * @param rotationDeg Y 轴旋转角度（0/90/180/270）
      * @param phase       渲染阶段（BLOCK_WORLD / BLOCK_GUI）
-     * @param display     可选的 display transforms（从 ModelJson.display 传入，可为 null）
+     * @param display     可选的 display transforms（从 ModelJson.display 传入，可为 null，现已由扩展处理）
      */
     public static void renderBlockQuads(BlockStateModelPart part,
                                         IBlockAccess world, int x, int y, int z,
                                         Block block, int rotationDeg,
                                         RenderPhase phase,
                                         Map<String, ModelJson.DisplayTransform> display) {
+        renderBlockQuads(part, world, x, y, z, block, rotationDeg, phase, display, 0);
+    }
+
+    /**
+     * 渲染方块的 quads（带 metadata 支持，用于 BLOCK_GUI 染色等场景）。
+     * [S1] 新增 metadata 参数，传入 RenderContext。
+     */
+    public static void renderBlockQuads(BlockStateModelPart part,
+                                        IBlockAccess world, int x, int y, int z,
+                                        Block block, int rotationDeg,
+                                        RenderPhase phase,
+                                        Map<String, ModelJson.DisplayTransform> display,
+                                        int metadata) {
         Tessellator t = Tessellator.instance;
         boolean isGui = (phase == RenderPhase.BLOCK_GUI);
 
-        // --- 应用 display transform（GUI 模式） ---
-        // 优先从 quad 自带的 modelDisplay 读取，fallback 到传入的 display
         List<BakedQuad> allQuads = part.getAllQuads();
-        Map<String, ModelJson.DisplayTransform> effectiveDisplay = display;
-        if ((effectiveDisplay == null || effectiveDisplay.isEmpty())
-                && !allQuads.isEmpty() && allQuads.get(0).modelDisplay != null) {
-            effectiveDisplay = allQuads.get(0).modelDisplay;
-        }
-        boolean hasDisplay = (effectiveDisplay != null && !effectiveDisplay.isEmpty());
-        String displayKey = isGui ? "gui" : null;
-        ModelJson.DisplayTransform dt = (hasDisplay && displayKey != null) ? effectiveDisplay.get(displayKey) : null;
-
-        if (isGui) {
-            GL11.glPushMatrix();
-            if (dt != null) {
-                DisplayTransformExtension.applyTransform(dt);
-            }
-            // GUI 方块渲染：启用混合以支持纹理 alpha 通道（如玻璃、树叶透明边缘）
-            GL11.glEnable(GL11.GL_BLEND);
-            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        }
-
-        Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
 
         double a = Math.toRadians(rotationDeg);
         double cos = Math.cos(a), sin = Math.sin(a);
 
-        // 获取所有 quad（用于 AO 前置检测和遍历）
-        // （已在上方 display transform 查找中获取）
-
+        // [C3 修复] 所有 GL 状态操作移入 try 块内，确保异常时 finally 能正确恢复
         try {
+            if (isGui) {
+                // GUI 方块渲染：启用混合以支持纹理 alpha 通道（如玻璃、树叶透明边缘）
+                GL11.glEnable(GL11.GL_BLEND);
+                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            }
 
-            // 生命周期：quad 处理前（GuiLightExtension 在此管理 GL_LIGHTING）
+            Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
+
+            // 生命周期：quad 处理前
             ModelRenderRegistry.applyBeforePart(allQuads, phase);
 
             // BLOCK_GUI 需要自行管理 Tessellator 绘制周期
-            boolean drewAny = false;
+            // （ISBRH.renderInventoryBlock 不会为自定义渲染器管理 Tessellator）
             if (isGui) {
                 t.startDrawingQuads();
             }
 
-            for (BakedQuad q : allQuads) {
+        boolean hasVertices = false;
+        for (BakedQuad q : allQuads) {
             int baseBrightness = isGui ? 255 : getFaceBrightness(world, x, y, z, block, q.face);
             float baseShade = shadeByNormal(q.faceNormal);
 
             // 创建上下文并运行扩展链
             RenderContext ctx = new RenderContext(phase, q,
                     world, x, y, z, block, null, baseBrightness, baseShade);
+            ctx.metadata = metadata;
             ModelRenderRegistry.apply(ctx);
             if (ctx.skip) continue;
-            drewAny = true;
+            hasVertices = true;
 
             // 提交到 Tessellator
             boolean hasVertexAO = ctx.aoBrightness[0] >= 0;
@@ -160,8 +158,9 @@ public final class UniformRenderPipeline {
             }
         }
 
-        // Tessellator 绘制与 GL 状态恢复
-        if (isGui && drewAny) {
+        // [W6] Tessellator 绘制与 GL 状态恢复
+        // 仅在有顶点时 draw，避免空 Tessellator 抛 IllegalStateException
+        if (isGui && hasVertices) {
             t.draw();
         }
 
@@ -169,11 +168,8 @@ public final class UniformRenderPipeline {
             if (isGui) {
                 GL11.glDisable(GL11.GL_BLEND);
             }
-            // 生命周期：quad 处理后（GuiLightExtension 在此恢复 GL_LIGHTING）
+            // 生命周期：quad 处理后（GuiLightExtension/DisplayTransformExtension 在此恢复 GL 状态）
             ModelRenderRegistry.applyAfterPart();
-            if (isGui) {
-                GL11.glPopMatrix();
-            }
         }
     }
 
@@ -192,84 +188,93 @@ public final class UniformRenderPipeline {
      */
     public static void renderBlockQuadsGUI(BlockStateModelPart part, Block block,
                                            Map<String, ModelJson.DisplayTransform> display) {
-        renderBlockQuads(part, null, 0, 0, 0, block, 0,
-                RenderPhase.BLOCK_GUI, display);
+        renderBlockQuadsGUI(part, block, display, 0);
     }
 
-    // ==================== 物品渲染 ====================
+    /**
+     * 渲染方块的 quads（GUI 模式，带 metadata 支持）。
+     * [S1] metadata 用于 Block.getRenderColor(metadata) 染色。
+     */
+    public static void renderBlockQuadsGUI(BlockStateModelPart part, Block block,
+                                           Map<String, ModelJson.DisplayTransform> display,
+                                           int metadata) {
+        renderBlockQuads(part, null, 0, 0, 0, block, 0,
+                RenderPhase.BLOCK_GUI, display, metadata);
+    }
 
     /**
-     * 渲染物品的 quads（GUI / 手持），含 display transform 和 GL_LIGHTING 管理。
+     * 渲染物品的 quads（GUI / 手持 / 掉落物），含 display transform 和 GL_LIGHTING 管理。
+     * Display transform 由 {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
+     * 在扩展链中管理 GL 矩阵生命周期。
      *
      * @param part    渲染部件
      * @param stack   物品栈
-     * @param phase   渲染阶段（ITEM_GUI / ITEM_HAND）
-     * @param display 可选的 display transforms（从 ModelJson.display 传入，可为 null）
+     * @param phase   渲染阶段（ITEM_GUI / ITEM_HAND_* / DROPPED_* ）
+     * @param world   世界上下文（仅 DROPPED_BLOCK_GROUND 等需要方块信息的阶段使用，其他传 null）
+     * @param x       方块 X 坐标（无世界上下文时传 0）
+     * @param y       方块 Y 坐标
+     * @param z       方块 Z 坐标
+     * @param block   方块实例（无时传 null）
+     * @param display 可选的 display transforms（从 ModelJson.display 传入，可为 null，现已由扩展处理）
      */
     public static void renderItemQuads(BlockStateModelPart part,
                                        ItemStack stack, RenderPhase phase,
+                                       IBlockAccess world, int x, int y, int z, Block block,
                                        Map<String, ModelJson.DisplayTransform> display) {
         Tessellator t = Tessellator.instance;
-        boolean centered = (phase == RenderPhase.ITEM_HAND_FIRST_PERSON
-                || phase == RenderPhase.ITEM_HAND_THIRD_PERSON
-                || phase == RenderPhase.ITEM_HAND);
-
-        // --- display transform（优先使用 quad 自带的 modelDisplay，fallback 到传入的 display） ---
         List<BakedQuad> allQuads = part.getAllQuads();
-        Map<String, ModelJson.DisplayTransform> effectiveDisplay = null;
-
-        // 优先从 quad 自带的 modelDisplay 读取
-        if (!allQuads.isEmpty() && allQuads.get(0).modelDisplay != null) {
-            effectiveDisplay = allQuads.get(0).modelDisplay;
-        } else {
-            effectiveDisplay = display;
-        }
-
-        String displayKey = DisplayTransformExtension.phaseToDisplayKey(phase.name());
-        ModelJson.DisplayTransform dt = (effectiveDisplay != null && displayKey != null)
-                ? effectiveDisplay.get(displayKey) : null;
-
-        if (dt != null || !centered) {
-            GL11.glPushMatrix();
-        }
-        if (dt != null) {
-            DisplayTransformExtension.applyTransform(dt);
-        }
-
-        // 根据物品类型绑定正确的 atlas：方块物品用 blocks atlas（spriteNumber=0），
-        // 非方块物品用 items atlas（spriteNumber=1）。
-        // Forge 在 ForgeHooksClient.renderInventoryItem 中已提前绑定，
-        // 但手持渲染等路径不会，所以这里统一处理。
-        int spriteNumber = (stack != null && stack.getItem() != null)
-                ? stack.getItem().getSpriteNumber() : 1;
-        Minecraft.getMinecraft().getTextureManager().bindTexture(
-                spriteNumber == 0
-                        ? TextureMap.locationBlocksTexture
-                        : TextureMap.locationItemsTexture);
 
         boolean gui = (phase == RenderPhase.ITEM_GUI);
+        boolean dropped = (phase == RenderPhase.DROPPED_ITEM_GROUND
+                || phase == RenderPhase.DROPPED_BLOCK_GROUND);
 
+        // [C4 修复] 所有 GL 状态操作移入 try 块内，确保异常时 finally 能正确恢复
         try {
-            // 生命周期：quad 处理前（GuiLightExtension 在此管理 GL_LIGHTING）
-            ModelRenderRegistry.applyBeforePart(allQuads, phase);
+            // 根据物品类型绑定正确的 atlas：方块物品用 blocks atlas（spriteNumber=0），
+            // 非方块物品用 items atlas（spriteNumber=1）。
+            int spriteNumber = (stack != null && stack.getItem() != null)
+                    ? stack.getItem().getSpriteNumber() : 1;
+            Minecraft.getMinecraft().getTextureManager().bindTexture(
+                    spriteNumber == 0
+                            ? TextureMap.locationBlocksTexture
+                            : TextureMap.locationItemsTexture);
 
-            // GUI 全景：启用混合使纹理 alpha 通道生效（如透明背景），
-            // 并禁用方向 shade（GUI 不需要 3D 面光照效果）。
+            // GUI 视口变换（对齐高版本 GuiItemAtlas.drawToSlot）：
+            //   1. translate(8,8,0) — 从 Forge 的槽位左上角移到槽位中心
+            //   2. scale(16,-16,16) — 方块单位→像素，Y 取反对齐图像坐标系
+            // 这两个变换必须在 DisplayTransformExtension（pushMatrix/popMatrix）
+            // 之前应用，以确保逻辑顺序对齐高版本：
+            //   T(-0.5) → S(display) → R(display) → T(display) → S(16) → T(slotCenter)
+            // [C4+额外保护] GUI 视口变换也放入 try 块，用 pushMatrix/popMatrix 保护
             if (gui) {
+                GL11.glPushMatrix();
+                GL11.glTranslatef(8F, 8F, 0F);
+                GL11.glScalef(16F, -16F, 16F);
+            }
+            // 掉落物和 GUI 都需要 alpha 混合（掉落物在世界中需要纹理透明，GUI 同理）
+            if (gui || dropped) {
                 GL11.glEnable(GL11.GL_BLEND);
                 GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             }
 
+            // 生命周期：quad 处理前（DisplayTransformExtension 在此应用 display 变换）
+            // 必须在槽位视口变换之后调用，确保 display 变换在正确的空间中执行
+            ModelRenderRegistry.applyBeforePart(allQuads, phase);
+
             t.startDrawingQuads();
 
             int baseBrightness = gui ? 255 : 15728880;
+            boolean hasVertices = false;
 
             for (BakedQuad q : allQuads) {
-                float baseShade = gui ? 1.0f : shadeByNormal(q.faceNormal);
+                // 物品渲染固定 shade = 1.0——不做法线方向阴影采样
+                // （方块世界由 BLOCK_WORLD 路径的 shadeByNormal 处理）
+                float baseShade = 1.0f;
                 RenderContext ctx = new RenderContext(phase, q,
-                        null, 0, 0, 0, null, stack, baseBrightness, baseShade);
+                        world, x, y, z, block, stack, baseBrightness, baseShade);
                 ModelRenderRegistry.apply(ctx);
                 if (ctx.skip) continue;
+                hasVertices = true;
 
                 t.setBrightness(ctx.effectiveBrightness());
                 float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
@@ -283,28 +288,28 @@ public final class UniformRenderPipeline {
 
                 IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
                 for (int i = 0; i < 4; i++) {
+                    // UV 坐标已在烘焙阶段对齐 IIcon 图像坐标系，直接使用
                     double U = icon.getInterpolatedU(q.up[i]);
                     double V = icon.getInterpolatedV(q.vp[i]);
                     double vx = q.vx[i], vy = q.vy[i], vz = q.vz[i];
-                    if (centered) {
-                        vx -= 0.5;
-                        vy -= 0.5;
-                        vz -= 0.5;
-                    }
                     t.addVertexWithUV(vx, vy, vz, U, V);
                 }
             }
 
-            t.draw();
+            // [W6] 仅在有顶点时 draw
+            if (hasVertices) {
+                t.draw();
+            }
         } finally {
-            if (gui) {
+            if (gui || dropped) {
                 GL11.glDisable(GL11.GL_BLEND);
             }
-            // 生命周期：quad 处理后（GuiLightExtension 在此恢复 GL_LIGHTING）
+            // [C4] GUI 视口变换恢复
+            if (gui) {
+                GL11.glPopMatrix();
+            }
+            // 生命周期：quad 处理后（GuiLightExtension/DisplayTransformExtension 在此恢复 GL 状态）
             ModelRenderRegistry.applyAfterPart();
-        }
-        if (dt != null || !centered) {
-            GL11.glPopMatrix();
         }
     }
 
@@ -313,7 +318,16 @@ public final class UniformRenderPipeline {
      */
     public static void renderItemQuads(BlockStateModelPart part,
                                        ItemStack stack, RenderPhase phase) {
-        renderItemQuads(part, stack, phase, null);
+        renderItemQuads(part, stack, phase, null, 0, 0, 0, null, null);
+    }
+
+    /**
+     * 旧版兼容 — 有 display transform 但无世界上下文时委托给新版。
+     */
+    public static void renderItemQuads(BlockStateModelPart part,
+                                       ItemStack stack, RenderPhase phase,
+                                       Map<String, ModelJson.DisplayTransform> display) {
+        renderItemQuads(part, stack, phase, null, 0, 0, 0, null, display);
     }
 
     // ==================== 光照与阴影辅助 ====================
@@ -322,6 +336,9 @@ public final class UniformRenderPipeline {
      * 根据面法线计算方向阴影系数。
      * 对齐原版 1.7.10 RenderBlocks 的 shade 值：
      * 顶面 1.0、底面 0.5、侧面 0.6/0.8。
+     *
+     * TODO [S6] 当前简化为三档分类（顶/底/侧），混合角度面光照不连续。
+     * 原版 1.7.10 使用更复杂的角度 shade 计算，待后续对齐。
      */
     static float shadeByNormal(double[] n) {
         if (n == null) return 1.0f;

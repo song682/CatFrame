@@ -24,10 +24,10 @@ public final class TintRenderExtension implements IModelRenderExtension {
                 rgb = TintRegistry.getBlockTint(ctx.world, ctx.x, ctx.y, ctx.z, ctx.block, idx);
                 break;
             case BLOCK_GUI:
-                // GUI 中方块无世界上下文，使用 Block.getRenderColor(0) 获取默认染色
-                // （与原版 renderBlockAsItem 行为一致；metadata 信息在渲染管线中不可用，使用 0 作为默认变体）
+                // GUI 中方块无世界上下文，使用 Block.getRenderColor(metadata) 获取对应染色
+                // [S1 修复] 使用 ctx.metadata 代替硬编码 0，支持不同 metadata 变体的染色
                 if (ctx.block != null) {
-                    rgb = ctx.block.getRenderColor(0) & 0xFFFFFF;
+                    rgb = ctx.block.getRenderColor(ctx.metadata) & 0xFFFFFF;
                 } else {
                     return;
                 }
@@ -35,7 +35,19 @@ public final class TintRenderExtension implements IModelRenderExtension {
             case ITEM_GUI:
             case ITEM_HAND_FIRST_PERSON:
             case ITEM_HAND_THIRD_PERSON:
+            case DROPPED_ITEM_GROUND:
                 rgb = TintRegistry.getItemTint(ctx.stack, idx);
+                break;
+            case DROPPED_BLOCK_GROUND:
+                // 落地方块：优先使用世界上下文获取生物群系染色，
+                // 无世界上下文时回退到 Block.getRenderColor(0)
+                if (ctx.block != null && ctx.world != null) {
+                    rgb = TintRegistry.getBlockTint(ctx.world, ctx.x, ctx.y, ctx.z, ctx.block, idx);
+                } else if (ctx.block != null) {
+                    rgb = ctx.block.getRenderColor(0) & 0xFFFFFF;
+                } else {
+                    return;
+                }
                 break;
             default:
                 return;

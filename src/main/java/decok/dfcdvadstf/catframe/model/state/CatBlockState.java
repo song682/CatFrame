@@ -28,7 +28,8 @@ import java.util.Map;
  */
 public final class CatBlockState {
 
-    private CatStateDefinition<?> definition;
+    // [C2 修复] 去掉 final，由 CatStateDefinition.Builder.create() 回填
+    CatStateDefinition<?> definition;
 
     /**
      * 当前状态的属性值数组。索引与 definition 的 properties 数组位置对应。
@@ -44,14 +45,6 @@ public final class CatBlockState {
     CatBlockState(CatStateDefinition<?> definition, Comparable<?>[] values) {
         this.definition = definition;
         this.values = values;
-    }
-
-    /**
-     * 设置关联的定义（仅 Builder 中 initial state 缺少 definition 时使用）。
-     * Package-private，由 {@link CatStateDefinition.Builder} 调用。
-     */
-    void setDefinition(CatStateDefinition<?> def) {
-        this.definition = def;
     }
 
     // ==================== 查询 ====================

@@ -28,6 +28,14 @@ public enum RenderPhase {
      */
     ITEM_HAND_THIRD_PERSON,
     /**
+     * 落地物品渲染（有 ItemStack）。
+     */
+    DROPPED_ITEM_GROUND,
+    /**
+     * 落地方块渲染（有 BlockAccess）。
+     */
+    DROPPED_BLOCK_GROUND,
+    /**
      * @deprecated 使用 {@link #ITEM_HAND_FIRST_PERSON} 或 {@link #ITEM_HAND_THIRD_PERSON} 替代。
      */
     @Deprecated

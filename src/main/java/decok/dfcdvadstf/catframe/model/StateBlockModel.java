@@ -64,8 +64,10 @@ public class StateBlockModel implements BlockStateModel {
                     = new EnumMap<>(EnumFacing.class);
             List<BakedQuad> mergedGeneral = new ArrayList<>();
 
+            // [W7 修复] buildPropertyMap 对同一 state 结果不变，提到循环外避免重复计算
+            Map<String, String> propMap = buildPropertyMap(state);
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
-                boolean applies = (mpc.when == null) || mpc.when.matches(buildPropertyMap(state));
+                boolean applies = (mpc.when == null) || mpc.when.matches(propMap);
                 if (applies && mpc.apply != null && mpc.apply.model != null) {
                     BlockStateModelPart part = VanillaModelManager.ModelRegistration.bakeModelPart(mpc.apply.model);
                     if (part != null) {

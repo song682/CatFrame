@@ -7,7 +7,7 @@ import net.minecraft.item.ItemStack;
  * 物品模型接口。类似于 1.21.5 的 ItemModel，
  * 定义物品在不同渲染上下文中的渲染行为。
  * <p>通过 {@link VanillaModelManager.ModelRegistration#registerItemModel} 注册。
- * 渲染时由 {@link decok.dfcdvadstf.catframe.model.render.RenderJsonItemRenderer}（Forge IItemRenderer）根据
+ * 渲染时由 {@link decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel}（Forge IItemRenderer）根据
  * {@link #handles(RenderPhase)} 决定是否接管渲染。
  */
 public interface ItemModel {
@@ -23,7 +23,7 @@ public interface ItemModel {
     /**
      * 查询 ItemModel 是否处理指定的渲染阶段。
      * <p>
-     * {@link decok.dfcdvadstf.catframe.model.render.RenderJsonItemRenderer} 遵循以下策略：
+     * {@link decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel} 遵循以下策略：
      * <ol>
      *   <li>先调用 {@link #handles(RenderPhase)} 检查 ItemModel 是否接管此阶段</li>
      *   <li>如果返回 {@code true} → 调用 {@link #render(ItemStack, RenderPhase)} 并取消原版渲染</li>

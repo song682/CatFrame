@@ -5,7 +5,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.render.RenderJsonItemRenderer;
+import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
 import decok.dfcdvadstf.catframe.model.state.*;
@@ -625,8 +625,8 @@ public class VanillaModelManager {
                     }
                 }
             }
-            // 重新烘焙所有模型（清空缓存，用正确的 sprite 重建 quads）
-            ModelBaking.bakeAllModels();
+            // [W2 修复] 仅增量更新 item 模型，不重新烘焙 block 模型
+            ModelBaking.rebuildItemModels();
         }
     }
 
@@ -805,7 +805,7 @@ public class VanillaModelManager {
                 }
             }
 
-            // Auto-register ItemModel wrappers from old baked data
+            // Auto-register ItemModel wrappers from old baked data (item-only models, non-block)
             for (Map.Entry<Item, Map<Integer, List<BakedQuad>>> entry : bakedItemModels.entrySet()) {
                 Item item = entry.getKey();
                 Map<Integer, List<BakedQuad>> damageMap = entry.getValue();
@@ -823,48 +823,122 @@ public class VanillaModelManager {
                 registeredItemModels.put(item, new ItemModelWrapper(metaModel, display));
             }
 
-            // Auto-register ItemModel wrappers for blocks (from bakedBlockModels)
-            // so block items get display transforms applied (gui / firstperson / thirdperson)
-            for (Map.Entry<Block, Map<Integer, List<BakedQuad>>> entry : bakedBlockModels.entrySet()) {
-                Block block = entry.getKey();
-                Item item = Item.getItemFromBlock(block);
-                if (item == null) continue;
-                // Skip if this item already has a dedicated item model
-                if (registeredItemModels.containsKey(item) || bakedItemModels.containsKey(item)) continue;
+            CatFrame.logger.info("VanillaModelManager: Baked {} block models, {} item models, registered {} BlockStateModels, {} ItemModels",
+                    bakedBlockModels.size(), bakedItemModels.size(),
+                    registeredBlockModels.size(), registeredItemModels.size());
 
-                Map<Integer, List<BakedQuad>> metaMap = entry.getValue();
+            // GTNHLib-style Forge IItemRenderer registration:
+            // - Non-block items: from registeredItemModels
+            // - Block items: from registeredBlockModels (BlockStateModel) and bakedBlockModels (quads)
+            // Block items with dedicated ItemModels (registeredItemModels) are already covered.
+            // getRegisteredItemModel() handles the dynamic ItemBlock→BlockStateModel fallback.
+            java.util.Set<Item> registered = new java.util.HashSet<>();
+            int forgeRegistered = 0;
+
+            for (Item item : registeredItemModels.keySet()) {
+                if (registered.add(item)) {
+                    MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
+                    forgeRegistered++;
+                }
+            }
+            for (Block block : registeredBlockModels.keySet()) {
+                Item item = Item.getItemFromBlock(block);
+                if (item != null && registered.add(item)) {
+                    MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
+                    forgeRegistered++;
+                }
+            }
+            for (Block block : bakedBlockModels.keySet()) {
+                if (!registeredBlockModels.containsKey(block)) {
+                    Item item = Item.getItemFromBlock(block);
+                    if (item != null && registered.add(item)) {
+                        MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
+                        forgeRegistered++;
+                    }
+                }
+            }
+            CatFrame.logger.info("VanillaModelManager: Registered {} entries with Forge IItemRenderer",
+                    forgeRegistered);
+        }
+
+        /**
+         * [W2] 增量更新：仅重新烘焙 item 模型，不触碰 block 模型。
+         * <p>
+         * 在 item atlas 缝合完成后调用，此时 item 纹理的 IIcon 已更新，
+         * 需要清除 item 缓存并重新烘焙，但 block 模型不受影响。
+         */
+        private static void rebuildItemModels() {
+            // 清除 bakeModel 缓存：第一次 onTextureStitchPost(type=0) 时 item atlas 尚未缝合完成，
+            // 缓存的 quads 中的 IIcon UV 数据是过期的。必须清除以强制用正确的 IIcon 重新烘焙。
+            bakedModelCache.clear();
+            bakedItemModels.clear();
+            itemDisplayTransforms.clear();
+            registeredItemModels.clear();
+
+            // 重新烘焙 item 模型（仅从 loadedMappings 中的 items 部分）
+            for (Map.Entry<String, ModelMappings> entry : loadedMappings.entrySet()) {
+                String namespace = entry.getKey();
+                ModelMappings mappings = entry.getValue();
+
+                if (mappings.items == null) continue;
+
+                for (Map.Entry<String, String> itemEntry : mappings.items.entrySet()) {
+                    String key = itemEntry.getKey();
+                    String itemName;
+                    int damage = -1;
+
+                    if (key.contains(":")) {
+                        String[] parts = key.split(":", 2);
+                        itemName = parts[0];
+                        try {
+                            damage = Integer.parseInt(parts[1]);
+                        } catch (NumberFormatException e) {
+                            itemName = key;
+                        }
+                    } else {
+                        itemName = key;
+                    }
+
+                    Item item = Utilities.findItem(namespace, itemName);
+                    if (item == null) continue;
+
+                    List<BakedQuad> quads = bakeModel(itemEntry.getValue(), 0);
+                    if (quads == null) continue;
+
+                    Map<String, ModelJson.DisplayTransform> itemDisplay = modelDisplayCache.get(itemEntry.getValue());
+                    if (itemDisplay != null) {
+                        itemDisplayTransforms.put(item, itemDisplay);
+                    }
+
+                    Map<Integer, List<BakedQuad>> damageMap = bakedItemModels.get(item);
+                    if (damageMap == null) {
+                        damageMap = new HashMap<>();
+                        bakedItemModels.put(item, damageMap);
+                    }
+                    int targetDamage = (damage == -1) ? 0 : damage;
+                    damageMap.put(targetDamage, quads);
+                }
+            }
+
+            // 重新注册 ItemModel 包装器
+            for (Map.Entry<Item, Map<Integer, List<BakedQuad>>> entry : bakedItemModels.entrySet()) {
+                Item item = entry.getKey();
+                Map<Integer, List<BakedQuad>> damageMap = entry.getValue();
                 Map<Integer, BlockStateModelPart> partMap = new HashMap<>();
-                for (Map.Entry<Integer, List<BakedQuad>> me : metaMap.entrySet()) {
-                    partMap.put(me.getKey(), BlockStateModelPart.fromQuads(me.getValue()));
+                for (Map.Entry<Integer, List<BakedQuad>> de : damageMap.entrySet()) {
+                    partMap.put(de.getKey(), BlockStateModelPart.fromQuads(de.getValue()));
                 }
                 BlockStateModelPart fallback = partMap.get(0);
                 if (fallback == null) {
                     fallback = partMap.values().stream().findFirst().orElse(BlockStateModelPart.empty());
                 }
-                String modelPath = blockModelPaths.get(block);
-                Map<String, ModelJson.DisplayTransform> blockDisplay = (modelPath != null)
-                        ? modelDisplayCache.get(modelPath) : null;
-                if (blockDisplay != null) {
-                    CatFrame.logger.debug("[VMM] bakeAllModels: registered ItemModel for block '{}' with display transforms",
-                            Block.blockRegistry.getNameForObject(block));
-                }
-                registeredItemModels.put(item, new ItemModelWrapper(
-                        new MetadataBlockModel(partMap, fallback), blockDisplay));
+                MetadataBlockModel metaModel = new MetadataBlockModel(partMap, fallback);
+                Map<String, ModelJson.DisplayTransform> display = itemDisplayTransforms.get(item);
+                registeredItemModels.put(item, new ItemModelWrapper(metaModel, display));
+                MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
             }
 
-            CatFrame.logger.info("VanillaModelManager: Baked {} block models, {} item models, registered {} BlockStateModels, {} ItemModels",
-                    bakedBlockModels.size(), bakedItemModels.size(),
-                    registeredBlockModels.size(), registeredItemModels.size());
-
-            // 为所有拥有 CatFrame ItemModel 的物品注册 Forge IItemRenderer。
-            // IdentityHashMap 的特性保证了同一 Item 实例重复注册只会覆盖旧值。
-            int forgeRegistered = 0;
-            for (Item item : registeredItemModels.keySet()) {
-                MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemRenderer.INSTANCE);
-                forgeRegistered++;
-            }
-            CatFrame.logger.info("VanillaModelManager: Registered {} items with Forge IItemRenderer",
-                    forgeRegistered);
+            CatFrame.logger.info("VanillaModelManager: Rebuilt {} item models (incremental)", bakedItemModels.size());
         }
 
         private static void bakeBlockstateForBlock(Block block, BlockstateJson bs) {
@@ -898,10 +972,11 @@ public class VanillaModelManager {
                         BlockstateJson.Variant variant = varEntry.getVariant(seed);
                         if (variant == null || variant.model == null) continue;
 
-                        List<BakedQuad> quads = bakeModel(variant.model, variant.y);
+                        // [C1+W3] 旋转已在 bakeModel 中烘焙到 quad 顶点
+                        List<BakedQuad> quads = bakeModel(variant.model, variant.x, variant.y);
                         if (quads != null && !quads.isEmpty()) {
                             metaMap.put(meta, quads);
-                            rotMap.put(meta, variant.y);
+                            rotMap.put(meta, 0);
                         }
                     }
                 } else {
@@ -919,10 +994,11 @@ public class VanillaModelManager {
                         BlockstateJson.Variant variant = varEntry.getVariant(0);
                         if (variant == null || variant.model == null) continue;
 
-                        List<BakedQuad> quads = bakeModel(variant.model, variant.y);
+                        // [C1+W3] 旋转已在 bakeModel 中烘焙到 quad 顶点
+                        List<BakedQuad> quads = bakeModel(variant.model, variant.x, variant.y);
                         if (quads != null) {
                             metaMap.put(meta, quads);
-                            rotMap.put(meta, variant.y);
+                            rotMap.put(meta, 0);
                         }
                     }
                     if (hasNumberKeys) {
@@ -944,10 +1020,9 @@ public class VanillaModelManager {
                         for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                             boolean applies = (mpc.when == null) || mpc.when.matches(props);
                             if (applies && mpc.apply != null) {
-                                List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.y);
+                                // [C1] 旋转已在 bakeModel 中烘焙，不再原地 applyYRotation
+                                List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.x, mpc.apply.y);
                                 if (partQuads != null) {
-                                    // 将 apply.y 旋转烘焙到 quad 顶点中（而不是依赖运行时全局旋转）
-                                    partQuads = BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                                     allQuads.addAll(partQuads);
                                 }
                             }
@@ -964,9 +1039,9 @@ public class VanillaModelManager {
                     List<BakedQuad> allQuads = new ArrayList<>();
                     for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                         if (mpc.when == null && mpc.apply != null) {
-                            List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.y);
+                            // [C1] 旋转已在 bakeModel 中烘焙，不再原地 applyYRotation
+                            List<BakedQuad> partQuads = bakeModel(mpc.apply.model, mpc.apply.x, mpc.apply.y);
                             if (partQuads != null) {
-                                partQuads = BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                                 allQuads.addAll(partQuads);
                             }
                         }
@@ -1041,13 +1116,23 @@ public class VanillaModelManager {
         }
 
         /**
-         * Bake a model into quads with the given rotation.
-         * Results are cached by {@code modelPath@rotationY}.
+         * Bake a model into quads with the given rotation (backward compat, rotationX=0).
+         * Results are cached by {@code modelPath@rotationX@rotationY}.
          */
         private static List<BakedQuad> bakeModel(String modelPath, int rotationY) {
+            return bakeModel(modelPath, 0, rotationY);
+        }
+
+        /**
+         * Bake a model into quads with X and Y rotation.
+         * [C1 修复] 旋转在烘焙阶段应用到 quad 上并缓存，返回深拷贝防止缓存污染。
+         * [W3] 新增 rotationX 参数支持 blockstate 中的 x 旋转字段。
+         * Results are cached by {@code modelPath@rotationX@rotationY}.
+         */
+        private static List<BakedQuad> bakeModel(String modelPath, int rotationX, int rotationY) {
             if (modelPath == null) return null;
 
-            String cacheKey = modelPath + "@" + rotationY;
+            String cacheKey = modelPath + "@" + rotationX + "@" + rotationY;
             List<BakedQuad> cached = bakedModelCache.get(cacheKey);
             if (cached != null) {
                 CatFrame.logger.debug("[VMM] bakeModel: cache HIT for {} | quads={}", cacheKey, cached.size());
@@ -1126,6 +1211,9 @@ public class VanillaModelManager {
                     q.modelDisplay = resolved.display;
                 }
             }
+            // [C1+W3] 在烘焙阶段应用旋转（深拷贝，不污染基础缓存）
+            quads = BlockJsonModelBake.applyYRotation(quads, rotationY);
+            quads = BlockJsonModelBake.applyXRotation(quads, rotationX);
             CatFrame.logger.info("[VMM] bakeModel: baked '{}' | elements={} | quads={} | iconMapKeys={}",
                     cacheKey, resolved.elements.size(), quads.size(), iconMap.keySet());
             bakedModelCache.put(cacheKey, quads);
@@ -1218,7 +1306,15 @@ public class VanillaModelManager {
          * Public API: bake a model path into a BlockStateModelPart with Y rotation.
          */
         public static BlockStateModelPart bakeModelPart(String modelPath, int rotationY) {
-            List<BakedQuad> quads = ModelBaking.bakeModel(modelPath, rotationY);
+            return bakeModelPart(modelPath, 0, rotationY);
+        }
+
+        /**
+         * Public API: bake a model path into a BlockStateModelPart with X and Y rotation.
+         * [W3] 支持 blockstate 中的 x 旋转字段。
+         */
+        public static BlockStateModelPart bakeModelPart(String modelPath, int rotationX, int rotationY) {
+            List<BakedQuad> quads = ModelBaking.bakeModel(modelPath, rotationX, rotationY);
             if (quads == null) return BlockStateModelPart.empty();
             return BlockStateModelPart.fromQuads(quads);
         }
@@ -1269,16 +1365,49 @@ public class VanillaModelManager {
             registeredItemModels.put(item, model);
             // 如果烘焙已完成，立即注册 Forge IItemRenderer
             if (initialized) {
-                MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemRenderer.INSTANCE);
+                MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
             }
         }
 
         /**
          * Get the registered ItemModel for an item, or null if not registered.
+         * <p>
+         * <b>GTNHLib-style fallback:</b> If the item is an {@link ItemBlock} and has no
+         * dedicated ItemModel, the block's {@link BlockStateModel} (from
+         * {@link #registeredBlockModels}) is returned wrapped in an {@link ItemModelWrapper}
+         * with the block's display transforms. This means block items don't need a
+         * separate entry in {@link #registeredItemModels} — the block model IS the item model.
          */
         public static ItemModel getRegisteredItemModel(Item item) {
             if (item == null) return null;
-            return registeredItemModels.get(item);
+            ItemModel itemModel = registeredItemModels.get(item);
+            if (itemModel != null) return itemModel;
+
+            // GTNHLib-style: ItemBlock without dedicated item model → use block model
+            if (item instanceof net.minecraft.item.ItemBlock) {
+                Block block = Block.getBlockFromItem(item);
+                if (block != null) {
+                    BlockStateModel blockModel = registeredBlockModels.get(block);
+                    if (blockModel == null && bakedBlockModels.containsKey(block)) {
+                        // Block was baked but not registered as BlockStateModel yet — build on-demand
+                        Map<Integer, List<BakedQuad>> metaMap = bakedBlockModels.get(block);
+                        Map<Integer, BlockStateModelPart> partMap = new HashMap<>();
+                        for (Map.Entry<Integer, List<BakedQuad>> me : metaMap.entrySet()) {
+                            partMap.put(me.getKey(), BlockStateModelPart.fromQuads(me.getValue()));
+                        }
+                        BlockStateModelPart fallback = partMap.get(0);
+                        if (fallback == null) {
+                            fallback = partMap.values().stream().findFirst().orElse(BlockStateModelPart.empty());
+                        }
+                        blockModel = new MetadataBlockModel(partMap, fallback);
+                    }
+                    if (blockModel != null) {
+                        // display=null is fine: quads already carry modelDisplay from baking
+                        return new ItemModelWrapper(blockModel);
+                    }
+                }
+            }
+            return null;
         }
 
         /**
@@ -1421,10 +1550,11 @@ public class VanillaModelManager {
                 BlockstateJson.Variant variant = entry.getVariant(seed);
                 if (variant == null || variant.model == null) return false;
 
-                BlockStateModelPart part = ModelRegistration.bakeModelPart(variant.model, variant.y);
+                // [C1+W3] 旋转已在 bakeModel 中烘焙，运行时传 0
+                BlockStateModelPart part = ModelRegistration.bakeModelPart(variant.model, variant.x, variant.y);
                 if (part == null || part.isEmpty()) return false;
 
-                UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, variant.y);
+                UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, 0);
                 return true;
 
             } else if (bs.multipart != null) {
@@ -1442,10 +1572,9 @@ public class VanillaModelManager {
                 for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                     boolean applies = (mpc.when == null) || mpc.when.matches(propMap);
                     if (applies && mpc.apply != null) {
-                        java.util.List<BakedQuad> partQuads = ModelBaking.bakeModel(mpc.apply.model, mpc.apply.y);
+                        // [C1] 旋转已在 bakeModel 中烘焙
+                        java.util.List<BakedQuad> partQuads = ModelBaking.bakeModel(mpc.apply.model, mpc.apply.x, mpc.apply.y);
                         if (partQuads != null) {
-                            // 将 apply.y 烘焙到 quad 顶点中
-                            partQuads = BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                             allQuads.addAll(partQuads);
                         }
                     }
@@ -1486,10 +1615,11 @@ public class VanillaModelManager {
                 BlockstateJson.Variant variant = entry.getVariant(seed);
                 if (variant == null || variant.model == null) return false;
 
-                BlockStateModelPart part = ModelRegistration.bakeModelPart(variant.model, variant.y);
+                // [C1+W3] 旋转已在 bakeModel 中烘焙，运行时传 0
+                BlockStateModelPart part = ModelRegistration.bakeModelPart(variant.model, variant.x, variant.y);
                 if (part == null || part.isEmpty()) return false;
 
-                UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, variant.y);
+                UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, 0);
                 return true;
 
             } else if (bs.multipart != null) {
@@ -1499,9 +1629,9 @@ public class VanillaModelManager {
                 for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                     boolean applies = (mpc.when == null) || mpc.when.matches(properties);
                     if (applies && mpc.apply != null) {
-                        List<BakedQuad> partQuads = ModelBaking.bakeModel(mpc.apply.model, mpc.apply.y);
+                        // [C1] 旋转已在 bakeModel 中烘焙
+                        List<BakedQuad> partQuads = ModelBaking.bakeModel(mpc.apply.model, mpc.apply.x, mpc.apply.y);
                         if (partQuads != null) {
-                            partQuads = BlockJsonModelBake.applyYRotation(partQuads, mpc.apply.y);
                             allQuads.addAll(partQuads);
                         }
                     }
@@ -1541,10 +1671,8 @@ public class VanillaModelManager {
             Item item = stack.getItem();
             if (item == null) return;
 
-            // --- New path: check registered ItemModel first ---
-            ItemModel itemModel = registeredItemModels.get(item);
-            CatFrame.logger.info("[VMM] renderItem | item={} | registeredItemModel={} | bakedItemModels.containsKey={}",
-                    Item.itemRegistry.getNameForObject(item), itemModel, bakedItemModels.containsKey(item));
+            // --- New path: check registered ItemModel (GTNHLib-style: ItemBlock falls back to block model) ---
+            ItemModel itemModel = ModelRegistration.getRegisteredItemModel(item);
             if (itemModel != null) {
                 itemModel.render(stack, RenderPhase.ITEM_GUI);
                 return;
@@ -1590,10 +1718,8 @@ public class VanillaModelManager {
                     ? RenderPhase.ITEM_HAND_FIRST_PERSON
                     : RenderPhase.ITEM_HAND_THIRD_PERSON;
 
-            // --- New path: check registered ItemModel first ---
-            ItemModel itemModel = registeredItemModels.get(item);
-            CatFrame.logger.info("[VMM] renderItemInHand | item={} | isFirstPerson={} | registeredItemModel={} | bakedItemModels.containsKey={}",
-                    Item.itemRegistry.getNameForObject(item), isFirstPerson, itemModel, bakedItemModels.containsKey(item));
+            // --- New path: check registered ItemModel (GTNHLib-style: ItemBlock falls back to block model) ---
+            ItemModel itemModel = ModelRegistration.getRegisteredItemModel(item);
             if (itemModel != null) {
                 itemModel.render(stack, phase);
                 return;
@@ -1625,6 +1751,83 @@ public class VanillaModelManager {
         public static void renderItemInHand(Item item, int damage) {
             if (item == null) return;
             renderItemInHand(new ItemStack(item, 1, damage), true);
+        }
+
+        /**
+         * 渲染掉落物（地面上的 ItemStack）。
+         * 调用方（如 Forge IItemRenderer ENTITY 路径或自定义 EntityItem 渲染器）
+         * 应已设置好 GL 矩阵（entity 位置、bob 浮动等），本方法仅执行模型绘制。
+         *
+         * @param stack 物品栈
+         */
+        public static void renderDroppedItem(ItemStack stack) {
+            if (stack == null) return;
+            Item item = stack.getItem();
+            if (item == null) return;
+
+            RenderPhase phase = (item instanceof net.minecraft.item.ItemBlock)
+                    ? RenderPhase.DROPPED_BLOCK_GROUND
+                    : RenderPhase.DROPPED_ITEM_GROUND;
+
+            // --- New path: check registered ItemModel ---
+            ItemModel itemModel = ModelRegistration.getRegisteredItemModel(item);
+            if (itemModel != null) {
+                itemModel.render(stack, phase);
+                return;
+            }
+
+            // --- Fallback to old baked path ---
+            Map<Integer, List<BakedQuad>> damageMap = bakedItemModels.get(item);
+            if (damageMap == null) return;
+
+            int damage = stack.getItemDamage();
+            List<BakedQuad> quads = damageMap.get(damage);
+            if (quads == null) quads = damageMap.get(0);
+            if (quads == null || quads.isEmpty()) return;
+
+            BlockStateModelPart part = BlockStateModelPart.fromQuads(quads);
+            UniformRenderPipeline.renderItemQuads(part, stack, phase,
+                    null, 0, 0, 0, null, null);
+        }
+
+        /**
+         * 渲染落地方块（带世界上下文，用于生物群系染色等需要位置的场景）。
+         *
+         * @param stack 物品栈
+         * @param world 世界
+         * @param x     方块 X 坐标
+         * @param y     方块 Y 坐标
+         * @param z     方块 Z 坐标
+         * @param block 方块实例
+         */
+        public static void renderDroppedBlock(ItemStack stack,
+                                              IBlockAccess world, int x, int y, int z,
+                                              Block block) {
+            if (stack == null || world == null || block == null) return;
+            Item item = stack.getItem();
+            if (item == null) return;
+
+            RenderPhase phase = RenderPhase.DROPPED_BLOCK_GROUND;
+
+            // --- New path ---
+            ItemModel itemModel = ModelRegistration.getRegisteredItemModel(item);
+            if (itemModel != null) {
+                itemModel.render(stack, phase);
+                return;
+            }
+
+            // --- Fallback to old baked path ---
+            Map<Integer, List<BakedQuad>> damageMap = bakedItemModels.get(item);
+            if (damageMap == null) return;
+
+            int damage = stack.getItemDamage();
+            List<BakedQuad> quads = damageMap.get(damage);
+            if (quads == null) quads = damageMap.get(0);
+            if (quads == null || quads.isEmpty()) return;
+
+            BlockStateModelPart part = BlockStateModelPart.fromQuads(quads);
+            UniformRenderPipeline.renderItemQuads(part, stack, phase,
+                    world, x, y, z, block, null);
         }
     }
 }

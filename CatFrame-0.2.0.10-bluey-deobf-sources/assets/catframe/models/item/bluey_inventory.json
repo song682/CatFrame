@@ -1,6 +1,0 @@
-{
-	"parent": "item/generated",
-	"textures": {
-		"layer0": "catframe:item/bluey_pixelized_inventory"
-	}
-}

@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import decok.dfcdvadstf.catframe.CatFrame;
+
 public class BlockJsonModelBake {
     public static List<BakedQuad> bakeElement(ModelJson.Element e, Map<String, IIcon> iconMap) {
         return bakeElement(e, iconMap, null);
@@ -14,10 +16,12 @@ public class BlockJsonModelBake {
 
     public static List<BakedQuad> bakeElement(ModelJson.Element e, Map<String, IIcon> iconMap, int[] textureSize) {
         List<BakedQuad> out = new ArrayList<>();
-        // 保存原始 from/to（像素坐标），UV 计算依赖原始未旋转的 bounds
-        if (e.from == null || e.to == null || e.from.length < 3 || e.to.length < 3) {
-            return out; // 损坏的元素，跳过
+        // [C6] 空值检查：from/to 为 JSON 必需字段，损坏模型可能为 null
+        if (e.from == null || e.to == null) {
+            CatFrame.logger.warn("[BlockJsonModelBake] bakeElement: element has null from/to, skipping");
+            return out;
         }
+        // 保存原始 from/to（像素坐标），UV 计算依赖原始未旋转的 bounds
         final float[] elemFrom = e.from;
         final float[] elemTo = e.to;
         // 获取元素级别的 ambientocclusion 和 shade 设置
@@ -52,10 +56,12 @@ public class BlockJsonModelBake {
             char ax = Character.toLowerCase(e.rotation.axis.charAt(0));
             float ang = e.rotation.angle;
             float[] o = e.rotation.origin;
-            boolean originIsZero = (o != null && o.length >= 3 && o[0] == 0f && o[1] == 0f && o[2] == 0f);
-            final float oxPx = (o != null && o.length >= 1) ? (originIsZero ? 8f : o[0]) : 8f;
-            final float oyPx = (o != null && o.length >= 2) ? (originIsZero ? ((e.from[1] + e.to[1]) * 0.5f) : o[1]) : 8f;
-            final float ozPx = (o != null && o.length >= 3) ? (originIsZero ? 8f : o[2]) : 8f;
+            // [C6] origin 空值兜底（Blockbench 导出可能不含 origin）
+            if (o == null) o = new float[]{8f, 8f, 8f};
+            boolean originIsZero = (o.length >= 3 && o[0] == 0f && o[1] == 0f && o[2] == 0f);
+            final float oxPx = originIsZero ? 8f : o[0];
+            final float oyPx = originIsZero ? ((e.from[1] + e.to[1]) * 0.5f) : o[1];
+            final float ozPx = originIsZero ? 8f : o[2];
             for (int i = 0; i < 8; i++) {
                 double[] r = rotateAxisExact(C[i][0], C[i][1], C[i][2], oxPx, oyPx, ozPx, ax, ang);
                 C[i][0] = r[0];
@@ -111,19 +117,10 @@ public class BlockJsonModelBake {
     private static void assignUVForFace(ModelJson.Face f, EnumFacing face, int[] ids, float[] outU, float[] outV,
                                         float[] elemFrom, float[] elemTo, int[] textureSize) {
         // Auto-compute default UV from element from/to (pixel space) if not specified in JSON
-        final boolean autoUV = (f.uv == null);
         if (f.uv == null) {
             f.uv = computeDefaultUV(elemFrom, elemTo, face);
         }
-        // texture_size 缩放：当纹理尺寸非 16×16 时，JSON UV 值在原始纹理像素空间，
-        // 需缩放到 16×16 抽象空间以匹配 IIcon 的 getInterpolatedU/V。
-        // 自动计算的 UV（computeDefaultUV）已基于 from/to 像素坐标（0-16），不缩放。
-        final float texW = (textureSize != null && textureSize.length >= 2) ? textureSize[0] : 16f;
-        final float texH = (textureSize != null && textureSize.length >= 2) ? textureSize[1] : 16f;
-        final float scaleU = !autoUV ? (16f / texW) : 1f;
-        final float scaleV = !autoUV ? (16f / texH) : 1f;
-        final float u0 = f.uv[0] * scaleU, v0 = f.uv[1] * scaleV;
-        final float u1 = f.uv[2] * scaleU, v1 = f.uv[3] * scaleV;
+        final float u0 = f.uv[0], v0 = f.uv[1], u1 = f.uv[2], v1 = f.uv[3];
         final float du = u1 - u0, dv = v1 - v0;
         int steps = (f.rotation == null) ? 0 : ((Integer.parseInt(f.rotation) / 90) & 3);
         if (face == EnumFacing.UP || face == EnumFacing.DOWN) {
@@ -183,8 +180,10 @@ public class BlockJsonModelBake {
             outU[i] = u0 + du * ss;
             outV[i] = v0 + dv * tt;
         }
-        // UV 值已在 16x16 抽象空间（Blockbench 导出时已根据 texture_size 换算），
-        // IIcon.getInterpolatedU/V() 也使用 0-16 范围，无需额外缩放。
+        // [C5] texture_size 字段在 JSON 中被解析但此处不用于 UV 计算。
+        // Blockbench 导出的 UV 值已基于 texture_size 换算到 16x16 抽象空间：
+        // 实际映射为 texture_size * (uv / 16) = 材质的实际像素位置。
+        // IIcon.getInterpolatedU/V() 也使用 0-16 范围，因此无需额外缩放。
         // 参考：https://en.wiki.vg/File_Formats#Model
     }
 
@@ -242,12 +241,14 @@ public class BlockJsonModelBake {
     }
 
     /**
-     * 对一组 BakedQuad 应用 Y 轴旋转（绕方块中心 0.5, 0.5），
-     * 返回<strong>新列表</strong>（深拷贝，不修改原始缓存）。
+     * 对一组 BakedQuad 应用 Y 轴旋转（绕方块中心 0.5, 0.5）。
+     * 同时旋转顶点坐标和 faceNormal，保持 UV 不变。
+     * <p>
+     * [C1 修复] 返回深拷贝的新列表，不修改原始 quad，防止缓存污染。
      *
      * @param quads   待旋转的 quad 列表（不会被修改）
      * @param degY    Y 轴旋转角度（0/90/180/270）
-     * @return 旋转后的新 quad 列表
+     * @return 旋转后的新 BakedQuad 列表
      */
     public static List<BakedQuad> applyYRotation(List<BakedQuad> quads, int degY) {
         if (quads == null || quads.isEmpty() || degY == 0) return quads;
@@ -255,23 +256,11 @@ public class BlockJsonModelBake {
         double cos = Math.cos(a), sin = Math.sin(a);
         List<BakedQuad> result = new ArrayList<>(quads.size());
         for (BakedQuad src : quads) {
-            BakedQuad q = new BakedQuad();
-            q.icon = src.icon;
-            q.face = src.face;
-            q.tintIndex = src.tintIndex;
-            q.cullface = src.cullface;
-            q.guiLight = src.guiLight;
-            q.ambientOcclusion = src.ambientOcclusion;
-            q.shadeEnabled = src.shadeEnabled;
-            q.modelDisplay = src.modelDisplay;
-            q.faceNormal = (src.faceNormal != null) ? src.faceNormal.clone() : null;
+            BakedQuad q = deepCopyQuad(src);
             for (int i = 0; i < 4; i++) {
-                double px = src.vx[i] - 0.5, pz = src.vz[i] - 0.5;
+                double px = q.vx[i] - 0.5, pz = q.vz[i] - 0.5;
                 q.vx[i] = px * cos - pz * sin + 0.5;
-                q.vy[i] = src.vy[i];
                 q.vz[i] = px * sin + pz * cos + 0.5;
-                q.up[i] = src.up[i];
-                q.vp[i] = src.vp[i];
             }
             // 旋转法线
             if (q.faceNormal != null) {
@@ -282,6 +271,77 @@ public class BlockJsonModelBake {
             result.add(q);
         }
         return result;
+    }
+
+    /**
+     * 对一组 BakedQuad 应用 X 轴旋转（绕方块中心 0.5, 0.5）。
+     * 同时旋转顶点坐标和 faceNormal，保持 UV 不变。
+     * <p>
+     * [W3] 支持 blockstate 中的 x 旋转字段。
+     *
+     * @param quads   待旋转的 quad 列表（不会被修改）
+     * @param degX    X 轴旋转角度（0/90/180/270）
+     * @return 旋转后的新 BakedQuad 列表
+     */
+    public static List<BakedQuad> applyXRotation(List<BakedQuad> quads, int degX) {
+        if (quads == null || quads.isEmpty() || degX == 0) return quads;
+        double a = Math.toRadians(degX);
+        double cos = Math.cos(a), sin = Math.sin(a);
+        List<BakedQuad> result = new ArrayList<>(quads.size());
+        for (BakedQuad src : quads) {
+            BakedQuad q = deepCopyQuad(src);
+            for (int i = 0; i < 4; i++) {
+                double py = q.vy[i] - 0.5, pz = q.vz[i] - 0.5;
+                q.vy[i] = py * cos - pz * sin + 0.5;
+                q.vz[i] = py * sin + pz * cos + 0.5;
+            }
+            // 旋转法线
+            if (q.faceNormal != null) {
+                double ny = q.faceNormal[1], nz = q.faceNormal[2];
+                q.faceNormal[1] = ny * cos - nz * sin;
+                q.faceNormal[2] = ny * sin + nz * cos;
+            }
+            // X 轴旋转会改变面朝向，需要重新计算 EnumFacing
+            q.face = recomputeFace(q);
+            result.add(q);
+        }
+        return result;
+    }
+
+    /**
+     * 深拷贝一个 BakedQuad 的顶点数据，生成独立副本。
+     */
+    private static BakedQuad deepCopyQuad(BakedQuad src) {
+        BakedQuad q = new BakedQuad();
+        System.arraycopy(src.vx, 0, q.vx, 0, 4);
+        System.arraycopy(src.vy, 0, q.vy, 0, 4);
+        System.arraycopy(src.vz, 0, q.vz, 0, 4);
+        System.arraycopy(src.up, 0, q.up, 0, 4);
+        System.arraycopy(src.vp, 0, q.vp, 0, 4);
+        if (src.faceNormal != null) {
+            q.faceNormal = new double[3];
+            System.arraycopy(src.faceNormal, 0, q.faceNormal, 0, 3);
+        }
+        q.icon = src.icon;
+        q.face = src.face;
+        q.tintIndex = src.tintIndex;
+        q.cullface = src.cullface;
+        q.ambientOcclusion = src.ambientOcclusion;
+        q.shadeEnabled = src.shadeEnabled;
+        q.guiLight = src.guiLight;
+        q.modelDisplay = src.modelDisplay;
+        return q;
+    }
+
+    /**
+     * 根据面法线重新确定 EnumFacing（X 轴旋转后面朝向可能改变）。
+     */
+    private static EnumFacing recomputeFace(BakedQuad q) {
+        if (q.faceNormal == null) return q.face;
+        double ax = Math.abs(q.faceNormal[0]), ay = Math.abs(q.faceNormal[1]), az = Math.abs(q.faceNormal[2]);
+        if (ay >= ax && ay >= az) return q.faceNormal[1] > 0 ? EnumFacing.UP : EnumFacing.DOWN;
+        if (ax >= ay && ax >= az) return q.faceNormal[0] > 0 ? EnumFacing.EAST : EnumFacing.WEST;
+        return q.faceNormal[2] > 0 ? EnumFacing.SOUTH : EnumFacing.NORTH;
     }
 
     /**

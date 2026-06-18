@@ -42,6 +42,12 @@ public final class RenderContext {
     public final ItemStack stack;
 
     /**
+     * [S1] 方块的 metadata 值，用于 BLOCK_GUI 阶段的染色等场景。
+     * 默认为 0，由渲染管线在已知 metadata 时设置。
+     */
+    public int metadata = 0;
+
+    /**
      * 由渲染器预先计算的基础亮度（来自相邻方块光照）。扩展可读不改。
      */
     public final int baselineBrightness;

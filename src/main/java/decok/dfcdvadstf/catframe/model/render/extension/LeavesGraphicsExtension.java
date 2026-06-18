@@ -11,7 +11,9 @@ import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.IIcon;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,11 +38,14 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
     // 已解析的 _opaque IIcon 缓存：normalTexturePath -> opaqueIicon
     private static final Map<String, IIcon> OPAQUE_ICONS = new HashMap<>();
 
-    // 叶子方块集合
-    private static final Block[] LEAF_BLOCKS;
+    // 叶子方块集合（可动态扩展）
+    private static final List<Block> LEAF_BLOCKS = new ArrayList<>();
 
     // 已注册标记
     private static boolean texturesRegistered = false;
+
+    // [S5] 模组自定义树叶方块的纹理映射：Block -> (normalPath -> opaquePath)
+    private static final Map<Block, Map<String, String>> CUSTOM_LEAF_TEXTURES = new HashMap<>();
 
     static {
         // ——— 纹理映射定义 ———
@@ -54,13 +59,41 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
         // ——— 叶子方块注册 ———
         // Blocks.leaves (1.7.10 vanilla)：oak=0, spruce=1, birch=2, jungle=3
         if (Blocks.leaves != null) {
-            LEAF_BLOCKS = new Block[]{Blocks.leaves};
-        } else {
-            LEAF_BLOCKS = new Block[0];
+            LEAF_BLOCKS.add(Blocks.leaves);
+        }
+        // leaves2（acacia=0, big_oak=1）
+        Block leaves2 = getLeaves2Block();
+        if (leaves2 != null) {
+            LEAF_BLOCKS.add(leaves2);
         }
     }
 
     public LeavesGraphicsExtension() {
+    }
+
+    // ==================== 模组树叶 API [S5] ====================
+
+    /**
+     * 注册自定义树叶方块的 _opaque 纹理映射。
+     * <p>
+     * 模组可在初始化阶段调用此方法，将自定义树叶方块注册到流畅画质处理系统中。
+     * 注册后，当画质设为“流畅”时，该树叶方块的纹理将被替换为 _opaque 版本。
+     *
+     * @param block         树叶方块实例
+     * @param textureMapping normal 纹理路径 → _opaque 纹理路径的映射
+     *                       （如 {@code "mymod:blocks/custom_leaves" → "mymod:blocks/custom_leaves_opaque"}）
+     */
+    public static void registerLeafBlock(Block block, Map<String, String> textureMapping) {
+        if (block == null || textureMapping == null) return;
+        if (!LEAF_BLOCKS.contains(block)) {
+            LEAF_BLOCKS.add(block);
+        }
+        CUSTOM_LEAF_TEXTURES.put(block, new HashMap<>(textureMapping));
+        TEXTURE_MAP.putAll(textureMapping);
+        // 如果纹理已经注册过，需要重新注册新纹理
+        if (texturesRegistered) {
+            texturesRegistered = false;
+        }
     }
 
     // ==================== 纹理生命周期 ====================
@@ -141,9 +174,16 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
 
     /**
      * 根据方块和 metadata 确定正常纹理路径。
+     * 优先检查模组自定义树叶映射，再回退到原版 leaves/leaves2。
      */
     private static String getNormalTexture(Block block, int metadata) {
         int meta = metadata & 3;
+        // [S5] 检查模组自定义树叶映射
+        Map<String, String> customMapping = CUSTOM_LEAF_TEXTURES.get(block);
+        if (customMapping != null && !customMapping.isEmpty()) {
+            // 返回第一个 normal 纹理路径（自定义树叶通常只有一个变体纹理）
+            return customMapping.keySet().iterator().next();
+        }
         if (block == Blocks.leaves) {
             switch (meta) {
                 case 0:
@@ -196,18 +236,7 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
         if (!shouldUseOpaque()) return;
 
         // 检查是否是叶子方块
-        boolean isLeaf = false;
-        for (Block leaf : LEAF_BLOCKS) {
-            if (ctx.block == leaf) {
-                isLeaf = true;
-                break;
-            }
-        }
-        // 也检查 leaves2
-        if (!isLeaf) {
-            Block leaves2 = getLeaves2Block();
-            isLeaf = (leaves2 != null && ctx.block == leaves2);
-        }
+        boolean isLeaf = LEAF_BLOCKS.contains(ctx.block);
         if (!isLeaf) return;
 
         // 获取 _opaque IIcon

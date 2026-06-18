@@ -72,17 +72,19 @@ public class BlockStateModelPart {
 
     /**
      * 返回给定剔除方向的所有 quad。若没有该方向的 quad 则返回空列表。
+     * [W4 修复] 返回不可变视图，防止调用方意外修改内部状态。
      */
     public List<BakedQuad> getQuads(EnumFacing side) {
         List<BakedQuad> q = faceQuads.get(side);
-        return q != null ? q : Collections.emptyList();
+        return q != null ? Collections.unmodifiableList(q) : Collections.emptyList();
     }
 
     /**
      * 返回所有无剔除方向的 quad（总是渲染）。
+     * [W4 修复] 返回不可变视图。
      */
     public List<BakedQuad> getGeneralQuads() {
-        return generalQuads;
+        return Collections.unmodifiableList(generalQuads);
     }
 
     /**

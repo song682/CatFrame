@@ -15,6 +15,10 @@ import java.util.Map;
  * 合并所有匹配的部件。
  *
  * <p>对应 1.21.5 的 Multipart BlockStateModel 实现。
+ *
+ * <p>[S7] 本类为后期开发预留：门（doors）、玻璃（glass）、栅栏（fences/walls）等
+ * 需要 multipart 组合逻辑的方块。当前主 VMM 中的 multipart 路径采用内联实现，
+ * 待相关方块类型合并后将切换到本类。
  */
 public class MultipartBlockModel implements BlockStateModel {
     private final List<MultipartEntry> entries;

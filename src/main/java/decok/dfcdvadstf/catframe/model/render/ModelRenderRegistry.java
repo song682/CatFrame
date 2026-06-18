@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.model.render;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.FaceCullExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.GuiLightExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
@@ -35,6 +36,8 @@ import java.util.List;
  *   <li>{@link TintRenderExtension}：处理 JSON face 中的 {@code "tintindex"}，
  *       自动调用 {@link decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry}
  *       为草方块/树叶/水/染色物品等提供生物群系或 NBT 染色。</li>
+ *   <li>{@link DisplayTransformExtension}：处理 JSON model 中的 {@code "display"}，
+ *       为 GUI 和手持渲染应用对应的 GL 变换（平移、旋转、缩放）。</li>
  * </ul>
  *
  * <h3>注册顺序</h3>
@@ -116,10 +119,12 @@ public final class ModelRenderRegistry {
     private static void ensureDefaults() {
         if (defaultsInstalled) return;
         defaultsInstalled = true;
-        EXTS.add(0, new AOComputeExtension());
-        EXTS.add(new FaceCullExtension());
+        // [S3 修复] FaceCullExtension 在 AOComputeExtension 之前，先剔除不可见面再计算 AO
+        EXTS.add(0, new FaceCullExtension());
+        EXTS.add(new AOComputeExtension());
         EXTS.add(new AOShadeExtension());
         EXTS.add(new GuiLightExtension());
         EXTS.add(new TintRenderExtension());
+        EXTS.add(new DisplayTransformExtension());
     }
 }

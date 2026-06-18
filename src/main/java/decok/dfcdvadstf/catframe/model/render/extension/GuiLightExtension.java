@@ -39,14 +39,27 @@ public final class GuiLightExtension implements IModelRenderExtension {
 
     @Override
     public void beforePart(List<BakedQuad> allQuads, RenderPhase phase) {
+        // 物品渲染阶段一律关闭 GL_LIGHTING，用固定亮度（fullbright）
+        // 不依赖模型的 gui_light 字段——原版 RenderItem 对所有物品都关 GL_LIGHTING
+        boolean isItemPhase = (phase == RenderPhase.ITEM_GUI
+                || phase == RenderPhase.ITEM_HAND_FIRST_PERSON
+                || phase == RenderPhase.ITEM_HAND_THIRD_PERSON
+                || phase == RenderPhase.ITEM_HAND
+                || phase == RenderPhase.DROPPED_ITEM_GROUND
+                || phase == RenderPhase.DROPPED_BLOCK_GROUND);
+
+        if (isItemPhase) {
+            changedLighting = true;
+            GL11.glDisable(GL11.GL_LIGHTING);
+            return;
+        }
+
+        // 方块渲染：按模型 gui_light 字段决定
         boolean frontLight = needsFrontLighting(allQuads);
         if (frontLight) {
             changedLighting = true;
             GL11.glDisable(GL11.GL_LIGHTING);
         } else {
-            // 绝不主动开启 GL_LIGHTING！外层管线（EntityRenderer/RenderItem）
-            // 已设置了正确的 GL 状态，此处不可覆盖。
-            // 参考：原版 RenderBlocks 全程不碰 GL_LIGHTING。
             changedLighting = false;
         }
     }

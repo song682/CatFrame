@@ -252,9 +252,10 @@ public final class CatStateDefinition<O> {
             // 构建邻居跳表
             CatStateDefinition<O> definition = new CatStateDefinition<>(owner, properties, states, propIndexMap, states[0]);
 
-            // 回补所有 state 的 definition（initial state 创建时 definition 尚未构建）
-            for (CatBlockState state : states) {
-                state.setDefinition(definition);
+            // [C2 修复] 回填 definition 到所有 CatBlockState 实例
+            // （创建 CatBlockState 时 definition 为 null，因为 definition 尚未构建）
+            for (CatBlockState s : states) {
+                s.definition = definition;
             }
 
             for (int stateIdx = 0; stateIdx < states.length; stateIdx++) {

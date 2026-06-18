@@ -55,7 +55,8 @@ public class RenderJsonBlockModel implements ISimpleBlockRenderingHandler {
         BlockStateModelPart part = model.collectParts(null, 0, 0, 0, metadata);
         if (part == null || part.isEmpty()) return;
 
-        UniformRenderPipeline.renderBlockQuadsGUI(part, block, null);
+        // [S1] 将 metadata 传入渲染管线，用于 Block.getRenderColor(metadata) 染色
+        UniformRenderPipeline.renderBlockQuadsGUI(part, block, null, metadata);
     }
 
     @Override

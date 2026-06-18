@@ -205,7 +205,8 @@ public class RenderJsonItemModel implements IItemRenderer {
         }
         // Forge 调用链 (GL 后乘, 先调用者在左):
         //   第一人称: rotate(45°Y) → swing_rot → scale(0.4) → [FHClient: translate(-0.5)]
-        //   第三人称: [RenderPlayer] translate(0,0.1875,-0.3125) → rotate(20°X) → rotate(45°Y)
+        //   第三人称: [RenderPlayer] T_hand(-0.0625, 0.4375, 0.0625)
+        //             → translate(0,0.1875,-0.3125) → rotate(20°X) → rotate(45°Y)
         //             → scale(-0.375,-0.375,0.375) → [FHClient: translate(-0.5)]
         // 反抵消 (GL 后乘逆序): 先抵消 FHClient, 再抵消上游额外变换
         if (type == ItemRenderType.EQUIPPED_FIRST_PERSON) {
@@ -219,8 +220,8 @@ public class RenderJsonItemModel implements IItemRenderer {
         } else if (type == ItemRenderType.EQUIPPED) {
             // ① 反抵消 FHClient translate(-0.5)
             GL11.glTranslatef(0.5F, 0.5F, 0.5F);
-            // ② 反抵消 RenderPlayer 方块路径 (所有物品统一, BLOCK_3D=true):
-            //    scale(-0.375) → scale(-2.667)  [*= S(1.0)]
+            // ② 反抵消 RenderPlayer BLOCK_3D 路径 (所有物品统一, BLOCK_3D=true):
+            //    scale(-0.375, -0.375, 0.375) → scale(-2.667, -2.667, 2.667)
             GL11.glScalef(-2.667F, -2.667F, 2.667F);
             //    rotate(45°Y) → rotate(-45°Y)
             GL11.glRotatef(-45.0F, 0.0F, 1.0F, 0.0F);
@@ -228,15 +229,18 @@ public class RenderJsonItemModel implements IItemRenderer {
             GL11.glRotatef(-20.0F, 1.0F, 0.0F, 0.0F);
             //    translate(0,0.1875,-0.3125) → translate(0,-0.1875,0.3125)
             GL11.glTranslatef(0.0F, -0.1875F, 0.3125F);
+            // ③ 反抵消 RenderPlayer line319 translate(-0.0625, 0.4375, 0.0625)
+            //    该偏移从手臂骨骼旋转点移动向手部区域，但 26.1.2 的 translateToHand
+            //    仅做 arm.postRender()，不包含此偏移，必须抵消才能对齐
+            GL11.glTranslatef(0.0625F, -0.4375F, -0.0625F);
 
-            // ③ Bridge: 非方块物品补偿 1.7.10 特有变换差异
-            //    T_hand(-0.0625, 0.4375, 0.0625) 未在 counter 中处理
-            //    且 BLOCK_3D=true 使其丢失了 else 路径的 rotate(-90°X) 倾斜
-            //    → 添加倾斜旋转 + Y 偏移以对齐 26.1 的手持姿态
-            if (!(stack.getItem() instanceof ItemBlock)) {
-                GL11.glRotatef(-90.0F, 1.0F, 0.0F, 0.0F);
-                GL11.glTranslatef(0.0F, -0.35F, 0.0F);
-            }
+            // ④ 应用 26.1.2 ItemInHandLayer 标准对齐变换
+            //    反抵消后矩阵空间 = ArmBone (与 26.1.2 translateToHand 对齐)
+            //    补充 R(-90°X) × R(180°Y) × T(1/16, 2/16, -10/16) 对齐高版本
+            //    所有物品统一走此路径，thirdperson_righthand display 数据负责具体旋转/缩放/位移
+            GL11.glRotatef(-90.0F, 1.0F, 0.0F, 0.0F);
+            GL11.glRotatef(180.0F, 0.0F, 1.0F, 0.0F);
+            GL11.glTranslatef(1.0F / 16.0F, 2.0F / 16.0F, -10.0F / 16.0F);
         }
         if (debugLog) {
             FloatBuffer afterBuf = BufferUtils.createFloatBuffer(16);

@@ -84,10 +84,15 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
         }
         // ====== 诊断结束 ======
 
+        // 当 dt == null 时，使用基于 display key 的默认变换
+        // 对齐 26.1.2 ItemTransform.apply()：即使是 NO_TRANSFORM 也会做 translate(-0.5) 居中
         if (dt == null) {
-            if (shouldLog) LOGGER.info("[DFXDBG] DisplayExt SKIP: dt=null");
-            matrixPushed = false;
-            return;
+            dt = getDefaultTransform(displayKey);
+            if (shouldLog) LOGGER.info(String.format("[DFXDBG] DisplayExt DEFAULT: key=%s dt=rot=%s t=%s s=%s",
+                    displayKey,
+                    java.util.Arrays.toString(dt.rotation),
+                    java.util.Arrays.toString(dt.translation),
+                    java.util.Arrays.toString(dt.scale)));
         }
 
         // 应用 display transform：pushMatrix + transform
@@ -198,6 +203,61 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
      * @param phaseName 渲染阶段名称（如 "ITEM_GUI", "ITEM_HAND_FIRST_PERSON"）
      * @return display 键名（如 "gui", "firstperson_righthand"），若无对应返回 null
      */
+    /**
+     * 返回指定 display key 的默认变换，对齐 26.1.2 ItemTransform Deserializer 默认值。
+     *
+     * <p>26.1.2 中即使 ItemTransform 为 NO_TRANSFORM，
+     * {@code apply()} 也会执行 {@code translate(-0.5, -0.5, -0.5)} 居中。
+     * 当模型 JSON 缺少某个 display key 的数据时，本方法提供合理的默认值，
+     * 确保 [0,1]³ 模型不会原样渲染（否则会沾满屏幕）。</p>
+     *
+     * <p>默认值来源：对齐高版本 generated.json / block.json 中的标准 display 数据。
+     * translation 单位为像素（×0.0625 = 方块单位），scale 为乘数。</p>
+     *
+     * @param displayKey display 键名（如 "gui", "firstperson_righthand"）
+     * @return 默认的 DisplayTransform 实例
+     */
+    private static ModelJson.DisplayTransform getDefaultTransform(String displayKey) {
+        ModelJson.DisplayTransform dt = new ModelJson.DisplayTransform();
+        dt.rotation = new float[]{0, 0, 0};
+        dt.scale = new float[]{1, 1, 1};
+
+        if (displayKey == null) {
+            dt.translation = new float[]{0, 0, 0};
+            return dt;
+        }
+
+        switch (displayKey) {
+            case "firstperson_righthand":
+                // 对齐 26.1.2 NO_TRANSFORM：仅居中，无额外旋转/缩放/位移
+                // block.json 提供 firstperson_righthand: {rotation:[0,45,0], scale:[0.4]}
+                // generated.json 提供 firstperson_righthand: {translation:[1.13,3.2,1.13], scale:[0.68]}
+                // 缺少 display 数据时仅做居中
+                dt.translation = new float[]{0, 0, 0};
+                dt.scale = new float[]{0.68f, 0.68f, 0.68f};
+                break;
+            case "thirdperson_righthand":
+                // 对齐 generated.json 2D 物品默认值
+                dt.rotation = new float[]{0, 0, 0};
+                dt.translation = new float[]{0, 3, 1};
+                dt.scale = new float[]{0.55f, 0.55f, 0.55f};
+                break;
+            case "gui":
+                // 对齐 generated.json GUI 默认值
+                dt.translation = new float[]{0, 0, 0};
+                break;
+            case "ground":
+                // 对齐 generated.json ground 默认值
+                dt.translation = new float[]{0, 2, 0};
+                dt.scale = new float[]{0.5f, 0.5f, 0.5f};
+                break;
+            default:
+                dt.translation = new float[]{0, 0, 0};
+                break;
+        }
+        return dt;
+    }
+
     public static String phaseToDisplayKey(String phaseName) {
         if (phaseName == null) return null;
         switch (phaseName) {

@@ -24,6 +24,12 @@ public class ModelJson {
     public String guiLight;
 
     /**
+     * 标记此模型继承自 builtin/generated（需触发生成侧面 quad）。
+     * transient — 不由 Gson 反序列化，仅由 ModelResolver 在 resolve 时设置。
+     */
+    public transient boolean builtinGenerated = false;
+
+    /**
      * Display transforms for different render contexts
      */
     public Map<String, DisplayTransform> display;

@@ -31,15 +31,19 @@ public class ModelResolver {
         // --- builtin/generated: 标准平面物品模型（单层） ---
         ModelJson generated = new ModelJson();
         generated.guiLight = "front";
+        generated.builtinGenerated = true;
 
-        // 一个平面 element，在 Z=8 平面上显示纹理
+        // 带 1px 厚度的平面 element，与原版 ItemModelGenerator 一致
+        // MIN_Z=7.5, MAX_Z=8.5，1像素厚度防止双面共面 z-fighting
         ModelJson.Element elem = new ModelJson.Element();
-        elem.from = new float[]{0, 0, 8};
-        elem.to = new float[]{16, 16, 8};
+        elem.from = new float[]{0, 0, 7.5f};
+        elem.to = new float[]{16, 16, 8.5f};
         elem.faces = new ModelJson.Faces();
+        // north 面（-Z方向）UV 水平翻转：与 26.1.2 NORTH_FACE_UVS 一致
         elem.faces.north = new ModelJson.Face();
         elem.faces.north.texture = "#layer0";
-        elem.faces.north.uv = new float[]{0, 0, 16, 16};
+        elem.faces.north.uv = new float[]{16, 0, 0, 16};
+        // south 面（+Z方向）正常 UV：与 26.1.2 SOUTH_FACE_UVS 一致
         elem.faces.south = new ModelJson.Face();
         elem.faces.south.texture = "#layer0";
         elem.faces.south.uv = new float[]{0, 0, 16, 16};
@@ -179,6 +183,9 @@ public class ModelResolver {
         // gui_light: child overrides parent
         merged.guiLight = (child.guiLight != null) ? child.guiLight : parent.guiLight;
 
+        // builtinGenerated: OR 传播 — 只要任一祖先来自 builtin/generated，子模型就继承该标记
+        merged.builtinGenerated = parent.builtinGenerated || child.builtinGenerated;
+
         // texture_size: child overrides parent
         merged.texture_size = (child.texture_size != null) ? child.texture_size : parent.texture_size;
 
@@ -312,6 +319,7 @@ public class ModelResolver {
             copy.display = new HashMap<>(source.display);
         }
         copy.guiLight = source.guiLight;
+        copy.builtinGenerated = source.builtinGenerated;
         if (source.texture_size != null) {
             copy.texture_size = source.texture_size.clone();
         }

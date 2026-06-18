@@ -1199,6 +1199,34 @@ public class VanillaModelManager {
             for (ModelJson.Element element : resolved.elements) {
                 quads.addAll(BlockJsonModelBake.bakeElement(element, iconMap, resolved.texture_size));
             }
+
+            // 为 builtin/generated 模型生成侧面 quad（像素级边缘挤出着色）
+            if (resolved.builtinGenerated && !iconMap.isEmpty()) {
+                int totalSideQuads = 0;
+                for (Map.Entry<String, IIcon> texEntry : iconMap.entrySet()) {
+                    // 从纹理键名推导 tintIndex（layer0→0, layer1→1, ... 其他→-1）
+                    int layerTint = -1;
+                    String texKey = texEntry.getKey();
+                    if (texKey.startsWith("layer")) {
+                        try {
+                            layerTint = Integer.parseInt(texKey.substring(5));
+                        } catch (NumberFormatException ignored) { }
+                    }
+                    List<BakedQuad> sideQuads = ItemModelGenerator.bakeSideFaces(texEntry.getValue(), layerTint);
+                    if (!sideQuads.isEmpty()) {
+                        quads.addAll(sideQuads);
+                        totalSideQuads += sideQuads.size();
+                        CatFrame.logger.info("[VMM] bakeModel: generated {} side quads for layer '{}'",
+                                sideQuads.size(), texKey);
+                    } else {
+                        CatFrame.logger.warn("[VMM] bakeModel: NO side quads for layer '{}' (builtinGenerated={})",
+                                texKey, resolved.builtinGenerated);
+                    }
+                }
+                CatFrame.logger.info("[VMM] bakeModel: total {} side quads for model '{}'",
+                        totalSideQuads, modelPath);
+            }
+
             // 传递模型级别的 guiLight 到所有 quad
             if (resolved.guiLight != null) {
                 for (BakedQuad q : quads) {

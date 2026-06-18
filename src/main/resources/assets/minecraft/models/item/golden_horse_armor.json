@@ -1,1 +1,6 @@
-{"parent":"item/generated","textures":{"layer0":"minecraft:items/golden_horse_armor"}}
+{
+    "parent":"item/generated",
+    "textures":{
+        "layer0":"minecraft:items/gold_horse_armor"
+    }
+}

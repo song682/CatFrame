@@ -127,7 +127,18 @@ public class RenderJsonItemModel implements IItemRenderer {
             case BLOCK_3D:
                 // 统一所有自定义渲染物品走 RenderPlayer 方块路径，
                 // 避免非方块物品落入 isFull3D() / else 分支（变换不一致）
-                return true;
+                // 但 ENTITY 类型除外——Forge 在 BLOCK_3D=true 时走 3D 分支
+                // 预应用 scale(0.5 或 0.25)，与 display.ground 叠加导致过小
+                return type != ItemRenderType.ENTITY;
+            case ENTITY_ROTATION:
+                // 掉落物 Y 轴旋转动画（spin）
+                // Forge renderEntityItem 会 glRotatef(rotation, 0, 1, 0)，
+                // 对齐 26.1.2 GroundItemTransforms 的 spin 旋转语义
+                return type == ItemRenderType.ENTITY;
+            case ENTITY_BOBBING:
+                // 返回 true = 保留 Forge 的 bobbing 浮动效果（世界级别）
+                // display.ground.translation 负责模型级别的垂直偏移
+                return type == ItemRenderType.ENTITY;
             case INVENTORY_BLOCK:
                 return false;
             default:
@@ -241,6 +252,12 @@ public class RenderJsonItemModel implements IItemRenderer {
             GL11.glRotatef(-90.0F, 1.0F, 0.0F, 0.0F);
             GL11.glRotatef(180.0F, 0.0F, 1.0F, 0.0F);
             GL11.glTranslatef(1.0F / 16.0F, 2.0F / 16.0F, -10.0F / 16.0F);
+        } else if (type == ItemRenderType.ENTITY) {
+            // Forge ForgeHooksClient.renderEntityItem 在 BLOCK_3D=false 时
+            // 走 else 分支预应用 scale(0.5, 0.5, 0.5)。
+            // 反抵消: scale(2.0) → 净效果 = I，
+            // 让 display.ground 变换完全控制掉落物的大小和位移
+            GL11.glScalef(2.0F, 2.0F, 2.0F);
         }
         if (debugLog) {
             FloatBuffer afterBuf = BufferUtils.createFloatBuffer(16);

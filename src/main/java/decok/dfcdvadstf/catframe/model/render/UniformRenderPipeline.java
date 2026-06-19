@@ -230,6 +230,10 @@ public final class UniformRenderPipeline {
 
         // [C4 修复] 所有 GL 状态操作移入 try 块内，确保异常时 finally 能正确恢复
         try {
+            // 禁用面剔除：builtin/generated 物品的侧面 quad 是 1px 薄片，
+            // 旋转后绕序会翻转，如果开启面剔除会导致侧面在第一人称/掉落物等角度消失。
+            // 对标 26.1.2 ItemModelGenerator 中 addUnculledFace 语义。
+            GL11.glDisable(GL11.GL_CULL_FACE);
             // 根据物品类型绑定正确的 atlas：方块物品用 blocks atlas（spriteNumber=0），
             // 非方块物品用 items atlas（spriteNumber=1）。
             int spriteNumber = (stack != null && stack.getItem() != null)
@@ -301,6 +305,8 @@ public final class UniformRenderPipeline {
                 t.draw();
             }
         } finally {
+            // 恢复面剔除
+            GL11.glEnable(GL11.GL_CULL_FACE);
             if (gui || dropped) {
                 GL11.glDisable(GL11.GL_BLEND);
             }

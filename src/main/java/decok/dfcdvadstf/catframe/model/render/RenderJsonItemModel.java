@@ -255,9 +255,10 @@ public class RenderJsonItemModel implements IItemRenderer {
         } else if (type == ItemRenderType.ENTITY) {
             // Forge ForgeHooksClient.renderEntityItem 在 BLOCK_3D=false 时
             // 走 else 分支预应用 scale(0.5, 0.5, 0.5)。
-            // 反抵消: scale(2.0) → 净效果 = I，
-            // 让 display.ground 变换完全控制掉落物的大小和位移
-            GL11.glScalef(2.0F, 2.0F, 2.0F);
+            // 反抵消: scale(4.0) → Forge(0.5) × counter(4.0) = 2.0
+            // 再经 display.ground.scale(0.5) → 净 1.0（全尺寸）
+            // 对齐原版掉落物的视觉大小
+            GL11.glScalef(4.0F, 4.0F, 4.0F);
         }
         if (debugLog) {
             FloatBuffer afterBuf = BufferUtils.createFloatBuffer(16);

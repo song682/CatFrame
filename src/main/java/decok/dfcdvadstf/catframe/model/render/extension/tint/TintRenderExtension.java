@@ -40,11 +40,14 @@ public final class TintRenderExtension implements IModelRenderExtension {
                 break;
             case DROPPED_BLOCK_GROUND:
                 // 落地方块：优先使用世界上下文获取生物群系染色，
-                // 无世界上下文时回退到 Block.getRenderColor(0)
+                // 无世界上下文时回退到 Block.getRenderColor(0) 或物品染色
                 if (ctx.block != null && ctx.world != null) {
                     rgb = TintRegistry.getBlockTint(ctx.world, ctx.x, ctx.y, ctx.z, ctx.block, idx);
                 } else if (ctx.block != null) {
                     rgb = ctx.block.getRenderColor(0) & 0xFFFFFF;
+                } else if (ctx.stack != null) {
+                    // [S6 修复] 无世界上下文时退回到物品染色（如树叶掉落物）
+                    rgb = TintRegistry.getItemTint(ctx.stack, idx);
                 } else {
                     return;
                 }

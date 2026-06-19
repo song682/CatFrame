@@ -9,6 +9,7 @@ import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.init.Blocks;
+import net.minecraft.item.ItemBlock;
 import net.minecraft.util.IIcon;
 
 import java.util.ArrayList;
@@ -228,20 +229,39 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
 
     @Override
     public void apply(RenderContext ctx) {
-        // 仅在世界渲染阶段生效
-        if (ctx.phase != RenderPhase.BLOCK_WORLD) return;
-        if (ctx.block == null || ctx.world == null) return;
-
         // 仅在流畅画质下切换纹理
         if (!shouldUseOpaque()) return;
 
+        Block leafBlock = null;
+        int metadata = 0;
+
+        switch (ctx.phase) {
+            case BLOCK_WORLD:
+                if (ctx.block == null || ctx.world == null) return;
+                leafBlock = ctx.block;
+                metadata = ctx.world.getBlockMetadata(ctx.x, ctx.y, ctx.z);
+                break;
+
+            case ITEM_GUI:
+            case ITEM_HAND_FIRST_PERSON:
+            case ITEM_HAND_THIRD_PERSON:
+            case DROPPED_ITEM_GROUND:
+            case DROPPED_BLOCK_GROUND:
+                // 物品阶段：从 ItemStack 推导方块和 metadata
+                if (ctx.stack == null || !(ctx.stack.getItem() instanceof ItemBlock)) return;
+                leafBlock = ((ItemBlock) ctx.stack.getItem()).field_150939_a;
+                metadata = ctx.stack.getItemDamage();
+                break;
+
+            default:
+                return;
+        }
+
         // 检查是否是叶子方块
-        boolean isLeaf = LEAF_BLOCKS.contains(ctx.block);
-        if (!isLeaf) return;
+        if (leafBlock == null || !LEAF_BLOCKS.contains(leafBlock)) return;
 
         // 获取 _opaque IIcon
-        int metadata = ctx.world.getBlockMetadata(ctx.x, ctx.y, ctx.z);
-        IIcon opaqueIcon = getOpaqueIcon(ctx.block, metadata);
+        IIcon opaqueIcon = getOpaqueIcon(leafBlock, metadata);
         if (opaqueIcon != null) {
             ctx.iconOverride = opaqueIcon;
         }

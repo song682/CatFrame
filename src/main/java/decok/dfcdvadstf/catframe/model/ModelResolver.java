@@ -43,10 +43,12 @@ public class ModelResolver {
         elem.faces.north = new ModelJson.Face();
         elem.faces.north.texture = "#layer0";
         elem.faces.north.uv = new float[]{16, 0, 0, 16};
+        elem.faces.north.tintIndex = 0;
         // south 面（+Z方向）正常 UV：与 26.1.2 SOUTH_FACE_UVS 一致
         elem.faces.south = new ModelJson.Face();
         elem.faces.south.texture = "#layer0";
         elem.faces.south.uv = new float[]{0, 0, 16, 16};
+        elem.faces.south.tintIndex = 0;
         generated.elements = new ArrayList<>();
         generated.elements.add(elem);
 
@@ -189,7 +191,114 @@ public class ModelResolver {
         // texture_size: child overrides parent
         merged.texture_size = (child.texture_size != null) ? child.texture_size : parent.texture_size;
 
+        // builtin/generated 多层扩展：扫描纹理中的 layerN 键，为每层生成独立 element
+        // 默认最多支持 4 层（layer0~layer3），ModernItem 走自己的 N-pass 机制不受此限制
+        if (merged.builtinGenerated) {
+            expandBuiltinGeneratedLayers(merged);
+        }
+
         return merged;
+    }
+
+    /**
+     * builtin/generated 多层扩展。
+     * <p>
+     * 扫描合并后的纹理映射，找出 {@code layer0}~{@code layer3}（最多 4 层）。
+     * 为每个额外层创建一个与原始 element 相同几何体但引用不同纹理的副本，
+     * 并为每层的 north/south 面设置对应的 {@code tintIndex}（layer0→0, layer1→1, …）。
+     * <p>
+     * 侧面 quad 由 {@link VanillaModelManager} 中的 bakeSideFaces 循环按纹理键名自动处理，
+     * 无需在此处额外生成。
+     */
+    private static void expandBuiltinGeneratedLayers(ModelJson model) {
+        if (model.textures == null || model.elements == null || model.elements.isEmpty()) return;
+
+        // 收集存在的 layerN（N >= 1）
+        List<Integer> extraLayers = new ArrayList<>();
+        for (int i = 1; i <= 3; i++) {
+            if (model.textures.containsKey("layer" + i)) {
+                extraLayers.add(i);
+            }
+        }
+        if (extraLayers.isEmpty()) return;
+
+        // 安全拷贝 elements 列表，避免污染父模型引用
+        model.elements = new ArrayList<>(model.elements);
+
+        // 深拷贝原始 element，避免修改 tintIndex 时污染静态 builtin 模型
+        ModelJson.Element original = deepCopyElement(model.elements.get(0));
+        model.elements.set(0, original);
+        ensureFaceTintIndex(original, 0);
+
+        // 为每个额外层创建 element 副本
+        for (int layer : extraLayers) {
+            ModelJson.Element elem = deepCopyElement(original);
+            if (elem.faces.north != null) elem.faces.north.texture = "#layer" + layer;
+            if (elem.faces.south != null) elem.faces.south.texture = "#layer" + layer;
+            if (elem.faces.east  != null) elem.faces.east.texture  = "#layer" + layer;
+            if (elem.faces.west  != null) elem.faces.west.texture  = "#layer" + layer;
+            if (elem.faces.up    != null) elem.faces.up.texture    = "#layer" + layer;
+            if (elem.faces.down  != null) elem.faces.down.texture  = "#layer" + layer;
+            ensureFaceTintIndex(elem, layer);
+            model.elements.add(elem);
+        }
+
+        CatFrame.logger.debug("[ModelResolver] expanded builtin/generated to {} layers",
+                model.elements.size());
+    }
+
+    /**
+     * 确保 element 的所有面的 tintIndex 与给定层号一致。
+     */
+    private static void ensureFaceTintIndex(ModelJson.Element elem, int tintIndex) {
+        if (elem.faces == null) return;
+        if (elem.faces.north != null) elem.faces.north.tintIndex = tintIndex;
+        if (elem.faces.south != null) elem.faces.south.tintIndex = tintIndex;
+        if (elem.faces.east  != null) elem.faces.east.tintIndex  = tintIndex;
+        if (elem.faces.west  != null) elem.faces.west.tintIndex  = tintIndex;
+        if (elem.faces.up    != null) elem.faces.up.tintIndex    = tintIndex;
+        if (elem.faces.down  != null) elem.faces.down.tintIndex  = tintIndex;
+    }
+
+    /**
+     * 深拷贝一个 Element（仅复制几何与面数据，不共享引用）。
+     */
+    private static ModelJson.Element deepCopyElement(ModelJson.Element src) {
+        ModelJson.Element dst = new ModelJson.Element();
+        dst.from = src.from != null ? src.from.clone() : null;
+        dst.to   = src.to   != null ? src.to.clone()   : null;
+        dst.ambientocclusion = src.ambientocclusion;
+        dst.shade = src.shade;
+        if (src.rotation != null) {
+            dst.rotation = new ModelJson.Rotation();
+            dst.rotation.angle = src.rotation.angle;
+            dst.rotation.axis  = src.rotation.axis;
+            dst.rotation.origin = src.rotation.origin != null ? src.rotation.origin.clone() : null;
+            dst.rotation.x = src.rotation.x;
+            dst.rotation.y = src.rotation.y;
+            dst.rotation.z = src.rotation.z;
+        }
+        if (src.faces != null) {
+            dst.faces = new ModelJson.Faces();
+            dst.faces.north = copyFace(src.faces.north);
+            dst.faces.south = copyFace(src.faces.south);
+            dst.faces.east  = copyFace(src.faces.east);
+            dst.faces.west  = copyFace(src.faces.west);
+            dst.faces.up    = copyFace(src.faces.up);
+            dst.faces.down  = copyFace(src.faces.down);
+        }
+        return dst;
+    }
+
+    private static ModelJson.Face copyFace(ModelJson.Face src) {
+        if (src == null) return null;
+        ModelJson.Face dst = new ModelJson.Face();
+        dst.uv = src.uv != null ? src.uv.clone() : null;
+        dst.texture  = src.texture;
+        dst.rotation = src.rotation;
+        dst.cullface = src.cullface;
+        dst.tintIndex = src.tintIndex;
+        return dst;
     }
 
     /**

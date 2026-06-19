@@ -15,6 +15,7 @@ import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
+import decok.dfcdvadstf.catframe.model.render.extension.tint.SpawnEggAndPotionTintProvider;
 import decok.dfcdvadstf.catframe.tags.CatFrameTags;
 import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
@@ -64,6 +65,7 @@ public class CatFrame {
 
             // Pre
             LeavesTintProvider.register();
+            SpawnEggAndPotionTintProvider.register();
             //Example: Register the leave textures change during graphics changes.
             ModelRenderRegistry.register(new LeavesGraphicsExtension());
         }

@@ -1,1 +1,1 @@
-{"parent":"item/generated","textures":{"layer0":"minecraft:items/potion"}}
+{"parent":"item/generated","textures":{"layer0":"minecraft:items/potion","layer1":"minecraft:items/potion_overlay"}}

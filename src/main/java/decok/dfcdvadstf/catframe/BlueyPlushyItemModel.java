@@ -11,9 +11,10 @@ import java.util.Map;
 /**
  * Bluey 毛绒玩偶的 ItemModel。
  * <p>
- * 按照文档实现"快捷栏 2D + 手持 3D"：
+ * 实现"物品栏 2D + 掉落物 2D + 手持 3D"：
  * <ul>
- *   <li>{@link RenderPhase#ITEM_GUI} → 不接管，走原版 2D 图标渲染（{@link #handles(RenderPhase)} 返回 false）</li>
+ *   <li>{@link RenderPhase#ITEM_GUI} / {@link RenderPhase#DROPPED_ITEM_GROUND}
+ *       → 接管，渲染 {@code bluey_inventory} 2D 模型（含侧面厚度）</li>
  *   <li>{@link RenderPhase#ITEM_HAND_FIRST_PERSON} / {@link RenderPhase#ITEM_HAND_THIRD_PERSON}
  *       → 接管，渲染 {@code bluey} 3D 模型</li>
  * </ul>
@@ -21,16 +22,20 @@ import java.util.Map;
 public class BlueyPlushyItemModel implements ItemModel {
 
     private static final String MODEL_3D = "item/bluey";
+    private static final String MODEL_2D = "item/bluey_inventory";
 
     private BlockStateModelPart part3D = null;
     private Map<String, ModelJson.DisplayTransform> display3D = null;
 
+    private BlockStateModelPart part2D = null;
+    private Map<String, ModelJson.DisplayTransform> display2D = null;
+
     /**
-     * GUI 走原版 2D 图标，手持走自定义 3D 模型。
+     * 所有阶段都接管——2D 阶段用 inventory 模型渲染，手持阶段用 3D 模型渲染。
      */
     @Override
     public boolean handles(RenderPhase phase) {
-        return phase != RenderPhase.ITEM_GUI;
+        return true;
     }
 
     @Override
@@ -38,6 +43,9 @@ public class BlueyPlushyItemModel implements ItemModel {
         if (phase == RenderPhase.ITEM_HAND_FIRST_PERSON
                 || phase == RenderPhase.ITEM_HAND_THIRD_PERSON) {
             renderHand(stack, phase);
+        } else if (phase == RenderPhase.ITEM_GUI
+                || phase == RenderPhase.DROPPED_ITEM_GROUND) {
+            render2D(stack, phase);
         }
     }
 
@@ -50,5 +58,19 @@ public class BlueyPlushyItemModel implements ItemModel {
         if (part3D == null || part3D.isEmpty()) return;
 
         UniformRenderPipeline.renderItemQuads(part3D, stack, phase, display3D);
+    }
+
+    /**
+     * 用 2D inventory 模型渲染（builtin/generated 会生成侧面，保持厚度）。
+     */
+    private void render2D(ItemStack stack, RenderPhase phase) {
+        if (part2D == null) {
+            part2D = VanillaModelManager.ModelRegistration.bakeModelPart(MODEL_2D, 0);
+            ModelJson resolved = ModelResolver.resolve(MODEL_2D);
+            display2D = (resolved != null) ? resolved.display : null;
+        }
+        if (part2D == null || part2D.isEmpty()) return;
+
+        UniformRenderPipeline.renderItemQuads(part2D, stack, phase, display2D);
     }
 }

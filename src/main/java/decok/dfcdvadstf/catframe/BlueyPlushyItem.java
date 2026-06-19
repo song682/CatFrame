@@ -5,8 +5,9 @@ import net.minecraft.creativetab.CreativeTabs;
 /**
  * Bluey 毛绒玩偶物品。
  * <p>
- * 使用 {@link ModernItem} 的多层纹理系统提供快捷栏 2D 图标，
- * 并搭配 {@link BlueyPlushyItemModel} 实现手持 3D 渲染。
+ * 使用 {@link ModernItem} 的双模型系统：
+ * 通过 {@link #setModels(String, String)} 配置
+ * 2D inventory 模型（GUI + 掉落物）和 3D 手持模型。
  */
 public class BlueyPlushyItem extends ModernItem {
 
@@ -19,5 +20,7 @@ public class BlueyPlushyItem extends ModernItem {
         // 实际纹理文件位于 assets/.../textures/items/bluey_pixelized_inventory.png
         this.setLayerTextureNames("catframe:bluey_pixelized_inventory");
         this.setCreativeTab(CreativeTabs.tabMisc);
+        // 双模型配置：GUI/掉落物走 2D inventory，手持走 3D 模型
+        this.setModels("item/bluey_inventory", "item/bluey");
     }
 }

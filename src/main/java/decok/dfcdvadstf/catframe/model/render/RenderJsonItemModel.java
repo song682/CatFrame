@@ -76,11 +76,18 @@ public class RenderJsonItemModel implements IItemRenderer {
     // ==================== handleRenderType ====================
 
     /**
-     * 只要 CatFrame 有该物品的模型就接管渲染。
+     * 检查 CatFrame 是否接管该物品在指定阶段的渲染。
      *
      * <p>对于 {@link ItemBlock}：检查方块是否有 CatFrame 模型
      * （{@link VanillaModelManager.ModelRegistration#hasModel(Block)}）。
-     * 对于非方块物品：检查是否有注册的 {@link ItemModel}。</p>
+     * 对于非方块物品：先获取注册的 {@link ItemModel}，再将其
+     * {@link ItemModel#handles(RenderPhase)} 映射到 Forge 的
+     * {@code handleRenderType} 返回值。</p>
+     *
+     * <p>这样，实现了 {@code handles()} 的 ItemModel 可以精细控制
+     * 哪些阶段由 CatFrame 接管、哪些退回原版渲染。
+     * 例如 {@code handles(ITEM_GUI) = false} 的模型在 GUI 会走原版 2D，
+     * 而 {@code handles(ITEM_HAND_*) = true} 的手持阶段走自定义 3D。</p>
      *
      * <p>FIRST_PERSON_MAP 不接管——地图物品专用路径。</p>
      */
@@ -95,8 +102,14 @@ public class RenderJsonItemModel implements IItemRenderer {
             return block != null && VanillaModelManager.ModelRegistration.hasModel(block);
         }
 
-        // Non-block items → check if there's a registered ItemModel
-        return VanillaModelManager.ModelRegistration.getRegisteredItemModel(item.getItem()) != null;
+        // Non-block items → get ItemModel and delegate to handles(RenderPhase)
+        ItemModel model = VanillaModelManager.ModelRegistration.getRegisteredItemModel(item.getItem());
+        if (model == null) return false;
+
+        RenderPhase phase = toRenderPhase(type, item);
+        if (phase == null) return false;
+
+        return model.handles(phase);
     }
 
     // ==================== shouldUseRenderHelper ====================
@@ -255,10 +268,9 @@ public class RenderJsonItemModel implements IItemRenderer {
         } else if (type == ItemRenderType.ENTITY) {
             // Forge ForgeHooksClient.renderEntityItem 在 BLOCK_3D=false 时
             // 走 else 分支预应用 scale(0.5, 0.5, 0.5)。
-            // 反抵消: scale(4.0) → Forge(0.5) × counter(4.0) = 2.0
-            // 再经 display.ground.scale(0.5) → 净 1.0（全尺寸）
-            // 对齐原版掉落物的视觉大小
-            GL11.glScalef(4.0F, 4.0F, 4.0F);
+            // 反抵消: scale(2.0) → Forge(0.5) × counter(2.0) = 1.0
+            // 再经 display.ground.scale(0.5) → 净 0.5（半格，对齐原版 2D 掉落物）
+            GL11.glScalef(2.0F, 2.0F, 2.0F);
         }
         if (debugLog) {
             FloatBuffer afterBuf = BufferUtils.createFloatBuffer(16);

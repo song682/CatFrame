@@ -110,6 +110,13 @@ public class VanillaModelManager {
      */
     private static final Map<Item, ItemModel> registeredItemModels = new HashMap<>();
 
+    /**
+     * Items registered via {@link ModelRegistration#registerItemModel} (manual/persistent).
+     * These entries survive {@link ModelBaking#rebuildItemModels()} — only auto-generated
+     * ItemModelWrappers from {@code model_mappings.json} are cleared on rebuild.
+     */
+    private static final Set<Item> persistentItemModels = new HashSet<>();
+
     // ==================== CatStateDefinition Registry ====================
 
     /**
@@ -873,7 +880,9 @@ public class VanillaModelManager {
             bakedModelCache.clear();
             bakedItemModels.clear();
             itemDisplayTransforms.clear();
-            registeredItemModels.clear();
+
+            // 只清除非持久（自动生成的 ItemModelWrapper）的条目，保留手动注册的模型
+            registeredItemModels.keySet().removeIf(item -> !persistentItemModels.contains(item));
 
             // 重新烘焙 item 模型（仅从 loadedMappings 中的 items 部分）
             for (Map.Entry<String, ModelMappings> entry : loadedMappings.entrySet()) {
@@ -1388,9 +1397,14 @@ public class VanillaModelManager {
         /**
          * Register an ItemModel for an item.
          * Also immediately registers the Forge IItemRenderer if the model system has been initialized.
+         * <p>
+         * Manually registered models are marked persistent: they survive
+         * {@link ModelBaking#rebuildItemModels()}, which only clears auto-generated
+         * ItemModelWrappers from {@code model_mappings.json}.
          */
         public static void registerItemModel(Item item, ItemModel model) {
             registeredItemModels.put(item, model);
+            persistentItemModels.add(item);
             // 如果烘焙已完成，立即注册 Forge IItemRenderer
             if (initialized) {
                 MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);

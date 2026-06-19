@@ -44,9 +44,7 @@ public class CatFrame {
             CatFrameTags.add("plushy", blueyPlushy);
         }
 
-        // --- Register vanilla metadata-to-property mappings (1.7.10 compat) ---
         if (event.getSide() == Side.CLIENT) {
-            // 注册本 mod 的语言域，然后初始化 JSON 本地化系统
             LanguageRegister.domain(Tags.MODID, "assets/catframe/lang");
             LocalizationManager.Loader.load();
 
@@ -54,19 +52,17 @@ public class CatFrame {
             VanillaModelManager.DataLoading.registerNamespace("catframe");
             VanillaModelManager.DataLoading.init();
 
-            //  Bluey 客户端注册（在 DataLoading.init 之后）
             if (blueyPlushy != null) {
-                // 收集物品纹理 → 注册到 item atlas（type 1）
+                // 收集两个模型的纹理
                 VanillaModelManager.TextureManagement.collectTextures("item/bluey", true);
                 VanillaModelManager.TextureManagement.collectTextures("item/bluey_inventory", true);
-                // 注册自定义 ItemModel（快捷栏 2D + 手持 3D）
-                VanillaModelManager.ModelRegistration.registerItemModel(blueyPlushy, new BlueyPlushyItemModel());
+                // 通过 ModernItem 的双模型 API 注册
+                VanillaModelManager.ModelRegistration.registerItemModel(
+                        blueyPlushy, blueyPlushy.createItemModel());
             }
 
-            // Pre
             LeavesTintProvider.register();
             SpawnEggAndPotionTintProvider.register();
-            //Example: Register the leave textures change during graphics changes.
             ModelRenderRegistry.register(new LeavesGraphicsExtension());
         }
 

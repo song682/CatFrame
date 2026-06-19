@@ -2,9 +2,13 @@ package decok.dfcdvadstf.catframe;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.model.ItemModel;
+import decok.dfcdvadstf.catframe.model.ModelJson;
+import decok.dfcdvadstf.catframe.model.ModelResolver;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.Item;
@@ -12,30 +16,31 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
 
 import java.util.List;
+import java.util.Map;
 
 /**
- * ItemModern — extended Item with two key features over vanilla Item:
+ * ModernItem — extended Item with two key features over vanilla Item:
  *
  * <h3>1. Multi-layer texture rendering</h3>
  * Subclasses can specify any number (3+) of rendering passes via
  * {@link #setLayerCount(int)} / {@link #setLayerTextureNames(String...)}.
- * Vanilla only supports 1 or 2 passes; ItemModern supports N passes.
+ * Vanilla only supports 1 or 2 passes; ModernItem supports N passes.
  * Each pass renders a separate full-brightness flat quad in the GUI.
  *
- * <h3>2. Handheld 3D via JSON Model System</h3>
- * Handheld 3D rendering is fully managed by CatFrame's JSON model system.
- * When an ItemModern has a registered JSON model, the {@link UniformRenderPipeline}
- * applies per-context display transforms (gui / firstperson_righthand /
- * thirdperson_righthand) automatically based on {@link RenderPhase}.
- * When no JSON model is registered, the vanilla {@code isFull3D()} flag
- * (set in the constructor) controls hand rendering.
+ * <h3>2. Dual-model rendering (2D inventory + 3D handheld)</h3>
+ * Call {@link #setModels(String, String)} in the constructor to specify
+ * separate 2D (inventory) and 3D (handheld) model paths. The built-in
+ * {@link DualRenderItemModel} automatically dispatches:
+ * <ul>
+ *   <li>GUI / dropped item → 2D inventory model (builtin/generated, with side thickness)</li>
+ *   <li>First/third person hand → 3D handheld model</li>
+ * </ul>
+ * When only one model is set (via {@link VanillaModelManager.ModelRegistration#registerItemModel}),
+ * that model is used for all phases.
  *
  * <h3>Model system compatibility</h3>
- * ItemModern is a plain {@link Item} subclass — it works transparently
+ * ModernItem is a plain {@link Item} subclass — it works transparently
  * with {@link VanillaModelManager} and the existing JSON model pipeline.
- * When an ItemModern is registered via {@code model_mappings.json},
- * {@link VanillaModelManager.ModelRegistration#hasItemModel(Item)} returns {@code true}
- * and the model-baked quads override the vanilla icon path.
  */
 public class ModernItem extends Item {
 
@@ -54,6 +59,20 @@ public class ModernItem extends Item {
      * Number of render passes (default 1).
      */
     protected int layerCount;
+
+    // ==================== Dual-model configuration ====================
+
+    /**
+     * 2D inventory model path (e.g. "item/bluey_inventory"), used for GUI and dropped item rendering.
+     * Set by {@link #setModels(String, String)}.
+     */
+    protected String inventoryModelPath;
+
+    /**
+     * 3D handheld model path (e.g. "item/bluey"), used for first/third person hand rendering.
+     * Set by {@link #setModels(String, String)}.
+     */
+    protected String handModelPath;
 
     // ==================== Constructors ====================
 
@@ -165,6 +184,44 @@ public class ModernItem extends Item {
         }
     }
 
+    // ==================== Dual-model API ====================
+
+    /**
+     * Set separate 2D and 3D model paths for this item.
+     * Automatically creates and registers a {@link DualRenderItemModel}.
+     * <p>
+     * Must be called <b>before</b> {@link VanillaModelManager.DataLoading#init()}
+     * so that texture collection can pick up both models' textures.
+     *
+     * @param inventoryModel 2D model path for GUI and dropped items (e.g. "item/bluey_inventory")
+     * @param handModel      3D model path for handheld rendering (e.g. "item/bluey")
+     * @return this
+     */
+    public ModernItem setModels(String inventoryModel, String handModel) {
+        this.inventoryModelPath = inventoryModel;
+        this.handModelPath = handModel;
+        return this;
+    }
+
+    /**
+     * Returns true if this item has dual-model configuration.
+     */
+    public boolean hasDualModels() {
+        return inventoryModelPath != null && handModelPath != null;
+    }
+
+    /**
+     * Create the dual-render ItemModel for this item.
+     * Called by registration code after DataLoading.init().
+     */
+    @SideOnly(Side.CLIENT)
+    public ItemModel createItemModel() {
+        if (hasDualModels()) {
+            return new DualRenderItemModel(inventoryModelPath, handModelPath);
+        }
+        return null;
+    }
+
     // ==================== Convenience ====================
 
     /**
@@ -187,5 +244,67 @@ public class ModernItem extends Item {
         // Default: single sub-item.  Subclasses with multiple damage values
         // should override this.
         list.add(new ItemStack(item, 1, 0));
+    }
+
+    // ==================== Dual-render ItemModel ====================
+
+    /**
+     * 内建的双模型 ItemModel：GUI/掉落物用 2D inventory 模型，手持用 3D 模型。
+     * <p>
+     * 由 {@link ModernItem#setModels(String, String)} 触发创建，
+     * 替代了每个物品单独实现 {@link ItemModel} 的需要。
+     */
+    public static class DualRenderItemModel implements ItemModel {
+
+        private final String model2D;
+        private final String model3D;
+
+        private BlockStateModelPart part2D;
+        private Map<String, ModelJson.DisplayTransform> display2D;
+        private BlockStateModelPart part3D;
+        private Map<String, ModelJson.DisplayTransform> display3D;
+
+        public DualRenderItemModel(String model2D, String model3D) {
+            this.model2D = model2D;
+            this.model3D = model3D;
+        }
+
+        @Override
+        public boolean handles(RenderPhase phase) {
+            return true;
+        }
+
+        @Override
+        public void render(ItemStack stack, RenderPhase phase) {
+            if (phase == RenderPhase.ITEM_HAND_FIRST_PERSON
+                    || phase == RenderPhase.ITEM_HAND_THIRD_PERSON) {
+                render3D(stack, phase);
+            } else if (phase == RenderPhase.ITEM_GUI
+                    || phase == RenderPhase.DROPPED_ITEM_GROUND) {
+                render2D(stack, phase);
+            }
+        }
+
+        private void render3D(ItemStack stack, RenderPhase phase) {
+            if (part3D == null) {
+                part3D = VanillaModelManager.ModelRegistration.bakeModelPart(model3D, 0);
+                ModelJson resolved = ModelResolver.resolve(model3D);
+                display3D = (resolved != null) ? resolved.display : null;
+            }
+            if (part3D == null || part3D.isEmpty()) return;
+
+            UniformRenderPipeline.renderItemQuads(part3D, stack, phase, display3D);
+        }
+
+        private void render2D(ItemStack stack, RenderPhase phase) {
+            if (part2D == null) {
+                part2D = VanillaModelManager.ModelRegistration.bakeModelPart(model2D, 0);
+                ModelJson resolved = ModelResolver.resolve(model2D);
+                display2D = (resolved != null) ? resolved.display : null;
+            }
+            if (part2D == null || part2D.isEmpty()) return;
+
+            UniformRenderPipeline.renderItemQuads(part2D, stack, phase, display2D);
+        }
     }
 }

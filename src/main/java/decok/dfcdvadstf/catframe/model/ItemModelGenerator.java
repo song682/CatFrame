@@ -238,8 +238,11 @@ public class ItemModelGenerator {
             int x, int y, boolean isLeft,
             float xScale, float yScale, int tintIndex, int pixelARGB) {
 
-        // 世界坐标（block 空间 0-1）
-        float worldX = isLeft ? 0.0F : 1.0F;
+        // 世界坐标（block 空间 0-1）—— 对标 26.1.2：
+        // LEFT 边在像素左边界 (x * xScale)，RIGHT 边在像素右边界 ((x+1) * xScale)
+        float worldX = isLeft
+                ? (x * xScale) / 16.0F
+                : ((x + 1.0F) * xScale) / 16.0F;
 
         // Y: 像素 y → block 空间（Y 翻转：纹理上方 → 世界上方）
         float worldY0 = (16.0F - (y + 1.0F) * yScale) / 16.0F;

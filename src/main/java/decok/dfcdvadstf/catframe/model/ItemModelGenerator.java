@@ -29,6 +29,12 @@ public class ItemModelGenerator {
     static final float MAX_Z = 8.5F;
 
     /**
+     * UV 内缩量（像素空间），对标 26.1.2 ItemModelGenerator.UV_SHRINK。
+     * 侧面 quad 的 UV 从像素边界各缩进 0.1 像素，避免图集接缝处的相邻像素闪烁。
+     */
+    private static final float UV_SHRINK = 0.1F;
+
+    /**
      * 保留的纹理帧数据缓存。
      * <p>
      * Minecraft 1.7.10 的 {@code TextureMap.loadTextureAtlas} 在将非动画 sprite
@@ -168,9 +174,21 @@ public class ItemModelGenerator {
             worldY = (16.0F - (y + 1.0F) * yScale) / 16.0F;
         }
 
-        // UV（0-16 抽象空间）—— 侧面所有顶点采样同一像素中心，确保纯色一致
-        float uCenter = (x + 0.5F) * xScale;
-        float vCenter = (y + 0.5F) * yScale;
+        // UV（像素空间）—— 对标 26.1.2：u0/u1 为像素左右边界 + UV_SHRINK，
+        // v0/v1 因方向不同：水平面(UP/DOWN) V 轴反转（v0=bottom, v1=top），
+        // 垂直面(EAST/WEST) V 轴正常（v0=top, v1=bottom）。
+        float u0 = (x + UV_SHRINK) * xScale;
+        float u1 = (x + 1.0F - UV_SHRINK) * xScale;
+        float v0, v1;
+        if (isTop) {
+            // UP: V 反转 —— v0 对应像素底部（worldY 侧），v1 对应像素顶部
+            v0 = (y + 1.0F - UV_SHRINK) * yScale;
+            v1 = (y + UV_SHRINK) * yScale;
+        } else {
+            // DOWN: V 正常 —— v0=像素顶部, v1=像素底部
+            v0 = (y + UV_SHRINK) * yScale;
+            v1 = (y + 1.0F - UV_SHRINK) * yScale;
+        }
 
         EnumFacing face = isTop ? EnumFacing.UP : EnumFacing.DOWN;
 
@@ -195,11 +213,11 @@ public class ItemModelGenerator {
             q.vx[2] = worldX1; q.vy[2] = worldY; q.vz[2] = MIN_Z / 16.0F;
             q.vx[3] = worldX1; q.vy[3] = worldY; q.vz[3] = MAX_Z / 16.0F;
         }
-        // 侧面 quad 所有顶点 UV 指向像素中心，配合 solidColor 实现纯色填充
-        for (int i = 0; i < 4; i++) {
-            q.up[i] = uCenter;
-            q.vp[i] = vCenter;
-        }
+        // UV 按顶点分配：v0→MIN_Z 顶点, v1→MAX_Z 顶点；u0→MIN_X, u1→MAX_X
+        q.up[0] = u0; q.vp[0] = v0;
+        q.up[1] = u0; q.vp[1] = v1;
+        q.up[2] = u1; q.vp[2] = v1;
+        q.up[3] = u1; q.vp[3] = v0;
 
         q.faceNormal = faceNormal(face);
         quads.add(q);
@@ -227,9 +245,12 @@ public class ItemModelGenerator {
         float worldY0 = (16.0F - (y + 1.0F) * yScale) / 16.0F;
         float worldY1 = (16.0F - y * yScale) / 16.0F;
 
-        // UV（垂直面所有顶点采样同一像素中心，配合 solidColor 实现纯色填充）
-        float uCenter = (x + 0.5F) * xScale;
-        float vCenter = (y + 0.5F) * yScale;
+        // UV（像素空间）—— 对标 26.1.2：u0/u1 为像素左右边界 + UV_SHRINK，
+        // v0/v1 为像素上下边界 + UV_SHRINK（垂直面 V 轴不反转）
+        float u0 = (x + UV_SHRINK) * xScale;
+        float u1 = (x + 1.0F - UV_SHRINK) * xScale;
+        float v0 = (y + UV_SHRINK) * yScale;
+        float v1 = (y + 1.0F - UV_SHRINK) * yScale;
 
         // 26.1.2: LEFT→EAST, RIGHT→WEST
         EnumFacing face = isLeft ? EnumFacing.EAST : EnumFacing.WEST;
@@ -257,11 +278,11 @@ public class ItemModelGenerator {
             q.vx[2] = worldX; q.vy[2] = worldY0; q.vz[2] = MAX_Z / 16.0F;
             q.vx[3] = worldX; q.vy[3] = worldY1; q.vz[3] = MAX_Z / 16.0F;
         }
-        // 侧面 quad 所有顶点 UV 指向像素中心，配合 solidColor 实现纯色填充
-        for (int i = 0; i < 4; i++) {
-            q.up[i] = uCenter;
-            q.vp[i] = vCenter;
-        }
+        // UV 按顶点分配：v0→MAX_Y(top) 顶点, v1→MIN_Y(bottom) 顶点；u 统一
+        q.up[0] = u0; q.vp[0] = v0;
+        q.up[1] = u0; q.vp[1] = v1;
+        q.up[2] = u0; q.vp[2] = v1;
+        q.up[3] = u0; q.vp[3] = v0;
 
         q.faceNormal = faceNormal(face);
         quads.add(q);

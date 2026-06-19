@@ -5,8 +5,10 @@ import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IIcon;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import decok.dfcdvadstf.catframe.CatFrame;
@@ -27,6 +29,25 @@ public class ItemModelGenerator {
     static final float MAX_Z = 8.5F;
 
     /**
+     * 保留的纹理帧数据缓存。
+     * <p>
+     * Minecraft 1.7.10 的 {@code TextureMap.loadTextureAtlas} 在将非动画 sprite
+     * 上传 GPU 后会调用 {@code clearFramesTextureData()} 清空帧数据。
+     * 而模型烘焙发生在 atlas 加载之后，此时 {@code getFrameTextureData(0)} 已返回空。
+     * <p>
+     * 此缓存由 {@code MixinTextureMap} 在 clear 之前保存，供侧面生成器使用。
+     * 键为 sprite 名称（如 "stick"、"diamond_sword"），值为帧数据（mipmap 层级数组）。
+     */
+    public static final Map<String, int[][]> preservedFrames = new HashMap<>();
+
+    /**
+     * 清空保留的帧数据缓存。在所有模型烘焙完成后调用以释放内存。
+     */
+    public static void clearPreservedFrames() {
+        preservedFrames.clear();
+    }
+
+    /**
      * 为一个图层纹理生成侧面 quad。
      *
      * @param icon      图层纹理 sprite
@@ -44,12 +65,17 @@ public class ItemModelGenerator {
         int width = sprite.getIconWidth();
         int height = sprite.getIconHeight();
 
-        // 纹理帧数据可能尚未加载
-        if (sprite.getFrameCount() == 0) {
-            return quads;
+        // 纹理帧数据可能已被 TextureMap.clearFramesTextureData() 清空，
+        // 优先从 MixinTextureMap 保存的缓存中获取
+        int[][] frameData = null;
+        if (sprite.getFrameCount() > 0) {
+            frameData = sprite.getFrameTextureData(0);
         }
-        int[][] frameData = sprite.getFrameTextureData(0);
+        if (frameData == null || frameData.length == 0 || frameData[0] == null) {
+            frameData = preservedFrames.get(sprite.getIconName());
+        }
         if (frameData == null || frameData.length == 0) {
+            CatFrame.logger.debug("[ItemModelGenerator] no frame data for sprite '{}'", sprite.getIconName());
             return quads;
         }
 

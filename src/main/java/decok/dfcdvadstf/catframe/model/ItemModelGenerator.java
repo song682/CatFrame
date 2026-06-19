@@ -26,9 +26,6 @@ public class ItemModelGenerator {
     static final float MIN_Z = 7.5F;
     static final float MAX_Z = 8.5F;
 
-    /** UV 内缩量，防止图集相邻纹理溢出 */
-    private static final float UV_SHRINK = 0.1F;
-
     /**
      * 为一个图层纹理生成侧面 quad。
      *
@@ -78,32 +75,35 @@ public class ItemModelGenerator {
                     continue;
                 }
 
+                // 读取当前不透明像素的 ARGB 颜色，用于侧面纯色填充
+                int pixelARGB = flatPixels[y * width + x];
+
                 // 上边：上方像素透明 → 生成 UP 面 quad
                 if (isTransparent(flatPixels, x, y - 1, width)) {
                     String key = "U" + x + "," + y;
                     if (emitted.add(key)) {
-                        bakeHorizontalEdge(quads, sprite, x, y, true, xScale, yScale, tintIndex);
+                        bakeHorizontalEdge(quads, sprite, x, y, true, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
                 // 下边：下方像素透明 → 生成 DOWN 面 quad
                 if (isTransparent(flatPixels, x, y + 1, width)) {
                     String key = "D" + x + "," + y;
                     if (emitted.add(key)) {
-                        bakeHorizontalEdge(quads, sprite, x, y, false, xScale, yScale, tintIndex);
+                        bakeHorizontalEdge(quads, sprite, x, y, false, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
                 // 左边：左侧像素透明 → 生成 EAST 面 quad（26.1.2 LEFT→EAST）
                 if (isTransparent(flatPixels, x - 1, y, width)) {
                     String key = "L" + x + "," + y;
                     if (emitted.add(key)) {
-                        bakeVerticalEdge(quads, sprite, x, y, true, xScale, yScale, tintIndex);
+                        bakeVerticalEdge(quads, sprite, x, y, true, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
                 // 右边：右侧像素透明 → 生成 WEST 面 quad（26.1.2 RIGHT→WEST）
                 if (isTransparent(flatPixels, x + 1, y, width)) {
                     String key = "R" + x + "," + y;
                     if (emitted.add(key)) {
-                        bakeVerticalEdge(quads, sprite, x, y, false, xScale, yScale, tintIndex);
+                        bakeVerticalEdge(quads, sprite, x, y, false, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
             }
@@ -125,7 +125,7 @@ public class ItemModelGenerator {
             List<BlockJsonModelBake.BakedQuad> quads,
             TextureAtlasSprite sprite,
             int x, int y, boolean isTop,
-            float xScale, float yScale, int tintIndex) {
+            float xScale, float yScale, int tintIndex, int pixelARGB) {
 
         // 世界坐标（block 空间 0-1）
         float worldX0 = (x * xScale) / 16.0F;
@@ -142,11 +142,9 @@ public class ItemModelGenerator {
             worldY = (16.0F - (y + 1.0F) * yScale) / 16.0F;
         }
 
-        // UV（0-16 抽象空间）
-        float u0 = (x + UV_SHRINK) * xScale;
-        float u1 = (x + 1.0F - UV_SHRINK) * xScale;
-        float v0 = (y + UV_SHRINK) * yScale;
-        float v1 = (y + 1.0F - UV_SHRINK) * yScale;
+        // UV（0-16 抽象空间）—— 侧面所有顶点采样同一像素中心，确保纯色一致
+        float uCenter = (x + 0.5F) * xScale;
+        float vCenter = (y + 0.5F) * yScale;
 
         EnumFacing face = isTop ? EnumFacing.UP : EnumFacing.DOWN;
 
@@ -155,6 +153,7 @@ public class ItemModelGenerator {
         q.face = face;
         q.tintIndex = tintIndex;
         q.guiLight = "front";
+        q.solidColor = pixelARGB;
 
         // 顶点绕序：对标 BlockJsonModelBake.emitFaceFromCorners
         //   UP:  v0(idx=010)=MIN_X,MIN_Z  v1(idx=011)=MIN_X,MAX_Z  v2(idx=111)=MAX_X,MAX_Z  v3(idx=110)=MAX_X,MIN_Z
@@ -164,21 +163,16 @@ public class ItemModelGenerator {
             q.vx[1] = worldX0; q.vy[1] = worldY; q.vz[1] = MAX_Z / 16.0F;
             q.vx[2] = worldX1; q.vy[2] = worldY; q.vz[2] = MAX_Z / 16.0F;
             q.vx[3] = worldX1; q.vy[3] = worldY; q.vz[3] = MIN_Z / 16.0F;
-            // UP UV: s=ix, t=iz
-            q.up[0] = u0; q.vp[0] = v0;
-            q.up[1] = u0; q.vp[1] = v1;
-            q.up[2] = u1; q.vp[2] = v1;
-            q.up[3] = u1; q.vp[3] = v0;
         } else {
             q.vx[0] = worldX0; q.vy[0] = worldY; q.vz[0] = MAX_Z / 16.0F;
             q.vx[1] = worldX0; q.vy[1] = worldY; q.vz[1] = MIN_Z / 16.0F;
             q.vx[2] = worldX1; q.vy[2] = worldY; q.vz[2] = MIN_Z / 16.0F;
             q.vx[3] = worldX1; q.vy[3] = worldY; q.vz[3] = MAX_Z / 16.0F;
-            // DOWN UV: s=ix, t=1-iz
-            q.up[0] = u0; q.vp[0] = v0;
-            q.up[1] = u0; q.vp[1] = v1;
-            q.up[2] = u1; q.vp[2] = v1;
-            q.up[3] = u1; q.vp[3] = v0;
+        }
+        // 侧面 quad 所有顶点 UV 指向像素中心，配合 solidColor 实现纯色填充
+        for (int i = 0; i < 4; i++) {
+            q.up[i] = uCenter;
+            q.vp[i] = vCenter;
         }
 
         q.faceNormal = faceNormal(face);
@@ -198,7 +192,7 @@ public class ItemModelGenerator {
             List<BlockJsonModelBake.BakedQuad> quads,
             TextureAtlasSprite sprite,
             int x, int y, boolean isLeft,
-            float xScale, float yScale, int tintIndex) {
+            float xScale, float yScale, int tintIndex, int pixelARGB) {
 
         // 世界坐标（block 空间 0-1）
         float worldX = isLeft ? 0.0F : 1.0F;
@@ -207,11 +201,9 @@ public class ItemModelGenerator {
         float worldY0 = (16.0F - (y + 1.0F) * yScale) / 16.0F;
         float worldY1 = (16.0F - y * yScale) / 16.0F;
 
-        // UV（垂直面 V 翻转，对标 26.1.2 isHorizontal()=false 分支）
-        float u0 = (x + UV_SHRINK) * xScale;
-        float u1 = (x + 1.0F - UV_SHRINK) * xScale;
-        float v0 = (y + 1.0F - UV_SHRINK) * yScale;   // V 翻转
-        float v1 = (y + UV_SHRINK) * yScale;
+        // UV（垂直面所有顶点采样同一像素中心，配合 solidColor 实现纯色填充）
+        float uCenter = (x + 0.5F) * xScale;
+        float vCenter = (y + 0.5F) * yScale;
 
         // 26.1.2: LEFT→EAST, RIGHT→WEST
         EnumFacing face = isLeft ? EnumFacing.EAST : EnumFacing.WEST;
@@ -221,6 +213,7 @@ public class ItemModelGenerator {
         q.face = face;
         q.tintIndex = tintIndex;
         q.guiLight = "front";
+        q.solidColor = pixelARGB;
 
         // 顶点绕序：对标 BlockJsonModelBake.emitFaceFromCorners
         //   EAST: v0(idx=111)=MAX_Y,MAX_Z  v1(idx=101)=MIN_Y,MAX_Z  v2(idx=100)=MIN_Y,MIN_Z  v3(idx=110)=MAX_Y,MIN_Z
@@ -231,22 +224,17 @@ public class ItemModelGenerator {
             q.vx[1] = worldX; q.vy[1] = worldY0; q.vz[1] = MAX_Z / 16.0F;
             q.vx[2] = worldX; q.vy[2] = worldY0; q.vz[2] = MIN_Z / 16.0F;
             q.vx[3] = worldX; q.vy[3] = worldY1; q.vz[3] = MIN_Z / 16.0F;
-            // EAST UV: s=1-iz, t=1-iy
-            q.up[0] = u1; q.vp[0] = v0;
-            q.up[1] = u1; q.vp[1] = v1;
-            q.up[2] = u0; q.vp[2] = v1;
-            q.up[3] = u0; q.vp[3] = v0;
         } else {
             // WEST face (RIGHT edge)
             q.vx[0] = worldX; q.vy[0] = worldY1; q.vz[0] = MIN_Z / 16.0F;
             q.vx[1] = worldX; q.vy[1] = worldY0; q.vz[1] = MIN_Z / 16.0F;
             q.vx[2] = worldX; q.vy[2] = worldY0; q.vz[2] = MAX_Z / 16.0F;
             q.vx[3] = worldX; q.vy[3] = worldY1; q.vz[3] = MAX_Z / 16.0F;
-            // WEST UV: s=iz, t=1-iy
-            q.up[0] = u1; q.vp[0] = v1;
-            q.up[1] = u0; q.vp[1] = v1;
-            q.up[2] = u0; q.vp[2] = v0;
-            q.up[3] = u1; q.vp[3] = v0;
+        }
+        // 侧面 quad 所有顶点 UV 指向像素中心，配合 solidColor 实现纯色填充
+        for (int i = 0; i < 4; i++) {
+            q.up[i] = uCenter;
+            q.vp[i] = vCenter;
         }
 
         q.faceNormal = faceNormal(face);

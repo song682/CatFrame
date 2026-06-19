@@ -330,6 +330,7 @@ public class BlockJsonModelBake {
         q.shadeEnabled = src.shadeEnabled;
         q.guiLight = src.guiLight;
         q.modelDisplay = src.modelDisplay;
+        q.solidColor = src.solidColor;
         return q;
     }
 
@@ -417,5 +418,13 @@ public class BlockJsonModelBake {
          * 由 DisplayTransformExtension 在渲染时读取并应用。
          */
         public Map<String, ModelJson.DisplayTransform> modelDisplay = null;
+
+        /**
+         * 纯色填充（ARGB，0 表示不使用纯色，正常纹理采样）。
+         * <p>用于 builtin/generated 物品模型的侧面 quad：
+         * 烘焙阶段从纹理边缘像素直接采样颜色，渲染阶段作为顶点颜色乘数应用，
+         * 确保侧面显示为与边缘像素一致的纯色，避免纹理图集采样偏差。
+         */
+        public int solidColor = 0;
     }
 }

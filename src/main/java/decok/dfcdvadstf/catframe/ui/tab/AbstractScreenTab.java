@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
 import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.components.Component;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.resources.I18n;
@@ -17,9 +18,13 @@ public abstract class AbstractScreenTab implements Tab {
     @Deprecated
     protected List<GuiButton> tabButtons = new ArrayList<>();
     /**
-     * 通用控件列表，不限于 GuiButton，也可放 GuiTextField 等。
+     * 通用控件列表，不限于 GuiButton，也可放 GuiTextField、Component 等。
      */
     protected List<Object> tabWidgets = new ArrayList<>();
+    /**
+     * 高版本风格组件列表。
+     */
+    protected List<Component> tabComponents = new ArrayList<>();
     protected boolean visible = true;
     protected int tabId;
     protected String tabNameKey;
@@ -60,7 +65,10 @@ public abstract class AbstractScreenTab implements Tab {
      */
     @Override
     public Text getTabTitle() {
-        return Text.translatable(tabNameKey);
+        if (tabNameKey != null && tabNameKey.contains(":")) {
+            return Text.translatable(tabNameKey);
+        }
+        return Text.literal(getTabName());
     }
 
     @Override
@@ -89,6 +97,14 @@ public abstract class AbstractScreenTab implements Tab {
     }
 
     /**
+     * 注册一个高版本风格的 Component 到 Tab。
+     */
+    protected void addComponent(Component component) {
+        tabComponents.add(component);
+        tabWidgets.add(component);
+    }
+
+    /**
      * <p>
      * 遍历此 Tab 的所有 {@link #tabWidgets} 控件。<br>
      * Visit all {@link #tabWidgets} of this tab.
@@ -97,7 +113,21 @@ public abstract class AbstractScreenTab implements Tab {
     @Override
     public void visitChildren(Consumer<Object> visitor) {
         for (Object widget : tabWidgets) {
-            visitor.accept(widget);
+            if (!(widget instanceof Component) || !tabComponents.contains(widget)) {
+                visitor.accept(widget);
+            }
+        }
+    }
+
+    @Override
+    public void visitComponents(Consumer<Component> visitor) {
+        for (Component component : tabComponents) {
+            visitor.accept(component);
+        }
+        for (Object widget : tabWidgets) {
+            if (widget instanceof Component && !tabComponents.contains(widget)) {
+                visitor.accept((Component) widget);
+            }
         }
     }
 

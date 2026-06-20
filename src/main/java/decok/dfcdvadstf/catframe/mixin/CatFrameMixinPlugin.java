@@ -31,7 +31,7 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public List<String> getMixins() {
-        return Collections.singletonList("mixins.dfdvdsfsAPI.json");
+        return Collections.emptyList();
     }
 
     @Override

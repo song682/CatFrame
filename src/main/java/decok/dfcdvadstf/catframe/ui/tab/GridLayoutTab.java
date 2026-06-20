@@ -1,9 +1,12 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
+import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.layouts.FrameLayout;
 import decok.dfcdvadstf.catframe.ui.layouts.GridLayout;
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 import net.minecraft.client.gui.GuiButton;
+
+import java.util.function.Consumer;
 
 /**
  * A Tab backed by a {@link GridLayout}.
@@ -63,6 +66,11 @@ public class GridLayoutTab extends AbstractScreenTab {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         layout.draw(mouseX, mouseY, partialTicks);
+    }
+
+    @Override
+    public void visitComponents(Consumer<Component> visitor) {
+        // No Component children in this tab type
     }
 
     @Override

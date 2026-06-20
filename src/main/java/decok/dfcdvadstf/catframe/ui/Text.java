@@ -2,6 +2,8 @@ package decok.dfcdvadstf.catframe.ui;
 
 import decok.dfcdvadstf.catframe.langguage.LocalizationManager;
 
+import javax.annotation.Nullable;
+
 /**
  * A text wrapper supporting literal strings and namespace-based translatable
  * keys — similar to higher Minecraft versions' {@code Component} system.
@@ -31,6 +33,8 @@ public class Text {
     private String key = "";
     private boolean translatable = false;
     private Object[] args = new Object[0];
+    @Nullable
+    private Style style;
 
     // ──── Constructors ────
 
@@ -55,6 +59,14 @@ public class Text {
         this.args = args;
     }
 
+    private Text(String domain, String key, boolean translatable, @Nullable Style style, Object... args) {
+        this.domain = domain;
+        this.key = key;
+        this.translatable = translatable;
+        this.style = style;
+        this.args = args;
+    }
+
     // ──── Static factories ────
 
     /**
@@ -64,6 +76,16 @@ public class Text {
      */
     public static Text literal(String text) {
         return new Text("", text, false);
+    }
+
+    /**
+     * Creates a literal Text with the given style.
+     * <p>使用指定样式创建字面文本。</p>
+     */
+    public static Text literal(String text, Style style) {
+        Text t = new Text("", text, false);
+        t.style = style;
+        return t;
     }
 
     /**
@@ -86,6 +108,22 @@ public class Text {
     }
 
     /**
+     * Creates a translatable Text from a {@code domain:key} string with style.
+     * <p>使用样式从 {@code domain:key} 字符串创建可翻译文本。</p>
+     */
+    public static Text translatable(Style style, String resourceKey, Object... args) {
+        int sep = resourceKey.indexOf(LocalizationManager.DOMAIN_SEPARATOR);
+        if (sep <= 0) {
+            throw new IllegalArgumentException(
+                "Translatable key must contain domain separator ':', got: " + resourceKey);
+        }
+        String domain = resourceKey.substring(0, sep);
+        String key = resourceKey.substring(sep + 1);
+        LocalizationManager.KeyTracking.mark(domain, key);
+        return new Text(domain, key, true, style, args);
+    }
+
+    /**
      * Creates a translatable Text with explicit domain and key — similar to
      * {@code new ResourceLocation(domain, path)}.
      * <pre>{@code
@@ -96,6 +134,15 @@ public class Text {
     public static Text translatable(String domain, String key, Object... args) {
         LocalizationManager.KeyTracking.mark(domain, key);
         return new Text(domain, key, true, args);
+    }
+
+    /**
+     * Creates a translatable Text with explicit domain, key, and style.
+     * <p>使用显式域名、键和样式创建可翻译文本。</p>
+     */
+    public static Text translatable(String domain, String key, Style style, Object... args) {
+        LocalizationManager.KeyTracking.mark(domain, key);
+        return new Text(domain, key, true, style, args);
     }
 
     // ──── Instance: setTranslatable ────
@@ -201,6 +248,47 @@ public class Text {
         return args;
     }
 
+    // ──── Style ────
+
+    /**
+     * Returns the style associated with this Text, or {@code null}.
+     * <p>返回与此 Text 关联的样式，或 {@code null}。</p>
+     */
+    @Nullable
+    public Style getStyle() {
+        return style;
+    }
+
+    /**
+     * Sets the style for this Text.
+     * <p>为此 Text 设置样式。</p>
+     */
+    public void setStyle(@Nullable Style style) {
+        this.style = style;
+    }
+
+    /**
+     * Returns a new Text with the same content but the specified style applied.
+     * <p>返回内容相同但应用了指定样式的新 Text。</p>
+     */
+    public Text withStyle(Style style) {
+        Text result = new Text(this.domain, this.key, this.translatable, this.args);
+        result.style = style;
+        return result;
+    }
+
+    /**
+     * Returns a new Text with the same content but the specified style applied
+     * on top of any existing style.
+     * <p>返回内容相同但在现有样式之上应用了指定样式的新 Text。</p>
+     */
+    public Text withStyleApplied(Style style) {
+        Style merged = (this.style != null) ? style.applyTo(this.style) : style;
+        Text result = new Text(this.domain, this.key, this.translatable, this.args);
+        result.style = merged;
+        return result;
+    }
+
     // ──── Object overrides ────
 
     @Override
@@ -216,7 +304,8 @@ public class Text {
         return translatable == other.translatable
                 && domain.equals(other.domain)
                 && key.equals(other.key)
-                && java.util.Arrays.equals(args, other.args);
+                && java.util.Arrays.equals(args, other.args)
+                && java.util.Objects.equals(style, other.style);
     }
 
     @Override
@@ -225,6 +314,7 @@ public class Text {
         result = 31 * result + key.hashCode();
         result = 31 * result + (translatable ? 1 : 0);
         result = 31 * result + java.util.Arrays.hashCode(args);
+        result = 31 * result + (style != null ? style.hashCode() : 0);
         return result;
     }
 }

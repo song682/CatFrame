@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
 import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.util.ResourceLocation;
@@ -99,6 +100,26 @@ public interface Tab {
      * </p>
      */
     default void visitChildren(Consumer<Object> visitor) {
+    }
+
+    /**
+     * <p>
+     * 高版本风格：遍历此标签页的所有 {@link Component} 子控件。<br>
+     * 对标高版本 {@code Tab.visitChildren(Consumer<AbstractWidget>)}。<br>
+     * 默认实现委托给 {@link #visitChildren(Consumer)}。<br>
+     * 新代码应直接重写此方法以利用参数类型安全。<br>
+     * High-version style: visit all {@link Component} children of this tab.<br>
+     * Counterpart of high-version {@code Tab.visitChildren(Consumer<AbstractWidget>)}.<br>
+     * Default delegates to {@link #visitChildren(Consumer)}.<br>
+     * New code should override this for type safety.
+     * </p>
+     */
+    default void visitComponents(Consumer<Component> visitor) {
+        visitChildren(obj -> {
+            if (obj instanceof Component) {
+                visitor.accept((Component) obj);
+            }
+        });
     }
 
     /**

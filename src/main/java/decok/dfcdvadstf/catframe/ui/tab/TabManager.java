@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
+import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
@@ -43,10 +44,15 @@ public class TabManager {
     // ──── New: Consumer-based widget management (high-version style) ────
 
     /**
-     * Consumer 用于添加/移除控件，不限于 GuiButton，也可以是 GuiTextField 等。
+     * Consumer 用于添加/移除控件，不限于 GuiButton，也可以是 GuiTextField、Component 等。
      */
     private final Consumer<Object> addWidget;
     private final Consumer<Object> removeWidget;
+    /**
+     * Component-specific add/remove consumers for high-version style.
+     */
+    private Consumer<Component> addComponent = c -> {};
+    private Consumer<Component> removeComponent = c -> {};
     private Consumer<Tab> onSelected = t -> {};
     private Consumer<Tab> onDeselected = t -> {};
     @Nullable
@@ -104,6 +110,25 @@ public class TabManager {
         this.tabBar = null;
         this.addWidget = addWidget;
         this.removeWidget = removeWidget;
+        initFromRegistry(barId, width, height);
+    }
+
+    /**
+     * Create a TabManager with Consumer-based widget management, supporting Component.
+     * <p>使用 Consumer 控件管理方式（支持 Component）创建 TabManager。</p>
+     */
+    public TabManager(Consumer<Object> addWidget, Consumer<Object> removeWidget,
+                      Consumer<Component> addComponent, Consumer<Component> removeComponent,
+                      int width, int height, String barId) {
+        if (barId == null || barId.isEmpty()) {
+            throw new IllegalArgumentException("barId must not be null or empty");
+        }
+        this.screen = null;
+        this.tabBar = null;
+        this.addWidget = addWidget;
+        this.removeWidget = removeWidget;
+        this.addComponent = addComponent != null ? addComponent : c -> {};
+        this.removeComponent = removeComponent != null ? removeComponent : c -> {};
         initFromRegistry(barId, width, height);
     }
 
@@ -218,6 +243,7 @@ public class TabManager {
             // 移除旧标签页的控件
             if (this.currentTab != null) {
                 this.currentTab.visitChildren(this.removeWidget);
+                this.currentTab.visitComponents(this.removeComponent);
                 this.currentTab.setVisible(false);
             }
 
@@ -229,6 +255,7 @@ public class TabManager {
             // 添加新标签页的控件
             if (tab != null) {
                 tab.visitChildren(this.addWidget);
+                tab.visitComponents(this.addComponent);
                 tab.setVisible(true);
                 if (this.tabArea != null) {
                     tab.doLayout(this.tabArea);

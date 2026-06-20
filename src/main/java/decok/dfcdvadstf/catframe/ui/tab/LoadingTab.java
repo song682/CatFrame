@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui.tab;
 
 import decok.dfcdvadstf.catframe.ui.LoadingDotsText;
 import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.layouts.FrameLayout;
 import decok.dfcdvadstf.catframe.ui.layouts.LayoutSettings;
 import decok.dfcdvadstf.catframe.ui.layouts.LinearLayout;
@@ -90,6 +91,11 @@ public class LoadingTab extends AbstractScreenTab {
     public void visitChildren(Consumer<Object> visitor) {
         // No interactive child widgets
         // 没有交互子控件
+    }
+
+    @Override
+    public void visitComponents(Consumer<Component> visitor) {
+        // No Component children
     }
 
     @Override

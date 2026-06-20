@@ -13,7 +13,7 @@ public class ODorTag {
     }
 
     @SubscribeEvent
-    public static void onOreRegistered(OreDictionary.OreRegisterEvent event){
+    public void onOreRegistered(OreDictionary.OreRegisterEvent event){
         String oreName = event.Name;
         CatFrame.logger.info("Ore registered: " + oreName);
         OreDict2Tag.convertOreDictToTags(oreName);

@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.ModernItem;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
@@ -117,6 +118,18 @@ public class VanillaModelManager {
      */
     private static final Set<Item> persistentItemModels = new HashSet<>();
 
+    /**
+     * Items discovered via {@link IItemJsonModel} interface scanning in
+     * {@link DataLoading#init()}. Maps item → its IItemJsonModel reference
+     * for deferred baking in {@link ModelBaking#bakeAllModels()}.
+     */
+    private static final Map<Item, IItemJsonModel> interfaceItemModels = new LinkedHashMap<>();
+
+    /**
+     * Tier 3 约定路径懒发现的 miss 缓存。命中此集合的 item 不会再次尝试解析。
+     */
+    private static final java.util.Set<Item> autoDiscoveryMissCache = new HashSet<>();
+
     // ==================== CatStateDefinition Registry ====================
 
     /**
@@ -190,6 +203,34 @@ public class VanillaModelManager {
             // Load blockstates for all registered IBlockStateProvider blocks
             for (Block block : registeredStateBlocks) {
                 loadStateProviderBlock(block);
+            }
+
+            // Scan Item.itemRegistry for IItemJsonModel implementations (Tier 2 discovery)
+            for (Object obj : Item.itemRegistry) {
+                if (obj instanceof IItemJsonModel) {
+                    IItemJsonModel ijm = (IItemJsonModel) obj;
+                    if (!ijm.shouldHandle()) continue;  // explicitly opt out
+                    Item item = (Item) obj;
+                    String modelPath = ijm.getModelPath();
+                    if (modelPath != null) {
+                        // Auto-collect textures for this model
+                        TextureManagement.collectTexturesFromModel(modelPath, true);
+                        // For ModernItem dual-models, also collect hand model textures
+                        if (obj instanceof ModernItem) {
+                            ModernItem mi = (ModernItem) obj;
+                            if (mi.hasDualModels()) {
+                                TextureManagement.collectTexturesFromModel(mi.getHandModelPath(), true);
+                            }
+                        }
+                        interfaceItemModels.put(item, ijm);
+                        CatFrame.logger.debug("[VMM] IItemJsonModel discovered: {} -> {}",
+                                Item.itemRegistry.getNameForObject(item), modelPath);
+                    }
+                }
+            }
+            if (!interfaceItemModels.isEmpty()) {
+                CatFrame.logger.info("VanillaModelManager: Discovered {} IItemJsonModel items",
+                        interfaceItemModels.size());
             }
 
             CatFrame.logger.info("VanillaModelManager: Loaded {} namespaces, {} state-blocks, {} block-textures pending, {} item-textures pending",
@@ -499,42 +540,13 @@ public class VanillaModelManager {
         }
 
         /**
-         * Public API: collect all texture paths from a model JSON and add them
-         * to pendingTextures for registration during TextureStitchEvent.Pre.
-         * <p>
-         * Defaults to block model (textures registered on block atlas).
-         *
-         * @param modelPath model path relative to /assets/{ns}/models/, e.g. "block/myblock"
-         */
-        public static void collectTextures(String modelPath) {
-            collectTexturesFromModel(modelPath, false);
-        }
-
-        /**
-         * Public API: collect all texture paths from a model JSON and add them
-         * to the appropriate pending set based on model type.
-         * <p>
-         * The model type determines which atlas textures are registered on:
-         * <ul>
-         *   <li>{@code isItemModel = true} → item atlas (type 1)</li>
-         *   <li>{@code isItemModel = false} → block atlas (type 0)</li>
-         * </ul>
-         *
-         * @param modelPath   model path relative to /assets/{ns}/models/
-         * @param isItemModel true if this is an item model, false for block model
-         */
-        public static void collectTextures(String modelPath, boolean isItemModel) {
-            collectTexturesFromModel(modelPath, isItemModel);
-        }
-
-        /**
          * Internal: resolve a model and collect its textures into the appropriate
          * pending set based on model type.
          *
          * @param modelPath   model resource path
          * @param isItemModel true → item atlas, false → block atlas
          */
-        private static void collectTexturesFromModel(String modelPath, boolean isItemModel) {
+        static void collectTexturesFromModel(String modelPath, boolean isItemModel) {
             if (modelPath == null) return;
             ModelJson resolved = ModelResolver.resolve(modelPath);
             if (resolved != null) {
@@ -828,6 +840,36 @@ public class VanillaModelManager {
                 MetadataBlockModel metaModel = new MetadataBlockModel(partMap, fallback);
                 Map<String, ModelJson.DisplayTransform> display = itemDisplayTransforms.get(item);
                 registeredItemModels.put(item, new ItemModelWrapper(metaModel, display));
+            }
+
+            // Bake interface-discovered item models (Tier 2: IItemJsonModel)
+            for (Map.Entry<Item, IItemJsonModel> entry : interfaceItemModels.entrySet()) {
+                Item item = entry.getKey();
+                IItemJsonModel ijm = entry.getValue();
+                // Skip if already registered (model_mappings or manual registration takes priority)
+                if (registeredItemModels.containsKey(item)) continue;
+
+                String modelPath = ijm.getModelPath();
+                List<BakedQuad> quads = bakeModel(modelPath, 0);
+                if (quads == null || quads.isEmpty()) {
+                    CatFrame.logger.warn("[VMM] IItemJsonModel bake failed for item {} (model: {})",
+                            Item.itemRegistry.getNameForObject(item), modelPath);
+                    continue;
+                }
+
+                Map<String, ModelJson.DisplayTransform> display = itemDisplayTransforms.get(item);
+                if (display == null) {
+                    ModelJson resolved = ModelResolver.resolve(modelPath);
+                    if (resolved != null) display = resolved.display;
+                }
+
+                // Create wrapper with handles() delegated to IItemJsonModel
+                ItemModelWrapper wrapper = new ItemModelWrapper(
+                        BlockStateModelPart.fromQuads(quads), display, ijm::handles);
+                registeredItemModels.put(item, wrapper);
+                persistentItemModels.add(item);
+                CatFrame.logger.debug("[VMM] Baked IItemJsonModel: {} -> {}",
+                        Item.itemRegistry.getNameForObject(item), modelPath);
             }
 
             CatFrame.logger.info("VanillaModelManager: Baked {} block models, {} item models, registered {} BlockStateModels, {} ItemModels",
@@ -1449,7 +1491,62 @@ public class VanillaModelManager {
                     }
                 }
             }
-            return null;
+
+            // Tier 3: 约定路径懒发现 (namespace:item/{name}.json)
+            return autoDiscoverItemModel(item);
+        }
+
+        /**
+         * Tier 3: 尝试通过约定路径 {@code namespace:item/{name}.json} 懒发现并烘焙 item 模型。
+         * <p>成功则缓存到 {@code registeredItemModels} 并注册 Forge IItemRenderer；
+         * 失败则记入 {@code autoDiscoveryMissCache} 不再重试。
+         * <p><b>已知限制</b>：懒发现发生在 atlas 缝合之后，纹理会显示 missingno，
+         * 日志会警告用户应预先注册纹理。
+         */
+        private static ItemModel autoDiscoverItemModel(Item item) {
+            if (autoDiscoveryMissCache.contains(item)) return null;
+
+            String registryName = Item.itemRegistry.getNameForObject(item);
+            if (registryName == null) {
+                autoDiscoveryMissCache.add(item);
+                return null;
+            }
+
+            // 分离 namespace:name → namespace:item/name
+            int colonIdx = registryName.indexOf(':');
+            String namespace = colonIdx >= 0 ? registryName.substring(0, colonIdx) : "minecraft";
+            String name = colonIdx >= 0 ? registryName.substring(colonIdx + 1) : registryName;
+            String modelPath = namespace + ":item/" + name;
+
+            ModelJson resolved = ModelResolver.resolve(modelPath);
+            if (resolved == null) {
+                autoDiscoveryMissCache.add(item);
+                return null;
+            }
+
+            // 发现成功 — 烘焙并缓存
+            CatFrame.logger.info("[VMM] Tier 3 auto-discovered item model: {} -> {}", registryName, modelPath);
+            // 警告：纹理可能未加入 atlas
+            CatFrame.logger.warn("[VMM] Auto-discovered model '{}' texture may not be in atlas " +
+                    "(discovered after atlas stitching). Register textures earlier to avoid missingno.",
+                    modelPath);
+
+            List<BakedQuad> quads = ModelBaking.bakeModel(modelPath, 0);
+            if (quads == null || quads.isEmpty()) {
+                autoDiscoveryMissCache.add(item);
+                return null;
+            }
+
+            BlockStateModelPart part = BlockStateModelPart.fromQuads(quads);
+            Map<String, ModelJson.DisplayTransform> display = resolved.display;
+            ItemModelWrapper wrapper = new ItemModelWrapper(part, display);
+
+            registeredItemModels.put(item, wrapper);
+            // 注册 Forge IItemRenderer（已初始化阶段）
+            if (initialized) {
+                net.minecraftforge.client.MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
+            }
+            return wrapper;
         }
 
         /**

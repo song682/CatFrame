@@ -29,7 +29,7 @@ public class SimpleLayout extends AbstractLayout {
 
     @Override
     public void recalculate() {
-        if (children.isEmpty()) {
+        if (getChildren().isEmpty()) {
             width = 0;
             height = 0;
             return;
@@ -40,7 +40,7 @@ public class SimpleLayout extends AbstractLayout {
         int maxX = Integer.MIN_VALUE;
         int maxY = Integer.MIN_VALUE;
 
-        for (ILayout child : children) {
+        for (ILayout child : getChildren()) {
             int cx = child.getX();
             int cy = child.getY();
             minX = Math.min(minX, cx);

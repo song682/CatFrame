@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.mixin;
+package decok.dfcdvadstf.catframe.mixin.middle;
 
 import decok.dfcdvadstf.catframe.model.IBlockJsonModel;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;

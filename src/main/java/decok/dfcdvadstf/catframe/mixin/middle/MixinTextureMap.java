@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.mixin;
+package decok.dfcdvadstf.catframe.mixin.middle;
 
 import decok.dfcdvadstf.catframe.model.ItemModelGenerator;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;

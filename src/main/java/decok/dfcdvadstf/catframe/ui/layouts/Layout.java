@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.layouts;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Layout — the core interface for any layout that arranges child elements.
@@ -10,35 +11,11 @@ import java.util.List;
  * </p>
  *
  * <p>
- * Layout —— 所有排布类的核心接口，支持子元素管理、内边距、间距、
+ * Layout —— 所有排布类实例的核心接口，支持子元素管理、内边距、间距、
  * 重新计算和可选绘制（背景、分隔线等）。
  * </p>
  */
 public interface Layout extends ILayout {
-
-    // ──── Padding ────
-
-    /**
-     * Returns the padding around the content area. / 返回内容区域的内边距。
-     */
-    int getPadding();
-
-    /**
-     * Sets the padding around the content area and triggers recalculate. / 设置内边距并触发重新计算。
-     */
-    void setPadding(int padding);
-
-    // ──── Spacing ────
-
-    /**
-     * Returns the spacing between child elements. / 返回子元素之间的间距。
-     */
-    int getSpacing();
-
-    /**
-     * Sets the spacing between child elements and triggers recalculate. / 设置间距并触发重新计算。
-     */
-    void setSpacing(int spacing);
 
     // ──── Child management ────
 
@@ -62,6 +39,11 @@ public interface Layout extends ILayout {
      */
     List<ILayout> getChildren();
 
+    /**
+     * Visit all direct children. / 访问所有直接子元素。
+     */
+    void visitChildren(Consumer<ILayout> visitor);
+
     // ──── Layout logic ────
 
     /**
@@ -70,6 +52,14 @@ public interface Layout extends ILayout {
      * <p>根据当前的位置、尺寸、内边距和间距重新计算所有子元素的位置。</p>
      */
     void recalculate();
+
+    /**
+     * Arrange elements recursively. Default implementation just calls recalculate().
+     * <p>递归排列所有元素。默认实现仅调用 recalculate()。</p>
+     */
+    default void arrangeElements() {
+        recalculate();
+    }
 
     /**
      * Draw the layout background / decoration.

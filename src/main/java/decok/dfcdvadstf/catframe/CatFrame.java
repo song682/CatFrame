@@ -53,10 +53,7 @@ public class CatFrame {
             VanillaModelManager.DataLoading.init();
 
             if (blueyPlushy != null) {
-                // 收集两个模型的纹理
-                VanillaModelManager.TextureManagement.collectTextures("item/bluey", true);
-                VanillaModelManager.TextureManagement.collectTextures("item/bluey_inventory", true);
-                // 通过 ModernItem 的双模型 API 注册
+                // 通过 ModernItem 的双模型 API 注册（纹理由 IItemJsonModel 扫描自动收集）
                 VanillaModelManager.ModelRegistration.registerItemModel(
                         blueyPlushy, blueyPlushy.createItemModel());
             }

@@ -1,13 +1,28 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
+import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 
+import javax.annotation.Nullable;
 import java.util.*;
+import java.util.function.Consumer;
 
+/**
+ * <p>
+ * 标签页管理器 —— 管理 Tab 的注册、切换和生命周期。<br>
+ * 同时支持 1.7.10 原版风格（基于 int ID + buttonList）和
+ * 高版本风格（基于 Consumer + ScreenRectangle）。
+ * </p>
+ * <p>
+ * Tab manager — manages tab registration, switching, and lifecycle.<br>
+ * Supports both 1.7.10 style (int ID + buttonList) and
+ * higher-version style (Consumer + ScreenRectangle).
+ * </p>
+ */
 public class TabManager {
     private final Map<Integer, Tab> tabs = new HashMap<>();
-    private final List<GuiButton> buttonList;
     /**
      * <p>The parent screen instance.
      * TabManager only knows it as vanilla {@code GuiScreen} — zero mixin dependency.</p>
@@ -16,12 +31,28 @@ public class TabManager {
      */
     private final GuiScreen screen;
     private int currentTabId = 100;
+    @Nullable
     private Tab currentTab;
 
     /**
      * Optional TabBar that provides background rendering and tab container. / 可选的 TabBar，提供背景绘制和 Tab 容器。
      */
+    @Nullable
     private TabBar tabBar;
+
+    // ──── New: Consumer-based widget management (high-version style) ────
+
+    /**
+     * Consumer 用于添加/移除控件，不限于 GuiButton，也可以是 GuiTextField 等。
+     */
+    private final Consumer<Object> addWidget;
+    private final Consumer<Object> removeWidget;
+    private Consumer<Tab> onSelected = t -> {};
+    private Consumer<Tab> onDeselected = t -> {};
+    @Nullable
+    private ScreenRectangle tabArea;
+
+    // ──── Constructors (backward-compatible) ────
 
     /**
      * Create a TabManager with a TabBar.  The barId is taken from the TabBar and
@@ -29,15 +60,8 @@ public class TabManager {
      * <p>通过 TabBar 创建 TabManager。barId 取自 TabBar，仅加载注册到该 barId 的条目。</p>
      */
     public TabManager(GuiScreen screen, List<GuiButton> buttonList, int width, int height, TabBar tabBar) {
-        if (tabBar == null) {
-            throw new IllegalArgumentException("tabBar must not be null — use the barId overload if you don't need a TabBar instance");
-        }
-        this.buttonList = buttonList;
-        this.screen = screen;
+        this(screen, buttonList, width, height, tabBar.getBarId());
         this.tabBar = tabBar;
-
-        String barId = tabBar.getBarId();
-        initFromRegistry(barId, width, height);
     }
 
     /**
@@ -48,10 +72,38 @@ public class TabManager {
         if (barId == null || barId.isEmpty()) {
             throw new IllegalArgumentException("barId must not be null or empty");
         }
-        this.buttonList = buttonList;
         this.screen = screen;
         this.tabBar = null;
+        this.addWidget = widget -> { if (widget instanceof GuiButton) { GuiButton btn = (GuiButton) widget; if (!buttonList.contains(btn)) buttonList.add(btn); } };
+        this.removeWidget = widget -> { if (widget instanceof GuiButton) { buttonList.remove(widget); } };
+        initFromRegistry(barId, width, height);
+    }
 
+    // ──── Constructors (Consumer-based, high-version style) ────
+
+    /**
+     * Create a TabManager with Consumer-based widget management and a TabBar.
+     * <p>使用 Consumer 控件管理方式和 TabBar 创建 TabManager。</p>
+     */
+    public TabManager(Consumer<Object> addWidget, Consumer<Object> removeWidget,
+                      int width, int height, TabBar tabBar) {
+        this(addWidget, removeWidget, width, height, tabBar.getBarId());
+        this.tabBar = tabBar;
+    }
+
+    /**
+     * Create a TabManager with Consumer-based widget management, identified by barId.
+     * <p>使用 Consumer 控件管理方式创建 TabManager，通过 barId 标识。</p>
+     */
+    public TabManager(Consumer<Object> addWidget, Consumer<Object> removeWidget,
+                      int width, int height, String barId) {
+        if (barId == null || barId.isEmpty()) {
+            throw new IllegalArgumentException("barId must not be null or empty");
+        }
+        this.screen = null;
+        this.tabBar = null;
+        this.addWidget = addWidget;
+        this.removeWidget = removeWidget;
         initFromRegistry(barId, width, height);
     }
 
@@ -88,17 +140,29 @@ public class TabManager {
         // 设置当前标签页（默认为第一个注册的）
         List<Integer> sortedIds = getSortedTabIds();
         if (!sortedIds.isEmpty()) {
-            currentTabId = sortedIds.get(0);
+            Tab firstTab = tabs.get(sortedIds.get(0));
+            if (firstTab != null) {
+                setCurrentTab(firstTab, false);
+            }
         }
-        switchToTab(currentTabId);
     }
 
-    // Add a button to the Mixin's button list
-    // 添加按钮到 Mixin 的按钮列表
+    // ──── Widget management ────
+
+    /**
+     * Add a button through the configured addWidget consumer.
+     * <p>通过配置的 addWidget consumer 添加按钮。</p>
+     */
     public void addButton(GuiButton button) {
-        if (!buttonList.contains(button)) {
-            buttonList.add(button);
-        }
+        addWidget.accept(button);
+    }
+
+    /**
+     * Remove a button through the configured removeWidget consumer.
+     * <p>通过配置的 removeWidget consumer 移除按钮。</p>
+     */
+    public void removeButton(GuiButton button) {
+        removeWidget.accept(button);
     }
 
     /**
@@ -137,26 +201,104 @@ public class TabManager {
         return ids;
     }
 
-    public void switchToTab(int tabId) {
-        // 隐藏当前标签页
-        if (currentTab != null) {
-            currentTab.setVisible(false);
-        }
+    // ──── Tab switching ────
 
-        // 显示新标签页
-        currentTabId = tabId;
-        currentTab = tabs.get(tabId);
-        if (currentTab != null) {
-            currentTab.setVisible(true);
+    /**
+     * <p>
+     * 高版本风格切换方法 —— 通过 Consumer 添加/移除控件，触发 doLayout 和回调。<br>
+     * High-version style switch — adds/removes widgets via Consumer, triggers doLayout and callbacks.
+     * </p>
+     *
+     * @param tab      目标标签页 / target tab
+     * @param playSound 是否播放切换音效 / whether to play switch sound
+     */
+    public void setCurrentTab(@Nullable Tab tab, boolean playSound) {
+        if (!Objects.equals(this.currentTab, tab)) {
+            // Remove old tab's widgets
+            // 移除旧标签页的控件
+            if (this.currentTab != null) {
+                this.currentTab.visitChildren(this.removeWidget);
+                this.currentTab.setVisible(false);
+            }
+
+            Tab oldTab = this.currentTab;
+            this.currentTab = tab;
+            this.currentTabId = tab != null ? tab.getTabId() : -1;
+
+            // Add new tab's widgets
+            // 添加新标签页的控件
+            if (tab != null) {
+                tab.visitChildren(this.addWidget);
+                tab.setVisible(true);
+                if (this.tabArea != null) {
+                    tab.doLayout(this.tabArea);
+                }
+            }
+
+            // Play click sound
+            // 播放点击音效
+            if (playSound) {
+                Minecraft.getMinecraft().thePlayer.playSound("random.click", 1.0F, 1.0F);
+            }
+
+            // Fire callbacks
+            // 触发回调
+            this.onDeselected.accept(oldTab);
+            this.onSelected.accept(this.currentTab);
         }
+    }
+
+    /**
+     * <p>
+     * 旧版风格切换方法 —— 通过 setVisible 控制标签页显示。<br>
+     * 向后兼容，内部委托给 {@link #setCurrentTab(Tab, boolean)}。<br>
+     * Legacy style switch — controls tab visibility via setVisible.<br>
+     * Backward-compatible, delegates to {@link #setCurrentTab(Tab, boolean)}.
+     * </p>
+     */
+    public void switchToTab(int tabId) {
+        Tab tab = tabs.get(tabId);
+        if (tab != null) {
+            setCurrentTab(tab, false);
+        }
+    }
+
+    // ──── Tab area management ────
+
+    /**
+     * <p>
+     * 设置标签页内容区域，并在切换到现有标签页时触发 doLayout。<br>
+     * 对标高版本 {@code TabManager.setTabArea(ScreenRectangle)}。<br>
+     * Set the tab content area, triggering doLayout on the current tab.
+     * </p>
+     */
+    public void setTabArea(@Nullable ScreenRectangle tabArea) {
+        this.tabArea = tabArea;
+        if (this.currentTab != null && tabArea != null) {
+            this.currentTab.doLayout(tabArea);
+        }
+    }
+
+    /**
+     * <p>
+     * 设置标签页选中/取消选中回调。<br>
+     * Set the on-selected / on-deselected callbacks.
+     * </p>
+     */
+    public void setTabCallbacks(Consumer<Tab> onSelected, Consumer<Tab> onDeselected) {
+        this.onSelected = onSelected != null ? onSelected : t -> {};
+        this.onDeselected = onDeselected != null ? onDeselected : t -> {};
     }
 
     /**
      * @return The TabBar associated with this manager, or {@code null}. / 与此管理器关联的 TabBar，或 {@code null}。
      */
+    @Nullable
     public TabBar getTabBar() {
         return tabBar;
     }
+
+    // ──── Event forwarding ────
 
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         if (currentTab != null) {
@@ -196,8 +338,8 @@ public class TabManager {
      * @param height 新的窗口高度
      */
     public void reinitializeTabs(int width, int height) {
-        // 保存当前选中的标签页ID
-        int savedTabId = currentTabId;
+        // 保存当前选中的标签页
+        Tab savedTab = currentTab;
 
         // 重新初始化所有标签页
         for (Tab tab : tabs.values()) {
@@ -205,8 +347,20 @@ public class TabManager {
         }
 
         // 恢复之前选中的标签页
-        switchToTab(savedTabId);
+        if (savedTab != null) {
+            setCurrentTab(savedTab, false);
+        } else {
+            List<Integer> sortedIds = getSortedTabIds();
+            if (!sortedIds.isEmpty()) {
+                Tab firstTab = tabs.get(sortedIds.get(0));
+                if (firstTab != null) {
+                    setCurrentTab(firstTab, false);
+                }
+            }
+        }
     }
+
+    // ──── Getters ────
 
     public GuiScreen getScreen() {
         return screen;
@@ -225,6 +379,17 @@ public class TabManager {
 
     public int getCurrentTabId() {
         return currentTabId;
+    }
+
+    /**
+     * <p>
+     * 高版本风格：获取当前 Tab 引用。<br>
+     * High-version style: get the current Tab reference.
+     * </p>
+     */
+    @Nullable
+    public Tab getCurrentTab() {
+        return currentTab;
     }
 
     public int getTabCount() {

@@ -1,5 +1,9 @@
 package decok.dfcdvadstf.catframe.ui.layouts;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
 /**
  * EqualSpacingLayout — distributes children evenly across the available space.
  * <p>
@@ -16,7 +20,9 @@ package decok.dfcdvadstf.catframe.ui.layouts;
  */
 public class EqualSpacingLayout extends AbstractLayout {
 
+    private final List<ChildContainer> containers = new ArrayList<>();
     private Axis axis = Axis.HORIZONTAL;
+    private final LayoutSettings defaultChildLayoutSettings = LayoutSettings.defaults();
 
     /**
      * Creates a horizontal EqualSpacingLayout. / 创建水平等间距布局。
@@ -35,16 +41,73 @@ public class EqualSpacingLayout extends AbstractLayout {
         return axis;
     }
 
-    // ──── Properties ────
-
     public void setAxis(Axis axis) {
         this.axis = axis;
         recalculate();
     }
 
+    // ──── Layout settings ────
+
+    public LayoutSettings newChildLayoutSettings() {
+        return this.defaultChildLayoutSettings.copy();
+    }
+
+    public LayoutSettings defaultChildLayoutSetting() {
+        return this.defaultChildLayoutSettings;
+    }
+
+    // ──── Add children ────
+
+    public <T extends ILayout> T addChild(T child) {
+        return addChild(child, newChildLayoutSettings());
+    }
+
+    public <T extends ILayout> T addChild(T child, LayoutSettings settings) {
+        this.containers.add(new ChildContainer(child, settings));
+        super.add(child);
+        return child;
+    }
+
+    public <T extends ILayout> T addChild(T child, Consumer<LayoutSettings> configurator) {
+        LayoutSettings settings = newChildLayoutSettings();
+        configurator.accept(settings);
+        return addChild(child, settings);
+    }
+
+    @Override
+    public Layout add(ILayout child) {
+        addChild(child);
+        return this;
+    }
+
+    @Override
+    public Layout add(ILayout child, LayoutSettings settings) {
+        addChild(child, settings);
+        return this;
+    }
+
+    @Override
+    public Layout remove(ILayout child) {
+        this.containers.removeIf(w -> w.child == child);
+        return super.remove(child);
+    }
+
+    @Override
+    public void clear() {
+        this.containers.clear();
+        super.clear();
+    }
+
+    @Override
+    public void visitChildren(Consumer<ILayout> visitor) {
+        this.containers.forEach(w -> visitor.accept(w.child));
+    }
+
+    // ──── Recalculate ────
+
     @Override
     public void recalculate() {
-        if (children.isEmpty()) {
+        if (this.containers.isEmpty()) {
             width = 0;
             height = 0;
             return;
@@ -57,14 +120,12 @@ public class EqualSpacingLayout extends AbstractLayout {
         }
     }
 
-    // ──── Recalculate ────
-
     private void layoutHorizontal() {
         int totalChildW = 0;
         int maxH = 0;
-        for (ILayout child : children) {
-            totalChildW += child.getWidth();
-            if (maxH < child.getHeight()) maxH = child.getHeight();
+        for (ChildContainer c : containers) {
+            totalChildW += c.getWidth();
+            maxH = Math.max(maxH, c.getHeight());
         }
 
         int contentW = totalChildW;
@@ -72,14 +133,11 @@ public class EqualSpacingLayout extends AbstractLayout {
             contentW = width - padding * 2;
         }
 
-        // Calculate gap so children are evenly spaced
-        int gap = children.size() > 1
-                ? (contentW - totalChildW) / (children.size() - 1)
+        int gap = containers.size() > 1
+                ? Math.max(0, (contentW - totalChildW) / (containers.size() - 1))
                 : 0;
-        gap = Math.max(gap, 0);
 
-        // Recalculate total width only if not externally set
-        int renderedW = totalChildW + gap * (children.size() - 1);
+        int renderedW = totalChildW + gap * (containers.size() - 1);
         if (width <= 0) {
             width = renderedW + padding * 2;
         }
@@ -88,21 +146,20 @@ public class EqualSpacingLayout extends AbstractLayout {
         int contentH = height - padding * 2;
         int contentX = x + padding;
 
-        for (ILayout child : children) {
-            int childY = y + padding;
-            // Centre vertically within content area
-            childY += (contentH - child.getHeight()) / 2;
-            child.setPosition(contentX, childY);
-            contentX += child.getWidth() + gap;
+        for (ChildContainer c : containers) {
+            c.setX(contentX, c.getWidth());
+            int childY = y + padding + (contentH - c.getHeight()) / 2;
+            c.setY(childY, c.getHeight());
+            contentX += c.getWidth() + gap;
         }
     }
 
     private void layoutVertical() {
         int totalChildH = 0;
         int maxW = 0;
-        for (ILayout child : children) {
-            totalChildH += child.getHeight();
-            if (maxW < child.getWidth()) maxW = child.getWidth();
+        for (ChildContainer c : containers) {
+            totalChildH += c.getHeight();
+            maxW = Math.max(maxW, c.getWidth());
         }
 
         int contentH = totalChildH;
@@ -110,12 +167,11 @@ public class EqualSpacingLayout extends AbstractLayout {
             contentH = height - padding * 2;
         }
 
-        int gap = children.size() > 1
-                ? (contentH - totalChildH) / (children.size() - 1)
+        int gap = containers.size() > 1
+                ? Math.max(0, (contentH - totalChildH) / (containers.size() - 1))
                 : 0;
-        gap = Math.max(gap, 0);
 
-        int renderedH = totalChildH + gap * (children.size() - 1);
+        int renderedH = totalChildH + gap * (containers.size() - 1);
         if (height <= 0) {
             height = renderedH + padding * 2;
         }
@@ -124,12 +180,19 @@ public class EqualSpacingLayout extends AbstractLayout {
         int contentW = width - padding * 2;
         int contentY = y + padding;
 
-        for (ILayout child : children) {
-            int childX = x + padding;
-            // Centre horizontally within content area
-            childX += (contentW - child.getWidth()) / 2;
-            child.setPosition(childX, contentY);
-            contentY += child.getHeight() + gap;
+        for (ChildContainer c : containers) {
+            int childX = x + padding + (contentW - c.getWidth()) / 2;
+            c.setX(childX, c.getWidth());
+            c.setY(contentY, c.getHeight());
+            contentY += c.getHeight() + gap;
+        }
+    }
+
+    // ──── Internal ────
+
+    private static class ChildContainer extends AbstractChildWrapper {
+        protected ChildContainer(ILayout child, LayoutSettings settings) {
+            super(child, settings);
         }
     }
 

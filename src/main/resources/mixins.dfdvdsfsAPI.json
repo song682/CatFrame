@@ -1,14 +1,16 @@
 {
   "required": true,
+  "plugin": "decok.dfcdvadstf.catframe.mixin.CatFrameMixinPlugin",
+  "target": "@env(DEFAULT)",
   "package": "decok.dfcdvadstf.catframe.mixin",
   "refmap": "mixins.dfdvdsfsAPI.refmap.json",
   "compatibilityLevel": "JAVA_8",
   "mixins": [],
   "client": [
-    "MixinLanguageManager",
-    "MixinRenderBlocks",
-    "MixinStringTranslate",
-    "MixinTextureMap"
+    "middle.MixinLanguageManager",
+    "middle.MixinRenderBlocks",
+    "middle.MixinStringTranslate",
+    "middle.MixinTextureMap"
   ],
   "server": []
 }

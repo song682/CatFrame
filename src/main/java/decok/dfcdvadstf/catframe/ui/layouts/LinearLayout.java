@@ -1,10 +1,14 @@
 package decok.dfcdvadstf.catframe.ui.layouts;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
 /**
  * LinearLayout — arranges children in a single row or column.
  * <p>
- * Supports {@link Axis#HORIZONTAL} (left → right) and
- * {@link Axis#VERTICAL} (top → bottom). Use {@link Alignment} to control
+ * Supports {@link Axis#HORIZONTAL} (left to right) and
+ * {@link Axis#VERTICAL} (top to bottom). Use {@link Alignment} to control
  * how children are positioned on the perpendicular axis.
  * </p>
  *
@@ -16,14 +20,17 @@ package decok.dfcdvadstf.catframe.ui.layouts;
  */
 public class LinearLayout extends AbstractLayout {
 
+    private final List<ChildContainer> containers = new ArrayList<>();
     private Axis axis = Axis.VERTICAL;
     private Alignment alignment = Alignment.START;
+    private final LayoutSettings defaultChildLayoutSettings = LayoutSettings.defaults();
 
     /**
      * Creates a vertical LinearLayout. / 创建一个垂直方向的 LinearLayout。
      */
     public LinearLayout() {
     }
+
     /**
      * Creates a LinearLayout with the given direction. / 创建指定方向的 LinearLayout。
      */
@@ -48,8 +55,6 @@ public class LinearLayout extends AbstractLayout {
         recalculate();
     }
 
-    // ──── Properties ────
-
     public Alignment getAlignment() {
         return alignment;
     }
@@ -59,9 +64,82 @@ public class LinearLayout extends AbstractLayout {
         recalculate();
     }
 
+    // ──── Layout settings ────
+
+    public LayoutSettings newChildLayoutSettings() {
+        return this.defaultChildLayoutSettings.copy();
+    }
+
+    public LayoutSettings defaultChildLayoutSetting() {
+        return this.defaultChildLayoutSettings;
+    }
+
+    // ──── Add children ────
+
+    /**
+     * Add a child with default layout settings.
+     * <p>使用默认布局设置添加子元素。</p>
+     */
+    public <T extends ILayout> T addChild(T child) {
+        return addChild(child, newChildLayoutSettings());
+    }
+
+    /**
+     * Add a child with the given layout settings.
+     * <p>使用指定布局设置添加子元素。</p>
+     */
+    public <T extends ILayout> T addChild(T child, LayoutSettings settings) {
+        this.containers.add(new ChildContainer(child, settings));
+        super.add(child); // adds to AbstractLayout's child list + triggers recalculate
+        return child;
+    }
+
+    /**
+     * Add a child using a lambda to configure its layout settings.
+     * <p>使用 lambda 配置布局设置后添加子元素。</p>
+     */
+    public <T extends ILayout> T addChild(T child, Consumer<LayoutSettings> configurator) {
+        LayoutSettings settings = newChildLayoutSettings();
+        configurator.accept(settings);
+        return addChild(child, settings);
+    }
+
+    @Override
+    public Layout add(ILayout child) {
+        addChild(child);
+        return this;
+    }
+
+    @Override
+    public Layout add(ILayout child, LayoutSettings settings) {
+        addChild(child, settings);
+        return this;
+    }
+
+    @Override
+    public Layout remove(ILayout child) {
+        this.containers.removeIf(w -> w.child == child);
+        return super.remove(child);
+    }
+
+    @Override
+    public void clear() {
+        this.containers.clear();
+        super.clear();
+    }
+
+    // ──── Visit ────
+
+    @Override
+    public void visitChildren(Consumer<ILayout> visitor) {
+        this.containers.forEach(w -> visitor.accept(w.child));
+    }
+
+    // ──── Recalculate ────
+
     @Override
     public void recalculate() {
-        if (children.isEmpty()) {
+        if (this.containers.isEmpty()) {
             width = 0;
             height = 0;
             return;
@@ -77,84 +155,80 @@ public class LinearLayout extends AbstractLayout {
     private void layoutVertical() {
         int totalChildH = 0;
         int maxChildW = 0;
-        for (ILayout child : children) {
-            totalChildH += child.getHeight();
-            if (maxChildW < child.getWidth()) {
-                maxChildW = child.getWidth();
-            }
+        for (ChildContainer c : containers) {
+            totalChildH += c.getHeight();
+            maxChildW = Math.max(maxChildW, c.getWidth());
         }
 
         width = maxChildW + padding * 2;
-        height = totalChildH + spacing * (children.size() - 1) + padding * 2;
+        height = totalChildH + spacing * (containers.size() - 1) + padding * 2;
 
         int contentW = width - padding * 2;
         int contentY = y + padding;
 
-        for (ILayout child : children) {
+        for (ChildContainer c : containers) {
             int childX;
             switch (alignment) {
                 case CENTER:
-                    childX = x + padding + (contentW - child.getWidth()) / 2;
+                    childX = x + padding + (contentW - c.getWidth()) / 2;
                     break;
                 case END:
-                    childX = x + width - padding - child.getWidth();
+                    childX = x + width - padding - c.getWidth();
                     break;
-                case FILL:
-                    childX = x + padding;
-                    // FILL on the perpendicular axis means we stretch the child.
-                    // Since we can't modify the child's width contractually,
-                    // we just position it at the left with the full content width.
-                    // The child is responsible for honouring its own size.
-                    break;
-                default: // START
+                default: // START / FILL
                     childX = x + padding;
                     break;
             }
 
-            child.setPosition(childX, contentY);
-            contentY += child.getHeight() + spacing;
+            c.setX(childX, c.getWidth());
+            c.setY(contentY, c.getHeight());
+            contentY += c.getHeight() + spacing;
         }
     }
-
-    // ──── Recalculate ────
 
     private void layoutHorizontal() {
         int totalChildW = 0;
         int maxChildH = 0;
-        for (ILayout child : children) {
-            totalChildW += child.getWidth();
-            if (maxChildH < child.getHeight()) {
-                maxChildH = child.getHeight();
-            }
+        for (ChildContainer c : containers) {
+            totalChildW += c.getWidth();
+            maxChildH = Math.max(maxChildH, c.getHeight());
         }
 
-        width = totalChildW + spacing * (children.size() - 1) + padding * 2;
+        width = totalChildW + spacing * (containers.size() - 1) + padding * 2;
         height = maxChildH + padding * 2;
 
         int contentH = height - padding * 2;
         int contentX = x + padding;
 
-        for (ILayout child : children) {
+        for (ChildContainer c : containers) {
             int childY;
             switch (alignment) {
                 case CENTER:
-                    childY = y + padding + (contentH - child.getHeight()) / 2;
+                    childY = y + padding + (contentH - c.getHeight()) / 2;
                     break;
                 case END:
-                    childY = y + height - padding - child.getHeight();
+                    childY = y + height - padding - c.getHeight();
                     break;
-                case FILL:
-                    childY = y + padding;
-                    break;
-                default: // START
+                default: // START / FILL
                     childY = y + padding;
                     break;
             }
 
-            child.setPosition(contentX, childY);
-            contentX += child.getWidth() + spacing;
+            c.setX(contentX, c.getWidth());
+            c.setY(childY, c.getHeight());
+            contentX += c.getWidth() + spacing;
         }
     }
+
+    // ──── Internal ────
+
+    private static class ChildContainer extends AbstractChildWrapper {
+        protected ChildContainer(ILayout child, LayoutSettings settings) {
+            super(child, settings);
+        }
+    }
+
+    // ──── Enums ────
 
     /**
      * The primary arrangement direction. / 主排列方向。
@@ -166,23 +240,9 @@ public class LinearLayout extends AbstractLayout {
      * <p>子元素在垂直于排列方向上的对齐方式。</p>
      */
     public enum Alignment {
-        /**
-         * Left / Top — children clump at the start. / 左 / 上对齐。
-         */
         START,
-        /**
-         * Children are centred on the perpendicular axis. / 居中对齐。
-         */
         CENTER,
-        /**
-         * Right / Bottom — children clump at the end. / 右 / 下对齐。
-         */
         END,
-        /**
-         * Children are stretched to fill the available space on the
-         * perpendicular axis.
-         * <p>子元素在垂直方向上拉伸填满可用空间。</p>
-         */
         FILL
     }
 }

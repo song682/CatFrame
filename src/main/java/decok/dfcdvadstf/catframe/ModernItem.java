@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.model.IItemJsonModel;
 import decok.dfcdvadstf.catframe.model.ItemModel;
 import decok.dfcdvadstf.catframe.model.ModelJson;
 import decok.dfcdvadstf.catframe.model.ModelResolver;
@@ -42,7 +43,7 @@ import java.util.Map;
  * ModernItem is a plain {@link Item} subclass — it works transparently
  * with {@link VanillaModelManager} and the existing JSON model pipeline.
  */
-public class ModernItem extends Item {
+public class ModernItem extends Item implements IItemJsonModel {
 
     /**
      * Icons for each render layer, populated during {@link #registerIcons}.
@@ -208,6 +209,33 @@ public class ModernItem extends Item {
      */
     public boolean hasDualModels() {
         return inventoryModelPath != null && handModelPath != null;
+    }
+
+    // ==================== IItemJsonModel ====================
+
+    /**
+     * IItemJsonModel: 返回 inventory（2D GUI）模型路径。
+     * <p>
+     * DataLoading.init() 扫描时自动收集此路径的纹理。
+     * 如果是双模型（{@link #hasDualModels()}），hand 模型路径也会被额外收集。
+     *
+     * @return inventory 模型路径，如果未设置则返回 null
+     */
+    @Override
+    public String getModelPath() {
+        return inventoryModelPath;
+    }
+
+    /**
+     * 3D handheld 模型路径的公开访问器。
+     * <p>
+     * 供 {@link VanillaModelManager.DataLoading#init()} 扫描时
+     * 额外收集双模型物品的 hand 模型纹理。
+     *
+     * @return hand 模型路径，如果未设置则返回 null
+     */
+    public String getHandModelPath() {
+        return handModelPath;
     }
 
     /**

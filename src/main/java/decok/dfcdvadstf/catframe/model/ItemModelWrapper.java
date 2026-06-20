@@ -9,6 +9,7 @@ import net.minecraft.item.ItemStack;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * 物品模型包装器。将 {@link BlockStateModel} 的烘焙 quads 复用为物品渲染。
@@ -23,6 +24,8 @@ import java.util.Map;
 public class ItemModelWrapper implements ItemModel {
     private final BlockStateModel blockModel;
     private final Map<String, ModelJson.DisplayTransform> display;
+    /** 可选的 handles 委托，由 IItemJsonModel.handles(phase) 语义传入 */
+    private final Function<RenderPhase, Boolean> handlesDelegate;
 
     public ItemModelWrapper(BlockStateModel blockModel) {
         this(blockModel, null);
@@ -31,6 +34,7 @@ public class ItemModelWrapper implements ItemModel {
     public ItemModelWrapper(BlockStateModel blockModel, Map<String, ModelJson.DisplayTransform> display) {
         this.blockModel = blockModel;
         this.display = display;
+        this.handlesDelegate = null;
     }
 
     public ItemModelWrapper(BlockStateModelPart part) {
@@ -38,8 +42,14 @@ public class ItemModelWrapper implements ItemModel {
     }
 
     public ItemModelWrapper(BlockStateModelPart part, Map<String, ModelJson.DisplayTransform> display) {
+        this(part, display, null);
+    }
+
+    public ItemModelWrapper(BlockStateModelPart part, Map<String, ModelJson.DisplayTransform> display,
+                            Function<RenderPhase, Boolean> handlesDelegate) {
         this.blockModel = new SingleBlockModel(part);
         this.display = display;
+        this.handlesDelegate = handlesDelegate;
     }
 
     /**
@@ -51,6 +61,12 @@ public class ItemModelWrapper implements ItemModel {
 
     public static ItemModelWrapper fromQuads(List<BakedQuad> quads, Map<String, ModelJson.DisplayTransform> display) {
         return new ItemModelWrapper(BlockStateModelPart.fromQuads(quads), display);
+    }
+
+    @Override
+    public boolean handles(RenderPhase phase) {
+        if (handlesDelegate != null) return handlesDelegate.apply(phase);
+        return ItemModel.super.handles(phase);
     }
 
     @Override

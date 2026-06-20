@@ -4,7 +4,9 @@ import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
-import java.util.Collections;
+import decok.dfcdvadstf.catframe.Tags;
+
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -16,7 +18,7 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public String getRefMapperConfig() {
-        return "";
+        return "mixins." + Tags.MODID + ".refmap.json";
     }
 
     @Override
@@ -31,7 +33,12 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public List<String> getMixins() {
-        return Collections.emptyList();
+        return Arrays.asList(
+            "middle.MixinLanguageManager",
+            "middle.MixinRenderBlocks",
+            "middle.MixinTextureMap",
+            "middle.MixinStringTranslate"
+        );
     }
 
     @Override

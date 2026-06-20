@@ -1,5 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
+
 /**
  * <p>
  * 组件基接口 —— 所有 UI 控件的基础抽象。<br>
@@ -11,7 +13,7 @@ package decok.dfcdvadstf.catframe.ui.components;
  * and {@code GuiEventListener}.
  * </p>
  */
-public interface Component {
+public interface Component extends ILayout {
 
     // ──── Position / Size ────
 

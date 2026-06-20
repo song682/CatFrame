@@ -52,11 +52,13 @@ public class GridLayoutTab extends AbstractScreenTab {
         layout.arrangeElements();
         FrameLayout.alignInRectangle(layout, 0, 0, width, height, 0.5F, 0.16666667F);
 
-        // Register all children with the Tab (buttons → buttonList, others → widget list)
-        // 将所有子元素注册到 Tab（按钮进 buttonList，其他进 widget list）
+        // Register all children with the Tab (GuiButton → buttonList, Component → component list, others → widget list)
+        // 将所有子元素注册到 Tab（GuiButton 进 buttonList，Component 进 component list，其他进 widget list）
         for (ILayout child : layout.getChildren()) {
             if (child instanceof GuiButton) {
                 addButton((GuiButton) child);
+            } else if (child instanceof Component) {
+                addComponent((Component) child);
             } else {
                 addWidget(child);
             }
@@ -66,11 +68,16 @@ public class GridLayoutTab extends AbstractScreenTab {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         layout.draw(mouseX, mouseY, partialTicks);
+        // Auto-render all Component children
+        for (Component component : tabComponents) {
+            component.render(mouseX, mouseY, partialTicks);
+        }
     }
 
     @Override
     public void visitComponents(Consumer<Component> visitor) {
-        // No Component children in this tab type
+        // Visit all Component children registered via addComponent
+        super.visitComponents(visitor);
     }
 
     @Override

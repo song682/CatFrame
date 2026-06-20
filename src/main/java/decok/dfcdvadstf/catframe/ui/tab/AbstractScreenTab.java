@@ -13,7 +13,13 @@ import java.util.function.Consumer;
 public abstract class AbstractScreenTab implements Tab {
     protected TabManager tabManager;
     protected Minecraft mc;
+    /** @deprecated 只保留按钮，新代码请用 {@link #tabWidgets} */
+    @Deprecated
     protected List<GuiButton> tabButtons = new ArrayList<>();
+    /**
+     * 通用控件列表，不限于 GuiButton，也可放 GuiTextField 等。
+     */
+    protected List<Object> tabWidgets = new ArrayList<>();
     protected boolean visible = true;
     protected int tabId;
     protected String tabNameKey;
@@ -33,6 +39,7 @@ public abstract class AbstractScreenTab implements Tab {
     public void initGui(TabManager tabManager, int width, int height) {
         this.tabManager = tabManager;
         tabButtons.clear();
+        tabWidgets.clear();
     }
 
     @Override
@@ -64,21 +71,33 @@ public abstract class AbstractScreenTab implements Tab {
         }
     }
 
+    /**
+     * 注册一个 GuiButton 到 Tab（同时加入 buttonList）。
+     */
     protected void addButton(GuiButton button) {
         tabButtons.add(button);
+        tabWidgets.add(button);
         tabManager.addButton(button);
     }
 
     /**
+     * 注册一个任意类型的控件到 Tab（不加入 buttonList）。
+     * 适用于 GuiTextField 等非按钮控件。
+     */
+    protected void addWidget(Object widget) {
+        tabWidgets.add(widget);
+    }
+
+    /**
      * <p>
-     * 遍历此 Tab 的所有 {@link #tabButtons} 控件。<br>
-     * Visit all {@link #tabButtons} of this tab.
+     * 遍历此 Tab 的所有 {@link #tabWidgets} 控件。<br>
+     * Visit all {@link #tabWidgets} of this tab.
      * </p>
      */
     @Override
     public void visitChildren(Consumer<Object> visitor) {
-        for (GuiButton button : tabButtons) {
-            visitor.accept(button);
+        for (Object widget : tabWidgets) {
+            visitor.accept(widget);
         }
     }
 

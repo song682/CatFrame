@@ -49,11 +49,13 @@ public class GridLayoutTab extends AbstractScreenTab {
         layout.arrangeElements();
         FrameLayout.alignInRectangle(layout, 0, 0, width, height, 0.5F, 0.16666667F);
 
-        // Register any GuiButton children with the TabManager
-        // 将 GuiButton 子元素注册到 TabManager
+        // Register all children with the Tab (buttons → buttonList, others → widget list)
+        // 将所有子元素注册到 Tab（按钮进 buttonList，其他进 widget list）
         for (ILayout child : layout.getChildren()) {
             if (child instanceof GuiButton) {
                 addButton((GuiButton) child);
+            } else {
+                addWidget(child);
             }
         }
     }

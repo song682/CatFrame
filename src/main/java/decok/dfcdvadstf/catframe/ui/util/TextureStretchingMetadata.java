@@ -25,7 +25,7 @@ import java.util.Map;
  *     "stretching": {
  *         "type": "nine_patch",
  *         "default": { "width": 160, "height": 32 },
- *         "border": { "left": 4, "top": 4, "right": 4, "bottom": 4 }
+ *         "edge": { "left": 4, "top": 4, "right": 4, "bottom": 4 }
  *     }
  * }
  *
@@ -51,30 +51,25 @@ public final class TextureStretchingMetadata {
     private final int defaultWidth;
     private final int defaultHeight;
 
-    // nine_patch borders
-    private final int borderLeft;
-    private final int borderTop;
-    private final int borderRight;
-    private final int borderBottom;
-
-    // three_patch edges
+    // nine_patch / three_patch edges
     private final int edgeLeft;
+    private final int edgeTop;
     private final int edgeRight;
+    private final int edgeBottom;
+
     private final int tileWidth;
 
     private TextureStretchingMetadata(TextureStretching.StretchType type,
                                       int defaultWidth, int defaultHeight,
-                                      int borderLeft, int borderTop, int borderRight, int borderBottom,
-                                      int edgeLeft, int edgeRight, int tileWidth) {
+                                      int edgeLeft, int edgeTop, int edgeRight, int edgeBottom,
+                                      int tileWidth) {
         this.type = type;
         this.defaultWidth = defaultWidth;
         this.defaultHeight = defaultHeight;
-        this.borderLeft = borderLeft;
-        this.borderTop = borderTop;
-        this.borderRight = borderRight;
-        this.borderBottom = borderBottom;
         this.edgeLeft = edgeLeft;
+        this.edgeTop = edgeTop;
         this.edgeRight = edgeRight;
+        this.edgeBottom = edgeBottom;
         this.tileWidth = tileWidth;
     }
 
@@ -83,12 +78,10 @@ public final class TextureStretchingMetadata {
     public TextureStretching.StretchType getType() { return type; }
     public int getDefaultWidth() { return defaultWidth; }
     public int getDefaultHeight() { return defaultHeight; }
-    public int getBorderLeft() { return borderLeft; }
-    public int getBorderTop() { return borderTop; }
-    public int getBorderRight() { return borderRight; }
-    public int getBorderBottom() { return borderBottom; }
     public int getEdgeLeft() { return edgeLeft; }
+    public int getEdgeTop() { return edgeTop; }
     public int getEdgeRight() { return edgeRight; }
+    public int getEdgeBottom() { return edgeBottom; }
     public int getTileWidth() { return tileWidth; }
 
     // ──── Loader ────
@@ -132,34 +125,45 @@ public final class TextureStretchingMetadata {
                 }
 
                 if ("nine_patch".equals(typeStr)) {
-                    int bL = 4, bT = 4, bR = 4, bB = 4;
-                    if (s.has("border")) {
-                        JsonObject b = s.getAsJsonObject("border");
-                        bL = b.has("left") ? b.get("left").getAsInt() : bL;
-                        bT = b.has("top") ? b.get("top").getAsInt() : bT;
-                        bR = b.has("right") ? b.get("right").getAsInt() : bR;
-                        bB = b.has("bottom") ? b.get("bottom").getAsInt() : bB;
+                    int eL = 4, eT = 4, eR = 4, eB = 4;
+                    if (s.has("edge")) {
+                        if (s.get("edge").isJsonObject()) {
+                            JsonObject e = s.getAsJsonObject("edge");
+                            eL = e.has("left") ? e.get("left").getAsInt() : eL;
+                            eT = e.has("top") ? e.get("top").getAsInt() : eT;
+                            eR = e.has("right") ? e.get("right").getAsInt() : eR;
+                            eB = e.has("bottom") ? e.get("bottom").getAsInt() : eB;
+                        } else {
+                            // Shorthand: "edge": 4 means all sides equal
+                            int v = s.get("edge").getAsInt();
+                            eL = eT = eR = eB = v;
+                        }
                     }
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.NINE_PATCH,
-                            defW, defH, bL, bT, bR, bB, 0, 0, 0);
+                            defW, defH, eL, eT, eR, eB, 0);
 
                 } else if ("three_patch".equals(typeStr)) {
                     int eL = 2, eR = 2;
                     if (s.has("edge")) {
-                        JsonObject e = s.getAsJsonObject("edge");
-                        eL = e.has("left") ? e.get("left").getAsInt() : eL;
-                        eR = e.has("right") ? e.get("right").getAsInt() : eR;
+                        if (s.get("edge").isJsonObject()) {
+                            JsonObject e = s.getAsJsonObject("edge");
+                            eL = e.has("left") ? e.get("left").getAsInt() : eL;
+                            eR = e.has("right") ? e.get("right").getAsInt() : eR;
+                        } else {
+                            int v = s.get("edge").getAsInt();
+                            eL = eR = v;
+                        }
                     }
                     int tw = s.has("tileWidth") ? s.get("tileWidth").getAsInt() : (defW - eL - eR);
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.THREE_PATCH,
-                            defW, defH, 0, 0, 0, 0, eL, eR, tw);
+                            defW, defH, 0, 0, 0, 0, tw);
 
                 } else if ("tile".equals(typeStr)) {
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.TILE,
-                            defW, defH, 0, 0, 0, 0, 0, 0, 0);
+                            defW, defH, 0, 0, 0, 0, 0);
                 }
             }
         } catch (Exception e) {

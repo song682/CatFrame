@@ -257,8 +257,8 @@ public final class TextureStretching {
             switch (meta.getType()) {
                 case NINE_PATCH:
                     drawNinePatch(texture, x, y, w, h,
-                            meta.getBorderLeft(), meta.getBorderTop(),
-                            meta.getBorderRight(), meta.getBorderBottom(),
+                            meta.getEdgeLeft(), meta.getEdgeTop(),
+                            meta.getEdgeRight(), meta.getEdgeBottom(),
                             meta.getDefaultWidth(), meta.getDefaultHeight());
                     return;
                 case THREE_PATCH:

@@ -158,7 +158,7 @@ public final class TextureStretchingMetadata {
                     int tw = s.has("tileWidth") ? s.get("tileWidth").getAsInt() : (defW - eL - eR);
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.THREE_PATCH,
-                            defW, defH, 0, 0, 0, 0, tw);
+                            defW, defH, eL, 0, eR, 0, tw);
 
                 } else if ("tile".equals(typeStr)) {
                     metadata = new TextureStretchingMetadata(

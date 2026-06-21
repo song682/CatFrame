@@ -4,16 +4,20 @@ import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
  * 文本框组件 —— 基于 {@link AbstractComponent}，对标高版本 Minecraft 的 {@code EditBox}。<br>
- * 包装原版 {@code GuiTextField} 的核心功能。
+ * 支持纹理背景（useVanilla 切换原版黑白框）、原版风格光标（末尾_内部|）或强制竖线光标。
  * </p>
  * <p>
  * Edit box component — based on {@link AbstractComponent}, counterpart of the
- * high-version Minecraft {@code EditBox}. Wraps core {@code GuiTextField} functionality.
+ * high-version Minecraft {@code EditBox}. Supports textured background (useVanilla
+ * toggles vanilla grey/black box), vanilla-style cursor (_ at end, | inside text),
+ * or forced vertical bar cursor.
  * </p>
  */
 public class EditBox extends AbstractComponent {
@@ -36,12 +40,26 @@ public class EditBox extends AbstractComponent {
     private boolean focused;
     private int cursorPosition;
     private int selectionEnd;
+    private int cursorCounter;
 
     /**
-     * If true, use texture-based background instead of solid colour.
-     * <p>为 true 时使用纹理背景而非纯色。</p>
+     * If true, use CatFrame texture-based background; if false, solid colour.
+     * <p>为 true 时使用 CatFrame 纹理背景；false 时纯色。</p>
      */
     protected boolean useTextureBackground = true;
+
+    /**
+     * If true, use vanilla grey/black box instead of CatFrame texture or solid colour.
+     * <p>为 true 时使用原版灰/黑框，替代 CatFrame 纹理或纯色。</p>
+     */
+    protected boolean useVanillaTexture = false;
+
+    /**
+     * If true, always draw vertical bar cursor (|). If false, match vanilla behaviour:
+     * underscore (_) at end of text, vertical bar (|) when editing inside text.
+     * <p>为 true 时始终绘制竖线光标(|)。为 false 时匹配原版行为：末尾_，文字内部|。</p>
+     */
+    protected boolean forceVerticalCursor = false;
 
     public EditBox(int x, int y, int width, int height) {
         super(x, y, width, height);
@@ -50,6 +68,26 @@ public class EditBox extends AbstractComponent {
     public EditBox(int x, int y, int width, int height, Text message) {
         super(x, y, width, height);
         this.message = message;
+    }
+
+    // ──── Configuration ────
+
+    /**
+     * If true, use vanilla grey/black text field background.
+     * <p>为 true 时使用原版灰/黑文本框背景。</p>
+     */
+    public EditBox setUseVanillaTexture(boolean useVanilla) {
+        this.useVanillaTexture = useVanilla;
+        return this;
+    }
+
+    /**
+     * If true, always draw vertical bar cursor instead of vanilla underscore-at-end.
+     * <p>为 true 时始终绘制竖线光标，而非原版的末尾下划线。</p>
+     */
+    public EditBox setForceVerticalCursor(boolean force) {
+        this.forceVerticalCursor = force;
+        return this;
     }
 
     // ──── Text management ────
@@ -102,6 +140,7 @@ public class EditBox extends AbstractComponent {
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         if (mouseButton == 0) {
             focused = isMouseOver(mouseX, mouseY);
+            if (focused) cursorCounter = 0;
         }
     }
 
@@ -109,8 +148,43 @@ public class EditBox extends AbstractComponent {
     public void keyTyped(char typedChar, int keyCode) {
         if (!focused) return;
 
+        // Ctrl+A: select all
+        if (keyCode == 30 && isCtrlKeyDown()) {
+            cursorPosition = text.length();
+            selectionEnd = 0;
+            return;
+        }
+        // Ctrl+C: copy
+        if (keyCode == 46 && isCtrlKeyDown()) {
+            setClipboardString(getSelectedText());
+            return;
+        }
+        // Ctrl+V: paste
+        if (keyCode == 47 && isCtrlKeyDown()) {
+            String clip = getClipboardString();
+            if (clip != null) {
+                for (int i = 0; i < clip.length() && text.length() < maxLength; i++) {
+                    char c = clip.charAt(i);
+                    if (ChatAllowedCharacters.isAllowedCharacter(c)) {
+                        text = text.substring(0, cursorPosition) + c + text.substring(cursorPosition);
+                        cursorPosition++;
+                    }
+                }
+                selectionEnd = cursorPosition;
+            }
+            return;
+        }
+        // Ctrl+X: cut
+        if (keyCode == 45 && isCtrlKeyDown()) {
+            setClipboardString(getSelectedText());
+            deleteSelection();
+            return;
+        }
+
         if (keyCode == 14) { // Backspace
-            if (cursorPosition > 0) {
+            if (selectionEnd != cursorPosition) {
+                deleteSelection();
+            } else if (cursorPosition > 0) {
                 text = text.substring(0, cursorPosition - 1) + text.substring(cursorPosition);
                 cursorPosition--;
                 selectionEnd = cursorPosition;
@@ -118,14 +192,69 @@ public class EditBox extends AbstractComponent {
         } else if (keyCode == 28) { // Enter
             // ignore
         } else if (keyCode == 211) { // Delete
-            if (cursorPosition < text.length()) {
+            if (selectionEnd != cursorPosition) {
+                deleteSelection();
+            } else if (cursorPosition < text.length()) {
                 text = text.substring(0, cursorPosition) + text.substring(cursorPosition + 1);
                 selectionEnd = cursorPosition;
             }
-        } else if (typedChar != 0 && text.length() < maxLength) {
+        } else if (keyCode == 203) { // Left arrow
+            if (cursorPosition > 0) {
+                cursorPosition--;
+                if (!GuiScreen.isShiftKeyDown()) selectionEnd = cursorPosition;
+            }
+        } else if (keyCode == 205) { // Right arrow
+            if (cursorPosition < text.length()) {
+                cursorPosition++;
+                if (!GuiScreen.isShiftKeyDown()) selectionEnd = cursorPosition;
+            }
+        } else if (keyCode == 199) { // Home
+            cursorPosition = 0;
+            if (!GuiScreen.isShiftKeyDown()) selectionEnd = cursorPosition;
+        } else if (keyCode == 207) { // End
+            cursorPosition = text.length();
+            if (!GuiScreen.isShiftKeyDown()) selectionEnd = cursorPosition;
+        } else if (typedChar != 0 && text.length() < maxLength && ChatAllowedCharacters.isAllowedCharacter(typedChar)) {
+            if (selectionEnd != cursorPosition) deleteSelection();
             text = text.substring(0, cursorPosition) + typedChar + text.substring(cursorPosition);
             cursorPosition++;
             selectionEnd = cursorPosition;
+        }
+    }
+
+    private void deleteSelection() {
+        if (selectionEnd == cursorPosition) return;
+        int start = Math.min(cursorPosition, selectionEnd);
+        int end = Math.max(cursorPosition, selectionEnd);
+        text = text.substring(0, start) + text.substring(end);
+        cursorPosition = start;
+        selectionEnd = start;
+    }
+
+    private String getSelectedText() {
+        if (selectionEnd == cursorPosition) return "";
+        int start = Math.min(cursorPosition, selectionEnd);
+        int end = Math.max(cursorPosition, selectionEnd);
+        return text.substring(start, end);
+    }
+
+    private static boolean isCtrlKeyDown() {
+        return GuiScreen.isCtrlKeyDown();
+    }
+
+    private static void setClipboardString(String s) {
+        GuiScreen.setClipboardString(s);
+    }
+
+    private static String getClipboardString() {
+        return GuiScreen.getClipboardString();
+    }
+
+    // ──── ChatAllowedCharacters helper ────
+
+    private static class ChatAllowedCharacters {
+        static boolean isAllowedCharacter(char c) {
+            return c >= 32 && c != 127;
         }
     }
 
@@ -137,17 +266,20 @@ public class EditBox extends AbstractComponent {
 
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 
+        // Update cursor counter
+        cursorCounter++;
+
         // Draw background
-        if (useTextureBackground) {
+        if (useVanillaTexture) {
+            drawVanillaBackground();
+        } else if (useTextureBackground) {
             ResourceLocation tex = focused ? TEXT_FIELD_HIGHLIGHTED_TEXTURE : TEXT_FIELD_TEXTURE;
-            // Auto-load mcmeta, fallback to 1px border at 200x20
             TextureStretching.drawAutoNinePatch(tex, x, y, width, height,
                     TEXT_FIELD_DEFAULT_W, TEXT_FIELD_DEFAULT_H, TEXT_FIELD_BORDER);
         } else {
             int bgColor = focused ? 0xFF333366 : 0xFF333333;
             drawRect(x, y, x + width, y + height, bgColor);
 
-            // Draw border
             int borderColor = focused ? 0xFFFFFFFF : 0xFF888888;
             drawRect(x, y, x + width, y + 1, borderColor);
             drawRect(x, y + height - 1, x + width, y + height, borderColor);
@@ -168,12 +300,26 @@ public class EditBox extends AbstractComponent {
         String clipped = font.trimStringToWidth(displayText, width - 8);
         font.drawStringWithShadow(clipped, textX, textY, textColor);
 
-        // Draw cursor
-        if (focused && (System.currentTimeMillis() / 500) % 2 == 0) {
+        // Draw cursor (blinking)
+        if (focused && (cursorCounter / 6) % 2 == 0) {
             int cursorX = textX + font.getStringWidth(clipped.substring(0,
                 Math.min(cursorPosition, clipped.length())));
-            font.drawStringWithShadow("|", cursorX, textY, 0xFFFFFF);
+
+            boolean atEnd = cursorPosition >= text.length() && text.length() < maxLength;
+            if (forceVerticalCursor || !atEnd) {
+                // Vertical bar cursor (inside text or forced)
+                Gui.drawRect(cursorX, textY - 1, cursorX + 1, textY + font.FONT_HEIGHT + 1, 0xFFFFFFFF);
+            } else {
+                // Underscore cursor (at end with room, vanilla style)
+                font.drawStringWithShadow("_", cursorX, textY, 0xFFFFFF);
+            }
         }
+    }
+
+    /** Draw vanilla-style grey border + black fill background. */
+    private void drawVanillaBackground() {
+        drawRect(x - 1, y - 1, x + width + 1, y + height + 1, 0xFFA0A0A0);
+        drawRect(x, y, x + width, y + height, 0xFF000000);
     }
 
     private static void drawRect(int left, int top, int right, int bottom, int color) {

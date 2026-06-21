@@ -54,10 +54,15 @@ public interface Layout extends ILayout {
     void recalculate();
 
     /**
-     * Arrange elements recursively. Default implementation just calls recalculate().
-     * <p>递归排列所有元素。默认实现仅调用 recalculate()。</p>
+     * Arrange elements recursively. First arranges child layouts, then recalculates self.
+     * <p>递归排列所有元素。先排列子布局，再重新计算自身。</p>
      */
     default void arrangeElements() {
+        visitChildren(child -> {
+            if (child instanceof Layout) {
+                ((Layout) child).arrangeElements();
+            }
+        });
         recalculate();
     }
 

@@ -90,9 +90,16 @@ public final class TextureStretching {
         int texInnerH = texH - edgeT - edgeB;
 
         if (innerW < 0 || innerH < 0) {
-            throw new TextureStretchLimitException(
-                    String.format("Nine-patch target size (%dx%d) smaller than edges (%d+%d, %d+%d)",
-                            w, h, edgeL, edgeR, edgeT, edgeB));
+            // Target size smaller than edges — clamp right/bottom edges to fit
+            // 目标尺寸小于边缘——缩减右/下边缘以适应实际尺寸
+            if (w < edgeL + edgeR) {
+                edgeR = Math.max(0, w - edgeL);
+                innerW = 0;
+            }
+            if (h < edgeT + edgeB) {
+                edgeB = Math.max(0, h - edgeT);
+                innerH = 0;
+            }
         }
 
         bindAndPrepare(texture);
@@ -160,9 +167,10 @@ public final class TextureStretching {
 
         int middleW = w - edgeL - edgeR;
         if (middleW < 0) {
-            throw new TextureStretchLimitException(
-                    String.format("Three-patch target width (%d) smaller than edges (%d+%d)",
-                            w, edgeL, edgeR));
+            // Target width smaller than edges — clamp right edge to fit
+            // 目标宽度小于边缘——缩减右边缘以适应实际宽度
+            edgeR = Math.max(0, w - edgeL);
+            middleW = 0;
         }
 
         bindAndPrepare(texture);

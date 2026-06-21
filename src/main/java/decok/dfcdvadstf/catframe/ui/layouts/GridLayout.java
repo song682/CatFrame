@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.layouts;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -90,7 +91,6 @@ public class GridLayout extends AbstractLayout {
         if (rows < 1) throw new IllegalArgumentException("Occupied rows must be at least 1");
         if (columns < 1) throw new IllegalArgumentException("Occupied columns must be at least 1");
         this.children.add(new ChildContainer(child, row, column, rows, columns, cellSettings));
-        super.add(child); // adds to AbstractLayout's child list + triggers recalculate
         return child;
     }
 
@@ -145,6 +145,15 @@ public class GridLayout extends AbstractLayout {
     }
 
     // ──── Visit ────
+
+    @Override
+    public List<ILayout> getChildren() {
+        List<ILayout> raw = new ArrayList<>(this.children.size());
+        for (ChildContainer cc : this.children) {
+            raw.add(cc.child);
+        }
+        return Collections.unmodifiableList(raw);
+    }
 
     @Override
     public void visitChildren(Consumer<ILayout> visitor) {
@@ -218,6 +227,38 @@ public class GridLayout extends AbstractLayout {
 
         this.width = columnXOffsets[maxColumn] + maxColumnWidths[maxColumn];
         this.height = rowYOffsets[maxRow] + maxRowHeights[maxRow];
+    }
+
+    // ──── Position overrides ────
+
+    /**
+     * Sets the X position and translates all grid children by the same delta.
+     * <p>设置 X 位置并将所有网格子元素平移相同偏移量。</p>
+     */
+    @Override
+    public void setX(int x) {
+        int dx = x - this.x;
+        this.x = x;
+        if (dx != 0) {
+            for (ChildContainer cc : this.children) {
+                cc.child.setX(cc.child.getX() + dx);
+            }
+        }
+    }
+
+    /**
+     * Sets the Y position and translates all grid children by the same delta.
+     * <p>设置 Y 位置并将所有网格子元素平移相同偏移量。</p>
+     */
+    @Override
+    public void setY(int y) {
+        int dy = y - this.y;
+        this.y = y;
+        if (dy != 0) {
+            for (ChildContainer cc : this.children) {
+                cc.child.setY(cc.child.getY() + dy);
+            }
+        }
     }
 
     // ──── RowHelper ────

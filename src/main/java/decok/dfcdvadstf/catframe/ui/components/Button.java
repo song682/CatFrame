@@ -26,9 +26,14 @@ public class Button extends AbstractButton {
     private final OnPress onPress;
 
     protected Button(int x, int y, int width, int height, Text message, OnPress onPress) {
+        this(x, y, width, height, message, onPress, false);
+    }
+
+    protected Button(int x, int y, int width, int height, Text message, OnPress onPress, boolean useVanillaTexture) {
         super(x, y, width, height);
         this.message = message;
         this.onPress = onPress;
+        this.useVanillaTexture = useVanillaTexture;
     }
 
     /**
@@ -98,6 +103,7 @@ public class Button extends AbstractButton {
         private int y;
         private int width = DEFAULT_WIDTH;
         private int height = DEFAULT_HEIGHT;
+        private boolean useVanillaTexture = false;
 
         public Builder(Text message, OnPress onPress) {
             this.message = message;
@@ -120,8 +126,13 @@ public class Button extends AbstractButton {
             return this;
         }
 
+        public Builder useVanillaTexture(boolean useVanilla) {
+            this.useVanillaTexture = useVanilla;
+            return this;
+        }
+
         public Button build() {
-            return new Button(x, y, width, height, message, onPress);
+            return new Button(x, y, width, height, message, onPress, useVanillaTexture);
         }
     }
 }

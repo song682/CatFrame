@@ -4,6 +4,7 @@ import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.layouts.FrameLayout;
 import decok.dfcdvadstf.catframe.ui.layouts.GridLayout;
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
+import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.GuiButton;
 
 import java.util.function.Consumer;
@@ -39,6 +40,13 @@ public class GridLayoutTab extends AbstractScreenTab {
 
     protected final GridLayout layout = new GridLayout();
 
+    /**
+     * Vertical alignment within the tab content area (0.0 = top, 1.0 = bottom).
+     * Subclasses can override this to adjust vertical positioning.
+     * <p>在 Tab 内容区域内的垂直对齐系数。子类可覆写以调整垂直位置。</p>
+     */
+    protected float verticalAlignment = 0.16666667F;
+
     public GridLayoutTab(int tabId, String tabNameKey) {
         super(tabId, tabNameKey);
     }
@@ -46,11 +54,6 @@ public class GridLayoutTab extends AbstractScreenTab {
     @Override
     public void initGui(TabManager tabManager, int width, int height) {
         super.initGui(tabManager, width, height);
-
-        // Arrange elements and centre in screen
-        // 排列元素并在屏幕内居中
-        layout.arrangeElements();
-        FrameLayout.alignInRectangle(layout, 0, 0, width, height, 0.5F, 0.16666667F);
 
         // Register all children with the Tab (GuiButton → buttonList, Component → component list, others → widget list)
         // 将所有子元素注册到 Tab（GuiButton 进 buttonList，Component 进 component list，其他进 widget list）
@@ -63,6 +66,19 @@ public class GridLayoutTab extends AbstractScreenTab {
                 addWidget(child);
             }
         }
+    }
+
+    @Override
+    public void doLayout(ScreenRectangle rectangle) {
+        // Arrange elements and align within the tab content area.
+        // Called by TabManager when setTabArea() is invoked.
+        // This overrides any positioning done in initGui.
+        // 排列元素并在 Tab 内容区域内对齐。
+        // 由 TabManager 在 setTabArea() 时调用。
+        // 此调用会覆盖 initGui 中的降级定位。
+        layout.arrangeElements();
+        FrameLayout.alignInRectangle(layout, rectangle.x, rectangle.y,
+            rectangle.width, rectangle.height, 0.5F, verticalAlignment);
     }
 
     @Override
@@ -86,10 +102,20 @@ public class GridLayoutTab extends AbstractScreenTab {
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
+        // Forward mouse click to all registered Components (CyclingArea, Button, EditBox, etc.)
+        // 将鼠标点击转发到所有已注册的 Component（CyclingArea、Button、EditBox 等）
+        for (Component component : tabComponents) {
+            component.mouseClicked(mouseX, mouseY, mouseButton);
+        }
     }
 
     @Override
     public void keyTyped(char typedChar, int keyCode) {
+        // Forward key input to all registered Components (EditBox, etc.)
+        // 将按键输入转发到所有已注册的 Component（EditBox 等）
+        for (Component component : tabComponents) {
+            component.keyTyped(typedChar, keyCode);
+        }
     }
 
     public GridLayout getLayout() {

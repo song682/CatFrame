@@ -3,8 +3,6 @@ package decok.dfcdvadstf.catframe.ui.components;
 import decok.dfcdvadstf.catframe.ui.Text;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.Tessellator;
-import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,19 +12,19 @@ import java.util.List;
 /**
  * <p>
  * 泛型循环按钮 — 类似高版本 Minecraft 的 {@code CyclingButtonWidget}。<br>
- * 继承 {@link AbstractComponent}，融入统一组件体系。
+ * 继承 {@link AbstractButton}，使用统一的纹理背景渲染。
  * 支持通过点击和滚轮在类型化的值列表中循环切换。
  * </p>
  * <p>
  * Generic cycling button — similar to the high-version Minecraft
- * {@code CyclingButtonWidget}. Extends {@link AbstractComponent} to integrate
- * into the unified component system. Supports click and scroll-wheel cycling
+ * {@code CyclingButtonWidget}. Extends {@link AbstractButton} for unified
+ * textured background rendering. Supports click and scroll-wheel cycling
  * through a typed list of values.
  * </p>
  *
  * @param <T> the type of values to cycle through / 循环切换的值类型
  */
-public class CyclingButton<T> extends AbstractComponent {
+public class CyclingButton<T> extends AbstractButton {
 
     // ──── Interfaces ────
 
@@ -43,7 +41,8 @@ public class CyclingButton<T> extends AbstractComponent {
     CyclingButton(int x, int y, int width, int height,
                   Text label, int index, T value,
                   Values<T> values, ValueToText<T> valueToText,
-                  UpdateCallback<T> callback) {
+                  UpdateCallback<T> callback,
+                  boolean useVanillaTexture) {
         super(x, y, width, height);
         this.label = label;
         this.index = index;
@@ -51,6 +50,7 @@ public class CyclingButton<T> extends AbstractComponent {
         this.values = values;
         this.valueToText = valueToText;
         this.callback = callback;
+        this.useVanillaTexture = useVanillaTexture;
     }
 
     /**
@@ -84,6 +84,17 @@ public class CyclingButton<T> extends AbstractComponent {
     }
 
     /**
+     * Left-click cycles forward (+1). Delegated via {@link #onPress()} from AbstractButton,
+     * which also handles sound playback.
+     * <p>左键点击正向切换。通过 AbstractButton 的 {@link #onPress()} 委托，
+     * AbstractButton 还会播放音效。</p>
+     */
+    @Override
+    public void onPress() {
+        cycle(1);
+    }
+
+    /**
      * Handles mouse scroll input.
      * Scroll up (positive delta) cycles backward; scroll down (negative delta) cycles forward.
      * <p>处理鼠标滚轮输入。向上滚动（正 delta）反向；向下滚动（负 delta）正向。</p>
@@ -98,17 +109,7 @@ public class CyclingButton<T> extends AbstractComponent {
         }
     }
 
-    /**
-     * Cycles forward (+1) on left-click.
-     * <p>左键点击时正向切换。</p>
-     */
-    @Override
-    public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        if (!active || !isMouseOver(mouseX, mouseY)) return;
-        if (mouseButton == 0) {
-            cycle(1);
-        }
-    }
+    // ──── Value access ────
 
     /**
      * Gets the current value.
@@ -143,7 +144,7 @@ public class CyclingButton<T> extends AbstractComponent {
         if (valueToText != null && value != null) {
             String text = valueToText.apply(value);
             return (label != null && !label.getString().isEmpty())
-                ? label.getString() + ": " + text
+                ? label.getString() + " " + text
                 : text;
         }
         return "";
@@ -156,22 +157,23 @@ public class CyclingButton<T> extends AbstractComponent {
         if (!visible) return;
 
         updateHoverState(mouseX, mouseY);
-        FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-
-        // Draw button background
-        int bgColor = isHovered ? 0xFF555555 : 0xFF333333;
-        drawRect(x, y, x + width, y + height, bgColor);
+        renderBackground(mouseX, mouseY, partialTicks);
 
         // Draw button text
+        FontRenderer font = Minecraft.getMinecraft().fontRenderer;
         String displayText = getDisplayText();
-        int textColor = active ? (isHovered ? 0xFFFFFF55 : 0xFFFFFF) : 0x888888;
+        int textColor;
+        if (!active) {
+            textColor = TEXT_COLOR_DISABLED;
+        } else if (isHovered) {
+            textColor = TEXT_COLOR_HOVER;
+        } else {
+            textColor = TEXT_COLOR_ENABLED;
+        }
+
         int textX = x + (width - font.getStringWidth(displayText)) / 2;
         int textY = y + (height - font.FONT_HEIGHT) / 2;
         font.drawStringWithShadow(displayText, textX, textY, textColor);
-    }
-
-    private void drawRect(int left, int top, int right, int bottom, int color) {
-        GuiDrawing.drawRect(left, top, right, bottom, color);
     }
 
     // ──── ValueToText interface ────
@@ -215,6 +217,7 @@ public class CyclingButton<T> extends AbstractComponent {
         private T initialValue;
         private int initialIndex = 0;
         private Text label = Text.literal("");
+        private boolean useVanillaTexture = false;
 
         public Builder(ValueToText<T> valueToText) {
             this.valueToText = valueToText;
@@ -244,8 +247,8 @@ public class CyclingButton<T> extends AbstractComponent {
         }
 
         /**
-         * Sets the label text (displayed as "label: valueText").
-         * <p>设置标签文本（显示为 "label: valueText"）。</p>
+         * Sets the label text (displayed as "label valueText").
+         * <p>设置标签文本（显示为 "label valueText"）。</p>
          */
         public Builder<T> label(Text label) {
             this.label = label;
@@ -262,6 +265,15 @@ public class CyclingButton<T> extends AbstractComponent {
         }
 
         /**
+         * If true, uses vanilla widgets texture instead of CatFrame custom textures.
+         * <p>为 true 时使用原版部件纹理而非 CatFrame 自定义纹理。</p>
+         */
+        public Builder<T> useVanillaTexture(boolean useVanilla) {
+            this.useVanillaTexture = useVanilla;
+            return this;
+        }
+
+        /**
          * Builds the button.
          * <p>构建按钮。</p>
          */
@@ -273,7 +285,8 @@ public class CyclingButton<T> extends AbstractComponent {
             List<T> list = this.values.getDefaults();
             T value = this.initialValue != null ? this.initialValue : list.get(this.initialIndex);
             return new CyclingButton<>(x, y, width, height,
-                label, this.initialIndex, value, this.values, this.valueToText, callback);
+                label, this.initialIndex, value, this.values, this.valueToText, callback,
+                useVanillaTexture);
         }
     }
 }

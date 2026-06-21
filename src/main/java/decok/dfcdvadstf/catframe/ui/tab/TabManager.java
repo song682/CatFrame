@@ -3,8 +3,10 @@ package decok.dfcdvadstf.catframe.ui.tab;
 import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -268,7 +270,8 @@ public class TabManager {
             // Play click sound
             // 播放点击音效
             if (playSound) {
-                Minecraft.getMinecraft().thePlayer.playSound("random.click", 1.0F, 1.0F);
+                Minecraft.getMinecraft().getSoundHandler().playSound(
+                        PositionedSoundRecord.func_147674_a(new ResourceLocation("random.click"), 1.0F));
             }
 
             // Fire callbacks

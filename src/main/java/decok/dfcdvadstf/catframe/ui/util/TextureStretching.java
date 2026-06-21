@@ -227,6 +227,99 @@ public final class TextureStretching {
         cleanup();
     }
 
+    // ──── Auto-draw from mcmeta ────
+
+    /**
+     * Draw a texture using parameters loaded from its {@code .mcmeta} file.
+     * <p>Falls back to the given type with hardcoded defaults if no metadata is found.</p>
+     * <p>根据 {@code .mcmeta} 文件中的参数自动绘制纹理。找不到元数据时使用回退类型和参数。</p>
+     *
+     * @param texture       texture resource / 纹理资源
+     * @param x             screen X / 屏幕 X
+     * @param y             screen Y / 屏幕 Y
+     * @param w             target width / 目标宽度
+     * @param h             target height / 目标高度
+     * @param fallbackType  fallback stretch type / 回退拉伸类型
+     * @param fallbackW     fallback texture width / 回退纹理宽度
+     * @param fallbackH     fallback texture height / 回退纹理高度
+     * @param fallbackL     fallback left edge / 回退左边缘
+     * @param fallbackT     fallback top edge / 回退上边缘
+     * @param fallbackR     fallback right edge / 回退右边缘
+     * @param fallbackB     fallback bottom edge / 回退下边缘
+     */
+    public static void drawAuto(ResourceLocation texture, int x, int y, int w, int h,
+                                StretchType fallbackType,
+                                int fallbackW, int fallbackH,
+                                int fallbackL, int fallbackT, int fallbackR, int fallbackB) {
+        TextureStretchingMetadata meta = TextureStretchingMetadata.load(texture);
+
+        if (meta != null) {
+            switch (meta.getType()) {
+                case NINE_PATCH:
+                    drawNinePatch(texture, x, y, w, h,
+                            meta.getBorderLeft(), meta.getBorderTop(),
+                            meta.getBorderRight(), meta.getBorderBottom(),
+                            meta.getDefaultWidth(), meta.getDefaultHeight());
+                    return;
+                case THREE_PATCH:
+                    drawFixedEndRepeat(texture, x, y, w, h,
+                            meta.getEdgeLeft(), meta.getEdgeRight(),
+                            meta.getTileWidth(),
+                            meta.getDefaultWidth(), meta.getDefaultHeight());
+                    return;
+                case TILE:
+                    drawTiled(texture, x, y, w, h,
+                            meta.getDefaultWidth(), meta.getDefaultHeight());
+                    return;
+                default:
+                    break;
+            }
+        }
+
+        // Fallback with explicit type
+        switch (fallbackType) {
+            case THREE_PATCH:
+                drawFixedEndRepeat(texture, x, y, w, h,
+                        fallbackL, fallbackR,
+                        fallbackW - fallbackL - fallbackR,
+                        fallbackW, fallbackH);
+                break;
+            case TILE:
+                drawTiled(texture, x, y, w, h, fallbackW, fallbackH);
+                break;
+            case NINE_PATCH:
+            default:
+                drawNinePatch(texture, x, y, w, h,
+                        fallbackL, fallbackT, fallbackR, fallbackB,
+                        fallbackW, fallbackH);
+                break;
+        }
+    }
+
+    /**
+     * Draw a texture using mcmeta metadata (nine-patch default fallback).
+     * <p>Convenience overload that assumes nine-patch with symmetric borders.</p>
+     */
+    public static void drawAutoNinePatch(ResourceLocation texture, int x, int y, int w, int h,
+                                          int fallbackTexW, int fallbackTexH, int fallbackBorder) {
+        drawAuto(texture, x, y, w, h,
+                StretchType.NINE_PATCH,
+                fallbackTexW, fallbackTexH,
+                fallbackBorder, fallbackBorder, fallbackBorder, fallbackBorder);
+    }
+
+    /**
+     * Draw a texture using mcmeta metadata (three-patch default fallback).
+     * <p>Convenience overload for horizontal three-patch with symmetric edges.</p>
+     */
+    public static void drawAutoThreePatch(ResourceLocation texture, int x, int y, int w, int h,
+                                          int fallbackTexW, int fallbackTexH, int fallbackEdge) {
+        drawAuto(texture, x, y, w, h,
+                StretchType.THREE_PATCH,
+                fallbackTexW, fallbackTexH,
+                fallbackEdge, 0, fallbackEdge, 0);
+    }
+
     // ──── Internal helpers ────
 
     /**

@@ -113,9 +113,9 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
      */
     protected void renderBackground() {
         if (backgroundTexture != null) {
-            // Nine-patch with 4px border, assuming 160x32 default texture
-            TextureStretching.drawNinePatch(backgroundTexture, 0, 0, width, height,
-                    4, 4, 4, 4, DEFAULT_WIDTH, SLOT_HEIGHT);
+            // Auto-load mcmeta, fallback to 4px border at 160x32
+            TextureStretching.drawAutoNinePatch(backgroundTexture, 0, 0, width, height,
+                    DEFAULT_WIDTH, SLOT_HEIGHT, 4);
         } else {
             GL11.glDisable(GL11.GL_TEXTURE_2D);
             GL11.glEnable(GL11.GL_BLEND);

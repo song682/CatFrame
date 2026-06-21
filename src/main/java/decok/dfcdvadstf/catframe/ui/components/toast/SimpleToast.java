@@ -25,20 +25,32 @@ public class SimpleToast extends BaseToast {
         this(title, description, DEFAULT_DISPLAY_TIME);
     }
 
+    /** Minimum width when content is short / 内容较少时的最小宽度 */
+    private static final int MIN_WIDTH = 80;
+
+    /** Vertical padding (top + bottom) / 垂直内边距(上下合计) */
+    private static final int VERTICAL_PADDING = 10;
+
+    /** Horizontal padding (left + right) / 水平内边距(左右合计) */
+    private static final int HORIZONTAL_PADDING = 24;
+
     public SimpleToast(String title, String description, long displayTime) {
         this.title = title;
         this.description = description;
         this.displayTime = displayTime;
 
-        if (description != null && !description.isEmpty()) {
-            this.height = 48;
-        } else {
-            this.height = 32;
-        }
-
         int titleWidth = mc.fontRenderer.getStringWidth(title);
         int descWidth = description != null ? mc.fontRenderer.getStringWidth(description) : 0;
-        this.width = Math.max(DEFAULT_WIDTH, Math.max(titleWidth, descWidth) + 40);
+        int textWidth = Math.max(titleWidth, descWidth);
+
+        // Adaptive sizing: shrink when content is short / 自适应尺寸：内容少时缩小
+        this.width = Math.max(MIN_WIDTH, textWidth + HORIZONTAL_PADDING);
+
+        if (description != null && !description.isEmpty()) {
+            this.height = 10 + mc.fontRenderer.FONT_HEIGHT * 2 + 6;
+        } else {
+            this.height = VERTICAL_PADDING + mc.fontRenderer.FONT_HEIGHT;
+        }
     }
 
     @Override
@@ -49,12 +61,16 @@ public class SimpleToast extends BaseToast {
 
     @Override
     protected void renderContent(FontRenderer fontRenderer, long fullyVisibleForMs) {
-        int x = 18;
-        int titleY = (description != null && !description.isEmpty()) ? 8 : 12;
-        fontRenderer.drawString(title, x, titleY, 0xFFFFFF);
+        int x = HORIZONTAL_PADDING / 2;
+        boolean hasDesc = description != null && !description.isEmpty();
 
-        if (description != null && !description.isEmpty()) {
-            fontRenderer.drawString(description, x, 26, 0xAAAAAA);
+        if (hasDesc) {
+            int titleY = (height - fontRenderer.FONT_HEIGHT * 2 - 4) / 2;
+            fontRenderer.drawString(title, x, titleY, 0xFFFFFF);
+            fontRenderer.drawString(description, x, titleY + fontRenderer.FONT_HEIGHT + 4, 0xAAAAAA);
+        } else {
+            int titleY = (height - fontRenderer.FONT_HEIGHT) / 2;
+            fontRenderer.drawString(title, x, titleY, 0xFFFFFF);
         }
     }
 

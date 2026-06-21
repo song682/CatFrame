@@ -140,9 +140,9 @@ public class EditBox extends AbstractComponent {
         // Draw background
         if (useTextureBackground) {
             ResourceLocation tex = focused ? TEXT_FIELD_HIGHLIGHTED_TEXTURE : TEXT_FIELD_TEXTURE;
-            TextureStretching.drawNinePatch(tex, x, y, width, height,
-                    TEXT_FIELD_BORDER, TEXT_FIELD_BORDER, TEXT_FIELD_BORDER, TEXT_FIELD_BORDER,
-                    TEXT_FIELD_DEFAULT_W, TEXT_FIELD_DEFAULT_H);
+            // Auto-load mcmeta, fallback to 1px border at 200x20
+            TextureStretching.drawAutoNinePatch(tex, x, y, width, height,
+                    TEXT_FIELD_DEFAULT_W, TEXT_FIELD_DEFAULT_H, TEXT_FIELD_BORDER);
         } else {
             int bgColor = focused ? 0xFF333366 : 0xFF333333;
             drawRect(x, y, x + width, y + height, bgColor);

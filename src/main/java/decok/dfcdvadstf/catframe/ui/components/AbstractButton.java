@@ -121,10 +121,9 @@ public abstract class AbstractButton extends AbstractComponent {
             tex = BUTTON_TEXTURE;
         }
 
-        // three_patch: left edge=2, right edge=2, middle tiled, texture 200x20
-        TextureStretching.drawFixedEndRepeat(tex, x, y, width, height,
-                BUTTON_EDGE, BUTTON_EDGE, BUTTON_DEFAULT_W - 2 * BUTTON_EDGE,
-                BUTTON_DEFAULT_W, BUTTON_DEFAULT_H);
+        // Auto-load mcmeta, fallback to three_patch with edge=2, 200x20
+        TextureStretching.drawAutoThreePatch(tex, x, y, width, height,
+                BUTTON_DEFAULT_W, BUTTON_DEFAULT_H, BUTTON_EDGE);
     }
 
     @Override

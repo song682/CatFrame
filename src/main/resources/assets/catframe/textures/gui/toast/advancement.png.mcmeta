@@ -10,6 +10,10 @@
 			"top": 4,
 			"right": 4,
 			"bottom": 4
+		},
+		"limits": {
+			"width": 80,
+			"height": 24
 		}
     }
 }

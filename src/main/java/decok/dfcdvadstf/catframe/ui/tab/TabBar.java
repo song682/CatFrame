@@ -486,7 +486,7 @@ public abstract class TabBar {
         Tab current = tabManager.getCurrentTab();
         int currentIndex = current != null ? tabList.indexOf(current) : NO_TAB;
 
-        if (keyCode == 61) { // Tab key
+        if (keyCode == 15) { // Tab key
             int step = shiftDown ? -1 : 1;
             int nextIndex = currentIndex != NO_TAB
                     ? Math.floorMod(currentIndex + step, tabList.size())

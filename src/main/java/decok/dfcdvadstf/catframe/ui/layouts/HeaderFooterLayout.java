@@ -1,6 +1,9 @@
 package decok.dfcdvadstf.catframe.ui.layouts;
 
 import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.function.Consumer;
 
 /**
@@ -22,6 +25,7 @@ import java.util.function.Consumer;
  */
 public class HeaderFooterLayout extends AbstractLayout {
 
+    private static final Logger LOG = LogManager.getLogger("CatFrame/Layout");
     private static final int CONTENT_MARGIN_TOP = 30;
 
     private final FrameLayout headerFrame = new FrameLayout();
@@ -226,6 +230,8 @@ public class HeaderFooterLayout extends AbstractLayout {
      * <p>使用显式尺寸重新计算 —— 当父容器知道可用空间时很有用。</p>
      */
     public void recalculate(int availableWidth, int availableHeight) {
+        LOG.debug("[HeaderFooterLayout] recalculate({}, {}): headerH={}, footerH={}",
+                availableWidth, availableHeight, headerHeight, footerHeight);
         this.width = Math.max(0, availableWidth);
         this.height = Math.max(0, availableHeight);
 

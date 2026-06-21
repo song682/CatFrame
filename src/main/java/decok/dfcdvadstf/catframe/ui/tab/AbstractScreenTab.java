@@ -30,9 +30,9 @@ public abstract class AbstractScreenTab implements Tab {
     protected String tabNameKey;
 
     /**
-     * Tab button texture.  Defaults to {@code catframe:textures/gui/tabs.png}. / Tab 按钮纹理。默认 {@code catframe:textures/gui/tabs/tabs.png}。
+     * Tab button texture.  Defaults to {@link Tab#DEFAULT_TAB_TEXTURE}. / Tab 按钮纹理。默认 {@link Tab#DEFAULT_TAB_TEXTURE}。
      */
-    protected ResourceLocation tabTexture = new ResourceLocation("catframe", "textures/gui/tabs/tabs.png");
+    protected ResourceLocation tabTexture = Tab.DEFAULT_TAB_TEXTURE;
 
     public AbstractScreenTab(int tabId, String tabNameKey) {
         this.tabId = tabId;

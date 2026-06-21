@@ -139,6 +139,8 @@ public class LinearLayout extends AbstractLayout {
 
     @Override
     public void recalculate() {
+        LAYOUT_LOG.debug("[LinearLayout] recalculate: axis={}, pos=({},{}), containers={}",
+                axis, x, y, containers.size());
         if (this.containers.isEmpty()) {
             width = 0;
             height = 0;

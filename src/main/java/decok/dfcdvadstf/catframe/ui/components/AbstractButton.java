@@ -1,9 +1,12 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
-import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
 
 /**
  * <p>
@@ -21,9 +24,33 @@ public abstract class AbstractButton extends AbstractComponent {
     protected long lastClickTime;
 
     /** Default button text colour / 默认按钮文本颜色 */
-    protected static final int TEXT_COLOR_ENABLED = 0xFFFFFF;
-    protected static final int TEXT_COLOR_DISABLED = 0x888888;
-    protected static final int TEXT_COLOR_HOVER = 0xFFFF55;
+    protected static final int TEXT_COLOR_ENABLED = 0xE0E0E0;
+    protected static final int TEXT_COLOR_DISABLED = 0xA0A0A0;
+    protected static final int TEXT_COLOR_HOVER = 0xFFFFA0;
+
+    /** Vanilla button widgets texture / 原版按钮部件纹理 */
+    protected static final ResourceLocation WIDGETS_TEXTURE = new ResourceLocation("textures/gui/widgets.png");
+
+    /** CatFrame custom button textures / CatFrame 自定义按钮纹理 */
+    protected static final ResourceLocation BUTTON_TEXTURE =
+            new ResourceLocation("catframe", "textures/gui/widgets/button.png");
+    protected static final ResourceLocation BUTTON_HIGHLIGHTED_TEXTURE =
+            new ResourceLocation("catframe", "textures/gui/widgets/button_highlighted.png");
+    protected static final ResourceLocation BUTTON_DISABLED_TEXTURE =
+            new ResourceLocation("catframe", "textures/gui/widgets/button_disabled.png");
+
+    /** Button default size from mcmeta / 按钮默认尺寸 */
+    protected static final int BUTTON_DEFAULT_W = 200;
+    protected static final int BUTTON_DEFAULT_H = 20;
+    protected static final int BUTTON_EDGE = 2;
+
+    protected final Gui vanillaGui = new Gui();
+
+    /**
+     * If true, use vanilla widgets texture instead of CatFrame custom textures.
+     * <p>为 true 时使用原版部件纹理而非 CatFrame 自定义纹理。</p>
+     */
+    protected boolean useVanillaTexture = false;
 
     public AbstractButton() {
     }
@@ -48,21 +75,56 @@ public abstract class AbstractButton extends AbstractComponent {
     }
 
     /**
-     * Draw the button background. Override for custom styling.
-     * <p>绘制按钮背景。重写以自定义样式。</p>
+     * Draw the button background.
+     * <p>绘制按钮背景。</p>
+     * <p>If {@link #useVanillaTexture} is true, uses vanilla widgets texture.
+     * Otherwise uses CatFrame custom textures with three-patch stretching.</p>
      */
     protected void renderBackground(int mouseX, int mouseY, float partialTicks) {
-        // Default: draw a simple coloured rectangle
-        int bgColor;
-        if (!active) {
-            bgColor = 0xFF333333;
-        } else if (isHovered) {
-            bgColor = 0xFF555555;
+        if (useVanillaTexture) {
+            renderVanillaBackground();
         } else {
-            bgColor = 0xFF444444;
+            renderCustomBackground();
+        }
+    }
+
+    /**
+     * Render using vanilla widgets texture.
+     */
+    private void renderVanillaBackground() {
+        Minecraft mc = Minecraft.getMinecraft();
+        mc.getTextureManager().bindTexture(WIDGETS_TEXTURE);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GL11.glEnable(GL11.GL_BLEND);
+        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+
+        int hoverState = !active ? 0 : (isHovered ? 2 : 1);
+        int textureV = 46 + hoverState * 20;
+
+        // Left half
+        vanillaGui.drawTexturedModalRect(x, y, 0, textureV, width / 2, height);
+        // Right half
+        vanillaGui.drawTexturedModalRect(x + width / 2, y, 200 - width / 2, textureV, width / 2, height);
+    }
+
+    /**
+     * Render using CatFrame custom textures with three-patch stretching.
+     */
+    private void renderCustomBackground() {
+        ResourceLocation tex;
+        if (!active) {
+            tex = BUTTON_DISABLED_TEXTURE;
+        } else if (isHovered) {
+            tex = BUTTON_HIGHLIGHTED_TEXTURE;
+        } else {
+            tex = BUTTON_TEXTURE;
         }
 
-        drawRect(x, y, x + width, y + height, bgColor);
+        // three_patch: left edge=2, right edge=2, middle tiled, texture 200x20
+        TextureStretching.drawFixedEndRepeat(tex, x, y, width, height,
+                BUTTON_EDGE, BUTTON_EDGE, BUTTON_DEFAULT_W - 2 * BUTTON_EDGE,
+                BUTTON_DEFAULT_W, BUTTON_DEFAULT_H);
     }
 
     @Override

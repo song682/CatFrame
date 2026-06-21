@@ -5,6 +5,8 @@ import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -23,6 +25,7 @@ import java.util.function.Consumer;
  * </p>
  */
 public class TabManager {
+    private static final Logger LOG = LogManager.getLogger("CatFrame/Layout");
     private final Map<Integer, Tab> tabs = new HashMap<>();
     /**
      * <p>The parent screen instance.
@@ -300,6 +303,9 @@ public class TabManager {
      * </p>
      */
     public void setTabArea(@Nullable ScreenRectangle tabArea) {
+        LOG.debug("[TabManager] setTabArea: area={}", tabArea != null
+                ? String.format("(%d,%d %dx%d)", tabArea.left(), tabArea.top(), tabArea.width, tabArea.height)
+                : "null");
         this.tabArea = tabArea;
         if (this.currentTab != null && tabArea != null) {
             this.currentTab.doLayout(tabArea);

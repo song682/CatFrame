@@ -6,6 +6,7 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
+import decok.dfcdvadstf.catframe.client.ClientEventHandler;
 import decok.dfcdvadstf.catframe.compact.forge.event.ODorTag;
 import decok.dfcdvadstf.catframe.compact.vanilla.TexturesStitch;
 import decok.dfcdvadstf.catframe.compact.vanilla.VanillaMetadataMapper;
@@ -47,6 +48,9 @@ public class CatFrame {
         if (event.getSide() == Side.CLIENT) {
             LanguageRegister.domain(Tags.MODID, "assets/catframe/lang");
             LocalizationManager.Loader.load();
+
+            // Register client event handler (welcome toast + HUD toast rendering)
+            MinecraftForge.EVENT_BUS.register(new ClientEventHandler());
 
             VanillaMetadataMapper.registerVanillaMetadataMappings();
             VanillaModelManager.DataLoading.registerNamespace("catframe");

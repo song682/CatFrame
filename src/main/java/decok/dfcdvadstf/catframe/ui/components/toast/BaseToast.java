@@ -2,9 +2,10 @@ package decok.dfcdvadstf.catframe.ui.components.toast;
 
 import decok.dfcdvadstf.catframe.ui.components.AbstractComponent;
 import decok.dfcdvadstf.catframe.ui.components.GuiDrawing;
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
 /**
@@ -28,6 +29,16 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
     /** Border colour / 边框颜色 */
     protected static final int BORDER_COLOR = 0xFF555555;
 
+    /** Default toast background texture / 默认 Toast 背景纹理 */
+    protected static final ResourceLocation DEFAULT_TOAST_TEXTURE =
+            new ResourceLocation("catframe", "textures/gui/toast/default.png");
+
+    /**
+     * Background texture for this toast. Null = use solid colour fallback.
+     * <p>此 Toast 的背景纹理。null = 回退到纯色。</p>
+     */
+    protected ResourceLocation backgroundTexture = DEFAULT_TOAST_TEXTURE;
+
     /** Minecraft instance / Minecraft 实例 */
     protected final Minecraft mc = Minecraft.getMinecraft();
 
@@ -36,6 +47,29 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
 
     /** Last fully-visible duration from update() / 最近一次 update() 的完全可见时长 */
     private long lastFullyVisibleForMs;
+
+    // ──── Texture API ────
+
+    /**
+     * Set the background texture for this Toast.
+     * <p>设置此 Toast 的背景纹理。</p>
+     *
+     * @param texture background texture ResourceLocation, or null to use solid colour fallback
+     *                / 背景纹理 ResourceLocation，null 则回退到纯色
+     * @return this instance for chaining / 返回自身以支持链式调用
+     */
+    public BaseToast setBackgroundTexture(ResourceLocation texture) {
+        this.backgroundTexture = texture;
+        return this;
+    }
+
+    /**
+     * Get the current background texture.
+     * <p>获取当前背景纹理。</p>
+     */
+    public ResourceLocation getBackgroundTexture() {
+        return backgroundTexture;
+    }
 
     // ──── Constructors ────
 
@@ -74,17 +108,25 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
     /**
      * Render the Toast background.
      * <p>渲染 Toast 背景。</p>
+     * <p>Uses texture-based nine-patch when {@link #backgroundTexture} is set,
+     * otherwise falls back to solid colour + border.</p>
      */
     protected void renderBackground() {
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        if (backgroundTexture != null) {
+            // Nine-patch with 4px border, assuming 160x32 default texture
+            TextureStretching.drawNinePatch(backgroundTexture, 0, 0, width, height,
+                    4, 4, 4, 4, DEFAULT_WIDTH, SLOT_HEIGHT);
+        } else {
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        drawRect(0, 0, width, height, BACKGROUND_COLOR);
-        drawBorder();
+            drawRect(0, 0, width, height, BACKGROUND_COLOR);
+            drawBorder();
 
-        GL11.glDisable(GL11.GL_BLEND);
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
+            GL11.glDisable(GL11.GL_BLEND);
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+        }
     }
 
     /**

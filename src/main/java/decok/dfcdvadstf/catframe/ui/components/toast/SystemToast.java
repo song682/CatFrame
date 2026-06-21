@@ -1,6 +1,9 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +19,16 @@ import java.util.List;
  */
 public class SystemToast extends BaseToast {
 
+    private static final ResourceLocation SYSTEM_TOAST_TEXTURE =
+            new ResourceLocation("catframe", "textures/gui/toast/system.png");
+
+    /** System icon texture / 系统图标纹理 */
+    private static final ResourceLocation SYSTEM_ICON_TEXTURE =
+            new ResourceLocation("catframe", "textures/gui/toast/icons/system.png");
+
+    /** Icon size in pixels / 图标尺寸(像素) */
+    private static final int ICON_SIZE = 16;
+
     private final SystemToastId id;
     private String title;
     private List<String> messageLines;
@@ -26,6 +39,7 @@ public class SystemToast extends BaseToast {
     public SystemToast(SystemToastId id, String title, String message) {
         this.id = id;
         this.title = title;
+        setBackgroundTexture(SYSTEM_TOAST_TEXTURE);
         this.messageLines = splitText(message != null ? message : "", 180);
         this.width = Math.max(160, 30 + Math.max(
             mc.fontRenderer.getStringWidth(title),
@@ -76,7 +90,21 @@ public class SystemToast extends BaseToast {
 
     @Override
     protected void renderContent(FontRenderer fontRenderer, long fullyVisibleForMs) {
-        int titleX = 18;
+        // Draw icon / 绘制图标
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        mc.getTextureManager().bindTexture(SYSTEM_ICON_TEXTURE);
+        int iconY = (height - ICON_SIZE) / 2;
+        Tessellator tess = Tessellator.instance;
+        tess.startDrawingQuads();
+        tess.addVertexWithUV(1, iconY + ICON_SIZE, 0, 0, 1);
+        tess.addVertexWithUV(1 + ICON_SIZE, iconY + ICON_SIZE, 0, 1, 1);
+        tess.addVertexWithUV(1 + ICON_SIZE, iconY, 0, 1, 0);
+        tess.addVertexWithUV(1, iconY, 0, 0, 0);
+        tess.draw();
+        GL11.glDisable(GL11.GL_BLEND);
+
+        int titleX = 20;
         int titleY = messageLines.isEmpty() ? 12 : 7;
         fontRenderer.drawString(title, titleX, titleY, 0xFFFFFF);
 

@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.ui;
 
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
@@ -113,30 +113,15 @@ public final class ContentPanelRenderer {
     /**
      * Tile the currently-bound texture across the given region.
      * <p>把当前绑定的纹理按 (tileWidth x tileHeight) 平铺到区域内。</p>
+     * <p>Delegates to {@link TextureStretching#drawTiled}.</p>
      */
     private static void drawTiledTexture(int x, int y, int width, int height, int tileWidth, int tileHeight) {
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        Tessellator tessellator = Tessellator.instance;
-        tessellator.startDrawingQuads();
-
-        for (int tileX = 0; tileX < width; tileX += tileWidth) {
-            for (int tileY = 0; tileY < height; tileY += tileHeight) {
-                int tileW = Math.min(tileWidth, width - tileX);
-                int tileH = Math.min(tileHeight, height - tileY);
-
-                double u1 = 0.0;
-                double u2 = (double) tileW / (double) tileWidth;
-                double v1 = 0.0;
-                double v2 = (double) tileH / (double) tileHeight;
-
-                tessellator.addVertexWithUV(x + tileX, y + tileY + tileH, 0.0D, u1, v2);
-                tessellator.addVertexWithUV(x + tileX + tileW, y + tileY + tileH, 0.0D, u2, v2);
-                tessellator.addVertexWithUV(x + tileX + tileW, y + tileY, 0.0D, u2, v1);
-                tessellator.addVertexWithUV(x + tileX, y + tileY, 0.0D, u1, v1);
-            }
-        }
-
-        tessellator.draw();
+        // TextureStretching.drawTiled handles bind + blend internally,
+        // but we already bound the texture before calling this method,
+        // so we need to re-bind. Use the PANEL_BACKGROUND for this wrapper.
+        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        TextureStretching.drawTiled(
+                null /* texture already bound */,
+                x, y, width, height, tileWidth, tileHeight);
     }
 }

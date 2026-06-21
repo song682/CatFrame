@@ -65,6 +65,8 @@ public class FrameLayout extends AbstractLayout {
 
     @Override
     public void recalculate() {
+        LAYOUT_LOG.debug("[FrameLayout] recalculate: pos=({},{}), minSize={}x{}, children={}",
+                x, y, minWidth, minHeight, children.size());
         int resultWidth = this.minWidth;
         int resultHeight = this.minHeight;
 

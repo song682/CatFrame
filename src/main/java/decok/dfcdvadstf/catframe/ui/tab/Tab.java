@@ -25,6 +25,12 @@ import java.util.function.Consumer;
  * </p>
  */
 public interface Tab {
+
+    /**
+     * Default tab button texture. / 默认 Tab 按钮纹理。
+     */
+    ResourceLocation DEFAULT_TAB_TEXTURE = new ResourceLocation("catframe", "textures/gui/tabs/tabs.png");
+
     // ──── Original 1.7.10-style API ────
 
     void initGui(TabManager tabManager, int width, int height);
@@ -46,15 +52,15 @@ public interface Tab {
     /**
      * <p>
      * 获取此 Tab 使用的按钮纹理。<br>
-     * 默认返回 {@code catframe:textures/gui/tabs.png}。
+     * 默认返回 {@link #DEFAULT_TAB_TEXTURE}。
      * </p>
      * <p>
      * Get the button texture for this tab.<br>
-     * Defaults to {@code catframe:textures/gui/tabs.png}.
+     * Defaults to {@link #DEFAULT_TAB_TEXTURE}.
      * </p>
      */
     default ResourceLocation getTabTexture() {
-        return new ResourceLocation("catframe", "textures/gui/tabs/tabs.png");
+        return DEFAULT_TAB_TEXTURE;
     }
 
     /**

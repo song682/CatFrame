@@ -1,0 +1,10 @@
+{
+	"stretching": {
+		"type": "three_patch",
+		"default": {
+			"width": 200,
+			"height": 20
+		},
+		"edge": 1
+	}
+}

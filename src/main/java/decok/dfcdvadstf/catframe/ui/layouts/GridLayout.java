@@ -155,6 +155,8 @@ public class GridLayout extends AbstractLayout {
 
     @Override
     public void recalculate() {
+        LAYOUT_LOG.debug("[GridLayout] recalculate: pos=({},{}), children={}",
+                x, y, children.size());
         if (this.children.isEmpty()) {
             width = 0;
             height = 0;

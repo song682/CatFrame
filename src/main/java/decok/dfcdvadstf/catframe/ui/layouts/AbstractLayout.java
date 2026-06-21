@@ -1,5 +1,8 @@
 package decok.dfcdvadstf.catframe.ui.layouts;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +35,12 @@ import java.util.function.Consumer;
  */
 public abstract class AbstractLayout implements Layout {
 
+    /**
+     * Diagnostic logger for layout operations. Enable via log4j2 config for the
+     * {@code decok.dfcdvadstf.catframe.ui.layouts} category.
+     */
+    protected static final Logger LAYOUT_LOG = LogManager.getLogger("CatFrame/Layout");
+
     private final List<ILayout> children = new ArrayList<>();
     protected int x;
     protected int y;
@@ -55,6 +64,7 @@ public abstract class AbstractLayout implements Layout {
     public void setX(int x) {
         int dx = x - this.x;
         this.x = x;
+        LAYOUT_LOG.debug("[{}] setX({}) dx={}, children={}", getClass().getSimpleName(), x, dx, children.size());
         if (dx != 0) {
             for (ILayout child : children) {
                 child.setX(child.getX() + dx);
@@ -75,6 +85,7 @@ public abstract class AbstractLayout implements Layout {
     public void setY(int y) {
         int dy = y - this.y;
         this.y = y;
+        LAYOUT_LOG.debug("[{}] setY({}) dy={}, children={}", getClass().getSimpleName(), y, dy, children.size());
         if (dy != 0) {
             for (ILayout child : children) {
                 child.setY(child.getY() + dy);
@@ -100,6 +111,8 @@ public abstract class AbstractLayout implements Layout {
 
     public void setPadding(int padding) {
         this.padding = Math.max(0, padding);
+        LAYOUT_LOG.debug("[{}] setPadding({}) -> recalculate, pos=({},{}), size={}x{}, children={}",
+                getClass().getSimpleName(), padding, x, y, width, height, children.size());
         recalculate();
     }
 
@@ -109,6 +122,8 @@ public abstract class AbstractLayout implements Layout {
 
     public void setSpacing(int spacing) {
         this.spacing = Math.max(0, spacing);
+        LAYOUT_LOG.debug("[{}] setSpacing({}) -> recalculate, pos=({},{}), size={}x{}, children={}",
+                getClass().getSimpleName(), spacing, x, y, width, height, children.size());
         recalculate();
     }
 
@@ -118,6 +133,8 @@ public abstract class AbstractLayout implements Layout {
     public Layout add(ILayout child) {
         if (child != null && !children.contains(child)) {
             children.add(child);
+            LAYOUT_LOG.debug("[{}] add({}) -> recalculate, pos=({},{}), size={}x{}, children={}",
+                    getClass().getSimpleName(), child.getClass().getSimpleName(), x, y, width, height, children.size());
             recalculate();
         }
         return this;
@@ -145,6 +162,8 @@ public abstract class AbstractLayout implements Layout {
     @Override
     public Layout remove(ILayout child) {
         if (child != null && children.remove(child)) {
+            LAYOUT_LOG.debug("[{}] remove({}) -> recalculate, pos=({},{}), size={}x{}, children={}",
+                    getClass().getSimpleName(), child.getClass().getSimpleName(), x, y, width, height, children.size());
             recalculate();
         }
         return this;
@@ -153,7 +172,10 @@ public abstract class AbstractLayout implements Layout {
     @Override
     public void clear() {
         if (!children.isEmpty()) {
+            int count = children.size();
             children.clear();
+            LAYOUT_LOG.debug("[{}] clear() removed {} children -> recalculate, pos=({},{}), size={}x{}",
+                    getClass().getSimpleName(), count, x, y, width, height);
             recalculate();
         }
     }
@@ -181,6 +203,8 @@ public abstract class AbstractLayout implements Layout {
                 this.children.add(child);
             }
         }
+        LAYOUT_LOG.debug("[{}] addAll({}) -> recalculate, pos=({},{}), size={}x{}, children={}",
+                getClass().getSimpleName(), children.length, x, y, width, height, this.children.size());
         recalculate();
         return this;
     }

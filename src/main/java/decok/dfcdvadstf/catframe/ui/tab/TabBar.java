@@ -2,13 +2,13 @@ package decok.dfcdvadstf.catframe.ui.tab;
 
 import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
 import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,9 +44,10 @@ public abstract class TabBar {
 
     /**
      * Default tab button texture path. / 默认 Tab 按钮纹理路径。
+     * @deprecated Use {@link Tab#DEFAULT_TAB_TEXTURE} instead.
      */
-    public static final ResourceLocation DEFAULT_TAB_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/tabs.png");
+    @Deprecated
+    public static final ResourceLocation DEFAULT_TAB_TEXTURE = Tab.DEFAULT_TAB_TEXTURE;
 
     /**
      * Default tile size for background texture. / 背景贴图默认平铺块大小。
@@ -91,7 +92,7 @@ public abstract class TabBar {
     /**
      * Texture used for tab buttons in this bar. / 此 Bar 的 Tab 按钮使用的纹理。
      */
-    protected ResourceLocation tabTexture = DEFAULT_TAB_TEXTURE;
+    protected ResourceLocation tabTexture = Tab.DEFAULT_TAB_TEXTURE;
 
     // ──── Navigation layout cache ────
 
@@ -279,35 +280,11 @@ public abstract class TabBar {
     /**
      * Subclasses may override this to customise how the tiled texture is rendered.
      * <p>子类可重写此方法以自定义平铺贴图的渲染方式。</p>
+     * <p>Delegates to {@link TextureStretching#drawTiled}.</p>
      */
     protected void drawTiledBackground(int x, int y, int width, int height) {
-        Minecraft.getMinecraft().getTextureManager().bindTexture(backgroundTexture);
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-
-        Tessellator tessellator = Tessellator.instance;
-        tessellator.startDrawingQuads();
-
-        for (int tileX = 0; tileX < width; tileX += DEFAULT_TILE_SIZE) {
-            for (int tileY = 0; tileY < height; tileY += DEFAULT_TILE_SIZE) {
-                int tw = Math.min(DEFAULT_TILE_SIZE, width - tileX);
-                int th = Math.min(DEFAULT_TILE_SIZE, height - tileY);
-
-                double u1 = 0.0;
-                double u2 = (double) tw / (double) DEFAULT_TILE_SIZE;
-                double v1 = 0.0;
-                double v2 = (double) th / (double) DEFAULT_TILE_SIZE;
-
-                tessellator.addVertexWithUV(x + tileX, y + tileY + th, 0.0D, u1, v2);
-                tessellator.addVertexWithUV(x + tileX + tw, y + tileY + th, 0.0D, u2, v2);
-                tessellator.addVertexWithUV(x + tileX + tw, y + tileY, 0.0D, u2, v1);
-                tessellator.addVertexWithUV(x + tileX, y + tileY, 0.0D, u1, v1);
-            }
-        }
-
-        tessellator.draw();
-        GL11.glDisable(GL11.GL_BLEND);
+        TextureStretching.drawTiled(backgroundTexture, x, y, width, height,
+                DEFAULT_TILE_SIZE, DEFAULT_TILE_SIZE);
     }
 
     // ==================== Navigation — Layout ====================
@@ -418,6 +395,7 @@ public abstract class TabBar {
 
         // Draw button background using Tessellator
         // 使用 Tessellator 绘制按钮背景
+        // Note: uses atlas-based UV coordinates; for simpler cases use TextureStretching.drawFixedEndRepeat
         int edgeWidth = 4;
         int centerWidth = this.buttonWidth - 2 * edgeWidth;
         int texWidth = 256;

@@ -1,8 +1,10 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
@@ -16,6 +18,17 @@ import net.minecraft.client.gui.FontRenderer;
  */
 public class EditBox extends AbstractComponent {
 
+    /** CatFrame custom text field textures / CatFrame 自定义文本框纹理 */
+    protected static final ResourceLocation TEXT_FIELD_TEXTURE =
+            new ResourceLocation("catframe", "textures/gui/widgets/text_field.png");
+    protected static final ResourceLocation TEXT_FIELD_HIGHLIGHTED_TEXTURE =
+            new ResourceLocation("catframe", "textures/gui/widgets/text_field_highlighted.png");
+
+    /** Text field default size from mcmeta / 文本框默认尺寸 */
+    protected static final int TEXT_FIELD_DEFAULT_W = 200;
+    protected static final int TEXT_FIELD_DEFAULT_H = 20;
+    protected static final int TEXT_FIELD_BORDER = 1;
+
     private Text message;
     private String text = "";
     private String hint = "";
@@ -23,6 +36,12 @@ public class EditBox extends AbstractComponent {
     private boolean focused;
     private int cursorPosition;
     private int selectionEnd;
+
+    /**
+     * If true, use texture-based background instead of solid colour.
+     * <p>为 true 时使用纹理背景而非纯色。</p>
+     */
+    protected boolean useTextureBackground = true;
 
     public EditBox(int x, int y, int width, int height) {
         super(x, y, width, height);
@@ -119,15 +138,22 @@ public class EditBox extends AbstractComponent {
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 
         // Draw background
-        int bgColor = focused ? 0xFF333366 : 0xFF333333;
-        drawRect(x, y, x + width, y + height, bgColor);
+        if (useTextureBackground) {
+            ResourceLocation tex = focused ? TEXT_FIELD_HIGHLIGHTED_TEXTURE : TEXT_FIELD_TEXTURE;
+            TextureStretching.drawNinePatch(tex, x, y, width, height,
+                    TEXT_FIELD_BORDER, TEXT_FIELD_BORDER, TEXT_FIELD_BORDER, TEXT_FIELD_BORDER,
+                    TEXT_FIELD_DEFAULT_W, TEXT_FIELD_DEFAULT_H);
+        } else {
+            int bgColor = focused ? 0xFF333366 : 0xFF333333;
+            drawRect(x, y, x + width, y + height, bgColor);
 
-        // Draw border
-        int borderColor = focused ? 0xFFFFFFFF : 0xFF888888;
-        drawRect(x, y, x + width, y + 1, borderColor);
-        drawRect(x, y + height - 1, x + width, y + height, borderColor);
-        drawRect(x, y, x + 1, y + height, borderColor);
-        drawRect(x + width - 1, y, x + width, y + height, borderColor);
+            // Draw border
+            int borderColor = focused ? 0xFFFFFFFF : 0xFF888888;
+            drawRect(x, y, x + width, y + 1, borderColor);
+            drawRect(x, y + height - 1, x + width, y + height, borderColor);
+            drawRect(x, y, x + 1, y + height, borderColor);
+            drawRect(x + width - 1, y, x + width, y + height, borderColor);
+        }
 
         // Draw text or hint
         String displayText = text;

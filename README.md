@@ -231,10 +231,12 @@ assets/<namespace>/
 # 📜 License
 
 **Source Code**: Under [MIT License](LICENSE).   
-Third-Party Assets / Example Assets (Bluey plushy):   
+Third-Party Assets / Example Assets (Bluey plushy) / Offical Assets:   
 This project contains fan-made assets inspired by the charactor "Bluey", Bluey and related charactors, names, trademarks, and intellectual property ar owned by their respective Copyright holders, including Ludo Studio, Joe Brumm, and other rights holders.   
-The Bluey plushy json model, textures and minecraft assets included in this project were independently created by me (as the author) as a fan-made content and examples.
-Third-party character assets are excluded from the project's open-source license and may not be redistributed or used separately without appropriate permission from the respective rights holders.
+The Bluey plushy json model, textures and minecraft assets included in this project were independently created by me (as the author) as a fan-made content and examples.   
+Third-party character assets are excluded from the project's open-source license and may not be redistributed or used separately without appropriate permission from the respective rights holders.   
+
+The offical assets  are excluded from the project's open-source license and may not be redistributed or used separately without appropriate permission from the respective rights holders.
 
 ---
 

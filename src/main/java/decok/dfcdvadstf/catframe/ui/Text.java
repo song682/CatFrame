@@ -248,6 +248,24 @@ public class Text {
         return args;
     }
 
+    // ──── Convenience static String methods ────
+
+    /**
+     * Translates a domain:key pair directly, returning the translated string.
+     * <p>直接翻译 domain:key 对，返回翻译后的字符串。</p>
+     */
+    public static String translatableString(String domain, String key, Object... args) {
+        return LocalizationManager.Translation.translate(domain, key, args);
+    }
+
+    /**
+     * Returns the text as-is (identity helper for API consistency).
+     * <p>直接返回文本本身（API一致性辅助方法）。</p>
+     */
+    public static String literalString(String text) {
+        return text;
+    }
+
     // ──── Style ────
 
     /**

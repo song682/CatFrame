@@ -30,6 +30,16 @@ public abstract class AbstractScreenTab implements Tab {
     protected String tabNameKey;
 
     /**
+     * <p>
+     * 可选的 Text 标题，优先级高于 {@code tabNameKey}。<br>
+     * 当通过 {@link #AbstractScreenTab(int, Text)} 构造时使用此字段。<br>
+     * Optional Text title, takes priority over {@code tabNameKey}.<br>
+     * Set when using the {@link #AbstractScreenTab(int, Text)} constructor.
+     * </p>
+     */
+    protected Text tabTitleText;
+
+    /**
      * Tab button texture.  Defaults to {@link Tab#DEFAULT_TAB_TEXTURE}. / Tab 按钮纹理。默认 {@link Tab#DEFAULT_TAB_TEXTURE}。
      */
     protected ResourceLocation tabTexture = Tab.DEFAULT_TAB_TEXTURE;
@@ -37,6 +47,28 @@ public abstract class AbstractScreenTab implements Tab {
     public AbstractScreenTab(int tabId, String tabNameKey) {
         this.tabId = tabId;
         this.tabNameKey = tabNameKey;
+        this.mc = Minecraft.getMinecraft();
+    }
+
+    /**
+     * <p>
+     * 使用显式 {@link Text} 标题创建标签页。<br>
+     * 推荐使用此构造器以获得正确的延迟翻译行为。<br>
+     * Create a tab with an explicit {@link Text} title.<br>
+     * This constructor is recommended for correct lazy translation behaviour.
+     * </p>
+     *
+     * <pre>{@code
+     *   // CatFrame domain:key format (lazy translation via LocalizationManager)
+     *   super(100, Text.translatable("createworldui", "tab.game"));
+     *
+     *   // Literal fallback
+     *   super(100, Text.literal("My Tab"));
+     * }</pre>
+     */
+    public AbstractScreenTab(int tabId, Text tabTitle) {
+        this.tabId = tabId;
+        this.tabTitleText = tabTitle;
         this.mc = Minecraft.getMinecraft();
     }
 
@@ -59,12 +91,17 @@ public abstract class AbstractScreenTab implements Tab {
 
     /**
      * <p>
-     * 返回基于 {@code tabNameKey} 的可翻译标题。<br>
-     * Returns a translatable title based on {@code tabNameKey}.
+     * 返回此标签页的标题。<br>
+     * 优先级：{@link #tabTitleText} > 带冒号的 {@link #tabNameKey} > 传统 I18n。<br>
+     * Returns the title of this tab.<br>
+     * Priority: {@link #tabTitleText} > {@link #tabNameKey} with colon > legacy I18n.
      * </p>
      */
     @Override
     public Text getTabTitle() {
+        if (tabTitleText != null) {
+            return tabTitleText;
+        }
         if (tabNameKey != null && tabNameKey.contains(":")) {
             return Text.translatable(tabNameKey);
         }

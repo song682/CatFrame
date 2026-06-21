@@ -29,6 +29,7 @@ import javax.annotation.Nullable;
  */
 public class Text {
 
+    @Nullable
     private String domain = "";
     private String key = "";
     private boolean translatable = false;
@@ -251,8 +252,32 @@ public class Text {
     // ──── Convenience static String methods ────
 
     /**
+     * Translates a {@code domain:key} string directly, returning the translated string.
+     * <p>直接翻译 {@code domain:key} 字符串，返回翻译结果。</p>
+     *
+     * <pre>{@code
+     *   Text.translatableString("catframe:gui.no");
+     *   Text.translatableString("catframe:item.count", 5, 10);
+     * }</pre>
+     */
+    public static String translatableString(String resourceKey, Object... args) {
+        int sep = resourceKey.indexOf(LocalizationManager.DOMAIN_SEPARATOR);
+        if (sep <= 0) {
+            return LocalizationManager.Translation.translate(resourceKey, args);
+        }
+        String domain = resourceKey.substring(0, sep);
+        String key = resourceKey.substring(sep + 1);
+        return LocalizationManager.Translation.translate(domain, key, args);
+    }
+
+    /**
      * Translates a domain:key pair directly, returning the translated string.
      * <p>直接翻译 domain:key 对，返回翻译后的字符串。</p>
+     *
+     * <pre>{@code
+     *   Text.translatableString("catframe", "gui.no");
+     *   Text.translatableString("catframe", "item.count", 5, 10);
+     * }</pre>
      */
     public static String translatableString(String domain, String key, Object... args) {
         return LocalizationManager.Translation.translate(domain, key, args);

@@ -2,13 +2,11 @@ package decok.dfcdvadstf.catframe.ui.tab;
 
 import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
 import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
-import org.lwjgl.opengl.GL11;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -38,7 +36,7 @@ import java.util.Map;
  * that can be used directly in GUI screens.
  * </p>
  */
-public abstract class TabBar {
+public abstract class TabBar implements ILayout {
 
     // ──── Constants ────
 
@@ -64,8 +62,6 @@ public abstract class TabBar {
     public static final int MARGIN = 14;
 
     private static final int NO_TAB = -1;
-    private static final int TEXTURE_Y_NORMAL = 0;
-    private static final int TEXTURE_Y_SELECTED = 48;
 
     // ──── Tab entry/instance management ────
 
@@ -101,6 +97,16 @@ public abstract class TabBar {
     private int[] buttonX = new int[0];
     private int buttonWidth;
 
+    /**
+     * TabButton instances managed by this bar, created in {@link #arrangeNavElements()}.
+     * <p>由此 Bar 托管的 TabButton 实例，在 {@link #arrangeNavElements()} 中创建。</p>
+     */
+    private List<TabButton> tabButtons = new ArrayList<>();
+
+    // ──── ILayout position (managed by parent layout, e.g. HeaderFooterLayout) ────
+    private int layoutX;
+    private int layoutY;
+
     // ==================== Constructor ====================
 
     /**
@@ -120,6 +126,44 @@ public abstract class TabBar {
      */
     public String getBarId() {
         return barId;
+    }
+
+    // ==================== ILayout implementation ====================
+
+    @Override
+    public int getX() {
+        return layoutX;
+    }
+
+    @Override
+    public void setX(int x) {
+        int dx = x - this.layoutX;
+        this.layoutX = x;
+        // Translate tab buttons to follow the bar position
+        // 平移 Tab 按钮以跟随 Bar 的位置
+        for (TabButton btn : tabButtons) {
+            btn.setX(btn.getX() + dx);
+        }
+    }
+
+    @Override
+    public int getY() {
+        return layoutY;
+    }
+
+    @Override
+    public void setY(int y) {
+        this.layoutY = y;
+    }
+
+    @Override
+    public int getWidth() {
+        return navWidth;
+    }
+
+    @Override
+    public int getHeight() {
+        return NAV_HEIGHT;
     }
 
     // ==================== Background configuration ====================
@@ -317,9 +361,17 @@ public abstract class TabBar {
         this.navX = (barX + 1) & ~1; // Round to nearest even
 
         this.buttonX = new int[tabList.size()];
+        this.tabButtons = new ArrayList<>(tabList.size());
         int currentX = this.navX;
         for (int i = 0; i < tabList.size(); i++) {
             this.buttonX[i] = currentX;
+
+            Tab tab = tabList.get(i);
+            TabButton btn = new TabButton(tab);
+            btn.setPosition(currentX, 0);
+            btn.setSize(this.buttonWidth, NAV_HEIGHT);
+            this.tabButtons.add(btn);
+
             currentX += this.buttonWidth;
         }
     }
@@ -365,80 +417,29 @@ public abstract class TabBar {
         // 在最后一个 Tab 之后绘制分隔线
         ContentPanelRenderer.drawHeaderSeparator(lastX, barBottom, this.navWidth - lastX);
 
-        // Draw each tab button
-        // 绘制每个 Tab 按钮
-        for (int i = 0; i < tabList.size(); i++) {
-            drawSingleTabButton(i, tabList.get(i), mouseX, mouseY, tabManager);
+        // Draw each tab button via TabButton component
+        // 通过 TabButton 组件绘制每个 Tab 按钮
+        Tab currentTab = tabManager != null ? tabManager.getCurrentTab() : null;
+        for (TabButton btn : tabButtons) {
+            btn.setSelected(currentTab == btn.getTab());
+            btn.render(mouseX, mouseY, partialTicks);
         }
     }
 
     /**
      * <p>
      * 绘制单个 Tab 按钮。<br>
-     * Draw a single tab button.
+     * @deprecated 由 {@link TabButton} 组件替代，保留此方法仅为向后兼容。<br>
+     * Replaced by the {@link TabButton} component; kept for backward compatibility.
      * </p>
      */
+    @Deprecated
     private void drawSingleTabButton(int index, Tab tab, int mouseX, int mouseY, TabManager tabManager) {
-        if (index < 0 || index >= this.buttonX.length) return;
-        int btnX = this.buttonX[index];
-        int btnY = 0;
-        boolean selected = tabManager != null && tabManager.getCurrentTab() == tab;
-        boolean hovered = mouseX >= btnX && mouseX < btnX + this.buttonWidth
-                && mouseY >= btnY && mouseY < btnY + NAV_HEIGHT;
-
-        int textureV = selected ? TEXTURE_Y_SELECTED : TEXTURE_Y_NORMAL;
-
-        // Bind tab texture
-        // 绑定 Tab 纹理
-        Minecraft.getMinecraft().getTextureManager().bindTexture(this.tabTexture);
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-
-        // Draw button background using Tessellator
-        // 使用 Tessellator 绘制按钮背景
-        // Note: uses atlas-based UV coordinates; for simpler cases use TextureStretching.drawFixedEndRepeat
-        int edgeWidth = 4;
-        int centerWidth = this.buttonWidth - 2 * edgeWidth;
-        int texWidth = 256;
-        int texHeight = 256;
-
-        Tessellator tessellator = Tessellator.instance;
-        tessellator.startDrawingQuads();
-
-        // Left edge
-        drawTexturedRectHelper(tessellator, btnX, btnY, 0, textureV, edgeWidth, NAV_HEIGHT, texWidth, texHeight);
-        // Center (tiled)
-        if (centerWidth > 0) {
-            drawTexturedRectHelper(tessellator, btnX + edgeWidth, btnY, edgeWidth, textureV, centerWidth, NAV_HEIGHT, texWidth, texHeight);
+        if (index >= 0 && index < tabButtons.size()) {
+            TabButton btn = tabButtons.get(index);
+            btn.setSelected(tabManager != null && tabManager.getCurrentTab() == tab);
+            btn.render(mouseX, mouseY, 0);
         }
-        // Right edge
-        drawTexturedRectHelper(tessellator, btnX + edgeWidth + centerWidth, btnY, texWidth - edgeWidth, textureV, edgeWidth, NAV_HEIGHT, texWidth, texHeight);
-
-        tessellator.draw();
-
-        // Draw tab title text
-        // 绘制 Tab 标题文本
-        FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-        Text title = tab.getTabTitle();
-        String titleStr = title != null ? title.getString() : tab.getTabName();
-        int textColor = selected ? 0xFFFFFF : (hovered ? 0xFFFF55 : 0xA0A0A0);
-        int textWidth = font.getStringWidth(titleStr);
-        int textX = btnX + (this.buttonWidth - textWidth) / 2;
-        int textY = btnY + (NAV_HEIGHT - font.FONT_HEIGHT) / 2;
-        font.drawStringWithShadow(titleStr, textX, textY, textColor);
-    }
-
-    /**
-     * Draw a textured rectangle using Tessellator. / 使用 Tessellator 绘制纹理矩形。
-     */
-    private static void drawTexturedRectHelper(Tessellator t, int x, int y, float u, float v, int w, int h, int tw, int th) {
-        float u1 = u / tw;
-        float u2 = (u + w) / tw;
-        float v1 = v / th;
-        float v2 = (v + h) / th;
-        t.addVertexWithUV(x, y + h, 0.0D, u1, v2);
-        t.addVertexWithUV(x + w, y + h, 0.0D, u2, v2);
-        t.addVertexWithUV(x + w, y, 0.0D, u2, v1);
-        t.addVertexWithUV(x, y, 0.0D, u1, v1);
     }
 
     // ==================== Navigation — Input handling ====================
@@ -456,12 +457,9 @@ public abstract class TabBar {
         if (mouseY < 0 || mouseY >= NAV_HEIGHT) return false;
         if (tabManager == null) return false;
 
-        List<Tab> tabList = getOrderedTabList();
-        for (int i = 0; i < tabList.size(); i++) {
-            if (i >= this.buttonX.length) break;
-            if (mouseX >= this.buttonX[i]
-                    && mouseX < this.buttonX[i] + this.buttonWidth) {
-                tabManager.setCurrentTab(tabList.get(i), true);
+        for (TabButton btn : tabButtons) {
+            if (btn.isMouseOver(mouseX, mouseY)) {
+                tabManager.setCurrentTab(btn.getTab(), true);
                 return true;
             }
         }

@@ -418,11 +418,13 @@ public abstract class TabBar implements ILayout {
 
         // Draw header separator before the first tab
         // 在第一个 Tab 之前绘制分隔线
-        ContentPanelRenderer.drawHeaderSeparator(0, barBottom, firstX);
+        // Draw header separator before the first tab, indented 2px from the left edge
+        // 在第一个 Tab 之前绘制分隔线，从左侧边缘缩进 2px
+        ContentPanelRenderer.drawHeaderSeparator(2, barBottom, Math.max(0, firstX - 2));
 
-        // Draw header separator after the last tab
-        // 在最后一个 Tab 之后绘制分隔线
-        ContentPanelRenderer.drawHeaderSeparator(lastX, barBottom, this.navWidth - lastX);
+        // Draw header separator after the last tab, indented 2px from the right edge
+        // 在最后一个 Tab 之后绘制分隔线，从右侧边缘缩进 2px
+        ContentPanelRenderer.drawHeaderSeparator(lastX, barBottom, Math.max(0, this.navWidth - lastX - 2));
 
         // Draw each tab button via TabButton component
         // 通过 TabButton 组件绘制每个 Tab 按钮

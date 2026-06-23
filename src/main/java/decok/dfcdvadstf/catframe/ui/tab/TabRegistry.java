@@ -1,5 +1,8 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
+import decok.dfcdvadstf.catframe.ui.Text;
+
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -28,6 +31,60 @@ public final class TabRegistry {
     private static final Set<String> frozenBars = new HashSet<>();
 
     private TabRegistry() {
+    }
+
+    /**
+     * <p>
+     * 注册一个自定义标签页到指定的 Bar（使用 Text 标题）<br>
+     * 应在模组初始化阶段（如 FMLPreInitializationEvent）调用
+     * </p>
+     * <p>
+     * Register a custom tab to a specific bar with a Text title<br>
+     * Should be called during mod initialization (e.g. FMLPreInitializationEvent)
+     * </p>
+     *
+     * @param barId    目标 Bar 的唯一标识符 / Target bar's unique identifier
+     * @param factory  Tab实例工厂 / Tab instance factory
+     * @param tabId    标签页唯一ID / Unique tab ID
+     * @param nameText Text 格式的标题（可翻译/字面） / Text title (translatable or literal)
+     * @param priority 排序优先级，数字越小越靠前 / Sort priority, lower number = earlier position
+     */
+    public static void registerTab(String barId, Supplier<Tab> factory, int tabId, Text nameText, int priority) {
+        if (barId == null || barId.isEmpty()) {
+            throw new IllegalArgumentException("barId must not be null or empty / barId 不能为 null 或空");
+        }
+        if (frozenBars.contains(barId)) {
+            throw new IllegalStateException(
+                    "TabRegistry bar '" + barId + "' is already frozen. Tabs must be registered before GUI initialization." +
+                            " / TabRegistry bar '" + barId + "' 已冻结，必须在GUI初始化之前注册标签页。"
+            );
+        }
+
+        List<TabEntry> bucket = buckets.computeIfAbsent(barId, k -> new ArrayList<>());
+
+        // Check for duplicate ID within the same bar
+        // 检查同一 bar 内 ID 是否重复
+        for (TabEntry entry : bucket) {
+            if (entry.tabId == tabId) {
+                String display = entry.nameText != null ? entry.nameText.getString() : entry.nameKey;
+                throw new IllegalArgumentException(
+                        "Tab ID " + tabId + " is already registered in bar '" + barId + "' by " + display +
+                                " / Tab ID " + tabId + " 已在 bar '" + barId + "' 中被 " + display + " 注册"
+                );
+            }
+        }
+
+        bucket.add(new TabEntry(barId, factory, tabId, nameText, priority));
+    }
+
+    /**
+     * <p>
+     * 注册一个自定义标签页到指定的 Bar（使用 Text 标题，默认优先级为 tabId）<br>
+     * Register a custom tab with Text title and default priority (defaults to tabId)
+     * </p>
+     */
+    public static void registerTab(String barId, Supplier<Tab> factory, int tabId, Text nameText) {
+        registerTab(barId, factory, tabId, nameText, tabId);
     }
 
     /**
@@ -63,9 +120,10 @@ public final class TabRegistry {
         // 检查同一 bar 内 ID 是否重复
         for (TabEntry entry : bucket) {
             if (entry.tabId == tabId) {
+                String display = entry.nameText != null ? entry.nameText.getString() : entry.nameKey;
                 throw new IllegalArgumentException(
-                        "Tab ID " + tabId + " is already registered in bar '" + barId + "' by " + entry.nameKey +
-                                " / Tab ID " + tabId + " 已在 bar '" + barId + "' 中被 " + entry.nameKey + " 注册"
+                        "Tab ID " + tabId + " is already registered in bar '" + barId + "' by " + display +
+                                " / Tab ID " + tabId + " 已在 bar '" + barId + "' 中被 " + display + " 注册"
                 );
             }
         }
@@ -165,7 +223,15 @@ public final class TabRegistry {
         public final String barId;
         public final Supplier<Tab> factory;
         public final int tabId;
+        /**
+         * Raw name key (string form, always present). / 原始名称键（字符串形式，始终存在）。
+         */
         public final String nameKey;
+        /**
+         * Text title (may be null if registered with plain String). / Text 标题（若用 String 注册则为 null）。
+         */
+        @Nullable
+        public final Text nameText;
         public final int priority;
 
         TabEntry(String barId, Supplier<Tab> factory, int tabId, String nameKey, int priority) {
@@ -173,6 +239,16 @@ public final class TabRegistry {
             this.factory = factory;
             this.tabId = tabId;
             this.nameKey = nameKey;
+            this.nameText = null;
+            this.priority = priority;
+        }
+
+        TabEntry(String barId, Supplier<Tab> factory, int tabId, Text nameText, int priority) {
+            this.barId = barId;
+            this.factory = factory;
+            this.tabId = tabId;
+            this.nameKey = nameText != null ? nameText.getRaw() : "";
+            this.nameText = nameText;
             this.priority = priority;
         }
     }

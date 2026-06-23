@@ -1,6 +1,5 @@
 package decok.dfcdvadstf.catframe.ui.layouts;
 
-import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -265,16 +264,10 @@ public class HeaderFooterLayout extends AbstractLayout {
 
     @Override
     public void draw(int mouseX, int mouseY, float partialTicks) {
-        if (!drawPanel || width <= 0 || height <= 0) return;
-
-        int hdrH = this.headerHeight > 0 ? this.headerHeight : getChildHeight(headerFrame);
-        int ftrH = this.footerHeight > 0 ? this.footerHeight : getChildHeight(footerFrame);
-
-        // Content panel spans from bottom of header to top of footer
-        // 内容面板从 header 底部延伸到 footer 顶部
-        int contentTop = y + hdrH;
-        int contentBottom = y + height - ftrH;
-        ContentPanelRenderer.drawContentPanel(x, contentTop, width, contentBottom);
+        // HeaderFooterLayout is a pure layout container — no built-in rendering.
+        // Background / panel rendering should be handled externally (e.g. by a dedicated List component).
+        // HeaderFooterLayout 是纯布局容器，不内置渲染逻辑。
+        // 背景/面板渲染应由外部组件处理（例如专用的 List 组件）。
     }
 
     // ──── Internal ────

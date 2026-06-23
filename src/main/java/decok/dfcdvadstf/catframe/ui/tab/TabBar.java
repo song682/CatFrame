@@ -212,15 +212,14 @@ public abstract class TabBar implements ILayout {
      *                <p>传入 {@code null} 恢复默认纹理。</p>
      */
     public void setTabTexture(ResourceLocation texture) {
-        this.tabTexture = texture != null ? texture : DEFAULT_TAB_TEXTURE;
+        this.tabTexture = texture != null ? texture : Tab.DEFAULT_TAB_TEXTURE;
     }
 
     // ==================== Tab entry management (from TabRegistry) ====================
 
     /**
      * Register a {@link TabRegistry.TabEntry} into this bar.
-     * The Tab will be instantiated lazily via {@link #getOrCreateTab(int)}.
-     * <p>向此 Bar 注册一个 {@link TabRegistry.TabEntry}。Tab 将通过 {@link #getOrCreateTab(int)} 延迟实例化。</p>
+     * <p>向此 Bar 注册一个 {@link TabRegistry.TabEntry}。</p>
      */
     public void registerEntry(TabRegistry.TabEntry entry) {
         if (entry == null) return;
@@ -253,24 +252,6 @@ public abstract class TabBar implements ILayout {
     }
 
     /**
-     * Get an existing tab instance, or create one from its registered entry.
-     * <p>获取已有 Tab 实例，若不存在则从注册的 entry 创建。</p>
-     *
-     * @return The tab instance, or {@code null} if no entry is registered for this ID.
-     */
-    public Tab getOrCreateTab(int tabId) {
-        Tab tab = tabs.get(tabId);
-        if (tab == null) {
-            TabRegistry.TabEntry entry = entries.get(tabId);
-            if (entry != null) {
-                tab = entry.factory.get();
-                tabs.put(tabId, tab);
-            }
-        }
-        return tab;
-    }
-
-    /**
      * @return A tab by its ID, or {@code null} if not found / not yet created.
      */
     public Tab getTab(int tabId) {
@@ -296,6 +277,23 @@ public abstract class TabBar implements ILayout {
      */
     public boolean containsTab(int tabId) {
         return tabs.containsKey(tabId);
+    }
+
+    /**
+     * <p>
+     * 获取指定 tabId 对应的 TabButton。<br>
+     * Get the TabButton for the given tab ID.
+     * </p>
+     *
+     * @return The TabButton, or {@code null} if no button was created for this ID.
+     */
+    public TabButton getTabButton(int tabId) {
+        for (TabButton btn : tabButtons) {
+            if (btn.getTab().getTabId() == tabId) {
+                return btn;
+            }
+        }
+        return null;
     }
 
     // ==================== Background rendering ====================
@@ -370,6 +368,11 @@ public abstract class TabBar implements ILayout {
             TabButton btn = new TabButton(tab);
             btn.setPosition(currentX, 0);
             btn.setSize(this.buttonWidth, NAV_HEIGHT);
+            // Push bar-level texture to the button (only when customised)
+            if (this.tabTexture != Tab.DEFAULT_TAB_TEXTURE) {
+                btn.setStateTexture(this.tabTexture, this.tabTexture,
+                                    this.tabTexture, this.tabTexture);
+            }
             this.tabButtons.add(btn);
 
             currentX += this.buttonWidth;
@@ -588,8 +591,7 @@ public abstract class TabBar implements ILayout {
             for (Tab tab : tabList) {
                 tabBar.registerTab(tab);
             }
-            tabBar.navWidth = width;
-            tabBar.arrangeNavElements();
+            tabBar.setNavWidth(width);
         }
     }
 }

@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
+import decok.dfcdvadstf.catframe.exception.TabUncorrespondException;
 import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import net.minecraft.client.Minecraft;
@@ -71,8 +72,12 @@ public class TabManager {
      * <p>通过 TabBar 创建 TabManager。barId 取自 TabBar，仅加载注册到该 barId 的条目。</p>
      */
     public TabManager(GuiScreen screen, List<GuiButton> buttonList, int width, int height, TabBar tabBar) {
-        this(screen, buttonList, width, height, tabBar.getBarId());
+        if (tabBar == null) throw new IllegalArgumentException("tabBar must not be null");
+        this.screen = screen;
         this.tabBar = tabBar;
+        this.addWidget = widget -> { if (widget instanceof GuiButton) { GuiButton btn = (GuiButton) widget; if (!buttonList.contains(btn)) buttonList.add(btn); } };
+        this.removeWidget = widget -> { if (widget instanceof GuiButton) { buttonList.remove(widget); } };
+        initFromRegistry(tabBar.getBarId(), width, height);
     }
 
     /**
@@ -98,8 +103,12 @@ public class TabManager {
      */
     public TabManager(Consumer<Object> addWidget, Consumer<Object> removeWidget,
                       int width, int height, TabBar tabBar) {
-        this(addWidget, removeWidget, width, height, tabBar.getBarId());
+        if (tabBar == null) throw new IllegalArgumentException("tabBar must not be null");
+        this.screen = null;
         this.tabBar = tabBar;
+        this.addWidget = addWidget;
+        this.removeWidget = removeWidget;
+        initFromRegistry(tabBar.getBarId(), width, height);
     }
 
     /**
@@ -152,6 +161,13 @@ public class TabManager {
         // 创建此 bar 下所有已注册的标签页
         for (TabRegistry.TabEntry entry : TabRegistry.getEntries(barId)) {
             Tab tab = entry.factory.get();
+
+            // Consistency check: tabId from factory must match registration entry
+            // 一致性校验：工厂创建的 Tab 实例的 tabId 必须与注册条目一致
+            if (tab.getTabId() != entry.tabId) {
+                throw new TabUncorrespondException(barId, entry.tabId, tab.getTabId(), entry.nameKey);
+            }
+
             registerTab(tab);
             // Register the entry into TabBar if present (lazy instantiation)
             // 如果有 TabBar，将 entry 注册到其中（延迟实例化）
@@ -293,6 +309,8 @@ public class TabManager {
         Tab tab = tabs.get(tabId);
         if (tab != null) {
             setCurrentTab(tab, false);
+        } else {
+            LOG.warn("[TabManager] switchToTab: no tab found for id={}", tabId);
         }
     }
 

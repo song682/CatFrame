@@ -7,35 +7,32 @@ import org.lwjgl.opengl.GL11;
 
 /**
  * <p>Shared renderer for the content panel used by createworld-style screens.</p>
- * <p>Well, quite simple - gives you the header separator, a tiled panel background,
+ * <p>Gives you the header separator, a tiled panel background,
  * and the footer separator. Use the pieces you want, or let {@link #drawContentPanel(int, int, int, int)}
  * do the whole thing in one shot.</p>
- *
- * <p>通用的"内容面板"绘制工具 —— 顶部分隔线、平铺面板背景、底部分隔线都打包在这儿。
- * 单独调用每一块也行；想一键出货就用 {@link #drawContentPanel(int, int, int, int)}。</p>
  */
 public final class ContentPanelRenderer {
 
     /**
-     * Header separator (top line), 32x2 tileable. / 顶部分隔线，32x2 可平铺
+     * Header separator (top line), 32x2 tileable.
      */
     public static final ResourceLocation HEADER_SEPARATOR =
             new ResourceLocation("catframe", "textures/gui/seperator/header_separator.png");
 
     /**
-     * Footer separator (bottom line), 32x2 tileable. / 底部分隔线，32x2 可平铺
+     * Footer separator (bottom line), 32x2 tileable.
      */
     public static final ResourceLocation FOOTER_SEPARATOR =
             new ResourceLocation("catframe", "textures/gui/seperator/footer_separator.png");
 
     /**
-     * Panel background, 16x16 tileable. / 面板背景，16x16 可平铺
+     * Panel background, 16x16 tileable.
      */
     public static final ResourceLocation PANEL_BACKGROUND =
             new ResourceLocation("catframe", "textures/gui/seperator/panel_background.png");
 
     /**
-     * Separator height in GUI pixels. / 分隔线在 GUI 中的高度（像素）
+     * Separator height in GUI pixels.
      */
     public static final int SEPARATOR_HEIGHT = 2;
 
@@ -49,18 +46,16 @@ public final class ContentPanelRenderer {
     /**
      * Draw the full content panel in one call — header line on top, tiled background in the middle,
      * footer line on bottom.
-     * <p>一键绘制完整内容面板：顶部分隔线 + 中间平铺背景 + 底部分隔线。</p>
      *
-     * @param x      left edge / 左边缘
-     * @param top    Y coordinate of the header separator (its top pixel) / 顶部分隔线的起始 Y
-     * @param width  panel width / 面板宽度
-     * @param bottom Y coordinate of the footer separator (its top pixel) / 底部分隔线的起始 Y
+     * @param x      left edge
+     * @param top    Y coordinate of the header separator (its top pixel)
+     * @param width  panel width
+     * @param bottom Y coordinate of the footer separator (its top pixel)
      */
     public static void drawContentPanel(int x, int top, int width, int bottom) {
         if (width <= 0) return;
 
         // Background sits between the two separators — right below the header, right above the footer
-        // 背景夹在两条分隔线之间 —— 头线下面、尾线上面
         int bgTop = top + SEPARATOR_HEIGHT;
         if (bottom > bgTop) {
             drawPanelBackground(x, bgTop, width, bottom - bgTop);
@@ -94,7 +89,6 @@ public final class ContentPanelRenderer {
         if (width <= 0 || texture == null) return;
         Minecraft.getMinecraft().getTextureManager().bindTexture(texture);
         // Reset color to white so the texture isn't tinted by leftover GL state
-        // 重置颜色为白色，免得前面残留的 GL 状态把纹理染色
         GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         drawTiledTexture(x, y, width, SEPARATOR_TILE_H, SEPARATOR_TILE_W, SEPARATOR_TILE_H);
     }
@@ -111,9 +105,7 @@ public final class ContentPanelRenderer {
     }
 
     /**
-     * Tile the currently-bound texture across the given region.
-     * <p>把当前绑定的纹理按 (tileWidth x tileHeight) 平铺到区域内。</p>
-     * <p>Delegates to {@link TextureStretching#drawTiled}.</p>
+     * <p>Tile the currently-bound texture across the given region.<br>Delegates to {@link TextureStretching#drawTiled}.</p>
      */
     private static void drawTiledTexture(int x, int y, int width, int height, int tileWidth, int tileHeight) {
         // TextureStretching.drawTiled handles bind + blend internally,

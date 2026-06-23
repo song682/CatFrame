@@ -1,8 +1,8 @@
 package decok.dfcdvadstf.catframe.ui.util;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import decok.dfcdvadstf.catframe.exception.WrongMetadataError;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
@@ -42,7 +42,6 @@ import java.util.Map;
  */
 public final class TextureStretchingMetadata {
 
-    private static final Gson GSON = new Gson();
     private static final Map<ResourceLocation, TextureStretchingMetadata> CACHE = new HashMap<>();
 
     // ──── Fields ────
@@ -117,11 +116,12 @@ public final class TextureStretchingMetadata {
                 JsonObject s = root.getAsJsonObject("stretching");
                 String typeStr = s.has("type") ? s.get("type").getAsString() : "nine_patch";
 
-                int defW = 160, defH = 32;
+                int defW = 32, defH = 32;
                 if (s.has("default")) {
                     JsonObject def = s.getAsJsonObject("default");
-                    defW = def.has("width") ? def.get("width").getAsInt() : defW;
-                    defH = def.has("height") ? def.get("height").getAsInt() : defH;
+                    defW = def.get("width").getAsInt();
+                    defH = def.get("height").getAsInt();
+                    if (defW < 0 || defH < 0) throw new WrongMetadataError(defW, defH);
                 }
 
                 if ("nine_patch".equals(typeStr)) {
@@ -139,6 +139,11 @@ public final class TextureStretchingMetadata {
                             eL = eT = eR = eB = v;
                         }
                     }
+                    // Validate edge values / 校验边缘值
+                    if (eL < 0) throw new WrongMetadataError("left", eL);
+                    if (eT < 0) throw new WrongMetadataError("top", eT);
+                    if (eR < 0) throw new WrongMetadataError("right", eR);
+                    if (eB < 0) throw new WrongMetadataError("bottom", eB);
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.NINE_PATCH,
                             defW, defH, eL, eT, eR, eB, 0);
@@ -155,6 +160,9 @@ public final class TextureStretchingMetadata {
                             eL = eR = v;
                         }
                     }
+                    // Validate edge values / 校验边缘值
+                    if (eL < 0) throw new WrongMetadataError("left", eL);
+                    if (eR < 0) throw new WrongMetadataError("right", eR);
                     int tw = s.has("tileWidth") ? s.get("tileWidth").getAsInt() : (defW - eL - eR);
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.THREE_PATCH,
@@ -164,8 +172,14 @@ public final class TextureStretchingMetadata {
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.TILE,
                             defW, defH, 0, 0, 0, 0, 0);
+                } else {
+                    throw new WrongMetadataError(typeStr);
                 }
             }
+        } catch (WrongMetadataError e) {
+            // Validation error — must propagate, not swallowed
+            // 校验错误——必须向上传播，不能被吞掉
+            throw e;
         } catch (Exception e) {
             // No mcmeta file or parse error — return null
         }

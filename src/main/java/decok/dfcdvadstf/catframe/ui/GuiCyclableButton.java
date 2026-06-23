@@ -5,21 +5,16 @@ import decok.dfcdvadstf.catframe.ui.components.CyclingButton;
 
 /**
  * <p>
- * 遗留兼容包装器 —— 委托给 {@link CyclingButton}。<br>
- * 旧代码可以通过此类透明地迁移到新组件体系。
- * </p>
- * <p>
  * Legacy compatibility wrapper — delegates to {@link CyclingButton}.<br>
  * Existing code can migrate transparently through this class.
  * </p>
+ * <p><strong>NOTE (BREAKING CHANGE):</strong> This class no longer extends the {@code GuiButton}, <br>
+ * instead it extends {@link AbstractComponent}. Return from Builder {@code GuiCyclableButton.Builder} <br>
+ * changed to {@code CyclingButton.Builder}, the {@code build()} signature removed {@code id} parameter.
+ * Legacy API users n</p>
  *
- * <p><strong>NOTE (BREAKING CHANGE):</strong> 此类不再继承 {@code GuiButton}，
- * 而是继承 {@link AbstractComponent}。Builder 返回类型从 {@code GuiCyclableButton.Builder}
- * 变更为 {@code CyclingButton.Builder}，{@code build()} 签名移除了 {@code id} 参数。
- * 旧版 API 用户需适配新签名。</p>
- *
- * @param <T> the type of values to cycle through / 循环切换的值类型
- * @deprecated 使用 {@link CyclingButton} 替代 / Use {@link CyclingButton} instead
+ * @param <T> the type of values to cycle through
+ * @deprecated  Use {@link CyclingButton} instead
  */
 @Deprecated
 public class GuiCyclableButton<T> extends AbstractComponent {

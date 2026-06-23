@@ -44,10 +44,25 @@ public abstract class AbstractScreenTab implements Tab {
      */
     protected ResourceLocation tabTexture = Tab.DEFAULT_TAB_TEXTURE;
 
+    /**
+     * Optional four-state button textures.  When non-null, takes priority over {@link #tabTexture}. / 可选的四状态按钮纹理组。非 null 时优先级高于 {@link #tabTexture}。
+     */
+    @javax.annotation.Nullable
+    protected Tab.TabTextures tabTextures;
+
     public AbstractScreenTab(int tabId, String tabNameKey) {
         this.tabId = tabId;
         this.tabNameKey = tabNameKey;
         this.mc = Minecraft.getMinecraft();
+        // Auto-convert String nameKey to Text for consistent internal representation
+        // 自动将 String nameKey 转换为 Text，保证内部表示一致
+        // Note: non-colon keys (vanilla I18n) keep tabTitleText=null,
+        // relying on getTabTitle() fallback chain for I18n.format translation.
+        // 注意：无冒号的键（原版 I18n）保持 tabTitleText=null，
+        // 依赖 getTabTitle() 回退链路进行 I18n.format 翻译。
+        if (tabNameKey != null && tabNameKey.contains(":")) {
+            this.tabTitleText = Text.translatable(tabNameKey);
+        }
     }
 
     /**
@@ -77,6 +92,7 @@ public abstract class AbstractScreenTab implements Tab {
         this.tabManager = tabManager;
         tabButtons.clear();
         tabWidgets.clear();
+        tabComponents.clear();
     }
 
     @Override
@@ -86,6 +102,7 @@ public abstract class AbstractScreenTab implements Tab {
 
     @Override
     public String getTabName() {
+        if (tabNameKey == null) return "";
         return I18n.format(tabNameKey);
     }
 
@@ -173,11 +190,26 @@ public abstract class AbstractScreenTab implements Tab {
         return tabTexture;
     }
 
+    @javax.annotation.Nullable
+    @Override
+    public Tab.TabTextures getTabTextures() {
+        return tabTextures;
+    }
+
     /**
      * Set a custom tab button texture for this tab.
      * <p>为此 Tab 设置自定义按钮纹理。</p>
      */
     public void setTabTexture(ResourceLocation texture) {
         this.tabTexture = texture;
+    }
+
+    /**
+     * Set custom four-state button textures for this tab.
+     * When set, these take priority over the single texture set via {@link #setTabTexture(ResourceLocation)}.
+     * <p>为此 Tab 设置自定义四状态按钮纹理组。设置后将优先于 {@link #setTabTexture(ResourceLocation)} 的单纹理。</p>
+     */
+    public void setTabTextures(Tab.TabTextures textures) {
+        this.tabTextures = textures;
     }
 }

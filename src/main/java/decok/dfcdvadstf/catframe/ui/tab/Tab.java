@@ -6,6 +6,7 @@ import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.util.ResourceLocation;
 
+import javax.annotation.Nullable;
 import java.util.function.Consumer;
 
 /**
@@ -29,7 +30,7 @@ public interface Tab {
     /**
      * Default tab button texture. / 默认 Tab 按钮纹理。
      */
-    ResourceLocation DEFAULT_TAB_TEXTURE = new ResourceLocation("catframe", "textures/gui/tabs/tabs.png");
+    ResourceLocation DEFAULT_TAB_TEXTURE = new ResourceLocation("catframe", "textures/gui/tabs/tab.png");
 
     // ──── Original 1.7.10-style API ────
 
@@ -61,6 +62,21 @@ public interface Tab {
      */
     default ResourceLocation getTabTexture() {
         return DEFAULT_TAB_TEXTURE;
+    }
+
+    /**
+     * <p>
+     * 获取此标签页的四状态按钮纹理组。<br>
+     * 若返回非 null，则 {@link #getTabTexture()} 被忽略。<br>
+     * 默认返回 null。<br>
+     * Get the four-state button textures for this tab.<br>
+     * If non-null, {@link #getTabTexture()} is ignored.<br>
+     * Defaults to null.
+     * </p>
+     */
+    @Nullable
+    default TabTextures getTabTextures() {
+        return null;
     }
 
     /**
@@ -141,5 +157,42 @@ public interface Tab {
      * </p>
      */
     default void doLayout(ScreenRectangle rectangle) {
+    }
+
+    /**
+     * <p>
+     * 四状态按钮纹理组。<br>
+     * 封装 normal / highlighted / selected / selected+highlighted 四种纹理。<br>
+     * 若使用单参数构造器 {@link #TabTextures(ResourceLocation)}，四个状态使用同一纹理。<br>
+     * Four-state button textures.<br>
+     * Wraps normal / highlighted / selected / selected+highlighted textures.<br>
+     * If using the single-argument constructor {@link #TabTextures(ResourceLocation)},
+     * all four states share the same texture.
+     * </p>
+     */
+    final class TabTextures {
+
+        public final ResourceLocation normal;
+        public final ResourceLocation highlighted;
+        public final ResourceLocation selected;
+        public final ResourceLocation selectedHighlighted;
+
+        /**
+         * All four states use the same texture. / 四个状态使用同一纹理。
+         */
+        public TabTextures(ResourceLocation single) {
+            this(single, single, single, single);
+        }
+
+        /**
+         * Four distinct textures per state. / 四个状态各自独立纹理。
+         */
+        public TabTextures(ResourceLocation normal, ResourceLocation highlighted,
+                           ResourceLocation selected, ResourceLocation selectedHighlighted) {
+            this.normal = normal;
+            this.highlighted = highlighted;
+            this.selected = selected;
+            this.selectedHighlighted = selectedHighlighted;
+        }
     }
 }

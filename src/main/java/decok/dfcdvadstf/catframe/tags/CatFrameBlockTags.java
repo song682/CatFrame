@@ -3,38 +3,36 @@ package decok.dfcdvadstf.catframe.tags;
 import net.minecraft.block.Block;
 
 /**
- * CatFrame 方块标签常量
- * 
- * 类似 26.1 的 BlockTags，定义所有 CatFrame 使用的方块标签
- * 所有标签的命名空间统一为 "catframe"
- * 
- * 使用方式：
+ * CatFrame Block Tag Constants<br>
+ * Similar to the modern vanilla's {@code BlockTag}<br>
+ * All the tag's namespace are "catframe"<br>
+ * Usage：
  * <pre>
- * if (CatFrameBlockTags.is(block, CatFrameBlockTags.MINEABLE_WITH_PICKAXE)) {
- *     // 这个方块可以用镐子挖掘
+ * if (CatFrameBlockTags.is(block, CatFrameBlockTags.MINABLE_WITH_PICKAXE)) {
+ *    // This block can be mine with pickaxe
  * }
  * </pre>
  */
 public final class CatFrameBlockTags {
     
-    // ==================== 挖掘类标签 ====================
+    // ==================== Tag of Minable ====================
     
-    /** 可用镐子挖掘的方块 */
-    public static final TagKey<Block> MINEABLE_WITH_PICKAXE = create("mineable/pickaxe");
+    /** Minable by the pickaxe*/
+    public static final TagKey<Block> MINABLE_WITH_PICKAXE = create("mineable/pickaxe");
     
-    /** 可用斧头挖掘的方块 */
-    public static final TagKey<Block> MINEABLE_WITH_AXE = create("mineable/axe");
+    /** Minable by the axe */
+    public static final TagKey<Block> MINABLE_WITH_AXE = create("mineable/axe");
     
-    /** 可用铲子挖掘的方块 */
-    public static final TagKey<Block> MINEABLE_WITH_SHOVEL = create("mineable/shovel");
+    /** Minable by the shovel */
+    public static final TagKey<Block> MINABLE_WITH_SHOVEL = create("mineable/shovel");
     
-    /** 可用锄头挖掘的方块 */
-    public static final TagKey<Block> MINEABLE_WITH_HOE = create("mineable/hoe");
+    /** Minable by the hoe */
+    public static final TagKey<Block> MINABLE_WITH_HOE = create("mineable/hoe");
     
-    /** 需要石制工具 */
+    /** require stone tool */
     public static final TagKey<Block> NEEDS_STONE_TOOL = create("needs_stone_tool");
     
-    /** 需要铁制工具 */
+    /** require iron tool */
     public static final TagKey<Block> NEEDS_IRON_TOOL = create("needs_iron_tool");
     
     /** 需要钻石工具 */

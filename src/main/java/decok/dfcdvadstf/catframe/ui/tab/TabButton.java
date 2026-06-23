@@ -40,11 +40,21 @@ public class TabButton extends AbstractButton {
     private static final ResourceLocation TAB_SELECTED_HIGHLIGHTED_TEXTURE =
             new ResourceLocation("catframe", "textures/gui/tabs/tab_selected_highlighted.png");
 
-    // ──── Text colours ────
+    // ──── Instance-level texture fields (default to static constants) ────
 
-    private static final int COLOR_SELECTED = 0xFFFFFF;
-    private static final int COLOR_HOVERED = 0xFFFF55;
-    private static final int COLOR_NORMAL  = 0xA0A0A0;
+    private ResourceLocation texNormal       = TAB_TEXTURE;
+    private ResourceLocation texHighlighted  = TAB_HIGHLIGHTED_TEXTURE;
+    private ResourceLocation texSelected     = TAB_SELECTED_TEXTURE;
+    private ResourceLocation texSelHighlight = TAB_SELECTED_HIGHLIGHTED_TEXTURE;
+
+    // ──── Text colours (instance-level, customizable) ────
+
+    /** Text colour when selected / 选中时文本颜色 */
+    private int colorSelected = 0xFFFFFF;
+    /** Text colour when hovered / 悬停时文本颜色 */
+    private int colorHovered = 0xFFFF55;
+    /** Text colour in normal state / 普通状态文本颜色 */
+    private int colorNormal   = 0xA0A0A0;
 
     // ──── Fields ────
 
@@ -56,6 +66,7 @@ public class TabButton extends AbstractButton {
 
     public TabButton(Tab tab) {
         super(0, 0, 0, TabBar.NAV_HEIGHT);
+        if (tab == null) throw new IllegalArgumentException("tab must not be null");
         this.tab = tab;
     }
 
@@ -71,6 +82,40 @@ public class TabButton extends AbstractButton {
 
     public Tab getTab() {
         return tab;
+    }
+
+    // ──── Colour customization ────
+
+    /**
+     * Set the text colour for the selected state.
+     * <p>设置选中状态文本颜色。</p>
+     */
+    public void setColorSelected(int color) { this.colorSelected = color; }
+
+    /**
+     * Set the text colour for the hovered state.
+     * <p>设置悬停状态文本颜色。</p>
+     */
+    public void setColorHovered(int color) { this.colorHovered = color; }
+
+    /**
+     * Set the text colour for the normal state.
+     * <p>设置普通状态文本颜色。</p>
+     */
+    public void setColorNormal(int color) { this.colorNormal = color; }
+
+    // ──── Texture customization ────
+
+    /**
+     * Set custom state textures for this button.
+     * <p>为此按钮设置自定义状态纹理。传入 null 的项保留当前值。</p>
+     */
+    public void setStateTexture(ResourceLocation normal, ResourceLocation highlighted,
+                                ResourceLocation selected, ResourceLocation selectedHighlighted) {
+        if (normal != null)              this.texNormal       = normal;
+        if (highlighted != null)         this.texHighlighted  = highlighted;
+        if (selected != null)            this.texSelected     = selected;
+        if (selectedHighlighted != null) this.texSelHighlight = selectedHighlighted;
     }
 
     // ──── Callback ────
@@ -110,14 +155,26 @@ public class TabButton extends AbstractButton {
      * <p>根据当前按钮状态选择正确的纹理。</p>
      */
     private ResourceLocation getStateTexture() {
-        if (!active) {
-            // Inactive — use normal texture (or could add a disabled variant)
-            return TAB_TEXTURE;
+        // Priority 1: Four-state textures from Tab interface (highest priority)
+        Tab.TabTextures textures = tab.getTabTextures();
+        if (textures != null) {
+            if (!active) return textures.normal;
+            if (selected && isHovered) return textures.selectedHighlighted;
+            if (selected) return textures.selected;
+            if (isHovered) return textures.highlighted;
+            return textures.normal;
         }
-        if (selected && isHovered) return TAB_SELECTED_HIGHLIGHTED_TEXTURE;
-        if (selected) return TAB_SELECTED_TEXTURE;
-        if (isHovered) return TAB_HIGHLIGHTED_TEXTURE;
-        return TAB_TEXTURE;
+        // Priority 2: Single custom texture from Tab interface
+        ResourceLocation custom = tab.getTabTexture();
+        if (custom != Tab.DEFAULT_TAB_TEXTURE) {
+            return custom;
+        }
+        // Priority 3: Instance-level four-state textures (from setStateTexture or TabBar push)
+        if (!active) return texNormal;
+        if (selected && isHovered) return texSelHighlight;
+        if (selected) return texSelected;
+        if (isHovered) return texHighlighted;
+        return texNormal;
     }
 
     /**
@@ -131,11 +188,11 @@ public class TabButton extends AbstractButton {
 
         int textColor;
         if (selected) {
-            textColor = COLOR_SELECTED;
+            textColor = colorSelected;
         } else if (isHovered) {
-            textColor = COLOR_HOVERED;
+            textColor = colorHovered;
         } else {
-            textColor = COLOR_NORMAL;
+            textColor = colorNormal;
         }
 
         int textWidth = font.getStringWidth(titleStr);

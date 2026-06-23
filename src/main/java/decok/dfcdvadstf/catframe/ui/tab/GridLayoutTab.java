@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
+import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.layouts.FrameLayout;
 import decok.dfcdvadstf.catframe.ui.layouts.GridLayout;
@@ -49,6 +50,25 @@ public class GridLayoutTab extends AbstractScreenTab {
 
     public GridLayoutTab(int tabId, String tabNameKey) {
         super(tabId, tabNameKey);
+    }
+
+    /**
+     * 使用显式 {@link Text} 标题创建标签页。<br>
+     * 推荐使用此构造器以获得正确的延迟翻译行为。<br>
+     * Create a tab with an explicit {@link Text} title.<br>
+     * This constructor is recommended for correct lazy translation behaviour.
+     * </p>
+     *
+     * <pre>{@code
+     *   // CatFrame domain:key format (lazy translation via LocalizationManager)
+     *   super(100, Text.translatable("createworldui", "tab.game"));
+     *
+     *   // Literal fallback
+     *   super(100, Text.literal("My Tab"));
+     * }</pre>
+     */
+    public GridLayoutTab(int tabId, Text tabTitle) {
+        super(tabId, tabTitle);
     }
 
     @Override

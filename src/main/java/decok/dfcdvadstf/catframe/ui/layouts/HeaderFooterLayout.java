@@ -267,8 +267,14 @@ public class HeaderFooterLayout extends AbstractLayout {
     public void draw(int mouseX, int mouseY, float partialTicks) {
         if (!drawPanel || width <= 0 || height <= 0) return;
 
-        int footerY = y + height - ContentPanelRenderer.SEPARATOR_HEIGHT;
-        ContentPanelRenderer.drawContentPanel(x, y, width, footerY);
+        int hdrH = this.headerHeight > 0 ? this.headerHeight : getChildHeight(headerFrame);
+        int ftrH = this.footerHeight > 0 ? this.footerHeight : getChildHeight(footerFrame);
+
+        // Content panel spans from bottom of header to top of footer
+        // 内容面板从 header 底部延伸到 footer 顶部
+        int contentTop = y + hdrH;
+        int contentBottom = y + height - ftrH;
+        ContentPanelRenderer.drawContentPanel(x, contentTop, width, contentBottom);
     }
 
     // ──── Internal ────

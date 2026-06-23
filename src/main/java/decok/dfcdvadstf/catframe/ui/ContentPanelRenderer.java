@@ -1,7 +1,6 @@
 package decok.dfcdvadstf.catframe.ui;
 
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
-import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
@@ -87,10 +86,7 @@ public final class ContentPanelRenderer {
      */
     public static void drawSeparator(int x, int y, int width, ResourceLocation texture) {
         if (width <= 0 || texture == null) return;
-        Minecraft.getMinecraft().getTextureManager().bindTexture(texture);
-        // Reset color to white so the texture isn't tinted by leftover GL state
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        drawTiledTexture(x, y, width, SEPARATOR_TILE_H, SEPARATOR_TILE_W, SEPARATOR_TILE_H);
+        drawTiledTexture(texture, x, y, width, SEPARATOR_TILE_H, SEPARATOR_TILE_W, SEPARATOR_TILE_H);
     }
 
     /**
@@ -99,21 +95,15 @@ public final class ContentPanelRenderer {
      */
     public static void drawPanelBackground(int x, int y, int width, int height) {
         if (width <= 0 || height <= 0) return;
-        Minecraft.getMinecraft().getTextureManager().bindTexture(PANEL_BACKGROUND);
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        drawTiledTexture(x, y, width, height, PANEL_TILE, PANEL_TILE);
+        drawTiledTexture(PANEL_BACKGROUND, x, y, width, height, PANEL_TILE, PANEL_TILE);
     }
 
     /**
-     * <p>Tile the currently-bound texture across the given region.<br>Delegates to {@link TextureStretching#drawTiled}.</p>
+     * <p>Tile the given texture across the specified region.<br>Delegates to {@link TextureStretching#drawTiled}.</p>
+     * <p>在指定区域内平铺指定纹理。委托给 {@link TextureStretching#drawTiled}。</p>
      */
-    private static void drawTiledTexture(int x, int y, int width, int height, int tileWidth, int tileHeight) {
-        // TextureStretching.drawTiled handles bind + blend internally,
-        // but we already bound the texture before calling this method,
-        // so we need to re-bind. Use the PANEL_BACKGROUND for this wrapper.
+    private static void drawTiledTexture(ResourceLocation texture, int x, int y, int width, int height, int tileWidth, int tileHeight) {
         GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        TextureStretching.drawTiled(
-                null /* texture already bound */,
-                x, y, width, height, tileWidth, tileHeight);
+        TextureStretching.drawTiled(texture, x, y, width, height, tileWidth, tileHeight);
     }
 }

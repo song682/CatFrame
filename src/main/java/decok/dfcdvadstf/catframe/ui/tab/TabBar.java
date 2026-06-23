@@ -406,6 +406,10 @@ public abstract class TabBar implements ILayout {
         List<Tab> tabList = getOrderedTabList();
         if (tabList.isEmpty()) return;
 
+        // Draw the nav bar background (solid fill + optional tiled texture)
+        // 绘制导航栏背景（纯色填充 + 可选平铺纹理）
+        drawBackground(0, 0, navWidth, NAV_HEIGHT);
+
         int barBottom = NAV_HEIGHT - 2;
         int firstX = this.buttonX.length > 0 ? this.buttonX[0] : 0;
         int lastX = this.buttonX.length > 0

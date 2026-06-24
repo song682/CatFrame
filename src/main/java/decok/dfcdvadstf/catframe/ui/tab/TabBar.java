@@ -410,22 +410,6 @@ public abstract class TabBar implements ILayout {
         // 绘制导航栏背景（纯色填充 + 可选平铺纹理）
         drawBackground(0, 0, navWidth, NAV_HEIGHT);
 
-        int barBottom = NAV_HEIGHT - 2;
-        int firstX = this.buttonX.length > 0 ? this.buttonX[0] : 0;
-        int lastX = this.buttonX.length > 0
-                ? this.buttonX[tabList.size() - 1] + this.buttonWidth
-                : 0;
-
-        // Draw header separator before the first tab
-        // 在第一个 Tab 之前绘制分隔线
-        // Draw header separator before the first tab, indented 2px from the left edge
-        // 在第一个 Tab 之前绘制分隔线，从左侧边缘缩进 2px
-        ContentPanelRenderer.drawHeaderSeparator(2, barBottom, Math.max(0, firstX - 2));
-
-        // Draw header separator after the last tab, indented 2px from the right edge
-        // 在最后一个 Tab 之后绘制分隔线，从右侧边缘缩进 2px
-        ContentPanelRenderer.drawHeaderSeparator(lastX, barBottom, Math.max(0, this.navWidth - lastX - 2));
-
         // Draw each tab button via TabButton component
         // 通过 TabButton 组件绘制每个 Tab 按钮
         Tab currentTab = tabManager != null ? tabManager.getCurrentTab() : null;
@@ -433,6 +417,11 @@ public abstract class TabBar implements ILayout {
             btn.setSelected(currentTab == btn.getTab());
             btn.render(mouseX, mouseY, partialTicks);
         }
+
+        // Draw header separator across the full width, indented 2px from edges
+        // 在导航栏底部绘制贯穿的分隔线，左右各缩进 2px
+        int barBottom = NAV_HEIGHT - 2;
+        ContentPanelRenderer.drawHeaderSeparator(2, barBottom, navWidth - 4);
     }
 
     /**

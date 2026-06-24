@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
+import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.components.AbstractButton;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
@@ -148,6 +149,12 @@ public class TabButton extends AbstractButton {
         // Render with nine-patch stretching
         TextureStretching.drawNinePatch(tex, x, y, width, height,
                 EDGE, EDGE, EDGE, EDGE, TEX_W, TEX_H);
+
+        // When selected, fill interior with panel background to cover the separator
+        // 选中时，在内部填充面板背景以盖住分隔线
+        if (selected) {
+            ContentPanelRenderer.drawPanelBackground(x + 2, y + 2, width - 4, height - 4);
+        }
     }
 
     /**
@@ -197,7 +204,9 @@ public class TabButton extends AbstractButton {
 
         int textWidth = font.getStringWidth(titleStr);
         int textX = x + (width - textWidth) / 2;
-        int textY = y + (height - font.FONT_HEIGHT) / 2;
+        // Selected tab text is at top, unselected is shifted down by 3px
+        // 选中时文字贴顶，未选中时向下偏移 3px
+        int textY = y + (selected ? 1 : 4);
         font.drawStringWithShadow(titleStr, textX, textY, textColor);
     }
 }

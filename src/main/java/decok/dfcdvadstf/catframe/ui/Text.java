@@ -91,37 +91,37 @@ public class Text {
 
     /**
      * Creates a translatable Text from a {@code domain:key} string.
+     * If no colon is present, treated as a vanilla I18n key (domain=null).
      * <pre>{@code
      *   Text.translatable("catframe:menu.paused");
      *   Text.translatable("catframe:item.count", 5, 10);
+     *   Text.translatable("menu.paused");  // vanilla I18n key
      * }</pre>
      */
     public static Text translatable(String resourceKey, Object... args) {
         int sep = resourceKey.indexOf(LocalizationManager.DOMAIN_SEPARATOR);
-        if (sep <= 0) {
-            throw new IllegalArgumentException(
-                    "Translatable key must contain domain separator ':', got: " + resourceKey);
+        if (sep > 0) {
+            String domain = resourceKey.substring(0, sep);
+            String key = resourceKey.substring(sep + 1);
+            return new Text(domain, key, true, args);
         }
-        String domain = resourceKey.substring(0, sep);
-        String key = resourceKey.substring(sep + 1);
-        LocalizationManager.KeyTracking.mark(domain, key);
-        return new Text(domain, key, true, args);
+        // No colon: treat as vanilla I18n key (domain=null)
+        return new Text(null, resourceKey, true, args);
     }
 
     /**
      * Creates a translatable Text from a {@code domain:key} string with style.
-     * <p>使用样式从 {@code domain:key} 字符串创建可翻译文本。</p>
+     * If no colon is present, treated as a vanilla I18n key (domain=null).
+     * <p>使用样式从 {@code domain:key} 字符串创建可翻译文本。无冒号时作为原版 I18n 键处理。</p>
      */
     public static Text translatable(Style style, String resourceKey, Object... args) {
         int sep = resourceKey.indexOf(LocalizationManager.DOMAIN_SEPARATOR);
-        if (sep <= 0) {
-            throw new IllegalArgumentException(
-                "Translatable key must contain domain separator ':', got: " + resourceKey);
+        if (sep > 0) {
+            String domain = resourceKey.substring(0, sep);
+            String key = resourceKey.substring(sep + 1);
+            return new Text(domain, key, true, style, args);
         }
-        String domain = resourceKey.substring(0, sep);
-        String key = resourceKey.substring(sep + 1);
-        LocalizationManager.KeyTracking.mark(domain, key);
-        return new Text(domain, key, true, style, args);
+        return new Text(null, resourceKey, true, style, args);
     }
 
     /**
@@ -133,7 +133,6 @@ public class Text {
      * }</pre>
      */
     public static Text translatable(String domain, String key, Object... args) {
-        LocalizationManager.KeyTracking.mark(domain, key);
         return new Text(domain, key, true, args);
     }
 
@@ -142,7 +141,6 @@ public class Text {
      * <p>使用显式域名、键和样式创建可翻译文本。</p>
      */
     public static Text translatable(String domain, String key, Style style, Object... args) {
-        LocalizationManager.KeyTracking.mark(domain, key);
         return new Text(domain, key, true, style, args);
     }
 

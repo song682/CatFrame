@@ -206,7 +206,7 @@ public class TabButton extends AbstractButton {
         int textX = x + (width - textWidth) / 2;
         // Selected tab text is at top, unselected is shifted down by 3px
         // 选中时文字贴顶，未选中时向下偏移 3px
-        int textY = y + (selected ? 1 : 4);
+        int textY = y + (selected ? 5 : 8);
         font.drawStringWithShadow(titleStr, textX, textY, textColor);
     }
 }

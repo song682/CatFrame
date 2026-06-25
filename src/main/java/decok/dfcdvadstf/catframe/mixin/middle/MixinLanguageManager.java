@@ -28,7 +28,7 @@ public class MixinLanguageManager {
     private void catframe$onLanguageChanged(CallbackInfo ci) {
         // Only reload if domains have been registered (skip initial startup)
         if (!LanguageRegister.getDomains().isEmpty()) {
-            LocalizationManager.Loader.reload();
+            LocalizationManager.reload();
         }
     }
 }

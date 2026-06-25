@@ -15,18 +15,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
- * JSON-based localization manager with namespace support, similar to higher
- * Minecraft versions.
+ * JSON-based localization manager with namespace support, aligned with Minecraft 26.1.2 design.
  * <p>
- * Keys are stored internally as {@code domain:key}. You can pass them in two
- * forms:
+ * Keys are stored internally as {@code domain:key}. Supports two API forms:
  * <pre>{@code
  *   LocalizationManager.Translation.translate("catframe:menu.paused");
  *   LocalizationManager.Translation.translate("catframe", "menu.paused", args...);
  * }</pre>
  * <p>
- * Must call {@link LanguageRegister#domain(String, String)} for each mod
- * domain BEFORE calling {@link Loader#load()}.
+ * Translations are loaded automatically when mods register their domains via
+ * {@link LanguageRegister#domain(String, String)}. No manual load call needed.
+ * <p>
+ * Uses context classloader to support cross-mod resource loading (e.g. CreateWorldUI).
  */
 public final class LocalizationManager {
 
@@ -49,93 +49,133 @@ public final class LocalizationManager {
 
     private LocalizationManager() {}
 
-    // ==================== Loader ====================
+    // ==================== Loading ====================
 
     /**
-     * Handles loading and reloading JSON language files from all registered domains.
-     * <p>
-     * 处理从所有已注册域加载和重载 JSON 语言文件。
+     * Returns whether translations have been loaded.
+     * <p>返回翻译是否已加载。</p>
      */
-    public static class Loader {
+    static boolean isLoaded() {
+        return loaded;
+    }
 
-        /**
-         * Loads translations from all registered domains. Must be called AFTER all
-         * {@link LanguageRegister#domain} calls, on the client side.
-         */
-        @SideOnly(Side.CLIENT)
-        public static void load() {
-            if (loaded) return;
+    /**
+     * Loads translations from all registered domains. Called automatically by
+     * {@link LanguageRegister#domain(String, String)} after the first registration.
+     * <p>
+     * 从所有已注册域加载翻译。由 {@link LanguageRegister#domain(String, String)} 在首次注册后自动调用。</p>
+     */
+    @SideOnly(Side.CLIENT)
+    static void loadAll() {
+        if (loaded) return;
 
-            String currentLang = getCurrentLanguage();
+        String currentLang = getCurrentLanguage();
 
-            for (Map.Entry<String, String> entry : LanguageRegister.domains.entrySet()) {
-                String domain = entry.getKey();
-                String basePath = entry.getValue();
+        for (Map.Entry<String, String> entry : LanguageRegister.domains.entrySet()) {
+            String domain = entry.getKey();
+            String basePath = entry.getValue();
 
-                // Always load en_us as fallback
-                loadDomainFile(domain, basePath, "en_us", fallback);
+            // Always load en_us as fallback
+            loadDomainFile(domain, basePath, "en_us", fallback);
 
-                // Load current language (skip if already en_us)
-                if (!"en_us".equals(currentLang)) {
-                    loadDomainFile(domain, basePath, currentLang, translations);
-                }
-            }
-
-            // Fill missing entries from fallback
-            for (Map.Entry<String, String> entry : fallback.entrySet()) {
-                if (!translations.containsKey(entry.getKey())) {
-                    translations.put(entry.getKey(), entry.getValue());
-                }
-            }
-
-            loaded = true;
-            CatFrame.logger.info("LocalizationManager loaded: lang={}, domains={}, keys={}",
-                    currentLang, LanguageRegister.domains.size(), translations.size());
-        }
-
-        /**
-         * Reloads all translations (useful for language switching at runtime).
-         */
-        @SideOnly(Side.CLIENT)
-        public static void reload() {
-            translations.clear();
-            loaded = false;
-            load();
-        }
-
-        @SideOnly(Side.CLIENT)
-        private static String getCurrentLanguage() {
-            try {
-                return Minecraft.getMinecraft().getLanguageManager()
-                        .getCurrentLanguage().getLanguageCode()
-                        .toLowerCase(Locale.ENGLISH);
-            } catch (Exception e) {
-                CatFrame.logger.warn("Failed to detect language, falling back to en_us", e);
-                return "en_us";
+            // Load current language (skip if already en_us)
+            if (!"en_us".equals(currentLang)) {
+                loadDomainFile(domain, basePath, currentLang, translations);
             }
         }
 
-        @SideOnly(Side.CLIENT)
-        private static void loadDomainFile(String domain, String basePath,
-                                           String langCode, Map<String, String> target) {
-            String path = "/" + basePath + "/" + langCode + ".json";
-            try (InputStream in = LocalizationManager.class.getResourceAsStream(path)) {
-                if (in == null) {
-                    CatFrame.logger.warn("Language file not found: {}", path);
-                    return;
-                }
-                Reader reader = new InputStreamReader(in, StandardCharsets.UTF_8);
-                Map<String, String> data = GSON.fromJson(reader, MAP_TYPE);
-                if (data != null) {
-                    for (Map.Entry<String, String> entry : data.entrySet()) {
-                        target.put(domain + DOMAIN_SEPARATOR + entry.getKey(), entry.getValue());
-                    }
-                    CatFrame.logger.info("Loaded {} keys from {}:{} ({})",
-                            data.size(), domain, langCode, path);
-                }
-            } catch (Exception e) {
-                CatFrame.logger.error("Failed to load language file: {}", path, e);
+        // Fill missing entries from fallback
+        for (Map.Entry<String, String> entry : fallback.entrySet()) {
+            if (!translations.containsKey(entry.getKey())) {
+                translations.put(entry.getKey(), entry.getValue());
             }
+        }
+
+        loaded = true;
+        CatFrame.logger.info("LocalizationManager loaded: lang={}, domains={}, keys={}",
+                currentLang, LanguageRegister.domains.size(), translations.size());
+    }
+
+    /**
+     * Incrementally loads a single domain's translations into the existing maps.
+     * Called when a new domain is registered after initial loading.
+     * <p>增量加载单个域的翻译到现有映射中。在初始加载后注册新域时调用。</p>
+     *
+     * @param domain   the domain identifier (mod id)
+     * @param basePath classpath-relative directory containing lang JSON files
+     */
+    @SideOnly(Side.CLIENT)
+    static void loadDomain(String domain, String basePath) {
+        String currentLang = getCurrentLanguage();
+
+        // Load en_us as fallback
+        loadDomainFile(domain, basePath, "en_us", fallback);
+
+        // Load current language
+        if (!"en_us".equals(currentLang)) {
+            loadDomainFile(domain, basePath, currentLang, translations);
+        }
+
+        // Fill missing entries from fallback for this domain
+        for (Map.Entry<String, String> entry : fallback.entrySet()) {
+            if (entry.getKey().startsWith(domain + DOMAIN_SEPARATOR)
+                    && !translations.containsKey(entry.getKey())) {
+                translations.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        CatFrame.logger.info("LocalizationManager incrementally loaded domain '{}': lang={}, total keys={}",
+                domain, currentLang, translations.size());
+    }
+
+    /**
+     * Reloads all translations (e.g. after language switch). Public for Mixin access.
+     * <p>重新加载所有翻译（如语言切换后）。对 Mixin 公开。</p>
+     */
+    @SideOnly(Side.CLIENT)
+    public static void reload() {
+        translations.clear();
+        fallback.clear();
+        loaded = false;
+        loadAll();
+    }
+
+    @SideOnly(Side.CLIENT)
+    private static String getCurrentLanguage() {
+        try {
+            return Minecraft.getMinecraft().getLanguageManager()
+                    .getCurrentLanguage().getLanguageCode()
+                    .toLowerCase(Locale.ENGLISH);
+        } catch (Exception e) {
+            CatFrame.logger.warn("Failed to detect language, falling back to en_us", e);
+            return "en_us";
+        }
+    }
+
+    @SideOnly(Side.CLIENT)
+    private static void loadDomainFile(String domain, String basePath,
+                                       String langCode, Map<String, String> target) {
+        String path = basePath + "/" + langCode + ".json";
+        // Use context classloader to access resources from all mods, not just CatFrame
+        // 使用 context classloader 访问所有模组的资源，而不仅是 CatFrame
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        if (cl == null) cl = LocalizationManager.class.getClassLoader();
+        try (InputStream in = cl.getResourceAsStream(path)) {
+            if (in == null) {
+                CatFrame.logger.warn("Language file not found: {}", path);
+                return;
+            }
+            Reader reader = new InputStreamReader(in, StandardCharsets.UTF_8);
+            Map<String, String> data = GSON.fromJson(reader, MAP_TYPE);
+            if (data != null) {
+                for (Map.Entry<String, String> entry : data.entrySet()) {
+                    target.put(domain + DOMAIN_SEPARATOR + entry.getKey(), entry.getValue());
+                }
+                CatFrame.logger.info("Loaded {} keys from {}:{} ({})",
+                        data.size(), domain, langCode, path);
+            }
+        } catch (Exception e) {
+            CatFrame.logger.error("Failed to load language file: {}", path, e);
         }
     }
 

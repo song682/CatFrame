@@ -47,7 +47,7 @@ public class CatFrame {
 
         if (event.getSide() == Side.CLIENT) {
             LanguageRegister.domain(Tags.MODID, "assets/catframe/lang");
-            LocalizationManager.Loader.load();
+            // load() is now triggered automatically by LanguageRegister.domain()
 
             // Register client event handler (welcome toast + HUD toast rendering)
             MinecraftForge.EVENT_BUS.register(new ClientEventHandler());

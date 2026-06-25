@@ -6,19 +6,17 @@ import java.util.Map;
 
 /**
  * Language domain registry — mods register their language file directories here
- * during preInit, so that {@link LocalizationManager} knows where to load JSON
- * translations from.
+ * during preInit. Translations are loaded automatically after the first registration.
  * <p>
  * 语言域注册表 —— 各 mod 在 preInit 中注册自己的语言文件目录，
- * {@link LocalizationManager} 据此知道从哪里加载 JSON 翻译。
+ * 首次注册后自动加载翻译，无需手动调用 load()。
  * <p>
  * Usage / 用法:
  * <pre>{@code
- *   // In your mod's preInit:
+ *   // In your mod's preInit or init:
  *   LanguageRegister.domain("mymod", "assets/mymod/lang");
  *   LanguageRegister.domain("catframe", "assets/catframe/lang");
- *
- *   // Then call LocalizationManager.Loader.load() once all domains are registered.
+ *   // No need to call load() - it's triggered automatically!
  * }</pre>
  */
 public final class LanguageRegister {
@@ -32,9 +30,9 @@ public final class LanguageRegister {
     }
 
     /**
-     * Registers a language domain for a mod.
+     * Registers a language domain for a mod. Triggers automatic loading on first call.
      * <p>
-     * 为 mod 注册一个语言域。
+     * 为 mod 注册一个语言域。首次调用时自动触发加载。
      *
      * @param modid    mod identifier, used in {@code modid:key} format / mod 标识符
      * @param basePath classpath-relative directory containing lang JSON files,
@@ -42,6 +40,15 @@ public final class LanguageRegister {
      */
     public static void domain(String modid, String basePath) {
         domains.put(modid, basePath);
+        // Auto-trigger loading on first registration, or incrementally load new domain
+        // 首次注册时自动触发全量加载，之后增量加载新域
+        if (!LocalizationManager.isLoaded()) {
+            LocalizationManager.loadAll();
+        } else {
+            // Already loaded — incrementally load only the new domain
+            // 已加载 — 仅增量加载新注册的域
+            LocalizationManager.loadDomain(modid, basePath);
+        }
     }
 
     /**

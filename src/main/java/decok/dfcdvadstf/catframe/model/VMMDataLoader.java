@@ -21,7 +21,7 @@ import java.util.*;
  */
 public class VMMDataLoader {
 
-    private static final Gson blockstateGson = BlockstateJson.createGson();
+    static final Gson blockstateGson = BlockstateJson.createGson();
     private static final Gson gson = new Gson();
 
     // ==================== 初始化 ====================
@@ -57,12 +57,12 @@ public class VMMDataLoader {
                 String modelPath = ijm.getModelPath();
                 if (modelPath != null) {
                     // Auto-collect textures for this model
-                    VMMTextureTracker.collectTexturesFromModel(modelPath, true);
+                    VanillaTextureTracker.collectTexturesFromModel(modelPath, true);
                     // For ModernItem dual-models, also collect hand model textures
                     if (obj instanceof ModernItem) {
                         ModernItem mi = (ModernItem) obj;
                         if (mi.hasDualModels()) {
-                            VMMTextureTracker.collectTexturesFromModel(mi.getHandModelPath(), true);
+                            VanillaTextureTracker.collectTexturesFromModel(mi.getHandModelPath(), true);
                         }
                     }
                     VanillaModelManager.interfaceItemModels.put(item, ijm);
@@ -183,12 +183,12 @@ public class VMMDataLoader {
 
                 if (mappings.blocks != null) {
                     for (String modelPath : mappings.blocks.values()) {
-                        VMMTextureTracker.collectTexturesFromModel(modelPath, false);
+                        VanillaTextureTracker.collectTexturesFromModel(modelPath, false);
                     }
                 }
                 if (mappings.items != null) {
                     for (String modelPath : mappings.items.values()) {
-                        VMMTextureTracker.collectTexturesFromModel(modelPath, true);
+                        VanillaTextureTracker.collectTexturesFromModel(modelPath, true);
                     }
                 }
             }
@@ -331,7 +331,7 @@ public class VMMDataLoader {
             InputStreamReader reader = new InputStreamReader(stream);
             BlockstateJson bs = blockstateGson.fromJson(reader, BlockstateJson.class);
             if (bs != null) {
-                VMMTextureTracker.collectTexturesFromBlockstate(bs);
+                VanillaTextureTracker.collectTexturesFromBlockstate(bs);
                 CatFrame.logger.debug("Loaded blockstate: {}/{}", namespace, blockName);
             }
             return bs;

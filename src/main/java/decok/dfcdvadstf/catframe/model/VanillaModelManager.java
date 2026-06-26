@@ -2,16 +2,16 @@ package decok.dfcdvadstf.catframe.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
-import decok.dfcdvadstf.catframe.model.ItemModel;
 import net.minecraft.block.Block;
+import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.item.Item;
 import net.minecraft.util.IIcon;
+import net.minecraft.world.IBlockAccess;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -165,6 +165,41 @@ public class VanillaModelManager {
 
             final Map<Integer, Map<String, String>> finalMap = metaMap;
             return metadata -> finalMap.getOrDefault(metadata, Collections.emptyMap());
+        }
+    }
+
+    // ==================== 向后兼容内层类 (模块拆分 E3 后作为委托) ====================
+    /**
+     * Backward-compatible delegate to {@link VMMDataLoader}.
+     */
+    public static class DataLoading {
+        public static void init() { VMMDataLoader.init(); }
+        public static void registerNamespace(String namespace) { VMMDataLoader.registerNamespace(namespace); }
+        public static void registerMetadataMapping(Block block, IMetadataMapper mapper) { VMMDataLoader.registerMetadataMapping(block, mapper); }
+        public static void registerBlockstateRedirect(Block block, IMetadataBlockstateRedirect redirect) { VMMDataLoader.registerBlockstateRedirect(block, redirect); }
+    }
+
+    /**
+     * Backward-compatible delegate to {@link VanillaModelRegistry}.
+     */
+    public static class ModelRegistration {
+        public static boolean hasModel(Block block) { return VanillaModelRegistry.hasModel(block); }
+        public static boolean hasItemModel(Item item) { return VanillaModelRegistry.hasItemModel(item); }
+        public static BlockStateModel getBlockModel(Block block) { return VanillaModelRegistry.getBlockModel(block); }
+        public static ItemModel getRegisteredItemModel(Item item) { return VanillaModelRegistry.getRegisteredItemModel(item); }
+        public static void registerBlockModel(Block block, BlockStateModel model) { VanillaModelRegistry.registerBlockModel(block, model); }
+        public static void registerItemModel(Item item, ItemModel model) { VanillaModelRegistry.registerItemModel(item, model); }
+        public static void registerBlockRotation(Block block, int metadata, int rotationDeg) { VanillaModelRegistry.registerBlockRotation(block, metadata, rotationDeg); }
+        public static void markRandomRotation(Block block) { VanillaModelRegistry.markRandomRotation(block); }
+        public static void markAutoOverlay(Block block) { VanillaModelRegistry.markAutoOverlay(block); }
+    }
+
+    /**
+     * Backward-compatible delegate to {@link VanillaRenderDispatcher}.
+     */
+    public static class PublicRenderAPI {
+        public static boolean renderBlock(IBlockAccess world, int x, int y, int z, Block block, RenderBlocks renderer) {
+            return VanillaRenderDispatcher.renderBlock(world, x, y, z, block, renderer);
         }
     }
 }

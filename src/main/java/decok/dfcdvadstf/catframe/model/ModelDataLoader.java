@@ -342,7 +342,7 @@ public class ModelDataLoader {
         try (InputStream stream = ModelDataLoader.class.getResourceAsStream(path)) {
             if (stream == null) return null;
             InputStreamReader reader = new InputStreamReader(stream);
-            BlockstateJson bs = VanillaModelManager.blockstateGson.fromJson(reader, BlockstateJson.class);
+            BlockstateJson bs = VMMDataLoader.blockstateGson.fromJson(reader, BlockstateJson.class);
             if (bs != null) {
                 // Collect textures from all variant models
                 VanillaTextureTracker.collectTexturesFromBlockstate(bs);

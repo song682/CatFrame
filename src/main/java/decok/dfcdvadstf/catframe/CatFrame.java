@@ -11,7 +11,9 @@ import decok.dfcdvadstf.catframe.compact.vanilla.ClientEventHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.TexturesStitch;
 import decok.dfcdvadstf.catframe.compact.vanilla.VanillaMetadataMapper;
 import decok.dfcdvadstf.catframe.resource.langguage.LanguageRegister;
+import decok.dfcdvadstf.catframe.model.VMMDataLoader;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
+import decok.dfcdvadstf.catframe.model.VanillaModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
@@ -52,12 +54,12 @@ public class CatFrame {
             MinecraftForge.EVENT_BUS.register(new ClientEventHandler());
 
             VanillaMetadataMapper.registerVanillaMetadataMappings();
-            VanillaModelManager.DataLoading.registerNamespace("catframe");
-            VanillaModelManager.DataLoading.init();
+            VMMDataLoader.registerNamespace("catframe");
+            VMMDataLoader.init();
 
             if (blueyPlushy != null) {
                 // 通过 ModernItem 的双模型 API 注册（纹理由 IItemJsonModel 扫描自动收集）
-                VanillaModelManager.ModelRegistration.registerItemModel(
+                VanillaModelRegistry.registerItemModel(
                         blueyPlushy, blueyPlushy.createItemModel());
             }
 

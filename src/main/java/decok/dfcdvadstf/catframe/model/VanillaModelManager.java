@@ -1,162 +1,98 @@
 package decok.dfcdvadstf.catframe.model;
 
-import com.google.gson.Gson;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.state.*;
+import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
+import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
+import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
+import decok.dfcdvadstf.catframe.model.ItemModel;
 import net.minecraft.block.Block;
-import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
-import net.minecraft.world.IBlockAccess;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 /**
  * Manages vanilla block/item model overrides using JSON model files.
- * Supports two mapping approaches:
- * 1. Blockstates: assets/{namespace}/blockstates/{name}.json (1.8+ format with variants/multipart)
- * 2. Model Mappings: assets/{namespace}/model_mappings.json (simple key-value block/item -> model path)
  * <p>
- * Other mods can register their namespace to participate in model loading.
+ * Since the module split (E3), this class is a facade that holds all shared static fields
+ * and provides backward-compatible inner class names. Actual logic has been extracted to:
+ * <ul>
+ *   <li>{@link VMMDataLoader} — namespace discovery, blockstate/mappings loading</li>
+ *   <li>{@link VMMTextureTracker} — texture collection, stitch callbacks</li>
+ *   <li>{@link VMMModelBaking} — baking pipeline, caches</li>
+ *   <li>{@link VMMRegistry} — model registration API</li>
+ *   <li>{@link VMMRenderDispatcher} — rendering dispatch</li>
+ * </ul>
  */
 @SideOnly(Side.CLIENT)
 public class VanillaModelManager {
-    static final Gson blockstateGson = BlockstateJson.createGson();
-    private static final Gson gson = new Gson();
 
     // ==================== Block Models ====================
 
-    /**
-     * Block -> metadata -> list of baked quads
-     */
+    /** Block -> metadata -> list of baked quads */
     static final Map<Block, Map<Integer, List<BakedQuad>>> bakedBlockModels = new HashMap<>();
-    /**
-     * Block -> metadata -> Y rotation degrees
-     */
+    /** Block -> metadata -> Y rotation degrees */
     static final Map<Block, Map<Integer, Integer>> blockRotations = new HashMap<>();
 
     // ==================== IBlockStateProvider Registry ====================
 
-    /**
-     * Registered mod blocks using IBlockStateProvider
-     */
     static final List<Block> registeredStateBlocks = new ArrayList<>();
-    /**
-     * Block -> loaded BlockstateJson
-     */
+    /** Block -> loaded BlockstateJson */
     static final Map<Block, BlockstateJson> stateBlockData = new HashMap<>();
 
     // ==================== Metadata → Properties Mapper Registry ====================
 
-    /**
-     * Block -> metadata-to-properties mapper for vanilla blocks
-     */
     static final Map<Block, IMetadataMapper> metadataMappers = new HashMap<>();
+
+    // ==================== Blockstate Redirect Registry ====================
+
+    /** Block -> per-meta blockstate redirect */
+    static final Map<Block, IMetadataBlockstateRedirect> blockstateRedirects = new HashMap<>();
 
     // ==================== Model Bake Cache ====================
 
-    /**
-     * Cache key "modelPath@rotY" -> baked quads. Shared by bake path and dynamic path.
-     */
+    /** Cache key "modelPath@rotX@rotY" -> baked quads */
     static final Map<String, List<BakedQuad>> bakedModelCache = new HashMap<>();
 
     // ==================== Item Models ====================
 
-    /**
-     * Item -> damage -> list of baked quads
-     */
+    /** Item -> damage -> list of baked quads */
     static final Map<Item, Map<Integer, List<BakedQuad>>> bakedItemModels = new HashMap<>();
 
     // ==================== JsonBlock Transition Flags ====================
 
-    /**
-     * Blocks that should use random Y rotation per position
-     */
     static final Set<Block> randomRotationBlocks = new HashSet<>();
-
-    /**
-     * Blocks with autoOverlay (metadata-indexed model list)
-     */
     static final Set<Block> autoOverlayBlocks = new HashSet<>();
 
     // ==================== BlockStateModel / ItemModel Registry ====================
 
-    /**
-     * Block -> BlockStateModel (new dispatch system)
-     */
     static final Map<Block, BlockStateModel> registeredBlockModels = new HashMap<>();
-
-    /**
-     * Block -> Map<metadata, rotation-deg> for world rendering (kept for transition)
-     */
     static final Map<Block, Map<Integer, Integer>> registeredBlockRotations = new HashMap<>();
-
-    /**
-     * Item -> ItemModel (new dispatch system)
-     */
     static final Map<Item, ItemModel> registeredItemModels = new HashMap<>();
-
-    /**
-     * Items registered via {@link ModelRegistration#registerItemModel} (manual/persistent).
-     * These entries survive {@link ModelBaking#rebuildItemModels()} — only auto-generated
-     * ItemModelWrappers from {@code model_mappings.json} are cleared on rebuild.
-     */
     static final Set<Item> persistentItemModels = new HashSet<>();
-
-    /**
-     * Items discovered via {@link IItemJsonModel} interface scanning in
-     * {@link DataLoading#init()}. Maps item → its IItemJsonModel reference
-     * for deferred baking in {@link ModelBaking#bakeAllModels()}.
-     */
     static final Map<Item, IItemJsonModel> interfaceItemModels = new LinkedHashMap<>();
-
-    /**
-     * Tier 3 约定路径懒发现的 miss 缓存。命中此集合的 item 不会再次尝试解析。
-     */
-    static final java.util.Set<Item> autoDiscoveryMissCache = new HashSet<>();
+    static final Set<Item> autoDiscoveryMissCache = new HashSet<>();
 
     // ==================== CatStateDefinition Registry ====================
 
-    /**
-     * Block -> CatStateDefinition (typed property definitions, v0.3.0)
-     */
-    static final Map<Block, CatStateDefinition<?>> blockStateDefinitions = new HashMap<>();
+    static final Map<Block, decok.dfcdvadstf.catframe.model.state.CatStateDefinition<?>> blockStateDefinitions = new HashMap<>();
 
     // ==================== Texture Tracking ====================
 
-    /**
-     * All block texture paths that need registration on the block atlas (type 0)
-     */
     static final Set<String> pendingTextures = new LinkedHashSet<>();
-    /**
-     * All item texture paths that need registration on the item atlas (type 1)
-     */
     static final Set<String> pendingItemTextures = new LinkedHashSet<>();
-    /**
-     * Texture path -> IIcon after stitching
-     */
     static final Map<String, IIcon> textureIcons = new HashMap<>();
 
     // ==================== Loaded Data ====================
 
-    /**
-     * namespace -> blockName -> BlockstateJson
-     */
     static final Map<String, Map<String, BlockstateJson>> loadedBlockstates = new HashMap<>();
-    /**
-     * namespace -> ModelMappings (blocks + items)
-     */
     static final Map<String, ModelMappings> loadedMappings = new HashMap<>();
-    /**
-     * namespace -> blockName -> Map<metadata, Map<property, value>> (from metadata_map.json)
-     */
     static final Map<String, Map<String, Map<Integer, Map<String, String>>>> loadedMetadataMaps = new HashMap<>();
-    /**
-     * Registered namespaces
-     */
     static final List<String> namespaces = new ArrayList<>();
 
     static boolean initialized = false;
@@ -168,124 +104,67 @@ public class VanillaModelManager {
         public Map<String, String> items;
     }
 
-    // ==================== DataLoading ====================
-    public static class DataLoading {
-    
-        public static void init() {
-            ModelDataLoader.init();
-        }
-    
-        public static void registerNamespace(String namespace) {
-            ModelDataLoader.registerNamespace(namespace);
-        }
-    
-        public static void registerBlock(Block block) {
-            ModelDataLoader.registerBlock(block);
-        }
-    
-        public static void registerMetadataMapping(Block block, IMetadataMapper mapper) {
-            ModelDataLoader.registerMetadataMapping(block, mapper);
-        }
-    }
+    // ==================== Utilities ====================
 
-    // ==================== ModelRegistration ====================
-    public static class ModelRegistration {
+    public static class Utilities {
 
-        public static BlockStateModelPart bakeModelPart(String modelPath) {
-            return VanillaModelRegistry.bakeModelPart(modelPath);
-        }
+        public static String resolveTextureName(String texturePath) {
+            if (texturePath == null) return null;
 
-        public static BlockStateModelPart bakeModelPart(String modelPath, int rotationY) {
-            return VanillaModelRegistry.bakeModelPart(modelPath, rotationY);
+            String namespace = "";
+            String pathPart = texturePath;
+
+            if (texturePath.contains(":")) {
+                namespace = texturePath.substring(0, texturePath.indexOf(':') + 1);
+                pathPart = texturePath.substring(texturePath.indexOf(':') + 1);
+            }
+
+            if (pathPart.startsWith("blocks/")) {
+                pathPart = pathPart.substring("blocks/".length());
+            } else if (pathPart.startsWith("items/")) {
+                pathPart = pathPart.substring("items/".length());
+            } else if (pathPart.startsWith("block/")) {
+                pathPart = pathPart.substring("block/".length());
+            } else if (pathPart.startsWith("item/")) {
+                pathPart = pathPart.substring("item/".length());
+            }
+
+            return namespace + pathPart;
         }
 
-        public static BlockStateModelPart bakeModelPart(String modelPath, int rotationX, int rotationY) {
-            return VanillaModelRegistry.bakeModelPart(modelPath, rotationX, rotationY);
+        @Nullable
+        public static Block findBlock(String namespace, String name) {
+            Block block = Block.getBlockFromName(name);
+            if (block != null) return block;
+            block = Block.getBlockFromName(namespace + ":" + name);
+            return block;
         }
 
-        public static void registerBlockModel(Block block, BlockStateModel model) {
-            VanillaModelRegistry.registerBlockModel(block, model);
+        @Nullable
+        public static Item findItem(String namespace, String name) {
+            Item item = (Item) Item.itemRegistry.getObject(namespace + ":" + name);
+            if (item != null) return item;
+            item = (Item) Item.itemRegistry.getObject(name);
+            return item;
         }
 
-        public static BlockStateModel getBlockModel(Block block) {
-            return VanillaModelRegistry.getBlockModel(block);
-        }
+        @Nullable
+        public static IMetadataMapper findMetadataMapEntry(String namespace, String blockName) {
+            Map<Integer, Map<String, String>> metaMap = null;
+            Map<String, Map<Integer, Map<String, String>>> nsData = loadedMetadataMaps.get(namespace);
+            if (nsData != null) {
+                metaMap = nsData.get(blockName);
+            }
+            if (metaMap == null) {
+                for (Map.Entry<String, Map<String, Map<Integer, Map<String, String>>>> e : loadedMetadataMaps.entrySet()) {
+                    metaMap = e.getValue().get(blockName);
+                    if (metaMap != null) break;
+                }
+            }
+            if (metaMap == null) return null;
 
-        public static void registerBlockRotation(Block block, int metadata, int rotationDeg) {
-            VanillaModelRegistry.registerBlockRotation(block, metadata, rotationDeg);
-        }
-
-        public static void markRandomRotation(Block block) {
-            VanillaModelRegistry.markRandomRotation(block);
-        }
-
-        public static void markAutoOverlay(Block block) {
-            VanillaModelRegistry.markAutoOverlay(block);
-        }
-
-        public static void registerItemModel(Item item, ItemModel model) {
-            VanillaModelRegistry.registerItemModel(item, model);
-        }
-
-        public static ItemModel getRegisteredItemModel(Item item) {
-            return VanillaModelRegistry.getRegisteredItemModel(item);
-        }
-
-        public static boolean hasModel(Block block) {
-            return VanillaModelRegistry.hasModel(block);
-        }
-
-        public static boolean hasItemModel(Item item) {
-            return VanillaModelRegistry.hasItemModel(item);
-        }
-
-        public static void registerStateDefinition(Block block, CatStateDefinition<?> def) {
-            VanillaModelRegistry.registerStateDefinition(block, def);
-        }
-
-        public static boolean hasStateDefinition(Block block) {
-            return VanillaModelRegistry.hasStateDefinition(block);
-        }
-
-        public static CatStateDefinition<?> getStateDefinition(Block block) {
-            return VanillaModelRegistry.getStateDefinition(block);
-        }
-    }
-
-    // ==================== PublicRenderAPI ====================
-    public static class PublicRenderAPI {
-
-        public static boolean renderBlock(IBlockAccess world, int x, int y, int z, Block block, RenderBlocks renderer) {
-            return VanillaRenderDispatcher.renderBlock(world, x, y, z, block, renderer);
-        }
-
-        public static void renderItem(ItemStack stack) {
-            VanillaRenderDispatcher.renderItem(stack);
-        }
-
-        public static void renderItem(Item item, int damage) {
-            VanillaRenderDispatcher.renderItem(item, damage);
-        }
-
-        public static void renderItemInHand(ItemStack stack, boolean isFirstPerson) {
-            VanillaRenderDispatcher.renderItemInHand(stack, isFirstPerson);
-        }
-
-        public static void renderItemInHand(ItemStack stack) {
-            VanillaRenderDispatcher.renderItemInHand(stack);
-        }
-
-        public static void renderItemInHand(Item item, int damage) {
-            VanillaRenderDispatcher.renderItemInHand(item, damage);
-        }
-
-        public static void renderDroppedItem(ItemStack stack) {
-            VanillaRenderDispatcher.renderDroppedItem(stack);
-        }
-
-        public static void renderDroppedBlock(ItemStack stack, IBlockAccess world, int x, int y, int z, Block block) {
-            VanillaRenderDispatcher.renderDroppedBlock(stack, world, x, y, z, block);
+            final Map<Integer, Map<String, String>> finalMap = metaMap;
+            return metadata -> finalMap.getOrDefault(metadata, Collections.emptyMap());
         }
     }
 }
-

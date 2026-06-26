@@ -89,16 +89,8 @@ public final class FontHelper {
      * Draw a translatable string with style.
      * <p>使用样式绘制可翻译字符串。</p>
      */
-    public static int drawTranslatable(String domain, String key, int x, int y, Style style, Object... args) {
-        return draw(Text.translatable(domain, key, style, args), x, y, null);
-    }
-
-    /**
-     * Draw a translatable string with style (colon-separated key).
-     * <p>使用样式绘制可翻译字符串（冒号分隔键）。</p>
-     */
-    public static int drawTranslatable(Style style, String resourceKey, int x, int y, Object... args) {
-        return draw(Text.translatable(style, resourceKey, args), x, y, null);
+    public static int drawTranslatable(String key, int x, int y, Style style, Object... args) {
+        return draw(Text.translatable(style, key, args), x, y, null);
     }
 
     /**

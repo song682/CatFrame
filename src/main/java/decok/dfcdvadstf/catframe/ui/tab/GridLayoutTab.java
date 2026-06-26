@@ -60,8 +60,8 @@ public class GridLayoutTab extends AbstractScreenTab {
      * </p>
      *
      * <pre>{@code
-     *   // CatFrame domain:key format (lazy translation via LocalizationManager)
-     *   super(100, Text.translatable("createworldui", "tab.game"));
+     *   // Flat key format (lazy translation via I18n)
+     *   super(100, Text.translatable("tab.game"));
      *
      *   // Literal fallback
      *   super(100, Text.literal("My Tab"));

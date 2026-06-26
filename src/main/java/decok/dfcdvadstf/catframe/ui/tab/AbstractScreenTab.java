@@ -54,15 +54,6 @@ public abstract class AbstractScreenTab implements Tab {
         this.tabId = tabId;
         this.tabNameKey = tabNameKey;
         this.mc = Minecraft.getMinecraft();
-        // Auto-convert String nameKey to Text for consistent internal representation
-        // 自动将 String nameKey 转换为 Text，保证内部表示一致
-        // Note: non-colon keys (vanilla I18n) keep tabTitleText=null,
-        // relying on getTabTitle() fallback chain for I18n.format translation.
-        // 注意：无冒号的键（原版 I18n）保持 tabTitleText=null，
-        // 依赖 getTabTitle() 回退链路进行 I18n.format 翻译。
-        if (tabNameKey != null && tabNameKey.contains(":")) {
-            this.tabTitleText = Text.translatable(tabNameKey);
-        }
     }
 
     /**
@@ -74,8 +65,8 @@ public abstract class AbstractScreenTab implements Tab {
      * </p>
      *
      * <pre>{@code
-     *   // CatFrame domain:key format (lazy translation via LocalizationManager)
-     *   super(100, Text.translatable("createworldui", "tab.game"));
+     *   // Translatable flat key (lazy translation via I18n)
+     *   super(100, Text.translatable("tab.game"));
      *
      *   // Literal fallback
      *   super(100, Text.literal("My Tab"));
@@ -109,9 +100,9 @@ public abstract class AbstractScreenTab implements Tab {
     /**
      * <p>
      * 返回此标签页的标题。<br>
-     * 优先级：{@link #tabTitleText} > 带冒号的 {@link #tabNameKey} > 传统 I18n。<br>
+     * 优先级：{@link #tabTitleText} > {@link #tabNameKey} 回退。<br>
      * Returns the title of this tab.<br>
-     * Priority: {@link #tabTitleText} > {@link #tabNameKey} with colon > legacy I18n.
+     * Priority: {@link #tabTitleText} > {@link #tabNameKey} fallback.
      * </p>
      */
     @Override
@@ -119,10 +110,9 @@ public abstract class AbstractScreenTab implements Tab {
         if (tabTitleText != null) {
             return tabTitleText;
         }
-        if (tabNameKey != null && tabNameKey.contains(":")) {
-            return Text.translatable(tabNameKey);
-        }
-        return Text.literal(getTabName());
+        return tabNameKey != null
+                ? Text.translatable(tabNameKey)
+                : Text.literal("");
     }
 
     @Override

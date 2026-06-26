@@ -6,6 +6,7 @@ import decok.dfcdvadstf.catframe.model.IItemJsonModel;
 import decok.dfcdvadstf.catframe.model.ItemModel;
 import decok.dfcdvadstf.catframe.model.ModelJson;
 import decok.dfcdvadstf.catframe.model.ModelResolver;
+import decok.dfcdvadstf.catframe.model.ModelBaker;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
@@ -315,7 +316,7 @@ public class ModernItem extends Item implements IItemJsonModel {
 
         private void render3D(ItemStack stack, RenderPhase phase) {
             if (part3D == null) {
-                part3D = VanillaModelManager.ModelRegistration.bakeModelPart(model3D, 0);
+                part3D = ModelBaker.bake(model3D, 0);
                 ModelJson resolved = ModelResolver.resolve(model3D);
                 display3D = (resolved != null) ? resolved.display : null;
             }
@@ -326,7 +327,7 @@ public class ModernItem extends Item implements IItemJsonModel {
 
         private void render2D(ItemStack stack, RenderPhase phase) {
             if (part2D == null) {
-                part2D = VanillaModelManager.ModelRegistration.bakeModelPart(model2D, 0);
+                part2D = ModelBaker.bake(model2D, 0);
                 ModelJson resolved = ModelResolver.resolve(model2D);
                 display2D = (resolved != null) ? resolved.display : null;
             }

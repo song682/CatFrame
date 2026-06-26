@@ -54,7 +54,7 @@ public class StateBlockModel implements BlockStateModel {
             BlockstateJson.Variant variant = entry.getVariant(seed);
             if (variant == null || variant.model == null) return BlockStateModelPart.empty();
 
-            BlockStateModelPart part = VanillaModelManager.ModelRegistration.bakeModelPart(variant.model);
+            BlockStateModelPart part = ModelBaker.bake(variant.model);
             if (part == null || part.isEmpty()) return BlockStateModelPart.empty();
             return part;
 
@@ -69,7 +69,7 @@ public class StateBlockModel implements BlockStateModel {
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(propMap);
                 if (applies && mpc.apply != null && mpc.apply.model != null) {
-                    BlockStateModelPart part = VanillaModelManager.ModelRegistration.bakeModelPart(mpc.apply.model);
+                    BlockStateModelPart part = ModelBaker.bake(mpc.apply.model);
                     if (part != null) {
                         for (EnumFacing dir : EnumFacing.values()) {
                             mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())
@@ -117,7 +117,7 @@ public class StateBlockModel implements BlockStateModel {
             BlockstateJson.Variant variant = entry.getVariant(seed);
             if (variant == null || variant.model == null) return BlockStateModelPart.empty();
 
-            BlockStateModelPart part = VanillaModelManager.ModelRegistration.bakeModelPart(variant.model);
+            BlockStateModelPart part = ModelBaker.bake(variant.model);
             if (part == null || part.isEmpty()) return BlockStateModelPart.empty();
             return part;
 
@@ -129,7 +129,7 @@ public class StateBlockModel implements BlockStateModel {
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(properties);
                 if (applies && mpc.apply != null && mpc.apply.model != null) {
-                    BlockStateModelPart part = VanillaModelManager.ModelRegistration.bakeModelPart(mpc.apply.model);
+                    BlockStateModelPart part = ModelBaker.bake(mpc.apply.model);
                     if (part != null) {
                         for (EnumFacing dir : EnumFacing.values()) {
                             mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())

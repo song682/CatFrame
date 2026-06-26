@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.mixin.middle;
 
-import decok.dfcdvadstf.catframe.langguage.LanguageRegister;
-import decok.dfcdvadstf.catframe.langguage.LocalizationManager;
+import decok.dfcdvadstf.catframe.resource.langguage.LanguageRegister;
+import decok.dfcdvadstf.catframe.resource.langguage.LocalizationManager;
 import net.minecraft.client.resources.LanguageManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

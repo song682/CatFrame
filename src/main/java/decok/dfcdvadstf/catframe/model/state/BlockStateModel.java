@@ -1,7 +1,13 @@
 package decok.dfcdvadstf.catframe.model.state;
 
 import decok.dfcdvadstf.catframe.model.*;
+import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
+
+import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Random;
+import java.util.function.Consumer;
 
 /**
  * 方块状态模型接口。类似于 1.21.5 的 BlockStateModel，
@@ -51,5 +57,54 @@ public interface BlockStateModel {
      */
     default boolean isFullModel() {
         return true;
+    }
+
+    // ==================== 新增（对齐 26.1.2） ====================
+
+    /**
+     * 随机源收集部件——支持 WeightedVariants 的随机选择。
+     * 默认实现委托给旧版 collectParts。
+     *
+     * @param random 随机源
+     * @param output 收集输出列表
+     */
+    default void collectParts(Random random, List<BlockStateModelPart> output) {
+        BlockStateModelPart part = collectParts(null, 0, 0, 0, 0);
+        if (part != null && !part.isEmpty()) {
+            output.add(part);
+        }
+    }
+
+    /**
+     * 粒子纹理材质。默认实现返回 null。
+     *
+     * @return 粒子用的 IIcon，可为 null
+     */
+    @Nullable
+    default IIcon particleIcon() {
+        return null;
+    }
+
+    // ==================== Unbaked 子接口 ====================
+
+    /**
+     * Unbaked 模型接口——尚未烘焙的 BlockStateModel 定义。
+     * 对标 26.1.2 的 {@code BlockStateModel.Unbaked}。
+     */
+    interface Unbaked {
+        /**
+         * 烘焙为完整的 BlockStateModel。
+         *
+         * @param baker ModelBaker 实例
+         * @return 烘焙后的 BlockStateModel
+         */
+        BlockStateModel bake(ModelBaker baker);
+
+        /**
+         * 解析依赖：将依赖的模型路径通知给 consumer。
+         *
+         * @param dependencyConsumer 接收依赖模型路径的 consumer
+         */
+        void resolveDependencies(Consumer<String> dependencyConsumer);
     }
 }

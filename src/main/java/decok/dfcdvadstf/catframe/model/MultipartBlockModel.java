@@ -36,7 +36,7 @@ public class MultipartBlockModel implements BlockStateModel {
         for (MultipartEntry entry : entries) {
             boolean applies = (entry.when == null) || entry.when.matches(metadata);
             if (applies) {
-                BlockStateModelPart part = VanillaModelManager.ModelRegistration.bakeModelPart(entry.modelPath);
+                BlockStateModelPart part = ModelBaker.bake(entry.modelPath);
                 if (part != null) {
                     mergedGeneral.addAll(part.getGeneralQuads());
                     for (EnumFacing dir : EnumFacing.values()) {

@@ -191,7 +191,7 @@ public class JsonBlock {
      * Call during TextureStitchEvent.Pre.
      */
     public static void registerVanillaTextures(TextureMap map) {
-        VanillaModelManager.TextureManagement.registerTextures(map);
+        VanillaTextureTracker.registerTextures(map);
     }
 
     /**
@@ -207,6 +207,6 @@ public class JsonBlock {
         });
 
         // Trigger vanilla model baking
-        VanillaModelManager.TextureManagement.onTextureStitchPost(map);
+        VanillaTextureTracker.onTextureStitchPost(map);
     }
 }

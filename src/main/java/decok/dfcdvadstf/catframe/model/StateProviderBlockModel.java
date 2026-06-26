@@ -64,7 +64,7 @@ public class StateProviderBlockModel implements BlockStateModel {
             if (variant == null || variant.model == null) return BlockStateModelPart.empty();
 
             // 直接烘焙（VanillaModelManager 有缓存）
-            BlockStateModelPart part = VanillaModelManager.ModelRegistration.bakeModelPart(variant.model);
+            BlockStateModelPart part = ModelBaker.bake(variant.model);
             if (part == null || part.isEmpty()) return BlockStateModelPart.empty();
             return part;
 
@@ -77,7 +77,7 @@ public class StateProviderBlockModel implements BlockStateModel {
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(properties);
                 if (applies && mpc.apply != null && mpc.apply.model != null) {
-                    BlockStateModelPart part = VanillaModelManager.ModelRegistration.bakeModelPart(mpc.apply.model);
+                    BlockStateModelPart part = ModelBaker.bake(mpc.apply.model);
                     if (part != null) {
                         for (net.minecraft.util.EnumFacing dir : net.minecraft.util.EnumFacing.values()) {
                             mergedFace.computeIfAbsent(dir, k -> new java.util.ArrayList<>())

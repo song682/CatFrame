@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.ui;
 
-import decok.dfcdvadstf.catframe.langguage.LocalizationManager;
+import decok.dfcdvadstf.catframe.resource.langguage.LocalizationManager;
 
 import javax.annotation.Nullable;
 

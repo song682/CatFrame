@@ -2,7 +2,9 @@ package decok.dfcdvadstf.catframe.model.state;
 
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.IIcon;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -128,5 +130,56 @@ public class BlockStateModelPart {
         List<BakedQuad> mergedGeneral = new ArrayList<>(this.generalQuads);
         mergedGeneral.addAll(other.generalQuads);
         return new BlockStateModelPart(mergedFace, mergedGeneral);
+    }
+
+    // ==================== 新增（对齐 26.1.2） ====================
+
+    /**
+     * 是否启用环境光遮蔽。
+     * <p>
+     * 遍历所有 quad 检查 ambientOcclusion 字段。
+     * 如果任一 quad 的 ambientOcclusion 不为 {@code false}，则认为启用 AO。
+     *
+     * @return true=启用环境光遮蔽
+     */
+    public boolean useAmbientOcclusion() {
+        // 检查有方向 quad
+        for (List<BakedQuad> list : faceQuads.values()) {
+            for (BakedQuad q : list) {
+                if (q.ambientOcclusion != Boolean.FALSE) {
+                    return true;
+                }
+            }
+        }
+        // 检查无方向 quad
+        for (BakedQuad q : generalQuads) {
+            if (q.ambientOcclusion != Boolean.FALSE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 粒子纹理。
+     * <p>
+     * 返回第一个可用 quad 的 {@link IIcon}。
+     * 如果模型没有 quad 则返回 null。
+     *
+     * @return 粒子用的 IIcon，可为 null
+     */
+    @Nullable
+    public IIcon particleIcon() {
+        // 先查有方向 quad
+        for (List<BakedQuad> list : faceQuads.values()) {
+            for (BakedQuad q : list) {
+                if (q.icon != null) return q.icon;
+            }
+        }
+        // 再查无方向 quad
+        for (BakedQuad q : generalQuads) {
+            if (q.icon != null) return q.icon;
+        }
+        return null;
     }
 }

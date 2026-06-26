@@ -51,7 +51,7 @@ public class BlueyPlushyItemModel implements ItemModel {
 
     private void renderHand(ItemStack stack, RenderPhase phase) {
         if (part3D == null) {
-            part3D = VanillaModelManager.ModelRegistration.bakeModelPart(MODEL_3D, 0);
+            part3D = ModelBaker.bake(MODEL_3D, 0);
             ModelJson resolved = ModelResolver.resolve(MODEL_3D);
             display3D = (resolved != null) ? resolved.display : null;
         }
@@ -65,7 +65,7 @@ public class BlueyPlushyItemModel implements ItemModel {
      */
     private void render2D(ItemStack stack, RenderPhase phase) {
         if (part2D == null) {
-            part2D = VanillaModelManager.ModelRegistration.bakeModelPart(MODEL_2D, 0);
+            part2D = ModelBaker.bake(MODEL_2D, 0);
             ModelJson resolved = ModelResolver.resolve(MODEL_2D);
             display2D = (resolved != null) ? resolved.display : null;
         }

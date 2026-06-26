@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.langguage;
+package decok.dfcdvadstf.catframe.resource.langguage;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;

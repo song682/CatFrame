@@ -24,6 +24,9 @@ public class VMMDataLoader {
     static final Gson blockstateGson = BlockstateJson.createGson();
     private static final Gson gson = new Gson();
 
+    /** Cache for redirect target blockstates loaded during init. */
+    static final Map<String, BlockstateJson> cachedRedirectBlockstates = new HashMap<>();
+
     // ==================== 初始化 ====================
 
     /**
@@ -74,6 +77,26 @@ public class VMMDataLoader {
         if (!VanillaModelManager.interfaceItemModels.isEmpty()) {
             CatFrame.logger.info("VanillaModelManager: Discovered {} IItemJsonModel items",
                     VanillaModelManager.interfaceItemModels.size());
+        }
+
+        // Pre-load redirect target blockstates so their textures are collected into pendingTextures
+        // BEFORE TextureStitchEvent.Pre (which registers them in the atlas)
+        for (Map.Entry<Block, IMetadataBlockstateRedirect> entry : VanillaModelManager.blockstateRedirects.entrySet()) {
+            Block block = entry.getKey();
+            IMetadataBlockstateRedirect redirect = entry.getValue();
+            String blockId = Block.blockRegistry.getNameForObject(block);
+            String ns = blockId.contains(":") ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
+            for (int meta = 0; meta < 16; meta++) {
+                String targetName = redirect.redirect(meta);
+                if (targetName != null) {
+                    // loadSingleBlockstate collects textures via collectTexturesFromBlockstate()
+                    BlockstateJson targetBs = loadSingleBlockstate(ns, targetName);
+                    if (targetBs != null) {
+                        String cacheKey = ns + ":" + targetName;
+                        cachedRedirectBlockstates.put(cacheKey, targetBs);
+                    }
+                }
+            }
         }
 
         CatFrame.logger.info("VanillaModelManager: Loaded {} namespaces, {} state-blocks, {} block-textures pending, {} item-textures pending",

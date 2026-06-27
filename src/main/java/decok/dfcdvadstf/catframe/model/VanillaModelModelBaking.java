@@ -5,10 +5,13 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockPane;
 import net.minecraft.item.Item;
 import net.minecraftforge.client.MinecraftForgeClient;
 
@@ -373,6 +376,24 @@ public class VanillaModelModelBaking {
 
         // --- Get the effective mapper (function-based takes priority) ---
         IMetadataMapper mapper = VanillaModelManager.metadataMappers.get(block);
+
+        // --- BlockPane: metadata does NOT encode connections in 1.7.10 → use runtime model ---
+        if (block instanceof BlockPane) {
+            IMetadataBlockstateRedirect redirect = VanillaModelManager.blockstateRedirects.get(block);
+            String blockId = Block.blockRegistry.getNameForObject(block);
+            String ns = blockId.contains(":") ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
+
+            if (redirect != null) {
+                // Redirect 模式（染色玻璃板等）
+                VanillaModelManager.registeredBlockModels.put(block,
+                        new PaneMultipartRedirectModel(block, redirect, ns, false));
+            } else {
+                // 直接模式（无色玻璃板等）
+                VanillaModelManager.registeredBlockModels.put(block,
+                        new PaneMultipartRedirectModel(block, bs, false));
+            }
+            return;
+        }
 
         if (bs.variants != null) {
             if (mapper != null) {

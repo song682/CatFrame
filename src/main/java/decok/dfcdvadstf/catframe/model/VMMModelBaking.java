@@ -11,6 +11,7 @@ import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.MetadataBlockModel;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockPane;
 import net.minecraft.item.Item;
 import net.minecraftforge.client.MinecraftForgeClient;
 
@@ -379,11 +380,30 @@ public class VMMModelBaking {
         // --- Get the effective mapper (function-based takes priority) ---
         IMetadataMapper mapper = VanillaModelManager.metadataMappers.get(block);
 
+        // --- BlockPane: metadata does NOT encode connections in 1.7.10 → use runtime model ---
+        if (block instanceof BlockPane) {
+            IMetadataBlockstateRedirect redirect = VanillaModelManager.blockstateRedirects.get(block);
+            String blockId = Block.blockRegistry.getNameForObject(block);
+            String ns = blockId.contains(":") ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
+
+            if (redirect != null) {
+                // Redirect 模式（染色玻璃板等）
+                VanillaModelRegistry.registerBlockModel(block,
+                        new PaneMultipartRedirectModel(block, redirect, ns, false));
+            } else {
+                // 直接模式（无色玻璃板等）
+                VanillaModelRegistry.registerBlockModel(block,
+                        new PaneMultipartRedirectModel(block, bs, false));
+            }
+            return;
+        }
+
         // --- Redirect check: delegate per-metadata to separate blockstate files ---
         IMetadataBlockstateRedirect redirect = VanillaModelManager.blockstateRedirects.get(block);
         if (redirect != null) {
             String blockId = Block.blockRegistry.getNameForObject(block);
             String ns = blockId.contains(":") ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
+
             for (int meta = 0; meta < 16; meta++) {
                 String targetName = redirect.redirect(meta);
                 if (targetName == null) continue;

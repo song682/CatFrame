@@ -5,7 +5,6 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.JsonBlock;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
-import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
 import net.minecraftforge.client.event.TextureStitchEvent;
 

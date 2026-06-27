@@ -37,8 +37,6 @@ public class StateBlockModel implements BlockStateModel {
         this.fallbackModelPath = fallbackModelPath;
     }
 
-    // ==================== CatBlockState 路径（v0.3.0） ====================
-
     @Override
     public BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z,
                                             CatBlockState state) {
@@ -64,7 +62,7 @@ public class StateBlockModel implements BlockStateModel {
                     = new EnumMap<>(EnumFacing.class);
             List<BakedQuad> mergedGeneral = new ArrayList<>();
 
-            // [W7 修复] buildPropertyMap 对同一 state 结果不变，提到循环外避免重复计算
+            // buildPropertyMap 对同一 state 结果不变，提到循环外避免重复计算
             Map<String, String> propMap = buildPropertyMap(state);
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(propMap);
@@ -147,8 +145,6 @@ public class StateBlockModel implements BlockStateModel {
 
         return BlockStateModelPart.empty();
     }
-
-    // ==================== 辅助方法 ====================
 
     private static String buildVariantKey(Map<String, String> properties) {
         if (properties.isEmpty()) return "normal";

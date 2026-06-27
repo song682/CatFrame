@@ -252,6 +252,8 @@ public class BlockJsonModelBake {
      */
     public static List<BakedQuad> applyYRotation(List<BakedQuad> quads, int degY) {
         if (quads == null || quads.isEmpty() || degY == 0) return quads;
+        // Minecraft blockstate y 旋转遵循标准 CCW（右手定则），
+        // 即北(-Z)→东(+X) 对应 degY=90，无需取反。
         double a = Math.toRadians(degY);
         double cos = Math.cos(a), sin = Math.sin(a);
         List<BakedQuad> result = new ArrayList<>(quads.size());

@@ -185,26 +185,7 @@ public class TextureSlots {
      * 去除 "blocks/"、"items/"、"block/"、"item/" 前缀，保留 namespace。
      */
     private static String resolveTextureName(String texturePath) {
-        if (texturePath == null) return null;
-        String namespace = "";
-        String pathPart = texturePath;
-
-        if (texturePath.contains(":")) {
-            namespace = texturePath.substring(0, texturePath.indexOf(':') + 1);
-            pathPart = texturePath.substring(texturePath.indexOf(':') + 1);
-        }
-
-        if (pathPart.startsWith("blocks/")) {
-            pathPart = pathPart.substring("blocks/".length());
-        } else if (pathPart.startsWith("items/")) {
-            pathPart = pathPart.substring("items/".length());
-        } else if (pathPart.startsWith("block/")) {
-            pathPart = pathPart.substring("block/".length());
-        } else if (pathPart.startsWith("item/")) {
-            pathPart = pathPart.substring("item/".length());
-        }
-
-        return namespace + pathPart;
+        return VanillaModelManager.Utilities.resolveTextureName(texturePath);
     }
 
     // ==================== Object ====================

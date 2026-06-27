@@ -1,0 +1,62 @@
+name: Bug Report
+description: File a bug report.
+title: "[Bug]: "
+labels: ["bug"]
+assignees:
+  - song682
+body:
+  - type: markdown
+    attributes:
+      value: |
+        What bugs did it occured from your game? Send it freely at here
+  - type: input
+    id: contact
+    attributes:
+      label: Contact
+      description: How can we get in touch with you if we need more info?
+      placeholder: ex. email@example.com
+    validations:
+      required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+      placeholder: Tell us what you see!
+      value: "A bug happened!"
+    validations:
+      required: true
+  - type: input
+    id: crash-report-url
+    attributes:
+      label: Crash Report
+      description: Do you have a crash report?
+      placeholder: ex. mclo.gs/_______
+    validations:
+      required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: Version
+      description: What version of our mod are you running?
+      options:
+        - Latest
+        - Other
+      default: 0
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        :warning: **Important**
+        If you choose **Other** as the version, please fill in the version field below.
+  - type: input
+    id: version_other
+    attributes:
+      label: If "Other", please specify the exact version
+      description: |
+        Only required if you selected **Other** above.
+        Example: v1.2.3, commit hash, or nightly build date.
+      placeholder: e.g. v1.3.0-beta.2
+    validations:
+      required: false

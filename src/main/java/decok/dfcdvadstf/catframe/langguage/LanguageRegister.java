@@ -6,6 +6,9 @@ import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.ModContainer;
 import cpw.mods.fml.common.registry.LanguageRegistry;
 import decok.dfcdvadstf.catframe.CatFrame;
+import net.minecraft.client.resources.IResource;
+import net.minecraft.client.resources.IResourceManager;
+import net.minecraft.util.ResourceLocation;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -13,10 +16,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.jar.JarEntry;
@@ -49,7 +54,23 @@ public final class LanguageRegister {
      */
     private static final Map<String, String> domains = new LinkedHashMap<>();
 
+    /**
+     * modid → [(vanillaLangCode, fileName)]
+     * e.g. "catframe" → [("en_US", "en_us.json"), ("zh_CN", "zh_cn.json")]
+     */
+    private static final Map<String, List<LangFileEntry>> domainLangFiles = new LinkedHashMap<>();
+
     private LanguageRegister() {
+    }
+
+    private static class LangFileEntry {
+        final String vanillaCode;
+        final String fileName;
+
+        LangFileEntry(String vanillaCode, String fileName) {
+            this.vanillaCode = vanillaCode;
+            this.fileName = fileName;
+        }
     }
 
     /**
@@ -78,6 +99,66 @@ public final class LanguageRegister {
         return Collections.unmodifiableMap(domains);
     }
 
+    /**
+     * Reloads all known JSON lang files from {@link IResourceManager}.
+     * This reads from all active resource packs, so resource pack overrides
+     * are picked up automatically. Keys are injected into
+     * {@link LanguageRegistry} in reverse priority order (mod jar first,
+     * then resource pack overrides on top).
+     * <p>
+     * 从 {@link IResourceManager} 重新加载所有已知的 JSON 语言文件。<br>
+     * 会读取所有活跃资源包中的文件（包括 override），按优先级从低到高注入。
+     *
+     * @param manager the resource manager (from the reload event) / 资源管理器
+     */
+    public static void reloadFromResourceManager(IResourceManager manager) {
+        for (Map.Entry<String, String> domainEntry : domains.entrySet()) {
+            String modid = domainEntry.getKey();
+            String basePath = domainEntry.getValue();
+            List<LangFileEntry> files = domainLangFiles.get(modid);
+            if (files == null || files.isEmpty()) continue;
+
+            // basePath = "assets/catframe/lang"
+            //   → resourceDomain = "catframe" (between "assets/" and next "/")
+            //   → resourceDir    = "lang" (everything after the domain)
+            int assetsEnd = basePath.indexOf('/') + 1;
+            int domainEnd = basePath.indexOf('/', assetsEnd);
+            if (domainEnd < 0) continue;
+            String resourceDomain = basePath.substring(assetsEnd, domainEnd);
+            String resourceDir = basePath.substring(domainEnd + 1);
+
+            for (LangFileEntry entry : files) {
+                String resPath = resourceDir + "/" + entry.fileName;
+                ResourceLocation loc = new ResourceLocation(resourceDomain, resPath);
+
+                try {
+                    List<IResource> resources = manager.getAllResources(loc);
+                    // getAllResources returns resources priority-descending
+                    // (highest priority = resource pack override first).
+                    // Iterate in reverse so mod jar data loads first,
+                    // then resource pack overrides on top.
+                    for (int i = resources.size() - 1; i >= 0; i--) {
+                        try (InputStream in = resources.get(i).getInputStream()) {
+                            Map<String, String> data = parseJsonLang(in);
+                            if (!data.isEmpty()) {
+                                LanguageRegistry.instance().injectLanguage(
+                                        entry.vanillaCode, new HashMap<>(data));
+                                if (i == 0) {
+                                    CatFrame.logger.debug(
+                                            "LanguageRegister: reloaded {} keys from '{}' as '{}'",
+                                            data.size(), resPath, entry.vanillaCode);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // Resource not found in resource manager — skip
+                    CatFrame.logger.debug("LanguageRegister: no resource '{}' from resource manager", loc);
+                }
+            }
+        }
+    }
+
     // ==================== Internal scanning ====================
 
     /**
@@ -98,16 +179,16 @@ public final class LanguageRegister {
         }
 
         if (source.isFile()) {
-            scanJar(source, basePath);
+            scanJar(modid, source, basePath);
         } else if (source.isDirectory()) {
-            scanDirectory(source, basePath);
+            scanDirectory(modid, source, basePath);
         }
     }
 
     /**
      * Scans a jar file for lang JSON files under the given base path.
      */
-    private static void scanJar(File jarFile, String basePath) {
+    private static void scanJar(String modid, File jarFile, String basePath) {
         String prefix = basePath + "/";
         try (JarFile jar = new JarFile(jarFile)) {
             Enumeration<JarEntry> entries = jar.entries();
@@ -127,10 +208,15 @@ public final class LanguageRegister {
                     continue;
                 }
 
+                String vanillaCode = toVanillaCode(langCode);
+
+                // Record the discovered file for later IRMRL reload
+                domainLangFiles.computeIfAbsent(modid, k -> new ArrayList<>())
+                        .add(new LangFileEntry(vanillaCode, fileName));
+
                 try (InputStream in = jar.getInputStream(entry)) {
                     Map<String, String> data = parseJsonLang(in);
                     if (!data.isEmpty()) {
-                        String vanillaCode = toVanillaCode(langCode);
                         LanguageRegistry.instance().injectLanguage(vanillaCode, new HashMap<>(data));
                         CatFrame.logger.info("LanguageRegister: injected {} keys from jar '{}' as '{}'",
                                 data.size(), name, vanillaCode);
@@ -145,7 +231,7 @@ public final class LanguageRegister {
     /**
      * Scans a directory (dev environment) for lang JSON files under the given base path.
      */
-    private static void scanDirectory(File modDir, String basePath) {
+    private static void scanDirectory(String modid, File modDir, String basePath) {
         File langDir = new File(modDir, basePath);
         if (!langDir.isDirectory()) {
             CatFrame.logger.warn("LanguageRegister: lang directory not found: {}", langDir);
@@ -165,10 +251,15 @@ public final class LanguageRegister {
                 continue;
             }
 
+            String vanillaCode = toVanillaCode(langCode);
+
+            // Record the discovered file for later IRMRL reload
+            domainLangFiles.computeIfAbsent(modid, k -> new ArrayList<>())
+                    .add(new LangFileEntry(vanillaCode, fileName));
+
             try (InputStream in = new FileInputStream(f)) {
                 Map<String, String> data = parseJsonLang(in);
                 if (!data.isEmpty()) {
-                    String vanillaCode = toVanillaCode(langCode);
                     LanguageRegistry.instance().injectLanguage(vanillaCode, new HashMap<>(data));
                     CatFrame.logger.info("LanguageRegister: injected {} keys from '{}' as '{}'",
                             data.size(), f.getPath(), vanillaCode);

@@ -8,10 +8,12 @@ import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 import decok.dfcdvadstf.catframe.compact.forge.event.ODorTag;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientEventHandler;
-import decok.dfcdvadstf.catframe.compact.vanilla.TexturesStitch;
-import decok.dfcdvadstf.catframe.compact.vanilla.VanillaMetadataMapper;
+import decok.dfcdvadstf.catframe.compact.vanilla.model.TexturesStitch;
+import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaMetadataMapper;
 import decok.dfcdvadstf.catframe.langguage.LanguageRegister;
+import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
 import decok.dfcdvadstf.catframe.model.VMMDataLoader;
+import decok.dfcdvadstf.catframe.model.ResourcePackModelDetector;
 import decok.dfcdvadstf.catframe.model.VanillaModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
@@ -74,6 +76,11 @@ public class CatFrame {
     @EventHandler
     public void init(FMLInitializationEvent event) {
         ODorTag.onInit();
+
+        // Register language reload listener for resource pack translation overrides
+        LanguageReloadListener.register();
+        ResourcePackModelDetector.register();
+
         logger.info("Initialization logic complete");
     }
 }

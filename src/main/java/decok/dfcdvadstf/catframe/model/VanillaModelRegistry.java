@@ -4,6 +4,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.VMMModelBaking;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -46,7 +47,7 @@ public class VanillaModelRegistry {
      * [W3] 支持 blockstate 中的 x 旋转字段。
      */
     public static BlockStateModelPart bakeModelPart(String modelPath, int rotationX, int rotationY) {
-        List<BakedQuad> quads = VanillaModelModelBaking.bakeModel(modelPath, rotationX, rotationY);
+        List<BakedQuad> quads = VMMModelBaking.bakeModel(modelPath, rotationX, rotationY);
         if (quads == null) return BlockStateModelPart.empty();
         return BlockStateModelPart.fromQuads(quads);
     }
@@ -94,7 +95,7 @@ public class VanillaModelRegistry {
      * Also immediately registers the Forge IItemRenderer if the model system has been initialized.
      * <p>
      * Manually registered models are marked persistent: they survive
-     * {@link VanillaModelModelBaking#rebuildItemModels()}, which only clears auto-generated
+     * {@link VMMModelBaking#rebuildItemModels()}, which only clears auto-generated
      * ItemModelWrappers from {@code model_mappings.json}.
      */
     public static void registerItemModel(Item item, ItemModel model) {
@@ -184,7 +185,7 @@ public class VanillaModelRegistry {
                 "(discovered after atlas stitching). Register textures earlier to avoid missingno.",
                 modelPath);
 
-        List<BakedQuad> quads = VanillaModelModelBaking.bakeModel(modelPath, 0);
+        List<BakedQuad> quads = VMMModelBaking.bakeModel(modelPath, 0);
         if (quads == null || quads.isEmpty()) {
             VanillaModelManager.autoDiscoveryMissCache.add(item);
             return null;

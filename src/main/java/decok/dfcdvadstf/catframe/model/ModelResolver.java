@@ -12,7 +12,7 @@ import java.util.*;
  * Merges textures and elements from parent models recursively.
  */
 public class ModelResolver {
-    private static final Gson gson = new Gson();
+    public static final Gson GSON = new Gson();
     private static final Map<String, ModelJson> cache = new HashMap<>();
     private static final List<String> registeredNamespaces = new ArrayList<>();
     private static final int MAX_DEPTH = 16;
@@ -390,7 +390,7 @@ public class ModelResolver {
             try (InputStream stream = ModelResolver.class.getResourceAsStream(resourcePath)) {
                 if (stream != null) {
                     InputStreamReader reader = new InputStreamReader(stream);
-                    ModelJson model = gson.fromJson(reader, ModelJson.class);
+                    ModelJson model = GSON.fromJson(reader, ModelJson.class);
                     if (model != null) {
                         CatFrame.logger.debug("Loaded model from: {}", resourcePath);
                         return model;

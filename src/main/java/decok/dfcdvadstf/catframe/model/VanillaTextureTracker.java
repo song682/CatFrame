@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.model.VMMModelBaking;
 
 import java.util.Set;
 
@@ -70,7 +71,7 @@ public class VanillaTextureTracker {
      */
     public static void registerTextures(TextureMap map) {
         for (String texturePath : VanillaModelManager.pendingTextures) {
-            String iconName = VanillaModelUtil.resolveTextureName(texturePath);
+            String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
             if (iconName != null && !iconName.isEmpty()) {
                 map.registerIcon(iconName);
             }
@@ -83,7 +84,7 @@ public class VanillaTextureTracker {
      */
     public static void registerItemTextures(TextureMap map) {
         for (String texturePath : VanillaModelManager.pendingItemTextures) {
-            String iconName = VanillaModelUtil.resolveTextureName(texturePath);
+            String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
             if (iconName != null && !iconName.isEmpty()) {
                 map.registerIcon(iconName);
             }
@@ -98,7 +99,7 @@ public class VanillaTextureTracker {
         VanillaModelManager.textureIcons.clear();
         // Block atlas icons
         for (String texturePath : VanillaModelManager.pendingTextures) {
-            String iconName = VanillaModelUtil.resolveTextureName(texturePath);
+            String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
             if (iconName != null) {
                 IIcon icon = map.getAtlasSprite(iconName);
                 if (icon != null) {
@@ -112,7 +113,7 @@ public class VanillaTextureTracker {
                         .getTexture(TextureMap.locationItemsTexture);
         if (itemMap != null) {
             for (String texturePath : VanillaModelManager.pendingItemTextures) {
-                String iconName = VanillaModelUtil.resolveTextureName(texturePath);
+                String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
                 if (iconName != null) {
                     IIcon icon = itemMap.getAtlasSprite(iconName);
                     if (icon != null) {
@@ -122,7 +123,7 @@ public class VanillaTextureTracker {
             }
         }
         ModelBaker.setGlobalIconMap(VanillaModelManager.textureIcons);
-        VanillaModelModelBaking.bakeAllModels();
+        VMMModelBaking.bakeAllModels();
     }
 
     /**
@@ -138,7 +139,7 @@ public class VanillaTextureTracker {
     public static void onTextureStitchPostItem(TextureMap itemMap) {
         // 更新 item 纹理的 IIcon 引用（item atlas 此时已缝合完成）
         for (String texturePath : VanillaModelManager.pendingItemTextures) {
-            String iconName = VanillaModelUtil.resolveTextureName(texturePath);
+            String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
             if (iconName != null) {
                 IIcon icon = itemMap.getAtlasSprite(iconName);
                 if (icon != null) {
@@ -148,6 +149,6 @@ public class VanillaTextureTracker {
         }
         ModelBaker.setGlobalIconMap(VanillaModelManager.textureIcons);
         // [W2 修复] 仅增量更新 item 模型，不重新烘焙 block 模型
-        VanillaModelModelBaking.rebuildItemModels();
+        VMMModelBaking.rebuildItemModels();
     }
 }

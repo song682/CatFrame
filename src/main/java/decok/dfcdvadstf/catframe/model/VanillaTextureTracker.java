@@ -94,6 +94,10 @@ public class VanillaTextureTracker {
      * Call during TextureStitchEvent.Post when getTextureType() == 0.
      */
     public static void onTextureStitchPost(TextureMap map) {
+        // 资源重载时清空新缓存
+        BakedModelCache.INSTANCE.clear();
+        ModelResolver.clearCache();
+
         VanillaModelManager.textureIcons.clear();
         // Block atlas icons
         for (String texturePath : VanillaModelManager.pendingTextures) {
@@ -121,7 +125,10 @@ public class VanillaTextureTracker {
             }
         }
         ModelBaker.setGlobalIconMap(VanillaModelManager.textureIcons);
+        // Legacy 烘焙（保持向后兼容）
         VMMModelBaking.bakeAllModels();
+        // 异步预烘焙管线：将常用模型预烘焙到 BakedModelCache
+        AsyncBakePipeline.triggerAsyncBake();
     }
 
     /**
@@ -148,5 +155,7 @@ public class VanillaTextureTracker {
         ModelBaker.setGlobalIconMap(VanillaModelManager.textureIcons);
         // [W2 修复] 仅增量更新 item 模型，不重新烘焙 block 模型
         VMMModelBaking.rebuildItemModels();
+        // item atlas 就绪后再次触发异步预烘焙（确保 item 模型也被预烘焙）
+        AsyncBakePipeline.triggerAsyncBake();
     }
 }

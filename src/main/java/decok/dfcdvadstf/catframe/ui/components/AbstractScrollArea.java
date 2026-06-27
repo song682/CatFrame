@@ -1,6 +1,8 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.ResourceLocation;
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import org.lwjgl.opengl.GL11;
 
 /**
@@ -17,6 +19,19 @@ public abstract class AbstractScrollArea extends AbstractComponent {
 
     /** Scrollbar width constant / 滚动条宽度常量 */
     public static final int SCROLLBAR_WIDTH = 6;
+
+    /** Scroller (thumb) texture — 6x32, border 1 nine-patch / 滑块纹理 */
+    protected static final ResourceLocation SCROLLER_TEXTURE =
+            new ResourceLocation("catframe", "textures/gui/widgets/scroll.png");
+
+    /** Scrollbar background track texture — 6x32, border 1 nine-patch / 滚动条背景轨道纹理 */
+    protected static final ResourceLocation SCROLLER_BACKGROUND_TEXTURE =
+            new ResourceLocation("catframe", "textures/gui/widgets/scroll_background.png");
+
+    /** Scrollbar texture dimensions / 滚动条纹理尺寸 */
+    protected static final int SCROLLBAR_TEX_W = 6;
+    protected static final int SCROLLBAR_TEX_H = 32;
+    protected static final int SCROLLBAR_TEX_BORDER = 1;
 
     private final ScrollbarSettings scrollbarSettings;
     private double scrollAmount;
@@ -146,8 +161,9 @@ public abstract class AbstractScrollArea extends AbstractComponent {
     // ──── Scrollbar rendering ────
 
     /**
-     * Render the scrollbar (background track + scroller thumb).
-     * <p>渲染滚动条（背景轨道 + 滑块）。</p>
+     * Render the scrollbar (background track + scroller thumb) via mcmeta-driven textures.
+     * <p>通过 mcmeta 数据驱动纹理渲染滚动条（背景轨道 + 滑块）。
+     * 当对应 {@code .mcmeta} 存在时自动读取拉伸参数；否则回退到 nine_patch 6x32 border=1。</p>
      */
     protected void renderScrollbar(int mouseX, int mouseY) {
         int sbx = scrollBarX();
@@ -155,14 +171,24 @@ public abstract class AbstractScrollArea extends AbstractComponent {
         int scrollerH = scrollerHeight();
         int scrollerY = scrollBarY();
 
-        // Background track (dark grey)
-        GuiDrawing.drawRect(sbx, this.y, sbx + sbw, this.y + this.height, 0xFF222222);
+        // Background track — auto-detect from mcmeta, fallback nine_patch 6x32 border=1
+        // 背景轨道 — 从 mcmeta 自动检测，回退 nine_patch 6x32 border=1
+        TextureStretching.drawAuto(SCROLLER_BACKGROUND_TEXTURE,
+                sbx, this.y, sbw, this.height,
+                TextureStretching.StretchType.NINE_PATCH,
+                SCROLLBAR_TEX_W, SCROLLBAR_TEX_H,
+                SCROLLBAR_TEX_BORDER, SCROLLBAR_TEX_BORDER,
+                SCROLLBAR_TEX_BORDER, SCROLLBAR_TEX_BORDER);
 
         if (scrollable()) {
-            // Scroller thumb colour — highlight on hover
-            boolean hover = isOverScrollbar(mouseX, mouseY);
-            int thumbColor = scrolling ? 0xFFCCCCCC : (hover ? 0xFFAAAAAA : 0xFF888888);
-            GuiDrawing.drawRect(sbx, scrollerY, sbx + sbw, scrollerY + scrollerH, thumbColor);
+            // Scroller thumb — same mcmeta-driven approach
+            // 滑块 — 同样的 mcmeta 驱动方式
+            TextureStretching.drawAuto(SCROLLER_TEXTURE,
+                    sbx, scrollerY, sbw, scrollerH,
+                    TextureStretching.StretchType.NINE_PATCH,
+                    SCROLLBAR_TEX_W, SCROLLBAR_TEX_H,
+                    SCROLLBAR_TEX_BORDER, SCROLLBAR_TEX_BORDER,
+                    SCROLLBAR_TEX_BORDER, SCROLLBAR_TEX_BORDER);
         }
     }
 

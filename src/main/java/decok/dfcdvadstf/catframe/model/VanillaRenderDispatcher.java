@@ -123,7 +123,9 @@ public class VanillaRenderDispatcher {
             if (variant == null || variant.model == null) return false;
 
             // [C1+W3] 旋转已在 bakeModel 中烘焙，运行时传 0
-            BlockStateModelPart part = ModelBaker.bake(variant.model, variant.x, variant.y);
+            // 走 BakedModelCache 缓存（线程安全 + 懒烘焙）
+            String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y);
+            BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) return false;
 
             UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, 0);
@@ -144,8 +146,9 @@ public class VanillaRenderDispatcher {
             for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(propMap);
                 if (applies && mpc.apply != null) {
-                    // [C1] 旋转已在 bakeModel 中烘焙
-                    BlockStateModelPart bakedPart = ModelBaker.bake(mpc.apply.model, mpc.apply.x, mpc.apply.y);
+                    // [C1] 走 BakedModelCache 缓存
+                    String partKey = BakedModelCache.buildKey(mpc.apply.model, mpc.apply.x, mpc.apply.y);
+                    BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
                     if (bakedPart != null && !bakedPart.isEmpty()) {
                         allQuads.addAll(bakedPart.getAllQuads());
                     }
@@ -187,8 +190,9 @@ public class VanillaRenderDispatcher {
             BlockstateJson.Variant variant = entry.getVariant(seed);
             if (variant == null || variant.model == null) return false;
 
-            // [C1+W3] 旋转已在 bakeModel 中烘焙，运行时传 0
-            BlockStateModelPart part = ModelBaker.bake(variant.model, variant.x, variant.y);
+            // [C1+W3] 走 BakedModelCache 缓存（线程安全 + 懒烘焙）
+            String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y);
+            BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) return false;
 
             UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, 0);
@@ -201,8 +205,9 @@ public class VanillaRenderDispatcher {
             for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(properties);
                 if (applies && mpc.apply != null) {
-                    // [C1] 旋转已在 bakeModel 中烘焙
-                    BlockStateModelPart bakedPart = ModelBaker.bake(mpc.apply.model, mpc.apply.x, mpc.apply.y);
+                    // [C1] 走 BakedModelCache 缓存
+                    String partKey = BakedModelCache.buildKey(mpc.apply.model, mpc.apply.x, mpc.apply.y);
+                    BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
                     if (bakedPart != null && !bakedPart.isEmpty()) {
                         allQuads.addAll(bakedPart.getAllQuads());
                     }

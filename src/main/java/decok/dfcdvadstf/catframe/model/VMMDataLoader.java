@@ -9,11 +9,18 @@ import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
+import scala.concurrent.Await;
+import scala.concurrent.Future;
+import scala.concurrent.duration.Duration;
+import akka.dispatch.Futures;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 /**
  * 数据加载：namespace 发现、blockstate 加载、model_mappings 加载。
@@ -23,7 +30,6 @@ import java.util.Map;
 public class VMMDataLoader {
 
     static final Gson blockstateGson = BlockstateJson.createGson();
-    private static final Gson gson = new Gson();
 
     /** Cache for redirect target blockstates loaded during init. */
     static final Map<String, BlockstateJson> cachedRedirectBlockstates = new HashMap<>();
@@ -43,9 +49,27 @@ public class VMMDataLoader {
 
         CatFrame.logger.info("VanillaModelManager: Initializing...");
 
-        for (String namespace : VanillaModelManager.namespaces) {
-            loadNamespace(namespace);
+        // ===== 并行加载所有 namespace（Akka Futures） =====
+        long t0 = System.nanoTime();
+        List<NamespaceLoadResult> results = loadNamespacesParallel();
+        long t1 = System.nanoTime();
+
+        // ===== 主线程合并结果到共享字段 =====
+        for (NamespaceLoadResult result : results) {
+            if (result.mappings != null) {
+                VanillaModelManager.loadedMappings.put(result.namespace, result.mappings);
+            }
+            VanillaModelManager.loadedBlockstates.put(result.namespace, result.blockstates);
+            if (!result.metadataMaps.isEmpty()) {
+                VanillaModelManager.loadedMetadataMaps.put(result.namespace, result.metadataMaps);
+            }
+            // 合并纹理收集结果
+            VanillaModelManager.pendingTextures.addAll(result.blockTextures);
+            VanillaModelManager.pendingItemTextures.addAll(result.itemTextures);
         }
+        long t2 = System.nanoTime();
+        CatFrame.logger.info("[VMM] namespace parallel load: {} namespaces in {:.1f}ms, merge in {:.1f}ms",
+                results.size(), (t1 - t0) / 1e6, (t2 - t1) / 1e6);
 
         // Load blockstates for all registered IBlockStateProvider blocks
         for (Block block : VanillaModelManager.registeredStateBlocks) {
@@ -164,6 +188,56 @@ public class VMMDataLoader {
         }
     }
 
+    // ==================== 并行加载 ====================
+
+    /**
+     * 使用 Akka Futures 并行加载所有已注册的 namespace。
+     * <p>
+     * 每个 namespace 的加载由 {@link NamespaceLoadTask#execute(String)} 在独立线程中执行，
+     * 所有结果收集到本地集合中，不触碰共享静态字段。
+     *
+     * @return 所有 namespace 的加载结果列表
+     */
+    private static List<NamespaceLoadResult> loadNamespacesParallel() {
+        List<String> namespaces = new ArrayList<>(VanillaModelManager.namespaces);
+        if (namespaces.isEmpty()) return new ArrayList<>();
+
+        // 单 namespace 时直接同步执行，避免 Future 开销
+        if (namespaces.size() == 1) {
+            List<NamespaceLoadResult> results = new ArrayList<>();
+            results.add(NamespaceLoadTask.execute(namespaces.get(0)));
+            return results;
+        }
+
+        // 多 namespace 并行：使用 Akka ActorSystem 的 dispatcher 作为 ExecutionContext
+        scala.concurrent.ExecutionContext ec =
+                (scala.concurrent.ExecutionContext) akka.actor.ActorSystem.create("VMM-Loader")
+                        .dispatcher();
+
+        List<Future<NamespaceLoadResult>> futures = new ArrayList<>();
+        for (final String namespace : namespaces) {
+            Future<NamespaceLoadResult> f = Futures.future(
+                    new Callable<NamespaceLoadResult>() {
+                        @Override
+                        public NamespaceLoadResult call() {
+                            return NamespaceLoadTask.execute(namespace);
+                        }
+                    }, ec);
+            futures.add(f);
+        }
+
+        // 等待所有 Future 完成（最多 30 秒）
+        List<NamespaceLoadResult> results = new ArrayList<>();
+        for (Future<NamespaceLoadResult> f : futures) {
+            try {
+                results.add(Await.result(f, Duration.create(30, "seconds")));
+            } catch (Exception e) {
+                CatFrame.logger.error("[VMM] namespace load failed: {}", e.getMessage());
+            }
+        }
+        return results;
+    }
+
     // ==================== 内部加载方法 ====================
 
     /**
@@ -180,168 +254,6 @@ public class VMMDataLoader {
             CatFrame.logger.info("Loaded blockstate for state-block: {}:{}", namespace, name);
         } else {
             CatFrame.logger.warn("Failed to load blockstate for state-block: {}:{}", namespace, name);
-        }
-    }
-
-    /**
-     * Load all model data from a namespace.
-     */
-    private static void loadNamespace(String namespace) {
-        loadModelMappings(namespace);
-        loadBlockstatesFromMappings(namespace);
-        loadMetadataMaps(namespace);
-    }
-
-    /**
-     * Load model_mappings.json for a namespace.
-     */
-    private static void loadModelMappings(String namespace) {
-        String path = "/assets/" + namespace + "/model_mappings.json";
-        try (InputStream stream = VanillaModelManager.class.getResourceAsStream(path)) {
-            if (stream == null) return;
-            InputStreamReader reader = new InputStreamReader(stream);
-            VanillaModelManager.ModelMappings mappings = gson.fromJson(reader, VanillaModelManager.ModelMappings.class);
-            if (mappings != null) {
-                VanillaModelManager.loadedMappings.put(namespace, mappings);
-                CatFrame.logger.info("Loaded model_mappings.json for namespace: {}", namespace);
-
-                if (mappings.blocks != null) {
-                    for (String modelPath : mappings.blocks.values()) {
-                        VanillaTextureTracker.collectTexturesFromModel(modelPath, false);
-                    }
-                }
-                if (mappings.items != null) {
-                    for (String modelPath : mappings.items.values()) {
-                        VanillaTextureTracker.collectTexturesFromModel(modelPath, true);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            CatFrame.logger.debug("No model_mappings.json for namespace {}: {}", namespace, e.getMessage());
-        }
-    }
-
-    /**
-     * Load blockstate files referenced from model_mappings, or scan for them.
-     */
-    private static void loadBlockstatesFromMappings(String namespace) {
-        Map<String, BlockstateJson> nsBlockstates = new HashMap<>();
-
-        // Try to load an index file first
-        String indexPath = "/assets/" + namespace + "/blockstates/_index.json";
-        try (InputStream stream = VanillaModelManager.class.getResourceAsStream(indexPath)) {
-            if (stream != null) {
-                InputStreamReader reader = new InputStreamReader(stream);
-                String[] names = gson.fromJson(reader, String[].class);
-                for (String name : names) {
-                    BlockstateJson bs = loadSingleBlockstate(namespace, name);
-                    if (bs != null) nsBlockstates.put(name, bs);
-                }
-            }
-        } catch (Exception ignored) {
-        }
-
-        // Also try to load blockstates for any blocks in model_mappings
-        VanillaModelManager.ModelMappings mappings = VanillaModelManager.loadedMappings.get(namespace);
-        if (mappings != null && mappings.blocks != null) {
-            for (String blockName : mappings.blocks.keySet()) {
-                if (!nsBlockstates.containsKey(blockName)) {
-                    BlockstateJson bs = loadSingleBlockstate(namespace, blockName);
-                    if (bs != null) nsBlockstates.put(blockName, bs);
-                }
-            }
-        }
-
-        // Try common vanilla block names if minecraft namespace
-        if (namespace.equals("minecraft") && nsBlockstates.isEmpty()) {
-            String[] commonBlocks = {
-                    "stone", "dirt", "grass", "cobblestone", "planks", "sand", "gravel",
-                    "gold_ore", "iron_ore", "coal_ore", "log", "log2", "leaves", "leaves2", "glass",
-                    "lapis_ore", "lapis_block", "sandstone", "wool", "gold_block",
-                    "iron_block", "brick_block", "tnt", "bookshelf", "mossy_cobblestone",
-                    "obsidian", "diamond_ore", "diamond_block", "crafting_table",
-                    "furnace", "redstone_ore", "ice", "snow", "clay", "netherrack",
-                    "soul_sand", "glowstone", "stonebrick", "melon_block", "nether_brick",
-                    "end_stone", "emerald_ore", "emerald_block", "quartz_block",
-                    "hardened_clay", "stained_hardened_clay", "hay_block", "coal_block",
-                    "cobblestone_wall", "stained_glass", "trapdoor",
-                    "torch", "redstone_torch", "unlit_redstone_torch", "redstone_wire",
-                    "unpowered_repeater", "powered_repeater",
-                    "unpowered_comparator", "powered_comparator",
-                    "redstone_lamp", "lit_redstone_lamp", "redstone_block",
-                    "cauldron", "double_stone_slab", "stone_slab",
-                    "double_wooden_slab", "wooden_slab", "cactus", "anvil",
-                    "sponge", "noteblock", "jukebox", "mycelium", "packed_ice",
-                    "quartz_ore", "command_block", "beacon",
-                    "monster_egg", "mob_spawner", "cake", "glass_pane", "stained_glass_pane",
-                    "dispenser", "dropper", "piston", "sticky_piston",
-                    "lit_furnace", "pumpkin", "lit_pumpkin",
-                    "sapling", "tallgrass", "deadbush", "yellow_flower", "red_flower",
-                    "brown_mushroom", "red_mushroom",
-                    "carrots", "potatoes", "cocoa", "double_plant", "waterlily", "vine",
-                    "brown_mushroom_block", "red_mushroom_block",
-                    "lever", "stone_button", "wooden_button",
-                    "stone_pressure_plate", "wooden_pressure_plate",
-                    "light_weighted_pressure_plate", "heavy_weighted_pressure_plate",
-                    "daylight_detector", "tripwire_hook", "hopper",
-                    "rail", "golden_rail", "detector_rail", "activator_rail",
-                    "oak_stairs", "stone_stairs", "brick_stairs", "stone_brick_stairs",
-                    "sandstone_stairs", "nether_brick_stairs",
-                    "spruce_stairs", "birch_stairs", "jungle_stairs",
-                    "quartz_stairs", "acacia_stairs", "dark_oak_stairs",
-                    "fence", "fence_gate", "nether_brick_fence",
-                    "web", "snow_layer", "carpet", "farmland", "ladder",
-                    "enchanting_table", "ender_chest", "end_portal_frame",
-                    "dragon_egg", "iron_bars", "trapped_chest", "chest",
-                    "bedrock"
-            };
-            for (String name : commonBlocks) {
-                BlockstateJson bs = loadSingleBlockstate(namespace, name);
-                if (bs != null) nsBlockstates.put(name, bs);
-            }
-        }
-
-        if (!nsBlockstates.isEmpty()) {
-            VanillaModelManager.loadedBlockstates.put(namespace, nsBlockstates);
-        }
-    }
-
-    /**
-     * Load metadata_map.json for a namespace.
-     */
-    private static void loadMetadataMaps(String namespace) {
-        String path = "/assets/" + namespace + "/metadata_map.json";
-        try (InputStream stream = VanillaModelManager.class.getResourceAsStream(path)) {
-            if (stream == null) return;
-            InputStreamReader reader = new InputStreamReader(stream);
-
-            @SuppressWarnings("unchecked")
-            Map<String, Map<String, Map<String, String>>> data = gson.fromJson(reader, Map.class);
-            if (data == null) return;
-
-            Map<String, Map<Integer, Map<String, String>>> nsMap = new HashMap<>();
-            for (Map.Entry<String, Map<String, Map<String, String>>> blockEntry : data.entrySet()) {
-                String blockName = blockEntry.getKey();
-                Map<Integer, Map<String, String>> metaMap = new HashMap<>();
-                for (Map.Entry<String, Map<String, String>> metaEntry : blockEntry.getValue().entrySet()) {
-                    try {
-                        int meta = Integer.parseInt(metaEntry.getKey());
-                        metaMap.put(meta, metaEntry.getValue());
-                    } catch (NumberFormatException e) {
-                        CatFrame.logger.warn("metadata_map.json [{}] invalid metadata key '{}'", blockName, metaEntry.getKey());
-                    }
-                }
-                if (!metaMap.isEmpty()) {
-                    nsMap.put(blockName, metaMap);
-                }
-            }
-
-            if (!nsMap.isEmpty()) {
-                VanillaModelManager.loadedMetadataMaps.put(namespace, nsMap);
-                CatFrame.logger.info("Loaded metadata_map.json for namespace: {} ({} blocks)", namespace, nsMap.size());
-            }
-        } catch (Exception e) {
-            CatFrame.logger.debug("No metadata_map.json for namespace {}: {}", namespace, e.getMessage());
         }
     }
 

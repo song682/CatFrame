@@ -6,6 +6,7 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Resolves model JSON files with parent inheritance chain.
@@ -13,9 +14,27 @@ import java.util.*;
  */
 public class ModelResolver {
     public static final Gson GSON = new Gson();
-    private static final Map<String, ModelJson> cache = new HashMap<>();
+    private static final Map<String, ModelJson> cache = new ConcurrentHashMap<>();
     private static final List<String> registeredNamespaces = new ArrayList<>();
     private static final int MAX_DEPTH = 16;
+
+    /**
+     * 循环检测：跟踪当前线程正在解析的模型路径。
+     * 如果 resolve 过程中再次遇到已在集合中的路径，说明存在循环依赖。
+     */
+    private static final ThreadLocal<Set<String>> resolvingStack = new ThreadLocal<Set<String>>() {
+        @Override
+        protected Set<String> initialValue() {
+            return new LinkedHashSet<>();
+        }
+    };
+
+    /**
+     * 依赖图：记录每个模型的 parent 依赖关系。
+     * 用于拓扑排序确定烘焙顺序。
+     * key = 模型路径, value = 该模型依赖的 parent 路径集合
+     */
+    private static final Map<String, Set<String>> dependencyGraph = new ConcurrentHashMap<>();
 
     // ==================== Builtin Models ====================
 
@@ -104,7 +123,11 @@ public class ModelResolver {
             return cache.get(modelPath);
         }
 
+        Set<String> stack = resolvingStack.get();
+        stack.clear();
         ModelJson resolved = resolveInternal(modelPath, 0);
+        stack.clear();
+
         if (resolved != null) {
             // Resolve texture variables in the final model
             resolveTextureVariables(resolved);
@@ -118,6 +141,28 @@ public class ModelResolver {
             CatFrame.logger.error("Model parent chain too deep for: {}", modelPath);
             return null;
         }
+
+        // 循环检测：检查当前路径是否已在解析栈中
+        Set<String> stack = resolvingStack.get();
+        if (!stack.add(modelPath)) {
+            // 已经在栈中 → 循环依赖
+            CatFrame.logger.error("Circular model dependency detected: {} -> ... -> {}",
+                    buildCyclePath(stack, modelPath), modelPath);
+            return null;
+        }
+
+        try {
+            return resolveInternalChecked(modelPath, depth);
+        } finally {
+            stack.remove(modelPath);
+        }
+    }
+
+    /**
+     * 实际的解析逻辑（从原 resolveInternal 提取），
+     * 循环检测和栈管理由外层 resolveInternal 处理。
+     */
+    private static ModelJson resolveInternalChecked(String modelPath, int depth) {
 
         // 优先检查硬编码的内建模型（路径以 "builtin/" 开头）
         if (modelPath.startsWith("builtin/")) {
@@ -140,6 +185,11 @@ public class ModelResolver {
         // If no parent, return as-is
         if (model.parent == null || model.parent.isEmpty()) {
             return model;
+        }
+
+        // Resolve parent recursively and record dependency
+        if (model.parent != null && !model.parent.isEmpty()) {
+            dependencyGraph.computeIfAbsent(modelPath, k -> new LinkedHashSet<>()).add(model.parent);
         }
 
         // Resolve parent recursively
@@ -440,6 +490,88 @@ public class ModelResolver {
      */
     public static void clearCache() {
         cache.clear();
+        dependencyGraph.clear();
+    }
+
+    /**
+     * 获取依赖图快照。用于拓扑排序确定烘焙顺序。
+     */
+    public static Map<String, Set<String>> getDependencyGraph() {
+        return Collections.unmodifiableMap(dependencyGraph);
+    }
+
+    /**
+     * 拓扑排序：返回按依赖顺序排列的模型路径列表。
+     * 先烘焙无依赖的模型（叶子节点），再烘焙依赖它们的模型。
+     * <p>
+     * 使用 Kahn 算法（BFS 拓扑排序）。
+     *
+     * @param modelPaths 需要排序的模型路径集合
+     * @return 按拓扑顺序排列的模型路径列表
+     */
+    public static List<String> topologicalSort(Set<String> modelPaths) {
+        // 构建入度表和邻接表（只考虑 modelPaths 范围内的模型）
+        Map<String, Set<String>> adj = new HashMap<>();  // parent → children
+        Map<String, Integer> inDegree = new HashMap<>();
+
+        for (String path : modelPaths) {
+            inDegree.putIfAbsent(path, 0);
+            Set<String> deps = dependencyGraph.getOrDefault(path, Collections.emptySet());
+            for (String dep : deps) {
+                if (modelPaths.contains(dep)) {
+                    adj.computeIfAbsent(dep, k -> new LinkedHashSet<>()).add(path);
+                    inDegree.merge(path, 1, Integer::sum);
+                }
+            }
+        }
+
+        // BFS：从入度为 0 的节点开始
+        Queue<String> queue = new LinkedList<>();
+        for (Map.Entry<String, Integer> entry : inDegree.entrySet()) {
+            if (entry.getValue() == 0) {
+                queue.add(entry.getKey());
+            }
+        }
+
+        List<String> sorted = new ArrayList<>();
+        while (!queue.isEmpty()) {
+            String node = queue.poll();
+            sorted.add(node);
+            for (String child : adj.getOrDefault(node, Collections.emptySet())) {
+                int newDegree = inDegree.merge(child, -1, Integer::sum);
+                if (newDegree == 0) {
+                    queue.add(child);
+                }
+            }
+        }
+
+        // 如果排序结果少于输入，说明有环（不应发生，因为 resolve 已经检测了）
+        if (sorted.size() < modelPaths.size()) {
+            Set<String> unsorted = new LinkedHashSet<>(modelPaths);
+            unsorted.removeAll(sorted);
+            CatFrame.logger.warn("[ModelResolver] topologicalSort: {} models in cycle: {}",
+                    unsorted.size(), unsorted);
+            // 将剩余的追加到末尾（降级处理）
+            sorted.addAll(unsorted);
+        }
+
+        return sorted;
+    }
+
+    /**
+     * 构建循环依赖路径字符串，用于错误日志。
+     */
+    private static String buildCyclePath(Set<String> stack, String cycleTarget) {
+        StringBuilder sb = new StringBuilder();
+        boolean found = false;
+        for (String s : stack) {
+            if (s.equals(cycleTarget)) found = true;
+            if (found) {
+                if (sb.length() > 0) sb.append(" -> ");
+                sb.append(s);
+            }
+        }
+        return sb.toString();
     }
 
     /**

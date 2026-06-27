@@ -3,16 +3,16 @@ package decok.dfcdvadstf.catframe.model.render;
 import decok.dfcdvadstf.catframe.model.ItemModel;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import net.minecraft.block.Block;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.IItemRenderer;
-import java.nio.FloatBuffer;
-
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-import net.minecraft.item.Item;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+
+import java.nio.FloatBuffer;
 
 /**
  * Forge {@link IItemRenderer}，将 CatFrame 模型系统接入 Forge 物品渲染管线。

@@ -5,12 +5,12 @@ import decok.dfcdvadstf.catframe.model.ModelJson;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
-import org.lwjgl.opengl.GL11;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import java.nio.FloatBuffer;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
 
+import java.nio.FloatBuffer;
 import java.util.List;
 
 /**

@@ -27,7 +27,7 @@ import java.util.List;
 public class MixinTextureMap {
 
     @Shadow
-    protected List framesTextureData;
+    protected List<?> framesTextureData;
 
     @Inject(method = "clearFramesTextureData", at = @At("HEAD"))
     private void catframe$preserveFrames(CallbackInfo ci) {

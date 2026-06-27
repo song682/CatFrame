@@ -1,9 +1,9 @@
 package decok.dfcdvadstf.catframe.model.render;
 
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
+import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
-import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.world.IBlockAccess;

@@ -1,9 +1,9 @@
 package decok.dfcdvadstf.catframe.model.render;
 
 import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.ModelJson;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;

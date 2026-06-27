@@ -1,8 +1,9 @@
-package decok.dfcdvadstf.catframe.ui.tab;
+package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
 import decok.dfcdvadstf.catframe.ui.Text;
-import decok.dfcdvadstf.catframe.ui.components.AbstractButton;
+import decok.dfcdvadstf.catframe.ui.tab.Tab;
+import decok.dfcdvadstf.catframe.ui.tab.TabBar;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;

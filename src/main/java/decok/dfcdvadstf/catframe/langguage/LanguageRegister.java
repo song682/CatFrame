@@ -16,14 +16,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -132,6 +125,7 @@ public final class LanguageRegister {
                 ResourceLocation loc = new ResourceLocation(resourceDomain, resPath);
 
                 try {
+                    @SuppressWarnings("unchecked")
                     List<IResource> resources = manager.getAllResources(loc);
                     // getAllResources returns resources priority-descending
                     // (highest priority = resource pack override first).

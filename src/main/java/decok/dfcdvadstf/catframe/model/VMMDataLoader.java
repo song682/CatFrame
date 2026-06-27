@@ -12,7 +12,8 @@ import net.minecraft.item.Item;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 数据加载：namespace 发现、blockstate 加载、model_mappings 加载。

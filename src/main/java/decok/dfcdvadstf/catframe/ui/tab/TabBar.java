@@ -1,18 +1,13 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
 import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
-import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.components.TabButton;
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.util.ResourceLocation;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 
 /**
  * <p>

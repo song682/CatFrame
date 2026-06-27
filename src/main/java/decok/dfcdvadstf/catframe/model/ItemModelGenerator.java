@@ -1,17 +1,11 @@
 package decok.dfcdvadstf.catframe.model;
 
+import decok.dfcdvadstf.catframe.CatFrame;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IIcon;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import decok.dfcdvadstf.catframe.CatFrame;
+import java.util.*;
 
 /**
  * 物品模型侧面生成器 —— 对标 26.1.2 {@code ItemModelGenerator.bakeSideFaces}。

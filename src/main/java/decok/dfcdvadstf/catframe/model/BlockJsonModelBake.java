@@ -1,13 +1,12 @@
 package decok.dfcdvadstf.catframe.model;
 
+import decok.dfcdvadstf.catframe.CatFrame;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IIcon;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import decok.dfcdvadstf.catframe.CatFrame;
 
 public class BlockJsonModelBake {
     public static List<BakedQuad> bakeElement(ModelJson.Element e, Map<String, IIcon> iconMap) {

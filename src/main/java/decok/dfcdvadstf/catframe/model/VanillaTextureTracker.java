@@ -2,12 +2,10 @@ package decok.dfcdvadstf.catframe.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
-
-import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
-import decok.dfcdvadstf.catframe.model.VMMModelBaking;
 
 import java.util.Set;
 

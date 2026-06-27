@@ -5,7 +5,6 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import net.minecraft.entity.EntityList;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
 import net.minecraft.potion.PotionHelper;
 
 /**

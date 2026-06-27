@@ -2,16 +2,16 @@ package decok.dfcdvadstf.catframe.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
-import decok.dfcdvadstf.catframe.CatFrame;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockPane;
-import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.*;
 

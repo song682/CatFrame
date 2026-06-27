@@ -1,12 +1,10 @@
 package decok.dfcdvadstf.catframe.ui.layouts;
 
 /**
- * Per-child layout settings controlling padding and alignment within a layout cell.
  * <p>
- * 每子元素布局配置——控制子元素在其单元格内的内边距和对齐方式。
+ * Per-child layout settings controlling padding and alignment within a layout cell.
  * </p>
- *
- * <p>Usage / 用法:</p>
+ * <p>Usage:</p>
  * <pre>{@code
  * layout.add(child, LayoutSettings.defaults()
  *     .padding(5)
@@ -18,13 +16,13 @@ package decok.dfcdvadstf.catframe.ui.layouts;
  */
 public interface LayoutSettings {
 
-    /** Uniform padding on all sides / 统一四周内边距 */
+    /** Uniform padding on all sides */
     LayoutSettings padding(int padding);
 
-    /** Horizontal & vertical padding / 水平 + 垂直内边距 */
+    /** Horizontal & vertical padding */
     LayoutSettings padding(int horizontal, int vertical);
 
-    /** Per-side padding / 分别设置四边内边距 */
+    /** Per-side padding */
     LayoutSettings padding(int left, int top, int right, int bottom);
 
     LayoutSettings paddingLeft(int padding);
@@ -35,13 +33,13 @@ public interface LayoutSettings {
 
     LayoutSettings paddingBottom(int padding);
 
-    /** Convenience: set left + right / 快捷设置左右 */
+    /** Convenience: set left + right */
     LayoutSettings paddingHorizontal(int padding);
 
-    /** Convenience: set top + bottom / 快捷设置上下 */
+    /** Convenience: set top + bottom */
     LayoutSettings paddingVertical(int padding);
 
-    /** Set both horizontal and vertical alignment (0.0 – 1.0) / 同时设置水平和垂直对齐 */
+    /** Set both horizontal and vertical alignment (0.0 – 1.0) */
     LayoutSettings align(float xAlignment, float yAlignment);
 
     /** Horizontal alignment (0.0 = left, 0.5 = centre, 1.0 = right) */
@@ -76,7 +74,7 @@ public interface LayoutSettings {
         return this.alignVertically(1.0F);
     }
 
-    /** Creates an independent copy / 创建独立副本 */
+    /** Creates an independent copy */
     LayoutSettings copy();
 
     /**

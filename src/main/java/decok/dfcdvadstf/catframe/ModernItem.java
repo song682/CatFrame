@@ -2,12 +2,7 @@ package decok.dfcdvadstf.catframe;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.model.IItemJsonModel;
-import decok.dfcdvadstf.catframe.model.ItemModel;
-import decok.dfcdvadstf.catframe.model.ModelJson;
-import decok.dfcdvadstf.catframe.model.ModelResolver;
-import decok.dfcdvadstf.catframe.model.ModelBaker;
-import decok.dfcdvadstf.catframe.model.VanillaModelManager;
+import decok.dfcdvadstf.catframe.model.*;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;

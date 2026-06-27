@@ -1,10 +1,9 @@
 package decok.dfcdvadstf.catframe.mixin;
 
+import decok.dfcdvadstf.catframe.Tags;
 import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
-
-import decok.dfcdvadstf.catframe.Tags;
 
 import java.util.Arrays;
 import java.util.List;

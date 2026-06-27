@@ -5,9 +5,9 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.langguage.LanguageRegister;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
-import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraftforge.common.MinecraftForge;
 
 /**

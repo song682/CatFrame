@@ -1,8 +1,8 @@
 {
   "variants": {
-    "variant=oak":    { "model": "minecraft:block/oak_leaves" },
-    "variant=spruce": { "model": "minecraft:block/spruce_leaves" },
-    "variant=birch":  { "model": "minecraft:block/birch_leaves" },
-    "variant=jungle": { "model": "minecraft:block/jungle_leaves" }
+    "wood=oak":    { "model": "minecraft:block/oak_leaves" },
+    "wood=spruce": { "model": "minecraft:block/spruce_leaves" },
+    "wood=birch":  { "model": "minecraft:block/birch_leaves" },
+    "wood=jungle": { "model": "minecraft:block/jungle_leaves" }
   }
 }

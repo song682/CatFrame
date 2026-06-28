@@ -3,18 +3,20 @@ package decok.dfcdvadstf.catframe.model;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 
 /**
- * 物品 JSON 模型自动发现接口。
+ * 物品状态映射接口 — 对齐方块侧的 BlockState 体系。
  * <p>
- * 外部 Item 实现此接口后，CatFrame 在 {@link VanillaModelManager.DataLoading#init()} 阶段
+ * 外部 Item 实现此接口后，CatFrame 在 {@link VMMDataLoader#init()} 阶段
  * 自动完成：收集纹理 → 烘焙模型 → 注册 Forge IItemRenderer。
- * 无需手动编辑 {@code model_mappings.json} 或调用
- * {@link VanillaModelManager.TextureManagement#collectTextures}。
+ * <p>
+ * 模型发现由四层体系处理（items/ ItemState → model_mappings → 约定路径），
+ * 本接口专注于渲染接管控制。
  *
- * <h3>三层发现优先级</h3>
+ * <h3>四层发现优先级</h3>
  * <ol>
- *   <li>{@code model_mappings.json} 显式条目</li>
- *   <li>Item 实现 {@code IItemJsonModel}（本接口）</li>
- *   <li>约定路径 {@code assets/{namespace}/models/item/{name}.json} 懒发现</li>
+ *   <li>{@code items/{item}.json} (ItemState 决策树) — 最高优先</li>
+ *   <li>{@code model_mappings.json} items 字段 — 旧扁平映射</li>
+ *   <li>Item 实现 {@code IItemState}（本接口）— 代码级注册</li>
+ *   <li>约定路径 {@code assets/{namespace}/models/item/{name}.json} — 懒发现兜底</li>
  * </ol>
  *
  * <h3>渲染接管控制</h3>
@@ -23,16 +25,7 @@ import decok.dfcdvadstf.catframe.model.render.RenderPhase;
  *   <li>{@link #handles(RenderPhase)} — 每阶段精细控制，{@code false} 时走原版渲染</li>
  * </ul>
  */
-public interface IItemJsonModel {
-
-    /**
-     * 模型路径，相对于 {@code /assets/{namespace}/models/}。
-     * 例如 {@code "item/my_sword"} 将解析为
-     * {@code /assets/{namespace}/models/item/my_sword.json}。
-     *
-     * @return 模型路径，不可为 null
-     */
-    String getModelPath();
+public interface IItemState {
 
     /**
      * 全局开关：是否由 CatFrame 接管此物品的渲染。

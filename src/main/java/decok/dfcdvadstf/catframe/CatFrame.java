@@ -59,7 +59,7 @@ public class CatFrame {
             VMMDataLoader.init();
 
             if (blueyPlushy != null) {
-                // 通过 ModernItem 的双模型 API 注册（纹理由 IItemJsonModel 扫描自动收集）
+                // 通过 ModernItem 的双模型 API 注册（纹理由 IItemState 扫描自动收集）
                 VanillaModelRegistry.registerItemModel(
                         blueyPlushy, blueyPlushy.createItemModel());
             }

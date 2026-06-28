@@ -24,7 +24,7 @@ import java.util.function.Function;
 public class ItemModelWrapper implements ItemModel {
     private final BlockStateModel blockModel;
     private final Map<String, ModelJson.DisplayTransform> display;
-    /** 可选的 handles 委托，由 IItemJsonModel.handles(phase) 语义传入 */
+    /** 可选的 handles 委托，由 IItemState.handles(phase) 语义传入 */
     private final Function<RenderPhase, Boolean> handlesDelegate;
 
     public ItemModelWrapper(BlockStateModel blockModel) {

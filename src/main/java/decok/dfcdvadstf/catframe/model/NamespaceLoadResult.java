@@ -33,17 +33,22 @@ public class NamespaceLoadResult {
     /** 该 namespace 收集到的物品纹理路径 */
     public final Set<String> itemTextures;
 
+    /** items/ ItemState 决策树: itemName → 决策树根节点 */
+    public final Map<String, ItemStateNode> itemStates;
+
     public NamespaceLoadResult(String namespace,
                                Map<String, BlockstateJson> blockstates,
                                VanillaModelManager.ModelMappings mappings,
                                Map<String, Map<Integer, Map<String, String>>> metadataMaps,
                                Set<String> blockTextures,
-                               Set<String> itemTextures) {
+                               Set<String> itemTextures,
+                               Map<String, ItemStateNode> itemStates) {
         this.namespace = namespace;
         this.blockstates = blockstates;
         this.mappings = mappings;
         this.metadataMaps = metadataMaps;
         this.blockTextures = blockTextures;
         this.itemTextures = itemTextures;
+        this.itemStates = itemStates;
     }
 }

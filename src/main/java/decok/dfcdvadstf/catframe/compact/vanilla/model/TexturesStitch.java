@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.compact.vanilla.model;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.model.JsonBlock;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
 import net.minecraftforge.client.event.TextureStitchEvent;
@@ -32,8 +31,6 @@ public class TexturesStitch {
             VanillaTextureTracker.onTextureStitchPost(event.map);
             // Resolve _opaque leaf IIcons
             LeavesGraphicsExtension.onTextureStitchPost(event.map);
-            // Process custom block render requests (ISBRH + VMM bridge)
-            JsonBlock.event();
         } else if (event.map.getTextureType() == 1) {
             // item atlas 缝合完成后更新 item 纹理 IIcon 引用并重新烘焙
             VanillaTextureTracker.onTextureStitchPostItem(event.map);

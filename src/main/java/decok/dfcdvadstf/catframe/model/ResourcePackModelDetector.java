@@ -56,14 +56,14 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
     }
 
     private static void scanAllNamespaces(IResourceManager manager) {
-        for (String ns : VanillaModelManager.namespaces) {
+        for (String ns : VMMDataLoader.namespaces) {
             scanNamespace(manager, ns);
         }
     }
 
     private static void scanNamespace(IResourceManager manager, String ns) {
         // 扫描已知 BlockStates
-        Map<String, BlockstateJson> nsBlockstates = VanillaModelManager.loadedBlockstates.get(ns);
+        Map<String, BlockstateJson> nsBlockstates = VMMDataLoader.loadedBlockstates.get(ns);
         if (nsBlockstates != null) {
             for (String blockName : nsBlockstates.keySet()) {
                 ResourceLocation loc = new ResourceLocation(ns, "blockstates/" + blockName + ".json");
@@ -84,7 +84,7 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         }
 
         // 扫描已知模型路径
-        VanillaModelManager.ModelMappings mappings = VanillaModelManager.loadedMappings.get(ns);
+        VanillaModelManager.ModelMappings mappings = VMMDataLoader.loadedMappings.get(ns);
         if (mappings != null) {
             if (mappings.blocks != null) {
                 for (String modelPath : mappings.blocks.values()) {

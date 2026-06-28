@@ -7,7 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 
-import java.util.Set;
+import java.util.*;
 
 /**
  * Texture tracking and management extracted from {@link VanillaModelManager}.
@@ -17,6 +17,12 @@ import java.util.Set;
  */
 @SideOnly(Side.CLIENT)
 public class VanillaTextureTracker {
+
+    // ==================== 纹理追踪注册表 ====================
+
+    static final Set<String> pendingTextures = new LinkedHashSet<>();
+    static final Set<String> pendingItemTextures = new LinkedHashSet<>();
+    static final Map<String, IIcon> textureIcons = new HashMap<>();
 
     static void collectTexturesFromBlockstate(BlockstateJson bs) {
         if (bs.variants != null) {
@@ -53,9 +59,9 @@ public class VanillaTextureTracker {
             Set<String> textures = ModelResolver.collectTextures(resolved);
             for (String tex : textures) {
                 if (isItemModel) {
-                    VanillaModelManager.pendingItemTextures.add(tex);
+                    pendingItemTextures.add(tex);
                 } else {
-                    VanillaModelManager.pendingTextures.add(tex);
+                    pendingTextures.add(tex);
                 }
             }
         }
@@ -68,7 +74,7 @@ public class VanillaTextureTracker {
      * Call during TextureStitchEvent.Pre when getTextureType() == 0.
      */
     public static void registerTextures(TextureMap map) {
-        for (String texturePath : VanillaModelManager.pendingTextures) {
+        for (String texturePath : pendingTextures) {
             String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
             if (iconName != null && !iconName.isEmpty()) {
                 map.registerIcon(iconName);
@@ -81,7 +87,7 @@ public class VanillaTextureTracker {
      * Call during TextureStitchEvent.Pre when getTextureType() == 1.
      */
     public static void registerItemTextures(TextureMap map) {
-        for (String texturePath : VanillaModelManager.pendingItemTextures) {
+        for (String texturePath : pendingItemTextures) {
             String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
             if (iconName != null && !iconName.isEmpty()) {
                 map.registerIcon(iconName);
@@ -95,17 +101,19 @@ public class VanillaTextureTracker {
      */
     public static void onTextureStitchPost(TextureMap map) {
         // 资源重载时清空新缓存
+        pendingTextures.clear();
+        pendingItemTextures.clear();
         BakedModelCache.INSTANCE.clear();
         ModelResolver.clearCache();
 
-        VanillaModelManager.textureIcons.clear();
+        textureIcons.clear();
         // Block atlas icons
-        for (String texturePath : VanillaModelManager.pendingTextures) {
+        for (String texturePath : pendingTextures) {
             String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
             if (iconName != null) {
                 IIcon icon = map.getAtlasSprite(iconName);
                 if (icon != null) {
-                    VanillaModelManager.textureIcons.put(texturePath, icon);
+                    textureIcons.put(texturePath, icon);
                 }
             }
         }
@@ -114,17 +122,17 @@ public class VanillaTextureTracker {
                 (net.minecraft.client.renderer.texture.TextureMap) Minecraft.getMinecraft().getTextureManager()
                         .getTexture(TextureMap.locationItemsTexture);
         if (itemMap != null) {
-            for (String texturePath : VanillaModelManager.pendingItemTextures) {
+            for (String texturePath : pendingItemTextures) {
                 String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
                 if (iconName != null) {
                     IIcon icon = itemMap.getAtlasSprite(iconName);
                     if (icon != null) {
-                        VanillaModelManager.textureIcons.put(texturePath, icon);
+                        textureIcons.put(texturePath, icon);
                     }
                 }
             }
         }
-        ModelBaker.setGlobalIconMap(VanillaModelManager.textureIcons);
+        ModelBaker.setGlobalIconMap(textureIcons);
         // 注册懒模型（不执行同步烘焙，烘焙由 BakedModelCache 懒烘焙 + AsyncBakePipeline 异步预烘焙承担）
         VMMModelBaking.registerAllModels();
         // 异步预烘焙管线：将常用模型预烘焙到 BakedModelCache
@@ -143,16 +151,16 @@ public class VanillaTextureTracker {
      */
     public static void onTextureStitchPostItem(TextureMap itemMap) {
         // 更新 item 纹理的 IIcon 引用（item atlas 此时已缝合完成）
-        for (String texturePath : VanillaModelManager.pendingItemTextures) {
+        for (String texturePath : pendingItemTextures) {
             String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
             if (iconName != null) {
                 IIcon icon = itemMap.getAtlasSprite(iconName);
                 if (icon != null) {
-                    VanillaModelManager.textureIcons.put(texturePath, icon);
+                    textureIcons.put(texturePath, icon);
                 }
             }
         }
-        ModelBaker.setGlobalIconMap(VanillaModelManager.textureIcons);
+        ModelBaker.setGlobalIconMap(textureIcons);
         // [W2 修复] 仅增量更新 item 模型注册（懒模型，无需实际烘焙）
         VMMModelBaking.registerItemModels();
         // item atlas 就绪后再次触发异步预烘焙（确保 item 模型也被预烘焙）

@@ -42,23 +42,23 @@ public class VMMModelBaking {
      */
     public static void registerAllModels() {
         // 清空注册表（保留 persistent 项）
-        VanillaModelManager.registeredBlockModels.clear();
-        VanillaModelManager.registeredBlockRotations.clear();
-        VanillaModelManager.registeredItemModels.keySet()
-                .removeIf(item -> !VanillaModelManager.persistentItemModels.contains(item));
+        VanillaModelRegistry.registeredBlockModels.clear();
+        VanillaModelRegistry.registeredBlockRotations.clear();
+        VanillaModelRegistry.registeredItemModels.keySet()
+                .removeIf(item -> !VanillaModelRegistry.persistentItemModels.contains(item));
 
         // Step 1: 自动注册 metadata mapper（从 metadata_map.json）
         for (Map.Entry<String, Map<String, Map<Integer, Map<String, String>>>> nsEntry :
-                VanillaModelManager.loadedMetadataMaps.entrySet()) {
+                VMMDataLoader.loadedMetadataMaps.entrySet()) {
             String namespace = nsEntry.getKey();
             for (Map.Entry<String, Map<Integer, Map<String, String>>> blockEntry :
                     nsEntry.getValue().entrySet()) {
                 String blockName = blockEntry.getKey();
                 Block block = VanillaModelManager.Utilities.findBlock(namespace, blockName);
-                if (block != null && !VanillaModelManager.metadataMappers.containsKey(block)) {
+                if (block != null && !VMMDataLoader.metadataMappers.containsKey(block)) {
                     IMetadataMapper jsonMapper = VanillaModelManager.Utilities.findMetadataMapEntry(namespace, blockName);
                     if (jsonMapper != null) {
-                        VanillaModelManager.metadataMappers.put(block, jsonMapper);
+                        VMMDataLoader.metadataMappers.put(block, jsonMapper);
                         CatFrame.logger.debug("Auto-registered metadata mapper from metadata_map.json for {}:{}",
                                 namespace, blockName);
                     }
@@ -68,7 +68,7 @@ public class VMMModelBaking {
 
         // Step 2: 处理 blockstates — 注册懒 BlockStateModel
         for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry :
-                new java.util.ArrayList<>(VanillaModelManager.loadedBlockstates.entrySet())) {
+                new java.util.ArrayList<>(VMMDataLoader.loadedBlockstates.entrySet())) {
             String namespace = nsEntry.getKey();
             for (Map.Entry<String, BlockstateJson> bsEntry :
                     new java.util.ArrayList<>(nsEntry.getValue().entrySet())) {
@@ -79,7 +79,7 @@ public class VMMModelBaking {
 
                 // BlockPane: 使用运行时连接模型
                 if (block instanceof BlockPane) {
-                    IMetadataBlockstateRedirect redirect = VanillaModelManager.blockstateRedirects.get(block);
+                    IMetadataBlockstateRedirect redirect = VMMDataLoader.blockstateRedirects.get(block);
                     String blockId = Block.blockRegistry.getNameForObject(block);
                     String ns = blockId.contains(":") ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
                     if (redirect != null) {
@@ -93,25 +93,25 @@ public class VMMModelBaking {
                 }
 
                 // Blockstate redirect: 使用懒重定向模型
-                IMetadataBlockstateRedirect redirect = VanillaModelManager.blockstateRedirects.get(block);
+                IMetadataBlockstateRedirect redirect = VMMDataLoader.blockstateRedirects.get(block);
                 if (redirect != null) {
                     String blockId = Block.blockRegistry.getNameForObject(block);
                     String ns = blockId.contains(":") ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
-                    IMetadataMapper mapper = VanillaModelManager.metadataMappers.get(block);
+                    IMetadataMapper mapper = VMMDataLoader.metadataMappers.get(block);
                     VanillaModelRegistry.registerBlockModel(block,
                             new LazyRedirectModel(redirect, mapper, ns));
                     continue;
                 }
 
                 // 常规 variants/multipart: 使用懒 blockstate 模型
-                IMetadataMapper mapper = VanillaModelManager.metadataMappers.get(block);
+                IMetadataMapper mapper = VMMDataLoader.metadataMappers.get(block);
                 VanillaModelRegistry.registerBlockModel(block, new LazyBlockstateModel(bs, mapper));
             }
         }
 
         // Step 3: 处理 model_mappings 中的 blocks（无 blockstate 的方块）
         for (Map.Entry<String, VanillaModelManager.ModelMappings> entry :
-                VanillaModelManager.loadedMappings.entrySet()) {
+                VMMDataLoader.loadedMappings.entrySet()) {
             String namespace = entry.getKey();
             VanillaModelManager.ModelMappings mappings = entry.getValue();
 
@@ -130,7 +130,7 @@ public class VMMModelBaking {
                     Block block = VanillaModelManager.Utilities.findBlock(namespace, blockName);
                     if (block == null) continue;
                     // 已被 blockstate 处理的方块跳过
-                    if (VanillaModelManager.registeredBlockModels.containsKey(block)) continue;
+                    if (VanillaModelRegistry.registeredBlockModels.containsKey(block)) continue;
 
                     // 使用懒单模型：持有 modelPath，渲染时从 BakedModelCache 获取
                     VanillaModelRegistry.registerBlockModel(block,
@@ -146,19 +146,35 @@ public class VMMModelBaking {
             Block block = entry.getKey();
             Item item = Item.getItemFromBlock(block);
             if (item == null) continue;
-            if (VanillaModelManager.registeredItemModels.containsKey(item)) continue;
+            if (VanillaModelRegistry.registeredItemModels.containsKey(item)) continue;
 
             String modelPath = findFirstModelPath(entry.getValue());
             if (modelPath == null) continue;
 
             Map<String, ModelJson.DisplayTransform> display = resolveDisplay(modelPath);
-            VanillaModelManager.registeredItemModels.put(item,
-                    new ItemModelWrapper(VanillaModelManager.registeredBlockModels.get(block), display));
+            VanillaModelRegistry.registeredItemModels.put(item,
+                    new ItemModelWrapper(VanillaModelRegistry.registeredBlockModels.get(block), display));
         }
 
-        // 4b: model_mappings 中的 items
+        // 4a-items: items/ ItemState 决策树（最高优先）
+        for (Map.Entry<String, Map<String, ItemStateNode>> nsEntry :
+                new java.util.ArrayList<>(VMMDataLoader.loadedItemStates.entrySet())) {
+            String namespace = nsEntry.getKey();
+            for (Map.Entry<String, ItemStateNode> itemEntry : nsEntry.getValue().entrySet()) {
+                String itemName = itemEntry.getKey();
+                Item item = VanillaModelManager.Utilities.findItem(namespace, itemName);
+                if (item == null) continue;
+                if (VanillaModelRegistry.registeredItemModels.containsKey(item)) continue;
+
+                VanillaModelRegistry.registeredItemModels.put(item,
+                        new ItemStateItemModel(itemEntry.getValue()));
+                CatFrame.logger.debug("[VMM] Registered ItemState: {}:{}", namespace, itemName);
+            }
+        }
+
+        // 4b: model_mappings 中的 items（跳过已被 ItemState 注册的）
         for (Map.Entry<String, VanillaModelManager.ModelMappings> entry :
-                VanillaModelManager.loadedMappings.entrySet()) {
+                VMMDataLoader.loadedMappings.entrySet()) {
             VanillaModelManager.ModelMappings mappings = entry.getValue();
             if (mappings.items == null) continue;
 
@@ -175,39 +191,50 @@ public class VMMModelBaking {
 
                 Item item = VanillaModelManager.Utilities.findItem(entry.getKey(), itemName);
                 if (item == null) continue;
+                // 跳过已被 ItemState 注册的
+                if (VanillaModelRegistry.registeredItemModels.containsKey(item)) continue;
 
                 Map<String, ModelJson.DisplayTransform> display = resolveDisplay(itemEntry.getValue());
-                VanillaModelManager.registeredItemModels.put(item,
+                VanillaModelRegistry.registeredItemModels.put(item,
                         new LazyItemModel(itemEntry.getValue(), display));
             }
         }
 
-        // 4c: IItemJsonModel (Tier 2 接口发现)
-        for (Map.Entry<Item, IItemJsonModel> entry : VanillaModelManager.interfaceItemModels.entrySet()) {
+        // 4c: IItemState (Tier 3 接口发现)
+        for (Map.Entry<Item, IItemState> entry : VMMDataLoader.interfaceItemStates.entrySet()) {
             Item item = entry.getKey();
-            IItemJsonModel ijm = entry.getValue();
-            if (VanillaModelManager.registeredItemModels.containsKey(item)) continue;
+            if (VanillaModelRegistry.registeredItemModels.containsKey(item)) continue;
 
-            String modelPath = ijm.getModelPath();
-            Map<String, ModelJson.DisplayTransform> display = resolveDisplay(modelPath);
-            VanillaModelManager.registeredItemModels.put(item,
+            // 通过约定路径发现模型
+            String registryName = Item.itemRegistry.getNameForObject(item);
+            if (registryName == null) continue;
+            int colonIdx = registryName.indexOf(':');
+            String ns = colonIdx >= 0 ? registryName.substring(0, colonIdx) : "minecraft";
+            String name = colonIdx >= 0 ? registryName.substring(colonIdx + 1) : registryName;
+            String modelPath = ns + ":item/" + name;
+
+            ModelJson resolved = ModelResolver.resolve(modelPath);
+            if (resolved == null) continue;
+
+            Map<String, ModelJson.DisplayTransform> display = resolved.display;
+            VanillaModelRegistry.registeredItemModels.put(item,
                     new LazyItemModel(modelPath, display));
-            VanillaModelManager.persistentItemModels.add(item);
-            CatFrame.logger.debug("[VMM] Registered IItemJsonModel: {} -> {}",
-                    Item.itemRegistry.getNameForObject(item), modelPath);
+            VanillaModelRegistry.persistentItemModels.add(item);
+            CatFrame.logger.debug("[VMM] Registered IItemState: {} -> {}",
+                    registryName, modelPath);
         }
 
         // Step 5: Forge IItemRenderer 注册
         java.util.Set<Item> registered = new java.util.HashSet<>();
         int forgeRegistered = 0;
 
-        for (Item item : VanillaModelManager.registeredItemModels.keySet()) {
+        for (Item item : VanillaModelRegistry.registeredItemModels.keySet()) {
             if (registered.add(item)) {
                 MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
                 forgeRegistered++;
             }
         }
-        for (Block block : VanillaModelManager.registeredBlockModels.keySet()) {
+        for (Block block : VanillaModelRegistry.registeredBlockModels.keySet()) {
             Item item = Item.getItemFromBlock(block);
             if (item != null && registered.add(item)) {
                 MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
@@ -216,8 +243,8 @@ public class VMMModelBaking {
         }
 
         CatFrame.logger.info("VanillaModelManager: Registered {} block models, {} item models ({} Forge renderers)",
-                VanillaModelManager.registeredBlockModels.size(),
-                VanillaModelManager.registeredItemModels.size(), forgeRegistered);
+                VanillaModelRegistry.registeredBlockModels.size(),
+                VanillaModelRegistry.registeredItemModels.size(), forgeRegistered);
     }
 
     /**
@@ -228,12 +255,24 @@ public class VMMModelBaking {
      */
     public static void registerItemModels() {
         // 移除非 persistent item models
-        VanillaModelManager.registeredItemModels.keySet()
-                .removeIf(item -> !VanillaModelManager.persistentItemModels.contains(item));
+        VanillaModelRegistry.registeredItemModels.keySet()
+                .removeIf(item -> !VanillaModelRegistry.persistentItemModels.contains(item));
 
-        // 重新注册 model_mappings items
+        // 重新注册 ItemState 决策树（最高优先）
+        for (Map.Entry<String, Map<String, ItemStateNode>> nsEntry :
+                VMMDataLoader.loadedItemStates.entrySet()) {
+            String namespace = nsEntry.getKey();
+            for (Map.Entry<String, ItemStateNode> itemEntry : nsEntry.getValue().entrySet()) {
+                Item item = VanillaModelManager.Utilities.findItem(namespace, itemEntry.getKey());
+                if (item == null) continue;
+                VanillaModelRegistry.registeredItemModels.put(item,
+                        new ItemStateItemModel(itemEntry.getValue()));
+            }
+        }
+
+        // 重新注册 model_mappings items（跳过已被 ItemState 注册的）
         for (Map.Entry<String, VanillaModelManager.ModelMappings> entry :
-                VanillaModelManager.loadedMappings.entrySet()) {
+                VMMDataLoader.loadedMappings.entrySet()) {
             String namespace = entry.getKey();
             VanillaModelManager.ModelMappings mappings = entry.getValue();
             if (mappings.items == null) continue;
@@ -251,27 +290,38 @@ public class VMMModelBaking {
 
                 Item item = VanillaModelManager.Utilities.findItem(namespace, itemName);
                 if (item == null) continue;
+                // 跳过已被 ItemState 注册的
+                if (VanillaModelRegistry.registeredItemModels.containsKey(item)) continue;
 
                 Map<String, ModelJson.DisplayTransform> display = resolveDisplay(itemEntry.getValue());
-                VanillaModelManager.registeredItemModels.put(item,
+                VanillaModelRegistry.registeredItemModels.put(item,
                         new LazyItemModel(itemEntry.getValue(), display));
             }
         }
 
-        // 重新注册 IItemJsonModel items（跳过已有手动注册模型的 persistent 项，如 DualRenderItemModel）
-        for (Map.Entry<Item, IItemJsonModel> entry : VanillaModelManager.interfaceItemModels.entrySet()) {
+        // 重新注册 IItemState items（跳过已有手动注册模型的 persistent 项，如 DualRenderItemModel）
+        for (Map.Entry<Item, IItemState> entry : VMMDataLoader.interfaceItemStates.entrySet()) {
             Item item = entry.getKey();
-            if (VanillaModelManager.registeredItemModels.containsKey(item)) continue;
-            IItemJsonModel ijm = entry.getValue();
-            String modelPath = ijm.getModelPath();
-            Map<String, ModelJson.DisplayTransform> display = resolveDisplay(modelPath);
-            VanillaModelManager.registeredItemModels.put(item,
+            if (VanillaModelRegistry.registeredItemModels.containsKey(item)) continue;
+
+            String registryName = Item.itemRegistry.getNameForObject(item);
+            if (registryName == null) continue;
+            int colonIdx = registryName.indexOf(':');
+            String ns = colonIdx >= 0 ? registryName.substring(0, colonIdx) : "minecraft";
+            String name = colonIdx >= 0 ? registryName.substring(colonIdx + 1) : registryName;
+            String modelPath = ns + ":item/" + name;
+
+            ModelJson resolved = ModelResolver.resolve(modelPath);
+            if (resolved == null) continue;
+
+            Map<String, ModelJson.DisplayTransform> display = resolved.display;
+            VanillaModelRegistry.registeredItemModels.put(item,
                     new LazyItemModel(modelPath, display));
             MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
         }
 
         CatFrame.logger.info("VanillaModelManager: Re-registered {} item models (incremental, lazy)",
-                VanillaModelManager.registeredItemModels.size());
+                VanillaModelRegistry.registeredItemModels.size());
     }
 
     // ==================== 辅助方法 ====================
@@ -292,7 +342,7 @@ public class VMMModelBaking {
     private static java.util.List<Map.Entry<Block, BlockstateJson>> collectBlockstateBlocks() {
         java.util.List<Map.Entry<Block, BlockstateJson>> result = new java.util.ArrayList<>();
         for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry :
-                new java.util.ArrayList<>(VanillaModelManager.loadedBlockstates.entrySet())) {
+                new java.util.ArrayList<>(VMMDataLoader.loadedBlockstates.entrySet())) {
             String namespace = nsEntry.getKey();
             for (Map.Entry<String, BlockstateJson> bsEntry : nsEntry.getValue().entrySet()) {
                 Block block = VanillaModelManager.Utilities.findBlock(namespace, bsEntry.getKey());

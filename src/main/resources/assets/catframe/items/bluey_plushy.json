@@ -1,0 +1,11 @@
+{
+  "model": {
+    "type": "minecraft:exact_match",
+    "property": "minecraft:display_context",
+    "fallback": { "type": "minecraft:model", "model": "catframe:item/bluey_inventory" },
+    "cases": {
+      "ITEM_HAND_FIRST_PERSON":  { "type": "minecraft:model", "model": "catframe:item/bluey" },
+      "ITEM_HAND_THIRD_PERSON":  { "type": "minecraft:model", "model": "catframe:item/bluey" }
+    }
+  }
+}

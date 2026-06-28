@@ -31,13 +31,13 @@ public class VanillaRenderDispatcher {
         int metadata = world.getBlockMetadata(x, y, z);
 
         // --- New path: check CatStateDefinition first (v0.3.0) ---
-        CatStateDefinition<?> stateDef = VanillaModelManager.blockStateDefinitions.get(block);
+        CatStateDefinition<?> stateDef = VanillaModelRegistry.blockStateDefinitions.get(block);
         if (stateDef != null && block instanceof IBlockStateProvider) {
             IBlockStateProvider sp = (IBlockStateProvider) block;
             CatBlockState catState = sp.getBlockState(world, x, y, z, metadata);
             if (catState != null) {
                 // Use CatBlockState.toVariantKey() for matching
-                BlockstateJson bs = VanillaModelManager.stateBlockData.get(block);
+                BlockstateJson bs = VMMDataLoader.stateBlockData.get(block);
                 if (bs != null) {
                     return renderStateWithCatBlockState(world, x, y, z, block, catState, bs);
                 }
@@ -45,16 +45,16 @@ public class VanillaRenderDispatcher {
         }
 
         // --- New path: check registered BlockStateModel first ---
-        BlockStateModel stateModel = VanillaModelManager.registeredBlockModels.get(block);
+        BlockStateModel stateModel = VanillaModelRegistry.registeredBlockModels.get(block);
         if (stateModel != null) {
             BlockStateModelPart part = stateModel.collectParts(world, x, y, z, metadata);
             if (part != null && !part.isEmpty()) {
                 // Compute rotation
                 int rot = 0;
-                if (VanillaModelManager.randomRotationBlocks.contains(block)) {
+                if (VanillaModelRegistry.randomRotationBlocks.contains(block)) {
                     rot = 90 * (Math.abs(x + y + z) % 4);
                 } else {
-                    Map<Integer, Integer> rotMap = VanillaModelManager.registeredBlockRotations.get(block);
+                    Map<Integer, Integer> rotMap = VanillaModelRegistry.registeredBlockRotations.get(block);
                     if (rotMap != null) {
                         Integer r = rotMap.get(metadata);
                         if (r == null) r = rotMap.get(0);
@@ -68,7 +68,7 @@ public class VanillaRenderDispatcher {
         }
 
         // Dynamic state-provider path: resolve variant at render time
-        if (block instanceof IBlockStateProvider && VanillaModelManager.stateBlockData.containsKey(block)) {
+        if (block instanceof IBlockStateProvider && VMMDataLoader.stateBlockData.containsKey(block)) {
             return renderStateProviderBlock(world, x, y, z, block, metadata);
         }
 
@@ -141,7 +141,7 @@ public class VanillaRenderDispatcher {
      */
     private static boolean renderStateProviderBlock(IBlockAccess world, int x, int y, int z, Block block, int metadata) {
         IBlockStateProvider provider = (IBlockStateProvider) block;
-        BlockstateJson bs = VanillaModelManager.stateBlockData.get(block);
+        BlockstateJson bs = VMMDataLoader.stateBlockData.get(block);
         if (bs == null) return false;
 
         Map<String, String> properties = provider.getStateProperties(world, x, y, z, metadata);

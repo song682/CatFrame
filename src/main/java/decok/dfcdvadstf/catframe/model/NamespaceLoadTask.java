@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.model;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 
@@ -21,6 +22,7 @@ public class NamespaceLoadTask {
 
     private static final Gson BLOCKSTATE_GSON = BlockstateJson.createGson();
     private static final Gson GSON = new Gson();
+    private static final Gson ITEM_STATE_GSON = ItemStateNode.createGson();
 
     /** minecraft namespace 的常见方块列表（从 VMMDataLoader 提取） */
     private static final String[] COMMON_MINECRAFT_BLOCKS = {
@@ -81,6 +83,7 @@ public class NamespaceLoadTask {
         Map<String, Map<Integer, Map<String, String>>> localMetadataMaps = new HashMap<>();
         Set<String> localBlockTextures = new LinkedHashSet<>();
         Set<String> localItemTextures = new LinkedHashSet<>();
+        Map<String, ItemStateNode> localItemStates = new HashMap<>();
 
         // 1. 加载 model_mappings.json
         localMappings = loadModelMappings(namespace, localBlockTextures, localItemTextures);
@@ -92,11 +95,14 @@ public class NamespaceLoadTask {
         // 3. 加载 metadata_map.json
         loadMetadataMaps(namespace, localMetadataMaps);
 
-        CatFrame.logger.debug("[NamespaceLoadTask] namespace '{}' loaded: {} blockstates, {} block textures, {} item textures",
-                namespace, localBlockstates.size(), localBlockTextures.size(), localItemTextures.size());
+        // 4. 加载 items/ ItemState 决策树
+        loadItemStates(namespace, localItemStates, localItemTextures, localMappings);
+
+        CatFrame.logger.debug("[NamespaceLoadTask] namespace '{}' loaded: {} blockstates, {} item states, {} block textures, {} item textures",
+                namespace, localBlockstates.size(), localItemStates.size(), localBlockTextures.size(), localItemTextures.size());
 
         return new NamespaceLoadResult(namespace, localBlockstates, localMappings,
-                localMetadataMaps, localBlockTextures, localItemTextures);
+                localMetadataMaps, localBlockTextures, localItemTextures, localItemStates);
     }
 
     // ==================== 内部加载方法（从 VMMDataLoader 提取，改为写本地集合） ====================
@@ -220,6 +226,84 @@ public class NamespaceLoadTask {
         } catch (Exception e) {
             CatFrame.logger.error("Error loading blockstate {}/{}: {}", namespace, blockName, e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * 加载 items/ 目录下的 ItemState 决策树 JSON。
+     * <p>
+     * 支持两种发现方式：
+     * <ol>
+     *   <li>{@code /assets/{ns}/items/_index.json} 索引文件（JSON 数组，列出所有物品名）</li>
+     *   <li>对于 minecraft namespace，从 model_mappings.json 的 items 字段推断</li>
+     * </ol>
+     *
+     * @param namespace    命名空间
+     * @param localItemStates  输出：itemName → 决策树根节点
+     * @param localItemTextures 输出：收集到的物品纹理
+     * @param mappings     model_mappings 数据（可为 null）
+     */
+    private static void loadItemStates(String namespace,
+                                        Map<String, ItemStateNode> localItemStates,
+                                        Set<String> localItemTextures,
+                                        VanillaModelManager.ModelMappings mappings) {
+        Set<String> itemNames = new LinkedHashSet<>();
+
+        // 1. 尝试加载 _index.json 索引文件
+        String indexPath = "/assets/" + namespace + "/items/_index.json";
+        try (InputStream stream = NamespaceLoadTask.class.getResourceAsStream(indexPath)) {
+            if (stream != null) {
+                InputStreamReader reader = new InputStreamReader(stream);
+                String[] names = GSON.fromJson(reader, String[].class);
+                if (names != null) {
+                    for (String name : names) {
+                        itemNames.add(name);
+                    }
+                }
+                CatFrame.logger.debug("Loaded items/_index.json for namespace: {} ({} items)",
+                        namespace, itemNames.size());
+            }
+        } catch (Exception e) {
+            CatFrame.logger.debug("No items/_index.json for namespace {}: {}", namespace, e.getMessage());
+        }
+
+        // 2. 对于 minecraft namespace，从 model_mappings 推断
+        if (namespace.equals("minecraft") && mappings != null && mappings.items != null) {
+            for (String key : mappings.items.keySet()) {
+                String itemName = key.contains(":") ? key.split(":")[0] : key;
+                itemNames.add(itemName);
+            }
+        }
+
+        // 3. 加载每个物品的 ItemState JSON
+        for (String itemName : itemNames) {
+            String path = "/assets/" + namespace + "/items/" + itemName + ".json";
+            try (InputStream stream = NamespaceLoadTask.class.getResourceAsStream(path)) {
+                if (stream == null) continue;
+                InputStreamReader reader = new InputStreamReader(stream);
+                JsonObject json = GSON.fromJson(reader, JsonObject.class);
+                if (json == null) continue;
+
+                ItemStateNode root = ItemStateNode.parseRoot(json);
+                if (root != null) {
+                    localItemStates.put(itemName, root);
+                    // 收集决策树中引用的所有模型纹理
+                    Set<String> modelPaths = new HashSet<>();
+                    root.collectModelPaths(modelPaths);
+                    for (String modelPath : modelPaths) {
+                        collectTexturesFromModel(modelPath, true, localItemTextures);
+                    }
+                    CatFrame.logger.debug("Loaded ItemState: {}/items/{}", namespace, itemName);
+                }
+            } catch (Exception e) {
+                CatFrame.logger.error("Error loading ItemState {}/items/{}: {}",
+                        namespace, itemName, e.getMessage());
+            }
+        }
+
+        if (!localItemStates.isEmpty()) {
+            CatFrame.logger.info("Loaded {} ItemState files for namespace: {}",
+                    localItemStates.size(), namespace);
         }
     }
 

@@ -53,7 +53,7 @@ public interface BlockStateModel {
 
     /**
      * 此模型是否完全覆盖方块的渲染。
-     * true=替换整个方块渲染, false=叠加层（与 RenderJsonBlock 的 autoOverlay 对应）。
+     * true=替换整个方块渲染, false=叠加层（与 autoOverlay 对应）。
      */
     default boolean isFullModel() {
         return true;

@@ -3,13 +3,11 @@ package decok.dfcdvadstf.catframe.model;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
-import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.item.Item;
-import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 import javax.annotation.Nullable;
@@ -18,66 +16,18 @@ import java.util.*;
 /**
  * Manages vanilla block/item model overrides using JSON model files.
  * <p>
- * Since the module split (E3), this class is a facade that holds all shared static fields
- * and provides backward-compatible inner class names. Actual logic has been extracted to:
+ * Since the module split (E3), this class is a <b>pure facade</b> — it holds no fields.
+ * All state has been moved to the respective owning classes:
  * <ul>
- *   <li>{@link VMMDataLoader} — namespace discovery, blockstate/mappings loading</li>
- *   <li>{@link VMMTextureTracker} — texture collection, stitch callbacks</li>
+ *   <li>{@link VMMDataLoader} — namespace discovery, blockstate/mappings loading, IItemState discovery</li>
+ *   <li>{@link VanillaTextureTracker} — texture collection, stitch callbacks</li>
+ *   <li>{@link VanillaModelRegistry} — model/blockstate registration API</li>
  *   <li>{@link VMMModelBaking} — baking pipeline, caches</li>
- *   <li>{@link VMMRegistry} — model registration API</li>
- *   <li>{@link VMMRenderDispatcher} — rendering dispatch</li>
+ *   <li>{@link VanillaRenderDispatcher} — rendering dispatch</li>
  * </ul>
  */
 @SideOnly(Side.CLIENT)
 public class VanillaModelManager {
-
-    // ==================== IBlockStateProvider Registry ====================
-
-    static final List<Block> registeredStateBlocks = new ArrayList<>();
-    /** Block -> loaded BlockstateJson */
-    static final Map<Block, BlockstateJson> stateBlockData = new HashMap<>();
-
-    // ==================== Metadata → Properties Mapper Registry ====================
-
-    static final Map<Block, IMetadataMapper> metadataMappers = new HashMap<>();
-
-    // ==================== Blockstate Redirect Registry ====================
-
-    /** Block -> per-meta blockstate redirect */
-    static final Map<Block, IMetadataBlockstateRedirect> blockstateRedirects = new HashMap<>();
-
-    // ==================== JsonBlock Transition Flags ====================
-
-    static final Set<Block> randomRotationBlocks = new HashSet<>();
-    static final Set<Block> autoOverlayBlocks = new HashSet<>();
-
-    // ==================== BlockStateModel / ItemModel Registry ====================
-
-    static final Map<Block, BlockStateModel> registeredBlockModels = new HashMap<>();
-    static final Map<Block, Map<Integer, Integer>> registeredBlockRotations = new HashMap<>();
-    static final Map<Item, ItemModel> registeredItemModels = new HashMap<>();
-    static final Set<Item> persistentItemModels = new HashSet<>();
-    static final Map<Item, IItemJsonModel> interfaceItemModels = new LinkedHashMap<>();
-    static final Set<Item> autoDiscoveryMissCache = new HashSet<>();
-
-    // ==================== CatStateDefinition Registry ====================
-
-    static final Map<Block, decok.dfcdvadstf.catframe.model.state.CatStateDefinition<?>> blockStateDefinitions = new HashMap<>();
-
-    // ==================== Texture Tracking ====================
-
-    static final Set<String> pendingTextures = new LinkedHashSet<>();
-    static final Set<String> pendingItemTextures = new LinkedHashSet<>();
-    static final Map<String, IIcon> textureIcons = new HashMap<>();
-
-    // ==================== Loaded Data ====================
-
-    static final Map<String, Map<String, BlockstateJson>> loadedBlockstates = new HashMap<>();
-    static final Map<String, ModelMappings> loadedMappings = new HashMap<>();
-    static final Map<String, Map<String, Map<Integer, Map<String, String>>>> loadedMetadataMaps = new HashMap<>();
-    static final List<String> namespaces = new ArrayList<>();
-
-    static boolean initialized = false;
 
     // ==================== Model Mappings Data Class ====================
 
@@ -133,12 +83,12 @@ public class VanillaModelManager {
         @Nullable
         public static IMetadataMapper findMetadataMapEntry(String namespace, String blockName) {
             Map<Integer, Map<String, String>> metaMap = null;
-            Map<String, Map<Integer, Map<String, String>>> nsData = loadedMetadataMaps.get(namespace);
+            Map<String, Map<Integer, Map<String, String>>> nsData = VMMDataLoader.loadedMetadataMaps.get(namespace);
             if (nsData != null) {
                 metaMap = nsData.get(blockName);
             }
             if (metaMap == null) {
-                for (Map.Entry<String, Map<String, Map<Integer, Map<String, String>>>> e : loadedMetadataMaps.entrySet()) {
+                for (Map.Entry<String, Map<String, Map<Integer, Map<String, String>>>> e : VMMDataLoader.loadedMetadataMaps.entrySet()) {
                     metaMap = e.getValue().get(blockName);
                     if (metaMap != null) break;
                 }

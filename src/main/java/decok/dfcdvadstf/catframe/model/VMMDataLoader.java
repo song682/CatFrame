@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -34,6 +35,20 @@ public class VMMDataLoader {
     /** Cache for redirect target blockstates loaded during init. */
     static final Map<String, BlockstateJson> cachedRedirectBlockstates = new HashMap<>();
 
+    // ==================== 共享注册表（从 VanillaModelManager 迁入） ====================
+
+    static boolean initialized = false;
+    static final List<String> namespaces = new ArrayList<>();
+    static final Map<String, Map<String, BlockstateJson>> loadedBlockstates = new HashMap<>();
+    static final Map<String, VanillaModelManager.ModelMappings> loadedMappings = new HashMap<>();
+    static final Map<String, Map<String, Map<Integer, Map<String, String>>>> loadedMetadataMaps = new HashMap<>();
+    static final List<Block> registeredStateBlocks = new ArrayList<>();
+    static final Map<Block, BlockstateJson> stateBlockData = new HashMap<>();
+    static final Map<Block, IMetadataMapper> metadataMappers = new HashMap<>();
+    static final Map<Block, IMetadataBlockstateRedirect> blockstateRedirects = new HashMap<>();
+    static final Map<Item, IItemState> interfaceItemStates = new LinkedHashMap<>();
+    static final Map<String, Map<String, ItemStateNode>> loadedItemStates = new HashMap<>();
+
     // ==================== 初始化 ====================
 
     /**
@@ -41,8 +56,8 @@ public class VMMDataLoader {
      * Scans all registered namespaces for blockstates and model_mappings.
      */
     public static void init() {
-        if (VanillaModelManager.initialized) return;
-        VanillaModelManager.initialized = true;
+        if (initialized) return;
+        initialized = true;
 
         // Always include minecraft namespace
         registerNamespace("minecraft");
@@ -57,56 +72,58 @@ public class VMMDataLoader {
         // ===== 主线程合并结果到共享字段 =====
         for (NamespaceLoadResult result : results) {
             if (result.mappings != null) {
-                VanillaModelManager.loadedMappings.put(result.namespace, result.mappings);
+                loadedMappings.put(result.namespace, result.mappings);
             }
-            VanillaModelManager.loadedBlockstates.put(result.namespace, result.blockstates);
+            loadedBlockstates.put(result.namespace, result.blockstates);
             if (!result.metadataMaps.isEmpty()) {
-                VanillaModelManager.loadedMetadataMaps.put(result.namespace, result.metadataMaps);
+                loadedMetadataMaps.put(result.namespace, result.metadataMaps);
+            }
+            if (!result.itemStates.isEmpty()) {
+                loadedItemStates.put(result.namespace, result.itemStates);
             }
             // 合并纹理收集结果
-            VanillaModelManager.pendingTextures.addAll(result.blockTextures);
-            VanillaModelManager.pendingItemTextures.addAll(result.itemTextures);
+            VanillaTextureTracker.pendingTextures.addAll(result.blockTextures);
+            VanillaTextureTracker.pendingItemTextures.addAll(result.itemTextures);
         }
         long t2 = System.nanoTime();
         CatFrame.logger.info("[VMM] namespace parallel load: {} namespaces in {:.1f}ms, merge in {:.1f}ms",
                 results.size(), (t1 - t0) / 1e6, (t2 - t1) / 1e6);
 
         // Load blockstates for all registered IBlockStateProvider blocks
-        for (Block block : VanillaModelManager.registeredStateBlocks) {
+        for (Block block : registeredStateBlocks) {
             loadStateProviderBlock(block);
         }
 
-        // Scan Item.itemRegistry for IItemJsonModel implementations (Tier 2 discovery)
+        // Scan Item.itemRegistry for IItemState implementations (Tier 3 discovery)
         for (Object obj : Item.itemRegistry) {
-            if (obj instanceof IItemJsonModel) {
-                IItemJsonModel ijm = (IItemJsonModel) obj;
-                if (!ijm.shouldHandle()) continue;  // explicitly opt out
+            if (obj instanceof IItemState) {
+                IItemState is = (IItemState) obj;
+                if (!is.shouldHandle()) continue;  // explicitly opt out
                 Item item = (Item) obj;
-                String modelPath = ijm.getModelPath();
-                if (modelPath != null) {
-                    // Auto-collect textures for this model
-                    VanillaTextureTracker.collectTexturesFromModel(modelPath, true);
-                    // For ModernItem dual-models, also collect hand model textures
-                    if (obj instanceof ModernItem) {
-                        ModernItem mi = (ModernItem) obj;
+                // 纹理收集：ModernItem 提供 getModelPath() / getHandModelPath()
+                if (obj instanceof ModernItem) {
+                    ModernItem mi = (ModernItem) obj;
+                    String modelPath = mi.getModelPath();
+                    if (modelPath != null) {
+                        VanillaTextureTracker.collectTexturesFromModel(modelPath, true);
                         if (mi.hasDualModels()) {
                             VanillaTextureTracker.collectTexturesFromModel(mi.getHandModelPath(), true);
                         }
                     }
-                    VanillaModelManager.interfaceItemModels.put(item, ijm);
-                    CatFrame.logger.debug("[VMM] IItemJsonModel discovered: {} -> {}",
-                            Item.itemRegistry.getNameForObject(item), modelPath);
                 }
+                interfaceItemStates.put(item, is);
+                CatFrame.logger.debug("[VMM] IItemState discovered: {}",
+                        Item.itemRegistry.getNameForObject(item));
             }
         }
-        if (!VanillaModelManager.interfaceItemModels.isEmpty()) {
-            CatFrame.logger.info("VanillaModelManager: Discovered {} IItemJsonModel items",
-                    VanillaModelManager.interfaceItemModels.size());
+        if (!interfaceItemStates.isEmpty()) {
+            CatFrame.logger.info("VanillaModelManager: Discovered {} IItemState items",
+                    interfaceItemStates.size());
         }
 
         // Pre-load redirect target blockstates so their textures are collected into pendingTextures
         // BEFORE TextureStitchEvent.Pre (which registers them in the atlas)
-        for (Map.Entry<Block, IMetadataBlockstateRedirect> entry : VanillaModelManager.blockstateRedirects.entrySet()) {
+        for (Map.Entry<Block, IMetadataBlockstateRedirect> entry : blockstateRedirects.entrySet()) {
             Block block = entry.getKey();
             IMetadataBlockstateRedirect redirect = entry.getValue();
             String blockId = Block.blockRegistry.getNameForObject(block);
@@ -125,8 +142,8 @@ public class VMMDataLoader {
         }
 
         CatFrame.logger.info("VanillaModelManager: Loaded {} namespaces, {} state-blocks, {} block-textures pending, {} item-textures pending",
-                VanillaModelManager.namespaces.size(), VanillaModelManager.registeredStateBlocks.size(),
-                VanillaModelManager.pendingTextures.size(), VanillaModelManager.pendingItemTextures.size());
+                namespaces.size(), registeredStateBlocks.size(),
+                VanillaTextureTracker.pendingTextures.size(), VanillaTextureTracker.pendingItemTextures.size());
     }
 
     /**
@@ -134,8 +151,8 @@ public class VMMDataLoader {
      * Other mods should call this in preInit to participate.
      */
     public static void registerNamespace(String namespace) {
-        if (!VanillaModelManager.namespaces.contains(namespace)) {
-            VanillaModelManager.namespaces.add(namespace);
+        if (!namespaces.contains(namespace)) {
+            namespaces.add(namespace);
             ModelResolver.registerNamespace(namespace);
         }
     }
@@ -148,12 +165,12 @@ public class VMMDataLoader {
         if (!(block instanceof IBlockStateProvider)) {
             throw new IllegalArgumentException("Block must implement IBlockStateProvider: " + block.getClass().getName());
         }
-        if (!VanillaModelManager.registeredStateBlocks.contains(block)) {
-            VanillaModelManager.registeredStateBlocks.add(block);
+        if (!registeredStateBlocks.contains(block)) {
+            registeredStateBlocks.add(block);
             String ns = ((IBlockStateProvider) block).getBlockstateNamespace();
             registerNamespace(ns);
 
-            if (VanillaModelManager.initialized) {
+            if (initialized) {
                 loadStateProviderBlock(block);
             }
         }
@@ -167,8 +184,8 @@ public class VMMDataLoader {
             CatFrame.logger.warn("VanillaModelManager: registerMetadataMapping called with null mapper for {}", block);
             return;
         }
-        if (!VanillaModelManager.metadataMappers.containsKey(block)) {
-            VanillaModelManager.metadataMappers.put(block, mapper);
+        if (!metadataMappers.containsKey(block)) {
+            metadataMappers.put(block, mapper);
             CatFrame.logger.debug("VanillaModelManager: registered metadata mapper for {}", block);
         }
     }
@@ -182,8 +199,8 @@ public class VMMDataLoader {
             CatFrame.logger.warn("VanillaModelManager: registerBlockstateRedirect called with null redirect for {}", block);
             return;
         }
-        if (!VanillaModelManager.blockstateRedirects.containsKey(block)) {
-            VanillaModelManager.blockstateRedirects.put(block, redirect);
+        if (!blockstateRedirects.containsKey(block)) {
+            blockstateRedirects.put(block, redirect);
             CatFrame.logger.debug("VanillaModelManager: registered blockstate redirect for {}", block);
         }
     }
@@ -199,13 +216,13 @@ public class VMMDataLoader {
      * @return 所有 namespace 的加载结果列表
      */
     private static List<NamespaceLoadResult> loadNamespacesParallel() {
-        List<String> namespaces = new ArrayList<>(VanillaModelManager.namespaces);
-        if (namespaces.isEmpty()) return new ArrayList<>();
+        List<String> nsList = new ArrayList<>(VMMDataLoader.namespaces);
+        if (nsList.isEmpty()) return new ArrayList<>();
 
         // 单 namespace 时直接同步执行，避免 Future 开销
-        if (namespaces.size() == 1) {
+        if (nsList.size() == 1) {
             List<NamespaceLoadResult> results = new ArrayList<>();
-            results.add(NamespaceLoadTask.execute(namespaces.get(0)));
+            results.add(NamespaceLoadTask.execute(nsList.get(0)));
             return results;
         }
 
@@ -238,6 +255,19 @@ public class VMMDataLoader {
         return results;
     }
 
+    /**
+     * Get the loaded blockstate data for a block.
+     * <p>
+     * Public accessor for cross-package access (e.g. by
+     * {@link decok.dfcdvadstf.catframe.model.render.BlockStateISBRH}).
+     *
+     * @param block the block instance
+     * @return the loaded BlockstateJson, or null if not found
+     */
+    public static BlockstateJson getBlockstateData(Block block) {
+        return stateBlockData.get(block);
+    }
+
     // ==================== 内部加载方法 ====================
 
     /**
@@ -250,7 +280,7 @@ public class VMMDataLoader {
 
         BlockstateJson bs = loadSingleBlockstate(namespace, name);
         if (bs != null) {
-            VanillaModelManager.stateBlockData.put(block, bs);
+            stateBlockData.put(block, bs);
             CatFrame.logger.info("Loaded blockstate for state-block: {}:{}", namespace, name);
         } else {
             CatFrame.logger.warn("Failed to load blockstate for state-block: {}:{}", namespace, name);
@@ -262,7 +292,7 @@ public class VMMDataLoader {
      */
     static BlockstateJson loadSingleBlockstate(String namespace, String blockName) {
         String path = "/assets/" + namespace + "/blockstates/" + blockName + ".json";
-        try (InputStream stream = VanillaModelManager.class.getResourceAsStream(path)) {
+        try (InputStream stream = VMMDataLoader.class.getResourceAsStream(path)) {
             if (stream == null) return null;
             InputStreamReader reader = new InputStreamReader(stream);
             BlockstateJson bs = blockstateGson.fromJson(reader, BlockstateJson.class);

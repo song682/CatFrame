@@ -39,7 +39,7 @@ import java.util.Map;
  * ModernItem is a plain {@link Item} subclass — it works transparently
  * with {@link VanillaModelManager} and the existing JSON model pipeline.
  */
-public class ModernItem extends Item implements IItemJsonModel {
+public class ModernItem extends Item implements IItemState {
 
     /**
      * Icons for each render layer, populated during {@link #registerIcons}.
@@ -207,17 +207,16 @@ public class ModernItem extends Item implements IItemJsonModel {
         return inventoryModelPath != null && handModelPath != null;
     }
 
-    // ==================== IItemJsonModel ====================
+    // ==================== IItemState ====================
 
     /**
-     * IItemJsonModel: 返回 inventory（2D GUI）模型路径。
+     * IItemState: 返回 inventory（2D GUI）模型路径。
      * <p>
      * DataLoading.init() 扫描时自动收集此路径的纹理。
      * 如果是双模型（{@link #hasDualModels()}），hand 模型路径也会被额外收集。
      *
      * @return inventory 模型路径，如果未设置则返回 null
      */
-    @Override
     public String getModelPath() {
         return inventoryModelPath;
     }

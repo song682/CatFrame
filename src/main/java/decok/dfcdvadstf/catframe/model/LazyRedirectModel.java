@@ -85,7 +85,7 @@ public class LazyRedirectModel implements BlockStateModel {
 
     private BlockstateJson findTargetBlockstate(String targetName) {
         // 先查 loadedBlockstates
-        Map<String, BlockstateJson> nsMap = VanillaModelManager.loadedBlockstates.get(namespace);
+        Map<String, BlockstateJson> nsMap = VMMDataLoader.loadedBlockstates.get(namespace);
         BlockstateJson targetBs = (nsMap != null) ? nsMap.get(targetName) : null;
         if (targetBs != null) return targetBs;
 
@@ -95,7 +95,7 @@ public class LazyRedirectModel implements BlockStateModel {
             // 缓存到 loadedBlockstates 供后续使用
             if (nsMap == null) {
                 nsMap = new java.util.HashMap<>();
-                VanillaModelManager.loadedBlockstates.put(namespace, nsMap);
+                VMMDataLoader.loadedBlockstates.put(namespace, nsMap);
             }
             nsMap.put(targetName, targetBs);
         }

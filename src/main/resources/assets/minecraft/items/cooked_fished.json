@@ -1,0 +1,11 @@
+{
+  "model": {
+    "type": "minecraft:exact_match",
+    "property": "minecraft:damage",
+    "fallback": { "type": "minecraft:model", "model": "minecraft:item/cooked_fished" },
+    "cases": {
+      "0": { "type": "minecraft:model", "model": "minecraft:item/cooked_fished" },
+      "1": { "type": "minecraft:model", "model": "minecraft:item/fish_salmon_cooked" }
+    }
+  }
+}

@@ -12,7 +12,9 @@ import net.minecraft.item.Item;
 import net.minecraftforge.client.MinecraftForgeClient;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Model registration API extracted from {@link VanillaModelManager}.
@@ -23,6 +25,17 @@ import java.util.Map;
  */
 @SideOnly(Side.CLIENT)
 public class VanillaModelRegistry {
+
+    // ==================== 注册表 ====================
+
+    static final Map<Block, BlockStateModel> registeredBlockModels = new HashMap<>();
+    static final Map<Block, Map<Integer, Integer>> registeredBlockRotations = new HashMap<>();
+    static final Map<Item, ItemModel> registeredItemModels = new HashMap<>();
+    static final Set<Item> persistentItemModels = new HashSet<>();
+    static final Set<Item> autoDiscoveryMissCache = new HashSet<>();
+    static final Set<Block> randomRotationBlocks = new HashSet<>();
+    static final Set<Block> autoOverlayBlocks = new HashSet<>();
+    static final Map<Block, CatStateDefinition<?>> blockStateDefinitions = new HashMap<>();
 
     /**
      * Public API: bake a model path into a BlockStateModelPart (with cache).
@@ -55,38 +68,36 @@ public class VanillaModelRegistry {
      * Register a BlockStateModel for a block. Overrides any previously registered model.
      */
     public static void registerBlockModel(Block block, BlockStateModel model) {
-        VanillaModelManager.registeredBlockModels.put(block, model);
+        registeredBlockModels.put(block, model);
     }
 
     /**
      * Get the registered BlockStateModel for a block, or null if not registered.
      */
     public static BlockStateModel getBlockModel(Block block) {
-        return VanillaModelManager.registeredBlockModels.get(block);
+        return registeredBlockModels.get(block);
     }
 
     /**
      * Register a rotation for a block/metadata combination.
      */
     public static void registerBlockRotation(Block block, int metadata, int rotationDeg) {
-        VanillaModelManager.registeredBlockRotations.computeIfAbsent(block, k -> new HashMap<>())
+        registeredBlockRotations.computeIfAbsent(block, k -> new HashMap<>())
                 .put(metadata, rotationDeg);
     }
 
     /**
      * Mark a block as using random Y rotation based on position.
-     * (Transition support for JsonBlock blocks.)
      */
     public static void markRandomRotation(Block block) {
-        VanillaModelManager.randomRotationBlocks.add(block);
+        randomRotationBlocks.add(block);
     }
 
     /**
      * Mark a block as using auto-overlay (metadata-indexed model list).
-     * (Transition support for JsonBlock blocks.)
      */
     public static void markAutoOverlay(Block block) {
-        VanillaModelManager.autoOverlayBlocks.add(block);
+        autoOverlayBlocks.add(block);
     }
 
     /**
@@ -98,10 +109,10 @@ public class VanillaModelRegistry {
      * ItemModelWrappers from {@code model_mappings.json}.
      */
     public static void registerItemModel(Item item, ItemModel model) {
-        VanillaModelManager.registeredItemModels.put(item, model);
-        VanillaModelManager.persistentItemModels.add(item);
+        registeredItemModels.put(item, model);
+        persistentItemModels.add(item);
         // 如果烘焙已完成，立即注册 Forge IItemRenderer
-        if (VanillaModelManager.initialized) {
+        if (VMMDataLoader.initialized) {
             MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
         }
     }
@@ -117,14 +128,14 @@ public class VanillaModelRegistry {
      */
     public static ItemModel getRegisteredItemModel(Item item) {
         if (item == null) return null;
-        ItemModel itemModel = VanillaModelManager.registeredItemModels.get(item);
+        ItemModel itemModel = registeredItemModels.get(item);
         if (itemModel != null) return itemModel;
 
         // GTNHLib-style: ItemBlock without dedicated item model → use block model
         if (item instanceof net.minecraft.item.ItemBlock) {
             Block block = Block.getBlockFromItem(item);
             if (block != null) {
-                BlockStateModel blockModel = VanillaModelManager.registeredBlockModels.get(block);
+                BlockStateModel blockModel = registeredBlockModels.get(block);
                 if (blockModel != null) {
                     return new ItemModelWrapper(blockModel);
                 }
@@ -143,11 +154,11 @@ public class VanillaModelRegistry {
      * 日志会警告用户应预先注册纹理。
      */
     private static ItemModel autoDiscoverItemModel(Item item) {
-        if (VanillaModelManager.autoDiscoveryMissCache.contains(item)) return null;
+        if (autoDiscoveryMissCache.contains(item)) return null;
 
         String registryName = Item.itemRegistry.getNameForObject(item);
         if (registryName == null) {
-            VanillaModelManager.autoDiscoveryMissCache.add(item);
+            autoDiscoveryMissCache.add(item);
             return null;
         }
 
@@ -159,7 +170,7 @@ public class VanillaModelRegistry {
 
         ModelJson resolved = ModelResolver.resolve(modelPath);
         if (resolved == null) {
-            VanillaModelManager.autoDiscoveryMissCache.add(item);
+            autoDiscoveryMissCache.add(item);
             return null;
         }
 
@@ -173,9 +184,9 @@ public class VanillaModelRegistry {
         Map<String, ModelJson.DisplayTransform> display = resolved.display;
         LazyItemModel wrapper = new LazyItemModel(modelPath, display);
 
-        VanillaModelManager.registeredItemModels.put(item, wrapper);
+        registeredItemModels.put(item, wrapper);
         // 注册 Forge IItemRenderer（已初始化阶段）
-        if (VanillaModelManager.initialized) {
+        if (VMMDataLoader.initialized) {
             net.minecraftforge.client.MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
         }
         return wrapper;
@@ -185,15 +196,15 @@ public class VanillaModelRegistry {
      * Check if a block has a JSON model override (either registered model or dynamic state-provider)
      */
     public static boolean hasModel(Block block) {
-        return VanillaModelManager.registeredBlockModels.containsKey(block)
-                || VanillaModelManager.stateBlockData.containsKey(block);
+        return registeredBlockModels.containsKey(block)
+                || VMMDataLoader.stateBlockData.containsKey(block);
     }
 
     /**
      * Check if an item has a JSON model override
      */
     public static boolean hasItemModel(Item item) {
-        return VanillaModelManager.registeredItemModels.containsKey(item);
+        return registeredItemModels.containsKey(item);
     }
 
     // ==================== CatStateDefinition API (v0.3.0) ====================
@@ -206,20 +217,20 @@ public class VanillaModelRegistry {
      * @param def   the CatStateDefinition defining typed properties
      */
     public static void registerStateDefinition(Block block, CatStateDefinition<?> def) {
-        VanillaModelManager.blockStateDefinitions.put(block, def);
+        blockStateDefinitions.put(block, def);
     }
 
     /**
      * Check if a block has a registered CatStateDefinition.
      */
     public static boolean hasStateDefinition(Block block) {
-        return VanillaModelManager.blockStateDefinitions.containsKey(block);
+        return blockStateDefinitions.containsKey(block);
     }
 
     /**
      * Get the registered CatStateDefinition for a block, or null.
      */
     public static CatStateDefinition<?> getStateDefinition(Block block) {
-        return VanillaModelManager.blockStateDefinitions.get(block);
+        return blockStateDefinitions.get(block);
     }
 }

@@ -4,6 +4,7 @@ import akka.actor.*;
 import akka.routing.*;
 import scala.concurrent.duration.Duration;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.ModernItem;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 
@@ -163,14 +164,14 @@ public class AsyncBakePipeline {
             Set<String> paths = new LinkedHashSet<>();
 
             // 从 blockstates 收集
-            for (Map<String, BlockstateJson> nsMap : VanillaModelManager.loadedBlockstates.values()) {
+            for (Map<String, BlockstateJson> nsMap : VMMDataLoader.loadedBlockstates.values()) {
                 for (BlockstateJson bs : nsMap.values()) {
                     collectPathsFromBlockstate(bs, paths);
                 }
             }
 
             // 从 model_mappings 收集
-            for (VanillaModelManager.ModelMappings mappings : VanillaModelManager.loadedMappings.values()) {
+            for (VanillaModelManager.ModelMappings mappings : VMMDataLoader.loadedMappings.values()) {
                 if (mappings.blocks != null) {
                     paths.addAll(mappings.blocks.values());
                 }
@@ -179,11 +180,24 @@ public class AsyncBakePipeline {
                 }
             }
 
-            // 从 IItemJsonModel 收集
-            for (Object ijm : VanillaModelManager.interfaceItemModels.values()) {
-                String modelPath = ((IItemJsonModel) ijm).getModelPath();
-                if (modelPath != null) {
-                    paths.add(modelPath);
+            // 从 ItemState 决策树收集所有引用的模型路径
+            for (Map<String, ItemStateNode> nsItemStates : VMMDataLoader.loadedItemStates.values()) {
+                for (ItemStateNode root : nsItemStates.values()) {
+                    root.collectModelPaths(paths);
+                }
+            }
+
+            // 从 IItemState 的 ModernItem 收集（双模型物品的 hand 模型等）
+            for (Object obj : VMMDataLoader.interfaceItemStates.keySet()) {
+                if (obj instanceof ModernItem) {
+                    ModernItem mi = (ModernItem) obj;
+                    String modelPath = mi.getModelPath();
+                    if (modelPath != null) {
+                        paths.add(modelPath);
+                    }
+                    if (mi.hasDualModels()) {
+                        paths.add(mi.getHandModelPath());
+                    }
                 }
             }
 

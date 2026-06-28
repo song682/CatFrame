@@ -5,7 +5,6 @@ import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.util.IIcon;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -17,17 +16,13 @@ import java.util.Map;
  * <h3>职责</h3>
  * <ul>
  *   <li>提供三种粒度的烘焙入口（路径/已解析JSON/UnbakedModel）</li>
- *   <li>维护烘焙缓存（{@code modelPath@rotX@rotY → BlockStateModelPart}）</li>
  *   <li>在 {@link TextureSlots#fromModel} 和 {@link ModelJsonUnbakedAdapter#bake} 之间协调</li>
  * </ul>
  *
- * <p>VMM 的 {@code ModelBaking.bakeModel()} 将委托给此类，
- * 实现模型加载逻辑与 VMM 的解耦。
+ * <p>缓存职责已由 {@link BakedModelCache} 承担（StampedLock + LRU 懒烘焙）。
+ * 本类不再维护内部缓存，仅作为烘焙管线门面。
  */
 public class ModelBaker {
-
-    /** 烘焙缓存：key = "modelPath@rotX@rotY" */
-    private static final Map<String, BlockStateModelPart> bakeCache = new HashMap<>();
 
     /** 全局纹理池（由 VMM 在初始化时设置，来自 VMM.textureIcons） */
     @Nullable
@@ -72,9 +67,11 @@ public class ModelBaker {
     }
 
     /**
-     * 从模型路径烘焙为 {@link BlockStateModelPart}（带缓存）。
+     * 从模型路径烘焙为 {@link BlockStateModelPart}。
      * <p>
      * 完整管线：{@code modelPath → ModelResolver.resolve() → ModelJsonUnbakedAdapter → TextureSlots → bake()}
+     * <p>
+     * 注意：本方法不维护缓存。缓存由 {@link BakedModelCache} 统一管理。
      *
      * @param modelPath 模型路径（如 {@code "block/stone"}、{@code "builtin/generated"}）
      * @param rotationX X 轴旋转角度（0/90/180/270）
@@ -85,13 +82,6 @@ public class ModelBaker {
     public static BlockStateModelPart bake(String modelPath, int rotationX, int rotationY) {
         if (modelPath == null) return null;
 
-        String cacheKey = modelPath + "@" + rotationX + "@" + rotationY;
-        BlockStateModelPart cached = bakeCache.get(cacheKey);
-        if (cached != null) {
-            CatFrame.logger.debug("[ModelBaker] cache HIT: {}", cacheKey);
-            return cached;
-        }
-
         // 1. 解析 JSON
         ModelJson resolved = ModelResolver.resolve(modelPath);
         if (resolved == null) {
@@ -100,13 +90,7 @@ public class ModelBaker {
         }
 
         // 2. 委托给已解析的重载
-        BlockStateModelPart part = bake(resolved, rotationX, rotationY, modelPath);
-        if (part != null) {
-            bakeCache.put(cacheKey, part);
-            CatFrame.logger.debug("[ModelBaker] cache MISS: {} | quads={}", cacheKey,
-                    part.isEmpty() ? 0 : part.getAllQuads().size());
-        }
-        return part;
+        return bake(resolved, rotationX, rotationY, modelPath);
     }
 
     /**
@@ -170,17 +154,11 @@ public class ModelBaker {
     // ==================== 缓存管理 ====================
 
     /**
-     * 清除所有烘焙缓存。在资源重载时调用。
+     * 清除烘焙缓存。
+     * @deprecated 缓存已由 {@link BakedModelCache} 统一管理，本方法为 no-op。
      */
+    @Deprecated
     public static void clearCache() {
-        bakeCache.clear();
-        CatFrame.logger.info("[ModelBaker] bake cache cleared");
-    }
-
-    /**
-     * 获取缓存条目数。
-     */
-    public static int getCacheSize() {
-        return bakeCache.size();
+        // No-op: 缓存已由 BakedModelCache 统一管理
     }
 }

@@ -2,7 +2,6 @@ package decok.dfcdvadstf.catframe.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
@@ -32,13 +31,6 @@ import java.util.*;
 @SideOnly(Side.CLIENT)
 public class VanillaModelManager {
 
-    // ==================== Block Models ====================
-
-    /** Block -> metadata -> list of baked quads */
-    static final Map<Block, Map<Integer, List<BakedQuad>>> bakedBlockModels = new HashMap<>();
-    /** Block -> metadata -> Y rotation degrees */
-    static final Map<Block, Map<Integer, Integer>> blockRotations = new HashMap<>();
-
     // ==================== IBlockStateProvider Registry ====================
 
     static final List<Block> registeredStateBlocks = new ArrayList<>();
@@ -53,16 +45,6 @@ public class VanillaModelManager {
 
     /** Block -> per-meta blockstate redirect */
     static final Map<Block, IMetadataBlockstateRedirect> blockstateRedirects = new HashMap<>();
-
-    // ==================== Model Bake Cache ====================
-
-    /** Cache key "modelPath@rotX@rotY" -> baked quads */
-    static final Map<String, List<BakedQuad>> bakedModelCache = new HashMap<>();
-
-    // ==================== Item Models ====================
-
-    /** Item -> damage -> list of baked quads */
-    static final Map<Item, Map<Integer, List<BakedQuad>>> bakedItemModels = new HashMap<>();
 
     // ==================== JsonBlock Transition Flags ====================
 

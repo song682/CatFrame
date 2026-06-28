@@ -224,6 +224,7 @@ public class CyclingButton<T> extends AbstractButton {
         }
 
         @SafeVarargs
+        @SuppressWarnings("varargs")
         public final Builder<T> values(T... values) {
             return this.values(Arrays.asList(values));
         }

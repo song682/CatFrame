@@ -60,13 +60,7 @@ public class VanillaRenderDispatcher {
                         if (r == null) r = rotMap.get(0);
                         if (r != null) rot = r;
                     }
-                    // Also check old rotation map for transition
-                    Map<Integer, Integer> oldRotMap = VanillaModelManager.blockRotations.get(block);
-                    if (oldRotMap != null) {
-                        Integer r = oldRotMap.get(metadata);
-                        if (r == null) r = oldRotMap.get(0);
-                        if (r != null) rot = r;
-                    }
+
                 }
                 UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, rot);
                 return true;
@@ -78,30 +72,7 @@ public class VanillaRenderDispatcher {
             return renderStateProviderBlock(world, x, y, z, block, metadata);
         }
 
-        // Static baked path: use pre-baked metadata-keyed models
-        Map<Integer, List<BakedQuad>> metaMap = VanillaModelManager.bakedBlockModels.get(block);
-        if (metaMap == null) return false;
-
-        List<BakedQuad> quads = metaMap.get(metadata);
-        if (quads == null) {
-            // Fallback to meta 0
-            quads = metaMap.get(0);
-        }
-        if (quads == null || quads.isEmpty()) return false;
-
-        // Get rotation
-        Map<Integer, Integer> rotMap = VanillaModelManager.blockRotations.get(block);
-        int rotationDeg = 0;
-        if (rotMap != null) {
-            Integer rot = rotMap.get(metadata);
-            if (rot == null) rot = rotMap.get(0);
-            if (rot != null) rotationDeg = rot;
-        }
-
-        // Route through the new pipeline via UniformRenderPipeline
-        BlockStateModelPart part = BlockStateModelPart.fromQuads(quads);
-        UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, rotationDeg);
-        return true;
+        return false;
     }
 
     /**
@@ -248,24 +219,11 @@ public class VanillaRenderDispatcher {
         Item item = stack.getItem();
         if (item == null) return;
 
-        // --- New path: check registered ItemModel (GTNHLib-style: ItemBlock falls back to block model) ---
+        // --- Check registered ItemModel (GTNHLib-style: ItemBlock falls back to block model) ---
         ItemModel itemModel = VanillaModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             itemModel.render(stack, RenderPhase.ITEM_GUI);
-            return;
         }
-
-        // --- Fallback to old baked path ---
-        Map<Integer, List<BakedQuad>> damageMap = VanillaModelManager.bakedItemModels.get(item);
-        if (damageMap == null) return;
-
-        int damage = stack.getItemDamage();
-        List<BakedQuad> quads = damageMap.get(damage);
-        if (quads == null) quads = damageMap.get(0);
-        if (quads == null || quads.isEmpty()) return;
-
-        BlockStateModelPart part = BlockStateModelPart.fromQuads(quads);
-        UniformRenderPipeline.renderItemQuads(part, stack, RenderPhase.ITEM_GUI);
     }
 
     /**
@@ -295,24 +253,11 @@ public class VanillaRenderDispatcher {
                 ? RenderPhase.ITEM_HAND_FIRST_PERSON
                 : RenderPhase.ITEM_HAND_THIRD_PERSON;
 
-        // --- New path: check registered ItemModel (GTNHLib-style: ItemBlock falls back to block model) ---
+        // --- Check registered ItemModel (GTNHLib-style: ItemBlock falls back to block model) ---
         ItemModel itemModel = VanillaModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             itemModel.render(stack, phase);
-            return;
         }
-
-        // --- Fallback to old baked path ---
-        Map<Integer, List<BakedQuad>> damageMap = VanillaModelManager.bakedItemModels.get(item);
-        if (damageMap == null) return;
-
-        int damage = stack.getItemDamage();
-        List<BakedQuad> quads = damageMap.get(damage);
-        if (quads == null) quads = damageMap.get(0);
-        if (quads == null || quads.isEmpty()) return;
-
-        BlockStateModelPart part = BlockStateModelPart.fromQuads(quads);
-        UniformRenderPipeline.renderItemQuads(part, stack, phase);
     }
 
     /**
@@ -346,25 +291,11 @@ public class VanillaRenderDispatcher {
                 ? RenderPhase.DROPPED_BLOCK_GROUND
                 : RenderPhase.DROPPED_ITEM_GROUND;
 
-        // --- New path: check registered ItemModel ---
+        // --- Check registered ItemModel ---
         ItemModel itemModel = VanillaModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             itemModel.render(stack, phase);
-            return;
         }
-
-        // --- Fallback to old baked path ---
-        Map<Integer, List<BakedQuad>> damageMap = VanillaModelManager.bakedItemModels.get(item);
-        if (damageMap == null) return;
-
-        int damage = stack.getItemDamage();
-        List<BakedQuad> quads = damageMap.get(damage);
-        if (quads == null) quads = damageMap.get(0);
-        if (quads == null || quads.isEmpty()) return;
-
-        BlockStateModelPart part = BlockStateModelPart.fromQuads(quads);
-        UniformRenderPipeline.renderItemQuads(part, stack, phase,
-                null, 0, 0, 0, null, null);
     }
 
     /**
@@ -386,24 +317,10 @@ public class VanillaRenderDispatcher {
 
         RenderPhase phase = RenderPhase.DROPPED_BLOCK_GROUND;
 
-        // --- New path ---
+        // --- Check registered ItemModel ---
         ItemModel itemModel = VanillaModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             itemModel.render(stack, phase);
-            return;
         }
-
-        // --- Fallback to old baked path ---
-        Map<Integer, List<BakedQuad>> damageMap = VanillaModelManager.bakedItemModels.get(item);
-        if (damageMap == null) return;
-
-        int damage = stack.getItemDamage();
-        List<BakedQuad> quads = damageMap.get(damage);
-        if (quads == null) quads = damageMap.get(0);
-        if (quads == null || quads.isEmpty()) return;
-
-        BlockStateModelPart part = BlockStateModelPart.fromQuads(quads);
-        UniformRenderPipeline.renderItemQuads(part, stack, phase,
-                world, x, y, z, block, null);
     }
 }

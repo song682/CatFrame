@@ -50,6 +50,14 @@ public final class CatFrameRecipeManager {
         // 工具类，禁止实例化
     }
     
+    /**
+     * 获取原版合成配方列表（包装为泛型列表以消除 unchecked 警告）。
+     */
+    @SuppressWarnings("unchecked")
+    private static List<IRecipe> getCraftingRecipeList() {
+        return CraftingManager.getInstance().getRecipeList();
+    }
+    
     // ==================== 添加有序配方 ====================
     
     /**
@@ -61,7 +69,7 @@ public final class CatFrameRecipeManager {
      */
     public static IRecipe addShaped(ItemStack result, Object... recipe) {
         ShapedTagRecipe shapedRecipe = new ShapedTagRecipe(result, recipe);
-        CraftingManager.getInstance().getRecipeList().add(shapedRecipe);
+        getCraftingRecipeList().add(shapedRecipe);
         LOGGER.info("Added shaped recipe for {}", result);
         return shapedRecipe;
     }
@@ -91,7 +99,7 @@ public final class CatFrameRecipeManager {
      */
     public static IRecipe addShapeless(ItemStack result, Object... recipe) {
         ShapelessTagRecipe shapelessRecipe = new ShapelessTagRecipe(result, recipe);
-        CraftingManager.getInstance().getRecipeList().add(shapelessRecipe);
+        getCraftingRecipeList().add(shapelessRecipe);
         LOGGER.info("Added shapeless recipe for {}", result);
         return shapelessRecipe;
     }
@@ -199,7 +207,7 @@ public final class CatFrameRecipeManager {
      * @return 删除的配方数量
      */
     public static int removeRecipes(RecipePredicate condition) {
-        List<IRecipe> recipes = CraftingManager.getInstance().getRecipeList();
+        List<IRecipe> recipes = getCraftingRecipeList();
         Iterator<IRecipe> iterator = recipes.iterator();
         int removed = 0;
         
@@ -224,7 +232,7 @@ public final class CatFrameRecipeManager {
      * @return 删除的配方数量
      */
     public static int removeAllRecipes() {
-        List<IRecipe> recipes = CraftingManager.getInstance().getRecipeList();
+        List<IRecipe> recipes = getCraftingRecipeList();
         int count = recipes.size();
         recipes.clear();
         LOGGER.info("Removed all {} crafting recipes", count);
@@ -308,14 +316,14 @@ public final class CatFrameRecipeManager {
      * 获取所有合成配方列表
      */
     public static List<IRecipe> getAllRecipes() {
-        return CraftingManager.getInstance().getRecipeList();
+        return getCraftingRecipeList();
     }
     
     /**
      * 统计合成配方数量
      */
     public static int getRecipeCount() {
-        return CraftingManager.getInstance().getRecipeList().size();
+        return getCraftingRecipeList().size();
     }
     
     /**

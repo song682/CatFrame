@@ -68,6 +68,7 @@ public final class EnumProperty<T extends Enum<T>> extends Property<T> {
      * @return 新的 EnumProperty 实例
      */
     @SafeVarargs
+    @SuppressWarnings("varargs")
     public static <T extends Enum<T>> EnumProperty<T> create(String name, Class<T> clazz, T... filter) {
         return new EnumProperty<>(name, clazz, Collections.unmodifiableList(Arrays.asList(filter)));
     }

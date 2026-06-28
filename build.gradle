@@ -213,7 +213,7 @@ sourceCompatibility = targetCompatibility = "1.8"
 
 tasks.withType(Jar).configureEach {
     compileJava.options.encoding = 'UTF-8'
-    compileJava.options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:all"
+    compileJava.options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:all" << "-Xlint:-processing"
 }
 
 
@@ -221,7 +221,7 @@ allprojects {
     gradle.projectsEvaluated {
         tasks.withType(JavaCompile).tap {
             configureEach {
-                options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:all"
+                options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:all" << "-Xlint:-processing"
             }
         }
     }

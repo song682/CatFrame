@@ -21,7 +21,7 @@ import java.nio.FloatBuffer;
  * <ul>
  *   <li><b>Block 和 ItemBlock 共用同一个模型</b>——方块物品不创建独立 ItemModel，
  *       而是通过 {@link VanillaModelManager.ModelRegistration#getRegisteredItemModel}
- *       的 fallback 逻辑直接从 {@code registeredBlockModels} / {@code bakedBlockModels}
+ *       的 fallback 逻辑直接从 {@code registeredBlockModels}
  *       取 BlockStateModel，包装为 ItemModelWrapper。</li>
  *   <li><b>{@link #shouldUseRenderHelper} 对 EQUIPPED_BLOCK 返回 true
  *       （仅 ItemBlock），对 INVENTORY_BLOCK 始终返回 false</b>——

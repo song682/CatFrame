@@ -272,6 +272,7 @@ public class CyclingArea<T> extends AbstractComponent {
         }
 
         @SafeVarargs
+        @SuppressWarnings("varargs")
         public final Builder<T> values(T... values) {
             return this.values(Arrays.asList(values));
         }

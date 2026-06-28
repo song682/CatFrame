@@ -9,8 +9,7 @@ import java.util.Map;
 import java.util.concurrent.locks.StampedLock;
 
 /**
- * 线程安全的烘焙模型缓存，替代原 {@link VanillaModelManager#bakedModelCache} 和
- * {@link ModelBaker} 内部的 {@code bakeCache}。
+ * 线程安全的烘焙模型缓存，统一管理所有模型烘焙缓存。
  * <p>
  * 设计借鉴 GTNHLib 的 {@code ThreadsafeCache} 模式：
  * <ul>
@@ -43,6 +42,8 @@ public class BakedModelCache {
         // accessOrder=true: 每次 get/put 自动将条目移到末尾（最近访问）
         // removeEldestEntry: 超过 maxSize 时自动淘汰最久未访问的条目
         this.cache = new LinkedHashMap<String, BlockStateModelPart>(64, 0.75f, true) {
+            private static final long serialVersionUID = 1L;
+
             @Override
             protected boolean removeEldestEntry(Map.Entry<String, BlockStateModelPart> eldest) {
                 return size() >= BakedModelCache.this.maxSize;

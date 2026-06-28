@@ -38,6 +38,7 @@ public final class GuiLightExtension implements IModelRenderExtension {
     private boolean changedLighting = false;
 
     @Override
+    @SuppressWarnings("deprecation")
     public void beforePart(List<BakedQuad> allQuads, RenderPhase phase) {
         // 物品渲染阶段一律关闭 GL_LIGHTING，用固定亮度（fullbright）
         // 不依赖模型的 gui_light 字段——原版 RenderItem 对所有物品都关 GL_LIGHTING

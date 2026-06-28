@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.model;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -13,7 +12,6 @@ import net.minecraft.item.Item;
 import net.minecraftforge.client.MinecraftForgeClient;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,6 +27,7 @@ public class VanillaModelRegistry {
     /**
      * Public API: bake a model path into a BlockStateModelPart (with cache).
      * Used by StateProviderBlockModel and MultipartBlockModel for on-demand baking.
+     * 通过 {@link BakedModelCache} 懒烘焙，线程安全。
      */
     public static BlockStateModelPart bakeModelPart(String modelPath) {
         return bakeModelPart(modelPath, 0);
@@ -44,11 +43,12 @@ public class VanillaModelRegistry {
     /**
      * Public API: bake a model path into a BlockStateModelPart with X and Y rotation.
      * [W3] 支持 blockstate 中的 x 旋转字段。
+     * 通过 {@link BakedModelCache} 懒烘焙，线程安全。
      */
     public static BlockStateModelPart bakeModelPart(String modelPath, int rotationX, int rotationY) {
-        List<BakedQuad> quads = VMMModelBaking.bakeModel(modelPath, rotationX, rotationY);
-        if (quads == null) return BlockStateModelPart.empty();
-        return BlockStateModelPart.fromQuads(quads);
+        String cacheKey = BakedModelCache.buildKey(modelPath, rotationX, rotationY);
+        BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
+        return part != null ? part : BlockStateModelPart.empty();
     }
 
     /**
@@ -94,7 +94,7 @@ public class VanillaModelRegistry {
      * Also immediately registers the Forge IItemRenderer if the model system has been initialized.
      * <p>
      * Manually registered models are marked persistent: they survive
-     * {@link VMMModelBaking#rebuildItemModels()}, which only clears auto-generated
+     * {@link VMMModelBaking#registerItemModels()}, which only clears auto-generated
      * ItemModelWrappers from {@code model_mappings.json}.
      */
     public static void registerItemModel(Item item, ItemModel model) {
@@ -125,21 +125,7 @@ public class VanillaModelRegistry {
             Block block = Block.getBlockFromItem(item);
             if (block != null) {
                 BlockStateModel blockModel = VanillaModelManager.registeredBlockModels.get(block);
-                if (blockModel == null && VanillaModelManager.bakedBlockModels.containsKey(block)) {
-                    // Block was baked but not registered as BlockStateModel yet — build on-demand
-                    Map<Integer, List<BakedQuad>> metaMap = VanillaModelManager.bakedBlockModels.get(block);
-                    Map<Integer, BlockStateModelPart> partMap = new HashMap<>();
-                    for (Map.Entry<Integer, List<BakedQuad>> me : metaMap.entrySet()) {
-                        partMap.put(me.getKey(), BlockStateModelPart.fromQuads(me.getValue()));
-                    }
-                    BlockStateModelPart fallback = partMap.get(0);
-                    if (fallback == null) {
-                        fallback = partMap.values().stream().findFirst().orElse(BlockStateModelPart.empty());
-                    }
-                    blockModel = new MetadataBlockModel(partMap, fallback);
-                }
                 if (blockModel != null) {
-                    // display=null is fine: quads already carry modelDisplay from baking
                     return new ItemModelWrapper(blockModel);
                 }
             }
@@ -177,22 +163,15 @@ public class VanillaModelRegistry {
             return null;
         }
 
-        // 发现成功 — 烘焙并缓存
+        // 发现成功 — 创建懒模型（烘焙由 BakedModelCache 懒执行）
         CatFrame.logger.info("[VMM] Tier 3 auto-discovered item model: {} -> {}", registryName, modelPath);
         // 警告：纹理可能未加入 atlas
         CatFrame.logger.warn("[VMM] Auto-discovered model '{}' texture may not be in atlas " +
                 "(discovered after atlas stitching). Register textures earlier to avoid missingno.",
                 modelPath);
 
-        List<BakedQuad> quads = VMMModelBaking.bakeModel(modelPath, 0);
-        if (quads == null || quads.isEmpty()) {
-            VanillaModelManager.autoDiscoveryMissCache.add(item);
-            return null;
-        }
-
-        BlockStateModelPart part = BlockStateModelPart.fromQuads(quads);
         Map<String, ModelJson.DisplayTransform> display = resolved.display;
-        ItemModelWrapper wrapper = new ItemModelWrapper(part, display);
+        LazyItemModel wrapper = new LazyItemModel(modelPath, display);
 
         VanillaModelManager.registeredItemModels.put(item, wrapper);
         // 注册 Forge IItemRenderer（已初始化阶段）
@@ -203,20 +182,18 @@ public class VanillaModelRegistry {
     }
 
     /**
-     * Check if a block has a JSON model override (either static bake or dynamic state-provider)
+     * Check if a block has a JSON model override (either registered model or dynamic state-provider)
      */
     public static boolean hasModel(Block block) {
-        return VanillaModelManager.bakedBlockModels.containsKey(block)
-                || VanillaModelManager.stateBlockData.containsKey(block)
-                || VanillaModelManager.registeredBlockModels.containsKey(block);
+        return VanillaModelManager.registeredBlockModels.containsKey(block)
+                || VanillaModelManager.stateBlockData.containsKey(block);
     }
 
     /**
      * Check if an item has a JSON model override
      */
     public static boolean hasItemModel(Item item) {
-        return VanillaModelManager.bakedItemModels.containsKey(item)
-                || VanillaModelManager.registeredItemModels.containsKey(item);
+        return VanillaModelManager.registeredItemModels.containsKey(item);
     }
 
     // ==================== CatStateDefinition API (v0.3.0) ====================

@@ -264,6 +264,7 @@ public class ModernItem extends Item implements IItemJsonModel {
 
     @Override
     @SideOnly(Side.CLIENT)
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public void getSubItems(Item item, CreativeTabs tab, List list) {
         // Default: single sub-item.  Subclasses with multiple damage values
         // should override this.

@@ -1,20 +1,20 @@
 {
   "variants": {
-    "0":  { "model": "minecraft:block/slab_stone" },
-    "1":  { "model": "minecraft:block/slab_sandstone" },
-    "2":  { "model": "minecraft:block/slab_wood" },
-    "3":  { "model": "minecraft:block/slab_cobblestone" },
-    "4":  { "model": "minecraft:block/slab_brick" },
-    "5":  { "model": "minecraft:block/slab_stone_brick" },
-    "6":  { "model": "minecraft:block/slab_nether_brick" },
-    "7":  { "model": "minecraft:block/slab_quartz" },
-    "8":  { "model": "minecraft:block/slab_stone_top" },
-    "9":  { "model": "minecraft:block/slab_sandstone_top" },
-    "10": { "model": "minecraft:block/slab_wood_top" },
-    "11": { "model": "minecraft:block/slab_cobblestone_top" },
-    "12": { "model": "minecraft:block/slab_brick_top" },
-    "13": { "model": "minecraft:block/slab_stone_brick_top" },
-    "14": { "model": "minecraft:block/slab_nether_brick_top" },
-    "15": { "model": "minecraft:block/slab_quartz_top" }
+    "half=bottom,variant=stone":        { "model": "minecraft:block/slab_stone" },
+    "half=bottom,variant=sandstone":    { "model": "minecraft:block/slab_sandstone" },
+    "half=bottom,variant=wood":         { "model": "minecraft:block/slab_wood" },
+    "half=bottom,variant=cobblestone":  { "model": "minecraft:block/slab_cobblestone" },
+    "half=bottom,variant=brick":        { "model": "minecraft:block/slab_brick" },
+    "half=bottom,variant=stone_brick":  { "model": "minecraft:block/slab_stone_brick" },
+    "half=bottom,variant=nether_brick": { "model": "minecraft:block/slab_nether_brick" },
+    "half=bottom,variant=quartz":       { "model": "minecraft:block/slab_quartz" },
+    "half=top,variant=stone":           { "model": "minecraft:block/slab_stone_top" },
+    "half=top,variant=sandstone":       { "model": "minecraft:block/slab_sandstone_top" },
+    "half=top,variant=wood":            { "model": "minecraft:block/slab_wood_top" },
+    "half=top,variant=cobblestone":     { "model": "minecraft:block/slab_cobblestone_top" },
+    "half=top,variant=brick":           { "model": "minecraft:block/slab_brick_top" },
+    "half=top,variant=stone_brick":     { "model": "minecraft:block/slab_stone_brick_top" },
+    "half=top,variant=nether_brick":    { "model": "minecraft:block/slab_nether_brick_top" },
+    "half=top,variant=quartz":          { "model": "minecraft:block/slab_quartz_top" }
   }
 }

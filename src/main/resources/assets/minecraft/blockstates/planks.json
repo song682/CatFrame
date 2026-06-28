@@ -1,10 +1,10 @@
 {
   "variants": {
-    "0": { "model": "minecraft:block/oak_planks" },
-    "1": { "model": "minecraft:block/spruce_planks" },
-    "2": { "model": "minecraft:block/birch_planks" },
-    "3": { "model": "minecraft:block/jungle_planks" },
-    "4": { "model": "minecraft:block/acacia_planks" },
-    "5": { "model": "minecraft:block/dark_oak_planks" }
+    "wood=oak": { "model": "minecraft:block/oak_planks" },
+    "wood=spruce": { "model": "minecraft:block/spruce_planks" },
+    "wood=birch": { "model": "minecraft:block/birch_planks" },
+    "wood=jungle": { "model": "minecraft:block/jungle_planks" },
+    "wood=acacia": { "model": "minecraft:block/acacia_planks" },
+    "wood=dark_oak": { "model": "minecraft:block/dark_oak_planks" }
   }
 }

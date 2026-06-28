@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "variant=stone":              { "model": "minecraft:block/stone" },
+    "variant=cobblestone":        { "model": "minecraft:block/cobblestone" },
+    "variant=stone_brick":        { "model": "minecraft:block/stonebrick" },
+    "variant=mossy_stone_brick":  { "model": "minecraft:block/mossy_stonebrick" },
+    "variant=cracked_stone_brick": { "model": "minecraft:block/cracked_stonebrick" },
+    "variant=chiseled_stone_brick": { "model": "minecraft:block/chiseled_stonebrick" }
+  }
+}

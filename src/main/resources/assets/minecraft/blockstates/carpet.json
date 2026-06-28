@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "color=white":       { "model": "minecraft:block/white_carpet" },
+    "color=orange":      { "model": "minecraft:block/orange_carpet" },
+    "color=magenta":     { "model": "minecraft:block/magenta_carpet" },
+    "color=light_blue":  { "model": "minecraft:block/light_blue_carpet" },
+    "color=yellow":      { "model": "minecraft:block/yellow_carpet" },
+    "color=lime":        { "model": "minecraft:block/lime_carpet" },
+    "color=pink":        { "model": "minecraft:block/pink_carpet" },
+    "color=gray":        { "model": "minecraft:block/gray_carpet" },
+    "color=light_gray":  { "model": "minecraft:block/light_gray_carpet" },
+    "color=cyan":        { "model": "minecraft:block/cyan_carpet" },
+    "color=purple":      { "model": "minecraft:block/purple_carpet" },
+    "color=blue":        { "model": "minecraft:block/blue_carpet" },
+    "color=brown":       { "model": "minecraft:block/brown_carpet" },
+    "color=green":       { "model": "minecraft:block/green_carpet" },
+    "color=red":         { "model": "minecraft:block/red_carpet" },
+    "color=black":       { "model": "minecraft:block/black_carpet" }
+  }
+}

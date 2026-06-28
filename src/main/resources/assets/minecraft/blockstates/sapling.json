@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "variant=oak":      { "model": "minecraft:block/oak_sapling" },
+    "variant=spruce":   { "model": "minecraft:block/spruce_sapling" },
+    "variant=birch":    { "model": "minecraft:block/birch_sapling" },
+    "variant=jungle":   { "model": "minecraft:block/jungle_sapling" },
+    "variant=acacia":   { "model": "minecraft:block/acacia_sapling" },
+    "variant=dark_oak": { "model": "minecraft:block/dark_oak_sapling" }
+  }
+}

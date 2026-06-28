@@ -1,5 +1,6 @@
 {
   "variants": {
-    "normal": { "model": "minecraft:block/dirt" }
+    "variant=dirt": { "model": "minecraft:block/dirt" },
+    "variant=podzol": { "model": "minecraft:block/podzol" }
   }
 }

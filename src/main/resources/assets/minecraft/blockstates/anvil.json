@@ -1,16 +1,16 @@
 {
   "variants": {
-    "0":  { "model": "minecraft:block/anvil_intact" },
-    "1":  { "model": "minecraft:block/anvil_slightly_damaged" },
-    "2":  { "model": "minecraft:block/anvil_very_damaged" },
-    "4":  { "model": "minecraft:block/anvil_intact", "y": 180 },
-    "5":  { "model": "minecraft:block/anvil_slightly_damaged", "y": 180 },
-    "6":  { "model": "minecraft:block/anvil_very_damaged", "y": 180 },
-    "8":  { "model": "minecraft:block/anvil_intact", "y": 90 },
-    "9":  { "model": "minecraft:block/anvil_slightly_damaged", "y": 90 },
-    "10": { "model": "minecraft:block/anvil_very_damaged", "y": 90 },
-    "12": { "model": "minecraft:block/anvil_intact", "y": 270 },
-    "13": { "model": "minecraft:block/anvil_slightly_damaged", "y": 270 },
-    "14": { "model": "minecraft:block/anvil_very_damaged", "y": 270 }
+    "damage=0,facing=south": { "model": "minecraft:block/anvil_intact" },
+    "damage=1,facing=south": { "model": "minecraft:block/anvil_slightly_damaged" },
+    "damage=2,facing=south": { "model": "minecraft:block/anvil_very_damaged" },
+    "damage=0,facing=north": { "model": "minecraft:block/anvil_intact", "y": 180 },
+    "damage=1,facing=north": { "model": "minecraft:block/anvil_slightly_damaged", "y": 180 },
+    "damage=2,facing=north": { "model": "minecraft:block/anvil_very_damaged", "y": 180 },
+    "damage=0,facing=east":  { "model": "minecraft:block/anvil_intact", "y": 90 },
+    "damage=1,facing=east":  { "model": "minecraft:block/anvil_slightly_damaged", "y": 90 },
+    "damage=2,facing=east":  { "model": "minecraft:block/anvil_very_damaged", "y": 90 },
+    "damage=0,facing=west":  { "model": "minecraft:block/anvil_intact", "y": 270 },
+    "damage=1,facing=west":  { "model": "minecraft:block/anvil_slightly_damaged", "y": 270 },
+    "damage=2,facing=west":  { "model": "minecraft:block/anvil_very_damaged", "y": 270 }
   }
 }

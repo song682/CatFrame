@@ -1,20 +1,20 @@
 {
   "variants": {
-    "0":  { "model": "minecraft:block/white_wool" },
-    "1":  { "model": "minecraft:block/orange_wool" },
-    "2":  { "model": "minecraft:block/magenta_wool" },
-    "3":  { "model": "minecraft:block/light_blue_wool" },
-    "4":  { "model": "minecraft:block/yellow_wool" },
-    "5":  { "model": "minecraft:block/lime_wool" },
-    "6":  { "model": "minecraft:block/pink_wool" },
-    "7":  { "model": "minecraft:block/gray_wool" },
-    "8":  { "model": "minecraft:block/light_gray_wool" },
-    "9":  { "model": "minecraft:block/cyan_wool" },
-    "10": { "model": "minecraft:block/purple_wool" },
-    "11": { "model": "minecraft:block/blue_wool" },
-    "12": { "model": "minecraft:block/brown_wool" },
-    "13": { "model": "minecraft:block/green_wool" },
-    "14": { "model": "minecraft:block/red_wool" },
-    "15": { "model": "minecraft:block/black_wool" }
+    "color=white":  { "model": "minecraft:block/white_wool" },
+    "color=orange":  { "model": "minecraft:block/orange_wool" },
+    "color=magenta":  { "model": "minecraft:block/magenta_wool" },
+    "color=light_blue":  { "model": "minecraft:block/light_blue_wool" },
+    "color=yellow":  { "model": "minecraft:block/yellow_wool" },
+    "color=lime":  { "model": "minecraft:block/lime_wool" },
+    "color=pink":  { "model": "minecraft:block/pink_wool" },
+    "color=gray":  { "model": "minecraft:block/gray_wool" },
+    "color=light_gray":  { "model": "minecraft:block/light_gray_wool" },
+    "color=cyan":  { "model": "minecraft:block/cyan_wool" },
+    "color=purple": { "model": "minecraft:block/purple_wool" },
+    "color=blue": { "model": "minecraft:block/blue_wool" },
+    "color=brown": { "model": "minecraft:block/brown_wool" },
+    "color=green": { "model": "minecraft:block/green_wool" },
+    "color=red": { "model": "minecraft:block/red_wool" },
+    "color=black": { "model": "minecraft:block/black_wool" }
   }
 }

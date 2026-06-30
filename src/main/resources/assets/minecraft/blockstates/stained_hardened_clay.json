@@ -1,20 +1,20 @@
 {
   "variants": {
-    "0":  { "model": "minecraft:block/white_terracotta" },
-    "1":  { "model": "minecraft:block/orange_terracotta" },
-    "2":  { "model": "minecraft:block/magenta_terracotta" },
-    "3":  { "model": "minecraft:block/light_blue_terracotta" },
-    "4":  { "model": "minecraft:block/yellow_terracotta" },
-    "5":  { "model": "minecraft:block/lime_terracotta" },
-    "6":  { "model": "minecraft:block/pink_terracotta" },
-    "7":  { "model": "minecraft:block/gray_terracotta" },
-    "8":  { "model": "minecraft:block/light_gray_terracotta" },
-    "9":  { "model": "minecraft:block/cyan_terracotta" },
-    "10": { "model": "minecraft:block/purple_terracotta" },
-    "11": { "model": "minecraft:block/blue_terracotta" },
-    "12": { "model": "minecraft:block/brown_terracotta" },
-    "13": { "model": "minecraft:block/green_terracotta" },
-    "14": { "model": "minecraft:block/red_terracotta" },
-    "15": { "model": "minecraft:block/black_terracotta" }
+    "color=white":  { "model": "minecraft:block/white_terracotta" },
+    "color=orange":  { "model": "minecraft:block/orange_terracotta" },
+    "color=magenta":  { "model": "minecraft:block/magenta_terracotta" },
+    "color=light_blue":  { "model": "minecraft:block/light_blue_terracotta" },
+    "color=yellow":  { "model": "minecraft:block/yellow_terracotta" },
+    "color=lime":  { "model": "minecraft:block/lime_terracotta" },
+    "color=pink":  { "model": "minecraft:block/pink_terracotta" },
+    "color=gray":  { "model": "minecraft:block/gray_terracotta" },
+    "color=light_gray":  { "model": "minecraft:block/light_gray_terracotta" },
+    "color=cyan":  { "model": "minecraft:block/cyan_terracotta" },
+    "color=purple": { "model": "minecraft:block/purple_terracotta" },
+    "color=blue": { "model": "minecraft:block/blue_terracotta" },
+    "color=brown": { "model": "minecraft:block/brown_terracotta" },
+    "color=green": { "model": "minecraft:block/green_terracotta" },
+    "color=red": { "model": "minecraft:block/red_terracotta" },
+    "color=black": { "model": "minecraft:block/black_terracotta" }
   }
 }

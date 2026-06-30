@@ -43,6 +43,7 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
     public void onResourceManagerReload(IResourceManager manager) {
         CatFrame.logger.debug("ResourcePackModelDetector: resource manager reloaded, scanning...");
         clear();
+        ModelResolver.clearCache();
         scanAllNamespaces(manager);
         CatFrame.logger.info("ResourcePackModelDetector: detected {} model overrides, {} blockstate overrides",
                 PACK_MODEL_PATHS.size(), PACK_BLOCKSTATE_PATHS.size());

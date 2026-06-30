@@ -10,6 +10,8 @@ import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
+import net.minecraft.util.IIcon;
 
 /**
  * 异步预烘焙管线，使用 Akka Actor 编排。
@@ -27,25 +29,35 @@ import java.util.concurrent.TimeUnit;
  * </pre>
  * <p>
  * 在 {@link VanillaTextureTracker#onTextureStitchPost} 中被触发，
- * 此时 globalIconMap 已设置，烘焙可以正确解析纹理引用。
+ * 此时 iconMap 已通过参数传入，烘焙可以正确解析纹理引用。
  */
 public class AsyncBakePipeline {
 
     // ==================== 消息协议 ====================
 
-    /** 启动烘焙管线 */
-    public static final Object START = "START";
+    /** 启动烘焙管线（携带当前 stitch 周期的 iconMap） */
+    public static class StartPipeline {
+        @Nullable
+        public final Map<String, IIcon> iconMap;
+
+        public StartPipeline(@Nullable Map<String, IIcon> iconMap) {
+            this.iconMap = iconMap;
+        }
+    }
 
     /** 烘焙任务：发送给 Worker */
     public static class BakeTask {
         public final String modelPath;
         public final int rotX;
         public final int rotY;
+        @Nullable
+        public final Map<String, IIcon> iconMap;
 
-        public BakeTask(String modelPath, int rotX, int rotY) {
+        public BakeTask(String modelPath, int rotX, int rotY, @Nullable Map<String, IIcon> iconMap) {
             this.modelPath = modelPath;
             this.rotX = rotX;
             this.rotY = rotY;
+            this.iconMap = iconMap;
         }
     }
 
@@ -84,6 +96,10 @@ public class AsyncBakePipeline {
         private long startTime;
         private ActorRef originalSender;
 
+        /** 当前 stitch 周期的 IIcon 映射（由 StartPipeline 消息设置） */
+        @Nullable
+        private Map<String, IIcon> iconMap;
+
         /** Worker pool */
         private final Router workerRouter;
         private final int workerCount;
@@ -100,7 +116,9 @@ public class AsyncBakePipeline {
 
         @Override
         public void onReceive(Object message) {
-            if (message == START) {
+            if (message instanceof StartPipeline) {
+                StartPipeline start = (StartPipeline) message;
+                this.iconMap = start.iconMap;
                 startTime = System.nanoTime();
                 originalSender = getSender();
 
@@ -123,7 +141,7 @@ public class AsyncBakePipeline {
                 CatFrame.logger.info("[AsyncBake] dispatching {} bake tasks for {} models ({} workers)",
                         totalTasks, modelPaths.size(), workerCount);
 
-                // 4. 分发给 Workers
+                // 4. 分发给 Workers（每个任务携带 iconMap）
                 for (BakeTask task : tasks) {
                     workerRouter.route(task, getSelf());
                 }
@@ -234,12 +252,12 @@ public class AsyncBakePipeline {
 
             for (String path : sortedPaths) {
                 // 基础烘焙（无旋转）
-                tasks.add(new BakeTask(path, 0, 0));
+                tasks.add(new BakeTask(path, 0, 0, this.iconMap));
 
                 // Y 轴旋转
                 for (int rotY : rotations) {
                     if (rotY != 0) {
-                        tasks.add(new BakeTask(path, 0, rotY));
+                        tasks.add(new BakeTask(path, 0, rotY, this.iconMap));
                     }
                 }
             }
@@ -261,8 +279,8 @@ public class AsyncBakePipeline {
                 BakeTask task = (BakeTask) message;
                 String cacheKey = BakedModelCache.buildKey(task.modelPath, task.rotX, task.rotY);
 
-                // 调用烘焙纯函数
-                BlockStateModelPart part = BakingCore.bake(task.modelPath, task.rotX, task.rotY);
+                // 调用烘焙纯函数（使用任务携带的 iconMap）
+                BlockStateModelPart part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.iconMap);
 
                 // 回复结果给 Supervisor
                 getSender().tell(new BakeResult(cacheKey, part), getSelf());
@@ -279,17 +297,23 @@ public class AsyncBakePipeline {
      * <p>
      * 非阻塞：创建 Supervisor Actor 后立即返回，烘焙在后台线程池中执行。
      * 烘焙完成后结果自动灌入 {@link BakedModelCache}。
+     * <p>
+     * 对标高版本 {@code MaterialBaker} 的实例化闭包模式：iconMap 作为参数传入，
+     * 而非读取全局静态字段，避免多 stitch 周期之间的竞态覆盖。
+     *
+     * @param iconMap 当前 stitch 周期的 IIcon 映射
      */
-    public static void triggerAsyncBake() {
+    public static void triggerAsyncBake(@Nullable Map<String, IIcon> iconMap) {
         if (actorSystem == null) {
             actorSystem = ActorSystem.create("CatFrame-BakePipeline");
         }
 
         ActorRef supervisor = actorSystem.actorOf(
                 Props.create(Supervisor.class), "bake-supervisor-" + System.currentTimeMillis());
-        supervisor.tell(START, ActorRef.noSender());
+        supervisor.tell(new StartPipeline(iconMap), ActorRef.noSender());
 
-        CatFrame.logger.info("[AsyncBake] pipeline triggered");
+        CatFrame.logger.info("[AsyncBake] pipeline triggered | iconMap.size={}",
+                iconMap != null ? iconMap.size() : 0);
     }
 
     /**

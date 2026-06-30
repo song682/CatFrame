@@ -36,7 +36,7 @@ public class VMMModelBaking {
      * 注册所有模型（不执行烘焙）。
      * <p>
      * 在 {@link VanillaTextureTracker#onTextureStitchPost} 中调用，
-     * 此时纹理已缝合、globalIconMap 已设置，懒烘焙可正确解析纹理。
+     * 此时纹理已缝合、iconMap 已通过参数传入缓存和烘焙管线，懒烘焙可正确解析纹理。
      * <p>
      * 替代旧系统的 {@code bakeAllModels()}。
      */

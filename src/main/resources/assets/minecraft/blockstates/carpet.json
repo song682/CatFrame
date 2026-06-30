@@ -8,7 +8,7 @@
     "color=lime":        { "model": "minecraft:block/lime_carpet" },
     "color=pink":        { "model": "minecraft:block/pink_carpet" },
     "color=gray":        { "model": "minecraft:block/gray_carpet" },
-    "color=light_gray":  { "model": "minecraft:block/light_gray_carpet" },
+    "color=silver": { "model": "minecraft:block/light_gray_carpet" },
     "color=cyan":        { "model": "minecraft:block/cyan_carpet" },
     "color=purple":      { "model": "minecraft:block/purple_carpet" },
     "color=blue":        { "model": "minecraft:block/blue_carpet" },

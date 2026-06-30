@@ -2,8 +2,10 @@ package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+import net.minecraft.util.IIcon;
 
 import javax.annotation.Nullable;
+import java.util.Map;
 
 /**
  * 烘焙纯函数。无状态、无静态字段写入，天然线程安全。
@@ -21,9 +23,9 @@ public class BakingCore {
     private BakingCore() {}
 
     /**
-     * 烘焙单个模型为 {@link BlockStateModelPart}。
+     * 烘焙单个模型为 {@link BlockStateModelPart}（使用当前 stitch 周期的 iconMap）。
      * <p>
-     * 纯函数语义：相同的 (modelPath, rotX, rotY) 输入始终产出语义等价的结果。
+     * 纯函数语义：相同的 (modelPath, rotX, rotY, iconMap) 输入始终产出语义等价的结果。
      * 不写入任何静态缓存或全局状态。
      *
      * @param modelPath 模型路径（如 "block/stone"、"builtin/generated"）
@@ -33,19 +35,35 @@ public class BakingCore {
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, int rotX, int rotY) {
+        return bake(modelPath, rotX, rotY, VanillaTextureTracker.textureIcons);
+    }
+
+    /**
+     * 烘焙单个模型为 {@link BlockStateModelPart}，显式指定 iconMap。
+     * <p>
+     * 对标高版本 {@code MaterialBaker} 的实例化闭包模式：每次烘焙使用调用方提供的
+     * iconMap，避免多 stitch 周期之间的竞态覆盖。
+     *
+     * @param modelPath 模型路径
+     * @param rotX      X 轴旋转角度
+     * @param rotY      Y 轴旋转角度
+     * @param iconMap   当前 stitch 周期的 IIcon 映射
+     * @return 烘焙后的模型部件，失败返回 null
+     */
+    @Nullable
+    public static BlockStateModelPart bake(String modelPath, int rotX, int rotY,
+                                            @Nullable Map<String, IIcon> iconMap) {
         if (modelPath == null) return null;
 
-        // 1. 解析 JSON（ModelResolver 内部有缓存，线程安全由 ConcurrentHashMap 保证 — Phase 2 改造）
+        // 1. 解析 JSON（ModelResolver 内部有缓存，线程安全由 ConcurrentHashMap 保证）
         ModelJson resolved = ModelResolver.resolve(modelPath);
         if (resolved == null) {
             CatFrame.logger.warn("[BakingCore] ModelResolver.resolve('{}') returned null", modelPath);
             return null;
         }
 
-        // 2. 委托给 ModelBaker 执行实际烘焙
-        //    ModelBaker.bake(resolved, rotX, rotY, modelPath) 本身是纯函数：
-        //    构建 UnbakedModel → TextureSlots → bake() → BlockStateModelPart
-        BlockStateModelPart part = ModelBaker.bake(resolved, rotX, rotY, modelPath);
+        // 2. 委托给 ModelBaker 执行实际烘焙（传递 iconMap，而非读全局静态）
+        BlockStateModelPart part = ModelBaker.bake(resolved, rotX, rotY, modelPath, iconMap);
         if (part == null) {
             CatFrame.logger.debug("[BakingCore] bake returned null for '{}' @ {}@{}", modelPath, rotX, rotY);
         }

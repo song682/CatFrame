@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -100,13 +101,15 @@ public class VanillaTextureTracker {
      * Call during TextureStitchEvent.Post when getTextureType() == 0.
      */
     public static void onTextureStitchPost(TextureMap map) {
-        // 资源重载时清空新缓存
-        pendingTextures.clear();
-        pendingItemTextures.clear();
-        BakedModelCache.INSTANCE.clear();
-        ModelResolver.clearCache();
-
+        // 不清理 pendingTextures/pendingItemTextures —— 与 LegacyPreview 行为一致。
+        // Forge 1.7.10 启动时会触发两次 type=0 Post（第二次来自 refreshResources）。
+        // 保留数据让两次都能从各自的新图集重新收集 IIcon，避免 stale reference。
+        if (pendingTextures.isEmpty() && pendingItemTextures.isEmpty()) {
+            CatFrame.logger.info("[VTT-diag] onStitchPost: pending sets empty, skip");
+            return;
+        }
         textureIcons.clear();
+        int blockCollected = 0, blockMissed = 0;
         // Block atlas icons
         for (String texturePath : pendingTextures) {
             String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
@@ -114,10 +117,15 @@ public class VanillaTextureTracker {
                 IIcon icon = map.getAtlasSprite(iconName);
                 if (icon != null) {
                     textureIcons.put(texturePath, icon);
+                    blockCollected++;
+                } else {
+                    blockMissed++;
+                    CatFrame.logger.warn("[VTT-diag] block IIcon miss: texturePath='{}' → iconName='{}'", texturePath, iconName);
                 }
             }
         }
         // Item atlas icons
+        int itemCollected = 0, itemMissed = 0;
         net.minecraft.client.renderer.texture.TextureMap itemMap =
                 (net.minecraft.client.renderer.texture.TextureMap) Minecraft.getMinecraft().getTextureManager()
                         .getTexture(TextureMap.locationItemsTexture);
@@ -128,15 +136,28 @@ public class VanillaTextureTracker {
                     IIcon icon = itemMap.getAtlasSprite(iconName);
                     if (icon != null) {
                         textureIcons.put(texturePath, icon);
+                        itemCollected++;
+                    } else {
+                        itemMissed++;
                     }
                 }
             }
         }
-        ModelBaker.setGlobalIconMap(textureIcons);
+        CatFrame.logger.info("[VTT-diag] onStitchPost: pendingBlk={} pendingItm={} | collected blk={} miss={} itm={} miss={} | textureIcons.size={}",
+                pendingTextures.size(), pendingItemTextures.size(),
+                blockCollected, blockMissed, itemCollected, itemMissed,
+                textureIcons.size());
+        // 不清理 pendingTextures —— 保留数据供 Forge refreshResources 后的第二次 stitch 重新收集
+        // 对标高版本 MaterialBaker 实例化闭包模式：iconMap 作为参数传入缓存和烘焙管线
+        BakedModelCache.INSTANCE.clear(textureIcons);
+        ModelResolver.clearCache();
+
+        CatFrame.logger.info("[VTT-diag] BakedModelCache.clear(iconMap) called | textureIcons.size={}",
+                textureIcons.size());
         // 注册懒模型（不执行同步烘焙，烘焙由 BakedModelCache 懒烘焙 + AsyncBakePipeline 异步预烘焙承担）
         VMMModelBaking.registerAllModels();
-        // 异步预烘焙管线：将常用模型预烘焙到 BakedModelCache
-        AsyncBakePipeline.triggerAsyncBake();
+        // 异步预烘焙管线：将常用模型预烘焙到 BakedModelCache（传入 iconMap）
+        AsyncBakePipeline.triggerAsyncBake(textureIcons);
     }
 
     /**
@@ -150,6 +171,11 @@ public class VanillaTextureTracker {
      * sprite UV 坐标。
      */
     public static void onTextureStitchPostItem(TextureMap itemMap) {
+        // 保留 pendingItemTextures 数据 —— 与 LegacyPreview 一致，支持 refreshResources 后的多次 stitch
+        if (pendingItemTextures.isEmpty()) {
+            CatFrame.logger.info("[VTT-diag] onStitchPostItem: pending empty, skip");
+            return;
+        }
         // 更新 item 纹理的 IIcon 引用（item atlas 此时已缝合完成）
         for (String texturePath : pendingItemTextures) {
             String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
@@ -160,10 +186,12 @@ public class VanillaTextureTracker {
                 }
             }
         }
-        ModelBaker.setGlobalIconMap(textureIcons);
+        // 不清理 pendingItemTextures —— 保留数据供多次 stitch 重新收集
+        // item iconMap 更新到缓存（懒烘焙时使用）
+        BakedModelCache.INSTANCE.clear(textureIcons);
         // [W2 修复] 仅增量更新 item 模型注册（懒模型，无需实际烘焙）
         VMMModelBaking.registerItemModels();
         // item atlas 就绪后再次触发异步预烘焙（确保 item 模型也被预烘焙）
-        AsyncBakePipeline.triggerAsyncBake();
+        AsyncBakePipeline.triggerAsyncBake(textureIcons);
     }
 }

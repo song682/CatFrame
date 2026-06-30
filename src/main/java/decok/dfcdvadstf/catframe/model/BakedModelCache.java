@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+import net.minecraft.util.IIcon;
 
 import javax.annotation.Nullable;
 import java.util.LinkedHashMap;
@@ -29,6 +30,10 @@ public class BakedModelCache {
     private final int maxSize;
     private final LinkedHashMap<String, BlockStateModelPart> cache;
     private final StampedLock lock = new StampedLock();
+
+    /** 当前 stitch 周期的 IIcon 映射（由 clear(iconMap) 设置，懒烘焙时使用） */
+    @Nullable
+    private volatile Map<String, IIcon> iconMap = null;
 
     /** 懒烘焙统计 */
     private volatile int lazyBakeCount = 0;
@@ -109,8 +114,8 @@ public class BakedModelCache {
             return null;
         }
 
-        // 调用烘焙纯函数
-        BlockStateModelPart result = BakingCore.bake(modelPath, rotX, rotY);
+        // 调用烘焙纯函数（传递当前 stitch 周期的 iconMap）
+        BlockStateModelPart result = BakingCore.bake(modelPath, rotX, rotY, iconMap);
 
         if (result != null) {
             long stamp = lock.writeLock();
@@ -148,7 +153,7 @@ public class BakedModelCache {
             if (exists) continue;
 
             BakeRequest req = entry.getValue();
-            BlockStateModelPart result = BakingCore.bake(req.modelPath, req.rotX, req.rotY);
+            BlockStateModelPart result = BakingCore.bake(req.modelPath, req.rotX, req.rotY, this.iconMap);
             if (result != null) {
                 long ws = lock.writeLock();
                 try {
@@ -178,19 +183,41 @@ public class BakedModelCache {
     }
 
     /**
-     * 清除所有缓存。在资源重载时调用。
+     * 清除所有缓存并设置当前 stitch 周期的 IIcon 映射。
+     * <p>
+     * 对标高版本 {@code MaterialBaker} 的实例化闭包模式：每次资源重载时，
+     * 缓存持有当前周期的 iconMap，懒烘焙时直接使用，而非读全局静态字段。
+     *
+     * @param iconMap 当前 stitch 周期的 IIcon 映射
      */
-    public void clear() {
+    public void clear(@Nullable Map<String, IIcon> iconMap) {
         long stamp = lock.writeLock();
         try {
             cache.clear();
+            this.iconMap = iconMap;
             lazyBakeCount = 0;
             hitCount = 0;
             missCount = 0;
         } finally {
             lock.unlockWrite(stamp);
         }
-        CatFrame.logger.info("[BakedModelCache] cache cleared");
+        CatFrame.logger.info("[BakedModelCache] cache cleared | iconMap.size={}",
+                iconMap != null ? iconMap.size() : 0);
+    }
+
+    /**
+     * 清除所有缓存（不更新 iconMap）。
+     */
+    public void clear() {
+        clear(this.iconMap);
+    }
+
+    /**
+     * 获取当前存储的 IIcon 映射。
+     */
+    @Nullable
+    public Map<String, IIcon> getIconMap() {
+        return iconMap;
     }
 
     /**

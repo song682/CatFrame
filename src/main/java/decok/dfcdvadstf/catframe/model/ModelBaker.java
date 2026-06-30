@@ -24,34 +24,12 @@ import java.util.Map;
  */
 public class ModelBaker {
 
-    /** 全局纹理池（由 VMM 在初始化时设置，来自 VMM.textureIcons） */
-    @Nullable
-    private static Map<String, IIcon> globalIconMap = null;
-
     private ModelBaker() {}
-
-    // ==================== 配置 ====================
-
-    /**
-     * 设置全局纹理池映射。由 {@link VanillaModelManager} 在初始化时调用。
-     * 烘焙时将优先从此映射查找 IIcon，找不到时回退到 Minecraft 纹理图集查询。
-     */
-    public static void setGlobalIconMap(@Nullable Map<String, IIcon> iconMap) {
-        globalIconMap = iconMap;
-    }
-
-    /**
-     * 获取当前全局纹理池映射。
-     */
-    @Nullable
-    public static Map<String, IIcon> getGlobalIconMap() {
-        return globalIconMap;
-    }
 
     // ==================== 烘焙入口（含便捷重载） ====================
 
     /**
-     * 便捷重载：从模型路径烘焙，无旋转。
+     * 便捷重载：从模型路径烘焙，无旋转（使用当前 stitch 周期的 iconMap）。
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath) {
@@ -59,7 +37,7 @@ public class ModelBaker {
     }
 
     /**
-     * 便捷重载：从模型路径烘焙，仅 Y 轴旋转。
+     * 便捷重载：从模型路径烘焙，仅 Y 轴旋转（使用当前 stitch 周期的 iconMap）。
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, int rotationY) {
@@ -67,7 +45,7 @@ public class ModelBaker {
     }
 
     /**
-     * 从模型路径烘焙为 {@link BlockStateModelPart}。
+     * 从模型路径烘焙为 {@link BlockStateModelPart}（使用当前 stitch 周期的 iconMap）。
      * <p>
      * 完整管线：{@code modelPath → ModelResolver.resolve() → ModelJsonUnbakedAdapter → TextureSlots → bake()}
      * <p>
@@ -80,6 +58,24 @@ public class ModelBaker {
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, int rotationX, int rotationY) {
+        return bake(modelPath, rotationX, rotationY, VanillaTextureTracker.textureIcons);
+    }
+
+    /**
+     * 从模型路径烘焙为 {@link BlockStateModelPart}，显式指定 iconMap。
+     * <p>
+     * 对标高版本 {@code MaterialBaker} 的实例化闭包模式：每次烘焙使用调用方提供的
+     * iconMap（而非全局静态字段），避免多 stitch 周期之间的竞态覆盖。
+     *
+     * @param modelPath 模型路径
+     * @param rotationX X 轴旋转角度
+     * @param rotationY Y 轴旋转角度
+     * @param iconMap   当前 stitch 周期的 IIcon 映射
+     * @return 烘焙后的渲染部件，失败返回 null
+     */
+    @Nullable
+    public static BlockStateModelPart bake(String modelPath, int rotationX, int rotationY,
+                                            @Nullable Map<String, IIcon> iconMap) {
         if (modelPath == null) return null;
 
         // 1. 解析 JSON
@@ -90,7 +86,7 @@ public class ModelBaker {
         }
 
         // 2. 委托给已解析的重载
-        return bake(resolved, rotationX, rotationY, modelPath);
+        return bake(resolved, rotationX, rotationY, modelPath, iconMap);
     }
 
     /**
@@ -103,11 +99,11 @@ public class ModelBaker {
      */
     @Nullable
     public static BlockStateModelPart bake(ModelJson resolved, int rotationX, int rotationY) {
-        return bake(resolved, rotationX, rotationY, "adapter");
+        return bake(resolved, rotationX, rotationY, "adapter", VanillaTextureTracker.textureIcons);
     }
 
     /**
-     * 从已解析的 {@link ModelJson} 烘焙，带模型路径标签。
+     * 从已解析的 {@link ModelJson} 烘焙，带模型路径标签（使用当前 stitch 周期的 iconMap）。
      *
      * @param resolved  已解析的模型
      * @param rotationX X 轴旋转角度
@@ -117,6 +113,24 @@ public class ModelBaker {
      */
     @Nullable
     public static BlockStateModelPart bake(ModelJson resolved, int rotationX, int rotationY, String modelPath) {
+        return bake(resolved, rotationX, rotationY, modelPath, VanillaTextureTracker.textureIcons);
+    }
+
+    /**
+     * 从已解析的 {@link ModelJson} 烘焙，显式指定 iconMap。
+     * <p>
+     * 对标高版本 {@code MaterialBaker} 的实例化闭包模式。
+     *
+     * @param resolved  已解析的模型
+     * @param rotationX X 轴旋转角度
+     * @param rotationY Y 轴旋转角度
+     * @param modelPath 模型路径（用于日志和标识）
+     * @param iconMap   当前 stitch 周期的 IIcon 映射
+     * @return 烘焙后的渲染部件
+     */
+    @Nullable
+    public static BlockStateModelPart bake(ModelJson resolved, int rotationX, int rotationY,
+                                            String modelPath, @Nullable Map<String, IIcon> iconMap) {
         if (resolved == null) return null;
         if (resolved.elements == null || resolved.elements.isEmpty()) {
             if (!resolved.builtinGenerated) {
@@ -128,8 +142,8 @@ public class ModelBaker {
         // 1. 构建 UnbakedModel 适配器
         UnbakedModel unbaked = new ModelJsonUnbakedAdapter(resolved, modelPath);
 
-        // 2. 构建 TextureSlots
-        TextureSlots textures = TextureSlots.fromModel(resolved, globalIconMap, null);
+        // 2. 构建 TextureSlots（使用调用方提供的 iconMap，而非全局静态）
+        TextureSlots textures = TextureSlots.fromModel(resolved, iconMap, null);
 
         // 3. 烘焙
         return unbaked.bake(textures, rotationX, rotationY);

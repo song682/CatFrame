@@ -3,10 +3,15 @@ package decok.dfcdvadstf.catframe.model;
 import com.google.gson.Gson;
 import decok.dfcdvadstf.catframe.CatFrame;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.IResource;
+import net.minecraft.client.resources.IResourceManager;
+import net.minecraft.util.ResourceLocation;
 
 /**
  * Resolves model JSON files with parent inheritance chain.
@@ -412,22 +417,84 @@ public class ModelResolver {
     }
 
     /**
-     * Load a model JSON from the classpath resources.
+     * Load a model JSON, prioritizing Minecraft's IResourceManager
+     * (which sees resource packs) over classpath-only loading.
+     *
      * Search order:
-     * 1. If modelPath contains ':', use it as namespace:path
-     * 2. Otherwise search: assets/minecraft/models/{path}.json
-     * 3. Fallback: each registered mod namespace
+     * 1. IResourceManager (vanilla + mod + resource pack resources)
+     * 2. Classpath fallback (for server-side or pre-init contexts)
      */
     private static ModelJson loadFromResources(String modelPath) {
+        // 优先走 IResourceManager（可访问资源包）
+        ModelJson fromManager = loadFromResourceManager(modelPath);
+        if (fromManager != null) return fromManager;
+
+        // 回退到 classpath
+        return loadFromClasspath(modelPath);
+    }
+
+    /**
+     * 通过 Minecraft IResourceManager 加载模型。
+     * 资源包、原版资源和 mod 资源均可通过此路径访问。
+     */
+    private static ModelJson loadFromResourceManager(String modelPath) {
+        try {
+            Minecraft mc = Minecraft.getMinecraft();
+            if (mc == null) return null;
+            IResourceManager rm = mc.getResourceManager();
+            if (rm == null) return null;
+
+            if (modelPath.contains(":")) {
+                String ns = modelPath.substring(0, modelPath.indexOf(':'));
+                String path = modelPath.substring(modelPath.indexOf(':') + 1);
+                return tryLoadFromManager(rm, ns, "models/" + path + ".json");
+            } else {
+                // 默认先搜 minecraft，再搜已注册的命名空间
+                ModelJson result = tryLoadFromManager(rm, "minecraft", "models/" + modelPath + ".json");
+                if (result != null) return result;
+
+                for (String ns : registeredNamespaces) {
+                    if (!ns.equals("minecraft")) {
+                        result = tryLoadFromManager(rm, ns, "models/" + modelPath + ".json");
+                        if (result != null) return result;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            CatFrame.logger.debug("Resource manager model loading unavailable: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private static ModelJson tryLoadFromManager(IResourceManager rm, String ns, String resourcePath) {
+        try {
+            ResourceLocation loc = new ResourceLocation(ns, resourcePath);
+            IResource res = rm.getResource(loc);
+            if (res != null) {
+                InputStreamReader reader = new InputStreamReader(res.getInputStream());
+                ModelJson model = GSON.fromJson(reader, ModelJson.class);
+                if (model != null) {
+                    CatFrame.logger.debug("Loaded model from resource manager: {}:{}", ns, resourcePath);
+                    return model;
+                }
+            }
+        } catch (IOException ignored) {
+        }
+        return null;
+    }
+
+    /**
+     * 从 classpath 加载模型（回退路径）。
+     * 用于 IResourceManager 不可用的场景（服务端 / 早期初始化）。
+     */
+    private static ModelJson loadFromClasspath(String modelPath) {
         List<String> searchPaths = new ArrayList<>();
 
         if (modelPath.contains(":")) {
-            // Explicit namespace (e.g., "minecraft:block/cube")
             String namespace = modelPath.substring(0, modelPath.indexOf(':'));
             String path = modelPath.substring(modelPath.indexOf(':') + 1);
             searchPaths.add("/assets/" + namespace + "/models/" + path + ".json");
         } else {
-            // Default: search minecraft then all registered namespaces
             searchPaths.add("/assets/minecraft/models/" + modelPath + ".json");
             for (String ns : registeredNamespaces) {
                 if (!ns.equals("minecraft")) {
@@ -442,7 +509,7 @@ public class ModelResolver {
                     InputStreamReader reader = new InputStreamReader(stream);
                     ModelJson model = GSON.fromJson(reader, ModelJson.class);
                     if (model != null) {
-                        CatFrame.logger.debug("Loaded model from: {}", resourcePath);
+                        CatFrame.logger.debug("Loaded model from classpath: {}", resourcePath);
                         return model;
                     }
                 }

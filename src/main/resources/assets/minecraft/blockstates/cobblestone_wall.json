@@ -1,6 +1,6 @@
 {
   "variants": {
-    "0": { "model": "minecraft:block/cobblestone_wall_post" },
-    "1": { "model": "minecraft:block/mossy_cobblestone_wall_post" }
+    "variant=cobblestone": { "model": "minecraft:block/cobblestone_wall_post" },
+    "variant=mossy_cobblestone": { "model": "minecraft:block/mossy_cobblestone_wall_post" }
   }
 }

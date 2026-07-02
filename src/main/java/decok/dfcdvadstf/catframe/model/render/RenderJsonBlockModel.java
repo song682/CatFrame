@@ -4,8 +4,10 @@ import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.VanillaModelRegistry;
 import decok.dfcdvadstf.catframe.model.VanillaRenderDispatcher;
+import decok.dfcdvadstf.catframe.model.BakedModelCache;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.block.Block;
@@ -24,7 +26,7 @@ import java.util.Map;
  * <p>
  * <b>使用方式：</b>
  * <ol>
- *   <li>方块类实现 {@link decok.dfcdvadstf.catframe.model.state.IBlockStateProvider}</li>
+ *   <li>方块类实现 {@link IBlockStateProvider}</li>
  *   <li>在方块类中 {@code getRenderType()} 返回 {@link #register()} 的返回值</li>
  *   <li>在 preInit 中调用 {@link #register()} 注册 ISBRH</li>
  * </ol>
@@ -144,9 +146,9 @@ public class BlockStateISBRH implements ISimpleBlockRenderingHandler {
         decok.dfcdvadstf.catframe.model.state.BlockstateJson.Variant variant = entry.getVariant(0);
         if (variant == null || variant.model == null) return null;
 
-        String cacheKey = decok.dfcdvadstf.catframe.model.BakedModelCache.buildKey(
+        String cacheKey = BakedModelCache.buildKey(
                 variant.model, variant.x, variant.y);
-        BlockStateModelPart part = decok.dfcdvadstf.catframe.model.BakedModelCache.INSTANCE.get(cacheKey);
+        BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
         return (part != null && !part.isEmpty()) ? part : null;
     }
 }

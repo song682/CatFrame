@@ -1,0 +1,16 @@
+{
+  "model": {
+    "type": "minecraft:condition",
+    "property": "minecraft:display_context",
+    "on_true": {
+      "type": "minecraft:exact_match",
+      "property": "minecraft:display_context",
+      "cases": {
+        "item_hand_first_person":  { "type": "minecraft:model", "model": "catframe:item/bluey" },
+        "item_hand_third_person":  { "type": "minecraft:model", "model": "catframe:item/bluey" }
+      },
+      "fallback": { "type": "minecraft:model", "model": "catframe:item/bluey" }
+    },
+    "on_false": { "type": "minecraft:model", "model": "catframe:item/bluey_inventory" }
+  }
+}

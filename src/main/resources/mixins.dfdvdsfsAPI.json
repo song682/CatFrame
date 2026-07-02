@@ -5,7 +5,9 @@
   "package": "decok.dfcdvadstf.catframe.mixin",
   "refmap": "mixins.dfdvdsfsAPI.refmap.json",
   "compatibilityLevel": "JAVA_8",
-  "mixins": [],
+  "mixins": [
+    "middle.MixinItemStack"
+  ],
   "client": [
     "middle.MixinRenderBlocks",
     "middle.MixinTextureMap"

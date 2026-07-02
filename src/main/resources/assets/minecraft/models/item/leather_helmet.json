@@ -1,1 +1,14 @@
-{"parent":"item/generated","textures":{"layer0":"minecraft:items/leather_helmet"}}
+{
+    "parent": "item/generated",
+    "textures": {
+        "layer0": "minecraft:items/leather_helmet",
+        "layer1": "minecraft:items/leather_helmet_overlay"
+    },
+    "display": {
+        "thirdperson_righthand": {
+            "rotation": [-90, 0, 0],
+            "translation": [-2, 2, 0],
+            "scale": [0.625, 0.625, 0.625]
+        }
+    }
+}

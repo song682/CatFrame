@@ -1,1 +1,6 @@
-{"parent":"item/generated","textures":{"layer0":"minecraft:items/tnt_minecart"}}
+{
+	"parent": "item/generated",
+	"textures": {
+		"layer0": "minecraft:items/minecart_tnt"
+	}
+}

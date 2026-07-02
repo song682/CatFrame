@@ -1,1 +1,6 @@
-{"parent":"item/generated","textures":{"layer0":"minecraft:items/bucket"}}
+{
+    "parent": "item/generated",
+    "textures": {
+        "layer0": "minecraft:items/bucket_empty"
+    }
+}

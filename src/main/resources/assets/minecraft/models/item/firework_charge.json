@@ -1,1 +1,7 @@
-{"parent":"item/generated","textures":{"layer0":"minecraft:items/firework_charge"}}
+{
+    "parent": "item/generated",
+    "textures": {
+        "layer0": "minecraft:items/firework_charge",
+        "layer1": "minecraft:items/firework_charge_overlay"
+    }
+}

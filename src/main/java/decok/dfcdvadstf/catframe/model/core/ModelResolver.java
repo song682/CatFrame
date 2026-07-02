@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.core;
 
 import com.google.gson.Gson;
 import decok.dfcdvadstf.catframe.CatFrame;
@@ -8,6 +8,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
@@ -51,77 +53,16 @@ public class ModelResolver {
 
     static {
         registeredNamespaces.add("minecraft");
-
-        // --- builtin/generated: 标准平面物品模型（单层） ---
-        ModelJson generated = new ModelJson();
-        generated.guiLight = "front";
-        generated.builtinGenerated = true;
-
-        // 带 1px 厚度的平面 element，与原版 ItemModelGenerator 一致
-        // MIN_Z=7.5, MAX_Z=8.5，1像素厚度防止双面共面 z-fighting
-        ModelJson.Element elem = new ModelJson.Element();
-        elem.from = new float[]{0, 0, 7.5f};
-        elem.to = new float[]{16, 16, 8.5f};
-        elem.faces = new ModelJson.Faces();
-        // north 面（-Z方向）UV 水平翻转：与 26.1.2 NORTH_FACE_UVS 一致
-        elem.faces.north = new ModelJson.Face();
-        elem.faces.north.texture = "#layer0";
-        elem.faces.north.uv = new float[]{16, 0, 0, 16};
-        elem.faces.north.tintIndex = 0;
-        // south 面（+Z方向）正常 UV：与 26.1.2 SOUTH_FACE_UVS 一致
-        elem.faces.south = new ModelJson.Face();
-        elem.faces.south.texture = "#layer0";
-        elem.faces.south.uv = new float[]{0, 0, 16, 16};
-        elem.faces.south.tintIndex = 0;
-        generated.elements = new ArrayList<>();
-        generated.elements.add(elem);
-
-        // display transforms
-        generated.display = new HashMap<>();
-        generated.display.put("gui", display(0, 0, 0, 0, 0, 0, 1, 1, 1));
-        generated.display.put("ground", display(0, 0, 0, 0, 2, 0, 0.5f, 0.5f, 0.5f));
-        generated.display.put("fixed", display(0, 0, 0, 0, 0, 0, 1, 1, 1));
-        generated.display.put("thirdperson_righthand", display(0, 0, 0, 0, 3, 1, 0.55f, 0.55f, 0.55f));
-        generated.display.put("firstperson_righthand", display(1.13f, 3.2f, 1.13f, 0, 0, 0, 0.68f, 0.68f, 0.68f));
-        generated.display.put("firstperson_lefthand", display(1.13f, 3.2f, 1.13f, 0, 0, 0, 0.68f, 0.68f, 0.68f));
-        builtinModels.put("builtin/generated", generated);
-
-        // --- builtin/missing: MissingNo 纹理模型 ---
-        ModelJson missing = new ModelJson();
-        missing.textures = new HashMap<>();
-        missing.textures.put("all", "minecraft:missingno");
-
-        ModelJson.Element missingElem = new ModelJson.Element();
-        missingElem.from = new float[]{0, 0, 8};
-        missingElem.to = new float[]{16, 16, 8};
-        missingElem.faces = new ModelJson.Faces();
-        missingElem.faces.north = new ModelJson.Face();
-        missingElem.faces.north.texture = "#all";
-        missingElem.faces.north.uv = new float[]{0, 0, 16, 16};
-        missingElem.faces.south = new ModelJson.Face();
-        missingElem.faces.south.texture = "#all";
-        missingElem.faces.south.uv = new float[]{0, 0, 16, 16};
-        missing.elements = new ArrayList<>();
-        missing.elements.add(missingElem);
-        builtinModels.put("builtin/missing", missing);
-    }
-
-    /**
-     * 辅助方法：快速创建 DisplayTransform
-     */
-    private static ModelJson.DisplayTransform display(float tx, float ty, float tz,
-                                                       float rx, float ry, float rz,
-                                                       float sx, float sy, float sz) {
-        ModelJson.DisplayTransform dt = new ModelJson.DisplayTransform();
-        dt.translation = new float[]{tx, ty, tz};
-        dt.rotation = new float[]{rx, ry, rz};
-        dt.scale = new float[]{sx, sy, sz};
-        return dt;
+        builtinModels.put("builtin/generated", BuiltinGeneratedModel.create());
+        builtinModels.put("builtin/missing",   BuiltinMissingModel.create());
     }
 
     /**
      * Resolve a model by path (e.g., "block/stone") with full parent chain resolution.
      * The resolved model will have all elements and textures merged from parents.
+     *
+     * <p>如果模型未找到或加载出错，自动 fallback 到 {@code builtin/missing} 无效模型
+     * （显示紫黑 missingno 纹理），避免因模型缺失导致渲染管线异常。
      */
     public static ModelJson resolve(String modelPath) {
         if (cache.containsKey(modelPath)) {
@@ -137,6 +78,10 @@ public class ModelResolver {
             // Resolve texture variables in the final model
             resolveTextureVariables(resolved);
             cache.put(modelPath, resolved);
+        } else {
+            // [W5] 模型加载失败 → fallback 到 builtin/missing（不缓存，下次重试）
+            CatFrame.logger.warn("[ModelResolver] Model '{}' not found or errored, falling back to builtin/missing", modelPath);
+            resolved = deepCopy(builtinModels.get("builtin/missing"));
         }
         return resolved;
     }
@@ -332,6 +277,7 @@ public class ModelResolver {
             dst.rotation.x = src.rotation.x;
             dst.rotation.y = src.rotation.y;
             dst.rotation.z = src.rotation.z;
+            dst.rotation.rescale = src.rotation.rescale;
         }
         if (src.faces != null) {
             dst.faces = new ModelJson.Faces();
@@ -364,7 +310,7 @@ public class ModelResolver {
      * 解析纹理变量引用（例如 #all → 实际纹理路径）。
      * 以 '#' 开头的纹理值表示引用另一个纹理键。
      */
-    private static void resolveTextureVariables(ModelJson model) {
+    public static void resolveTextureVariables(ModelJson model) {
         if (model.textures == null) return;
 
         // Missingno 纹理的标识符

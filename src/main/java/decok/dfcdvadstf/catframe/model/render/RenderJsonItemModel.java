@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render;
 
-import decok.dfcdvadstf.catframe.model.ItemModel;
+import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
@@ -19,10 +19,10 @@ import java.nio.FloatBuffer;
  *
  * <h3>核心设计</h3>
  * <ul>
- *   <li><b>Block 和 ItemBlock 共用同一个模型</b>——方块物品不创建独立 ItemModel，
+ *   <li><b>Block 和 ItemBlock 共用同一个模型</b>——方块物品不创建独立 IItemState，
  *       而是通过 {@link VanillaModelManager.ModelRegistration#getRegisteredItemModel}
  *       的 fallback 逻辑直接从 {@code registeredBlockModels}
- *       取 BlockStateModel，包装为 ItemModelWrapper。</li>
+ *       取 BlockStateModel，包装为 BlockStateItemState。</li>
  *   <li><b>{@link #shouldUseRenderHelper} 对 EQUIPPED_BLOCK 返回 true
  *       （仅 ItemBlock），对 INVENTORY_BLOCK 始终返回 false</b>——
  *       手持路径让 Forge 做 translate(-0.5) 前置，GUI 路径不依赖 Forge，
@@ -62,7 +62,7 @@ import java.nio.FloatBuffer;
  */
 public class RenderJsonItemModel implements IItemRenderer {
 
-    /** 单例，所有物品共用（渲染逻辑委托给各 ItemModel）。 */
+    /** 单例，所有物品共用（渲染逻辑委托给各 IItemStateProvider）。 */
     public static final RenderJsonItemModel INSTANCE = new RenderJsonItemModel();
 
     private RenderJsonItemModel() {}
@@ -80,11 +80,11 @@ public class RenderJsonItemModel implements IItemRenderer {
      *
      * <p>对于 {@link ItemBlock}：检查方块是否有 CatFrame 模型
      * （{@link VanillaModelManager.ModelRegistration#hasModel(Block)}）。
-     * 对于非方块物品：先获取注册的 {@link ItemModel}，再将其
-     * {@link ItemModel#handles(RenderPhase)} 映射到 Forge 的
+     * 对于非方块物品：先获取注册的 {@link IItemStateProvider}，再将其
+     * {@link IItemStateProvider#handles(RenderPhase)} 映射到 Forge 的
      * {@code handleRenderType} 返回值。</p>
      *
-     * <p>这样，实现了 {@code handles()} 的 ItemModel 可以精细控制
+     * <p>这样，实现了 {@code handles()} 的 IItemState 可以精细控制
      * 哪些阶段由 CatFrame 接管、哪些退回原版渲染。
      * 例如 {@code handles(ITEM_GUI) = false} 的模型在 GUI 会走原版 2D，
      * 而 {@code handles(ITEM_HAND_*) = true} 的手持阶段走自定义 3D。</p>
@@ -102,8 +102,8 @@ public class RenderJsonItemModel implements IItemRenderer {
             return block != null && VanillaModelManager.ModelRegistration.hasModel(block);
         }
 
-        // Non-block items → get ItemModel and delegate to handles(RenderPhase)
-        ItemModel model = VanillaModelManager.ModelRegistration.getRegisteredItemModel(item.getItem());
+        // Non-block items → get IItemState and delegate to handles(RenderPhase)
+        IItemStateProvider model = VanillaModelManager.ModelRegistration.getRegisteredItemModel(item.getItem());
         if (model == null) return false;
 
         RenderPhase phase = toRenderPhase(type, item);
@@ -298,7 +298,7 @@ public class RenderJsonItemModel implements IItemRenderer {
         // ====== 诊断结束 =======
 
         // getRegisteredItemModel 对方块物品有 BlockStateModel fallback
-        ItemModel model = VanillaModelManager.ModelRegistration.getRegisteredItemModel(stack.getItem());
+        IItemStateProvider model = VanillaModelManager.ModelRegistration.getRegisteredItemModel(stack.getItem());
         if (model == null) {
             if (debugLog) LOGGER.info(String.format("[DFXDBG] NULL model for item=%s", stack.getDisplayName()));
             return;

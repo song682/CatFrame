@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.model.render.extension;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
@@ -13,7 +14,7 @@ import net.minecraft.util.EnumFacing;
  * 内建渲染扩展：根据 JSON 模型中 face 的 {@code "cullface"} 字段执行面剔除。
  *
  * <h3>工作方式</h3>
- * 当 {@link decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad#cullface}
+ * 当 {@link JsonModelBake.BakedQuad#cullface}
  * 不为 null 时，检查该方向上的相邻方块：
  * <ul>
  *   <li>若相邻方块是完整不透明方块（{@link Block#isOpaqueCube()}），则剔除本面；</li>

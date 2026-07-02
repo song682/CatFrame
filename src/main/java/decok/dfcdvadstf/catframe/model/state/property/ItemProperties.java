@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.model.state.property;
 
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -13,7 +14,7 @@ import java.util.Map;
  * <p>
  * 复用方块侧的 {@link Property<T>} 体系定义物品属性的类型安全常量。
  * 运行时每帧从 ItemStack + RenderPhase 构建 {@code Map<String, Comparable<?>>} 属性集，
- * 供 {@link decok.dfcdvadstf.catframe.model.ItemStateNode} 决策树求值。
+ * 供 {@link ItemStateNode} 决策树求值。
  *
  * <h3>方块 Property vs 物品 Property</h3>
  * <ul>
@@ -59,8 +60,11 @@ public class ItemProperties {
     /**
      * 从 ItemStack + RenderPhase 构建运行时属性集。
      * <p>
-     * 返回的 Map 以 property name 为 key（对齐 {@link decok.dfcdvadstf.catframe.model.ItemStateNode}
+     * 返回的 Map 以 property name 为 key（对齐 {@link ItemStateNode}
      * 的 {@code evaluate(Map<String, Comparable<?>>)} 签名）。
+     * <p>
+     * 为兼容高版本 item model JSON 的命名空间写法（如 {@code "minecraft:damage"}），
+     * 同时为每个属性写入无命名空间别名。
      *
      * @param stack 当前渲染的 ItemStack
      * @param phase 当前渲染阶段
@@ -70,39 +74,50 @@ public class ItemProperties {
         Map<String, Comparable<?>> props = new HashMap<>();
 
         // damage
+        int damage;
+        int maxDamage;
         if (stack != null) {
-            props.put(DAMAGE.getName(), stack.getItemDamage());
-            props.put(MAX_DAMAGE.getName(), stack.getMaxDamage());
+            damage = stack.getItemDamage();
+            maxDamage = stack.getMaxDamage();
         } else {
-            props.put(DAMAGE.getName(), 0);
-            props.put(MAX_DAMAGE.getName(), 0);
+            damage = 0;
+            maxDamage = 0;
         }
+        putProperty(props, DAMAGE, damage);
+        putProperty(props, MAX_DAMAGE, maxDamage);
 
         // display context（始终设置）
-        props.put(DISPLAY_CONTEXT.getName(), phase);
+        putProperty(props, DISPLAY_CONTEXT, phase);
 
         // using 状态（仅手持阶段检测）
-        if (isHandPhase(phase) && stack != null) {
+        boolean usingItem = false;
+        int useDuration = 0;
+        if (stack != null) {
             EntityPlayer player = getPlayerSafe();
             if (player != null && player.isUsingItem()) {
                 ItemStack usingStack = player.getItemInUse();
-                if (usingStack != null && usingStack.getItem() == stack.getItem()) {
-                    props.put(USING_ITEM.getName(), Boolean.TRUE);
-                    props.put(USE_DURATION.getName(), computeUseDuration(player));
-                } else {
-                    props.put(USING_ITEM.getName(), Boolean.FALSE);
-                    props.put(USE_DURATION.getName(), 0);
+                if (usingStack != null && usingStack == stack) {
+                    usingItem = true;
+                    useDuration = computeUseDuration(player);
                 }
-            } else {
-                props.put(USING_ITEM.getName(), Boolean.FALSE);
-                props.put(USE_DURATION.getName(), 0);
             }
-        } else {
-            props.put(USING_ITEM.getName(), Boolean.FALSE);
-            props.put(USE_DURATION.getName(), 0);
         }
+        putProperty(props, USING_ITEM, usingItem);
+        putProperty(props, USE_DURATION, useDuration);
 
         return props;
+    }
+
+    /**
+     * 将属性值写入运行时属性集，同时提供无命名空间与 {@code minecraft:} 前缀两种 key。
+     */
+    private static <T extends Comparable<T>> void putProperty(Map<String, Comparable<?>> props,
+                                                               Property<T> property, T value) {
+        String name = property.getName();
+        props.put(name, value);
+        if (!name.contains(":")) {
+            props.put("minecraft:" + name, value);
+        }
     }
 
     // ==================== 内部工具 ====================

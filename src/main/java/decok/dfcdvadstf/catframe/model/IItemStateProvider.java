@@ -9,7 +9,7 @@ import net.minecraft.item.ItemStack;
  * 本接口统一了原来的“状态发现接口”与“物品模型接口”两层抽象：
  * <ul>
  *   <li>作为<b>发现标记</b>：外部 {@link net.minecraft.item.Item} 实现此接口后，
- *       CatFrame 在 {@link VMMDataLoader#init()} 阶段自动发现并收集纹理。</li>
+ *       CatFrame 在 {@link ModelManagerDataLoader#init()} 阶段自动发现并收集纹理。</li>
  *   <li>作为<b>渲染模型</b>：实现类直接提供 {@link #render(ItemStack, RenderPhase)}
  *       与 {@link #handles(RenderPhase)}，由 {@link RenderJsonItemModel}
  *       在 Forge 渲染管线中调用。</li>
@@ -33,7 +33,7 @@ import net.minecraft.item.ItemStack;
  *   <li>{@link #render(ItemStack, RenderPhase)} — 实际渲染逻辑</li>
  * </ul>
  */
-public interface IItemState {
+public interface IItemStateProvider {
 
     /**
      * 全局开关：是否由 CatFrame 接管此物品的渲染。

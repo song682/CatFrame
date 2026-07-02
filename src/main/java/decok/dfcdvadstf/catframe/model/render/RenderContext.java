@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render;
 
-import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;

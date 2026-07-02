@@ -1,6 +1,8 @@
 package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.model.core.baking.BakingCore;
+import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.util.IIcon;
 

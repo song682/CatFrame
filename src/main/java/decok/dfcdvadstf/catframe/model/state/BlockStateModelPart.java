@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.model.state;
 
-import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IIcon;
 

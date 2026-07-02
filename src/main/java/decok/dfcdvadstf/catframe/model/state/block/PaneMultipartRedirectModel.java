@@ -1,8 +1,11 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.state.block;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.CatFrameConfig;
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
+import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -87,9 +90,9 @@ public class PaneMultipartRedirectModel implements BlockStateModel {
 
             // 优先使用 init 时的缓存
             String cacheKey = namespace + ":" + targetName;
-            targetBs = VMMDataLoader.cachedRedirectBlockstates.get(cacheKey);
+            targetBs = ModelManagerDataLoader.cachedRedirectBlockstates.get(cacheKey);
             if (targetBs == null) {
-                targetBs = VMMDataLoader.loadSingleBlockstate(namespace, targetName);
+                targetBs = ModelManagerDataLoader.loadSingleBlockstate(namespace, targetName);
             }
         } else {
             // 直接模式：使用传入的 blockstate JSON
@@ -100,23 +103,29 @@ public class PaneMultipartRedirectModel implements BlockStateModel {
         // 3. 运行时确定连接状态（BlockPane.canPaneConnectTo）
         Map<String, String> props = buildConnectionProps(world, x, y, z);
 
-        // 4. 评估 multipart 条件，合并匹配的部件
-        CatFrame.logger.info("[PaneMP] collectParts block={} pos=({},{},{}) meta={} props={} targetBs.multipart={}",
-                Block.blockRegistry.getNameForObject(block), x, y, z, metadata, props,
-                targetBs.multipart != null ? targetBs.multipart.size() : 0);
+        if (CatFrameConfig.shouldLogDebug()) {
+            // 4. 评估 multipart 条件，合并匹配的部件
+            CatFrame.logger.info("[PaneMP] collectParts block={} pos=({},{},{}) meta={} props={} targetBs.multipart={}",
+                    Block.blockRegistry.getNameForObject(block), x, y, z, metadata, props,
+                    targetBs.multipart != null ? targetBs.multipart.size() : 0);
+        }
 
-        Map<EnumFacing, List<BlockJsonModelBake.BakedQuad>> mergedFace
+        Map<EnumFacing, List<JsonModelBake.BakedQuad>> mergedFace
                 = new EnumMap<>(EnumFacing.class);
-        List<BlockJsonModelBake.BakedQuad> mergedGeneral = new ArrayList<>();
+        List<JsonModelBake.BakedQuad> mergedGeneral = new ArrayList<>();
 
         for (BlockstateJson.MultipartCase mpc : targetBs.multipart) {
             boolean applies = (mpc.when == null) || mpc.when.matches(props);
-            CatFrame.logger.info("[PaneMP]   case: when={} apply.model={} applies={}",
-                    mpc.when != null ? mpc.when.conditions : "null",
-                    mpc.apply != null ? mpc.apply.model : "null", applies);
+            if (CatFrameConfig.shouldLogDebug()) {
+                CatFrame.logger.info("[PaneMP]   case: when={} apply.model={} applies={}",
+                        mpc.when != null ? mpc.when.conditions : "null",
+                        mpc.apply != null ? mpc.apply.model : "null", applies);
+            }
             if (applies && mpc.apply != null && mpc.apply.model != null) {
                 BlockStateModelPart part = ModelBaker.bake(mpc.apply.model, mpc.apply.x, mpc.apply.y);
-                CatFrame.logger.info("[PaneMP]   bake('{}', x={}, y={}) -> part={}", mpc.apply.model, mpc.apply.x, mpc.apply.y, part);
+                if (CatFrameConfig.shouldLogDebug()) {
+                    CatFrame.logger.info("[PaneMP]   bake('{}', x={}, y={}) -> part={}", mpc.apply.model, mpc.apply.x, mpc.apply.y, part);
+                }
                 if (part != null) {
                     for (EnumFacing dir : EnumFacing.values()) {
                         mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())

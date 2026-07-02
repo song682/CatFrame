@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.model.render.extension;
 
-import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.ModelJson;
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;

@@ -1,7 +1,6 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.state.item;
 
 import com.google.gson.*;
-import decok.dfcdvadstf.catframe.model.state.property.Property;
 
 import java.lang.reflect.Type;
 import java.util.*;

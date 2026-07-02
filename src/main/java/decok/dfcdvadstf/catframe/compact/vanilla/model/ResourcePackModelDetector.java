@@ -1,8 +1,12 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.compact.vanilla.model;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
+import decok.dfcdvadstf.catframe.model.VanillaModelManager;
+import decok.dfcdvadstf.catframe.model.core.ModelJson;
+import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IReloadableResourceManager;
@@ -57,20 +61,20 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
     }
 
     private static void scanAllNamespaces(IResourceManager manager) {
-        for (String ns : VMMDataLoader.namespaces) {
+        for (String ns : ModelManagerDataLoader.namespaces) {
             scanNamespace(manager, ns);
         }
     }
 
     private static void scanNamespace(IResourceManager manager, String ns) {
         // 扫描已知 BlockStates
-        Map<String, BlockstateJson> nsBlockstates = VMMDataLoader.loadedBlockstates.get(ns);
+        Map<String, BlockstateJson> nsBlockstates = ModelManagerDataLoader.loadedBlockstates.get(ns);
         if (nsBlockstates != null) {
             for (String blockName : nsBlockstates.keySet()) {
                 ResourceLocation loc = new ResourceLocation(ns, "blockstates/" + blockName + ".json");
                 try {
                     IResource topResource = manager.getResource(loc);
-                    BlockstateJson bs = VMMDataLoader.blockstateGson.fromJson(
+                    BlockstateJson bs = ModelManagerDataLoader.blockstateGson.fromJson(
                             new InputStreamReader(topResource.getInputStream()),
                             BlockstateJson.class);
                     if (bs != null) {
@@ -85,7 +89,7 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         }
 
         // 扫描已知模型路径
-        VanillaModelManager.ModelMappings mappings = VMMDataLoader.loadedMappings.get(ns);
+        VanillaModelManager.ModelMappings mappings = ModelManagerDataLoader.loadedMappings.get(ns);
         if (mappings != null) {
             if (mappings.blocks != null) {
                 for (String modelPath : mappings.blocks.values()) {

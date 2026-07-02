@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.model.render;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.FaceCullExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.GuiLightExtension;

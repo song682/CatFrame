@@ -3,11 +3,15 @@ package decok.dfcdvadstf.catframe.model;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.model.core.ModelJson;
+import decok.dfcdvadstf.catframe.model.core.ModelResolver;
+import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 
 /**
@@ -23,9 +27,9 @@ public class VanillaTextureTracker {
 
     static final Set<String> pendingTextures = new LinkedHashSet<>();
     static final Set<String> pendingItemTextures = new LinkedHashSet<>();
-    static final Map<String, IIcon> textureIcons = new HashMap<>();
+    public static final Map<String, IIcon> textureIcons = new HashMap<>();
 
-    static void collectTexturesFromBlockstate(BlockstateJson bs) {
+    static void collectTexturesFromBlockstate(@Nonnull BlockstateJson bs) {
         if (bs.variants != null) {
             for (BlockstateJson.VariantEntry entry : bs.variants.values()) {
                 if (entry.isArray()) {

@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.state.block;
 
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;

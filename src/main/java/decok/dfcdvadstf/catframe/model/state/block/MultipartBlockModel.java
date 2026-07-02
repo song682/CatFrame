@@ -1,5 +1,6 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.state.block;
 
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -30,9 +31,9 @@ public class MultipartBlockModel implements BlockStateModel {
 
     @Override
     public BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z, int metadata) {
-        Map<EnumFacing, List<BlockJsonModelBake.BakedQuad>> mergedFace
+        Map<EnumFacing, List<JsonModelBake.BakedQuad>> mergedFace
                 = new EnumMap<>(EnumFacing.class);
-        List<BlockJsonModelBake.BakedQuad> mergedGeneral = new ArrayList<>();
+        List<JsonModelBake.BakedQuad> mergedGeneral = new ArrayList<>();
 
         for (MultipartEntry entry : entries) {
             boolean applies = (entry.when == null) || entry.when.matches(metadata);

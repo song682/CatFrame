@@ -1,13 +1,12 @@
 package decok.dfcdvadstf.catframe;
 
+import decok.dfcdvadstf.catframe.model.impl.ModernItem;
 import net.minecraft.creativetab.CreativeTabs;
 
 /**
  * Bluey 毛绒玩偶物品。
  * <p>
- * 使用 {@link ModernItem} 的双模型系统：
- * 通过 {@link #setModels(String, String)} 配置
- * 2D inventory 模型（GUI + 掉落物）和 3D 手持模型。
+ * 2D inventory 模型（GUI + 掉落物）和 3D 手持模型例子。
  */
 public class BlueyPlushyItem extends ModernItem {
 

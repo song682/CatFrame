@@ -1,6 +1,8 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.core;
 
+import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 
 import java.util.Map;
 import java.util.Set;

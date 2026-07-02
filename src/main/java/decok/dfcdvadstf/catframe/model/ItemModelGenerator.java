@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IIcon;
@@ -54,8 +55,8 @@ public class ItemModelGenerator {
      * @param tintIndex 染色索引（多层模型时对应 layerN），-1 表示无染色
      * @return 侧面 BakedQuad 列表
      */
-    public static List<BlockJsonModelBake.BakedQuad> bakeSideFaces(IIcon icon, int tintIndex) {
-        List<BlockJsonModelBake.BakedQuad> quads = new ArrayList<>();
+    public static List<JsonModelBake.BakedQuad> bakeSideFaces(IIcon icon, int tintIndex) {
+        List<JsonModelBake.BakedQuad> quads = new ArrayList<>();
 
         if (!(icon instanceof TextureAtlasSprite)) {
             return quads;
@@ -148,7 +149,7 @@ public class ItemModelGenerator {
      * UP 和 DOWN 使用不同的顶点绕序以产生正确的法线方向。
      */
     private static void bakeHorizontalEdge(
-            List<BlockJsonModelBake.BakedQuad> quads,
+            List<JsonModelBake.BakedQuad> quads,
             TextureAtlasSprite sprite,
             int x, int y, boolean isTop,
             float xScale, float yScale, int tintIndex, int pixelARGB) {
@@ -186,7 +187,7 @@ public class ItemModelGenerator {
 
         EnumFacing face = isTop ? EnumFacing.UP : EnumFacing.DOWN;
 
-        BlockJsonModelBake.BakedQuad q = new BlockJsonModelBake.BakedQuad();
+        JsonModelBake.BakedQuad q = new JsonModelBake.BakedQuad();
         q.icon = sprite;
         q.face = face;
         q.tintIndex = tintIndex;
@@ -227,7 +228,7 @@ public class ItemModelGenerator {
      *   RIGHT → Direction.WEST  (法线 -X，面在像素右侧，从右边可见)
      */
     private static void bakeVerticalEdge(
-            List<BlockJsonModelBake.BakedQuad> quads,
+            List<JsonModelBake.BakedQuad> quads,
             TextureAtlasSprite sprite,
             int x, int y, boolean isLeft,
             float xScale, float yScale, int tintIndex, int pixelARGB) {
@@ -252,7 +253,7 @@ public class ItemModelGenerator {
         // 26.1.2: LEFT→EAST, RIGHT→WEST
         EnumFacing face = isLeft ? EnumFacing.EAST : EnumFacing.WEST;
 
-        BlockJsonModelBake.BakedQuad q = new BlockJsonModelBake.BakedQuad();
+        JsonModelBake.BakedQuad q = new JsonModelBake.BakedQuad();
         q.icon = sprite;
         q.face = face;
         q.tintIndex = tintIndex;

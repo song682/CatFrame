@@ -1,0 +1,18 @@
+{
+  "model": {
+    "type": "minecraft:condition",
+    "on_false": {
+      "type": "minecraft:model",
+      "model": "minecraft:item/fishing_rod"
+    },
+    "on_true": {
+      "type": "minecraft:model",
+      "model": "minecraft:item/fishing_rod_cast"
+    },
+    "fallback":{
+      "type": "minecraft:model",
+      "model": "minecraft:item/fishing_rod"
+    },
+    "property": "minecraft:using_item"
+  }
+}

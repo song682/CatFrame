@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.state;
 
+import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import net.minecraft.block.Block;
 
 /**
@@ -11,7 +12,7 @@ import net.minecraft.block.Block;
  * multi-color blocks (e.g. stained_glass_pane) into 16 per-color files.
  * </p>
  *
- * @see decok.dfcdvadstf.catframe.model.VMMDataLoader#registerBlockstateRedirect
+ * @see ModelManagerDataLoader#registerBlockstateRedirect
  */
 @FunctionalInterface
 public interface IMetadataBlockstateRedirect {

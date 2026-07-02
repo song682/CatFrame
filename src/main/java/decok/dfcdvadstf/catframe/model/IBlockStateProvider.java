@@ -1,5 +1,7 @@
-package decok.dfcdvadstf.catframe.model.state;
+package decok.dfcdvadstf.catframe.model;
 
+import decok.dfcdvadstf.catframe.model.state.CatBlockState;
+import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.Map;
@@ -74,6 +76,22 @@ public interface IBlockStateProvider {
      * @return a CatBlockState for this position, or null
      */
     default CatBlockState getBlockState(IBlockAccess world, int x, int y, int z, int metadata) {
+        return null;
+    }
+    
+    /**
+     * 控制该方块在物品栏/GUI 中是否渲染为扁平 2D item 模型。
+     * <p>
+     * 返回 {@code null}（默认）→ 使用方块自身的 3D blockstate 模型渲染。
+     * 返回模型路径（如 {@code "minecraft:item/sapling"}）→ 使用该扁平 item 模型渲染，
+     * 世界中放置时仍为 3D 方块模型。
+     * <p>
+     * 适用方块：树苗、门、红石、炼药锅等，它们在物品栏中应显示
+     * 为扁平 item 纹理而非 3D 方块。
+     *
+     * @return 扁平 item 模型路径，或 null 使用默认 3D 方块渲染
+     */
+    default String inventoryFlatModel() {
         return null;
     }
 }

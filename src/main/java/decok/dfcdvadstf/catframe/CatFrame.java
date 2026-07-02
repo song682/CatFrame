@@ -11,10 +11,11 @@ import decok.dfcdvadstf.catframe.compact.vanilla.ClientEventHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.TexturesStitch;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaMetadataMapper;
+import decok.dfcdvadstf.catframe.component.RegisteredComponents;
 import decok.dfcdvadstf.catframe.langguage.LanguageRegister;
-import decok.dfcdvadstf.catframe.model.ResourcePackModelDetector;
-import decok.dfcdvadstf.catframe.model.VMMDataLoader;
-import decok.dfcdvadstf.catframe.model.VanillaModelRegistry;
+import decok.dfcdvadstf.catframe.compact.vanilla.model.ResourcePackModelDetector;
+import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
+import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
@@ -34,6 +35,9 @@ public class CatFrame {
         // Pre initialization logic
         logger = event.getModLog();
         config = new CatFrameConfig(event.getSuggestedConfigurationFile());
+
+        // Register data components
+        RegisteredComponents.registerAll();
 
         //
         MinecraftForge.EVENT_BUS.register(new TexturesStitch());
@@ -55,13 +59,13 @@ public class CatFrame {
             MinecraftForge.EVENT_BUS.register(new ClientEventHandler());
 
             VanillaMetadataMapper.registerVanillaMetadataMappings();
-            VMMDataLoader.registerNamespace("catframe");
-            VMMDataLoader.init();
+            ModelManagerDataLoader.registerNamespace("catframe");
+            ModelManagerDataLoader.init();
 
             if (blueyPlushy != null) {
                 // 通过 ModernItem 的双模型 API 注册（纹理由 IItemState 扫描自动收集）
-                VanillaModelRegistry.registerItemModel(
-                        blueyPlushy, blueyPlushy.createItemModel());
+                // ModernItem 自身已实现 IItemState，直接注册为模型实例
+                ModelRegistry.registerItemModel(blueyPlushy, blueyPlushy);
             }
 
             LeavesTintProvider.register();

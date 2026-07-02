@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.core;
 
 import com.google.gson.annotations.SerializedName;
 
@@ -56,6 +56,15 @@ public class ModelJson {
         public float angle;
         public String axis;
         public float[] origin;
+
+        /**
+         * 重新缩放标记（对应 JSON rotation 中的 "rescale"）。
+         * <p>当为 {@code true} 时，在旋转前对顶点沿各局部坐标轴应用非均匀缩放，
+         * 使旋转后的最大投影分量恢复至原始大小，补偿旋转造成的视觉收缩。
+         * 缩放因子 = 1 / max(abs(rotated_axis_unit))，以旋转中心为原点。
+         * 对齐 26.1 {@link net.minecraft.client.resources.model.cuboid.CuboidRotation#computeRescale}。
+         */
+        public boolean rescale;
 
         /**
          * 兼容格式: 直接指定旋转轴的角度（高版本 Blockbench 导出的格式）。

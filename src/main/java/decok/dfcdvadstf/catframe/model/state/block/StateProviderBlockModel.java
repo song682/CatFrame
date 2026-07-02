@@ -1,9 +1,11 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.state.block;
 
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
+import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
+import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
-import decok.dfcdvadstf.catframe.model.state.IBlockStateProvider;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.Map;
@@ -70,9 +72,9 @@ public class StateProviderBlockModel implements BlockStateModel {
 
         } else if (blockstate.multipart != null) {
             // Multipart: 合并所有匹配的部件
-            Map<net.minecraft.util.EnumFacing, java.util.List<BlockJsonModelBake.BakedQuad>> mergedFace
+            Map<net.minecraft.util.EnumFacing, java.util.List<JsonModelBake.BakedQuad>> mergedFace
                     = new java.util.EnumMap<>(net.minecraft.util.EnumFacing.class);
-            java.util.List<BlockJsonModelBake.BakedQuad> mergedGeneral = new java.util.ArrayList<>();
+            java.util.List<JsonModelBake.BakedQuad> mergedGeneral = new java.util.ArrayList<>();
 
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(properties);

@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.compact.vanilla.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.model.VMMDataLoader;
+import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import net.minecraft.init.Blocks;
 
 import java.util.HashMap;
@@ -39,7 +39,7 @@ public class VanillaMetadataMapper {
         // meta low 2 bits = wood type, high 2 bits = axis (0=y, 1=x, 2=z, 3=bark→y)
         final String[] woods = {"oak", "spruce", "birch", "jungle"};
         final String[] axes = {"y", "x", "z"};
-        VMMDataLoader.registerMetadataMapping(Blocks.log, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.log, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("wood", woods[meta & 3]);
             props.put("axis", axes[(meta >> 2) % 3]);
@@ -48,7 +48,7 @@ public class VanillaMetadataMapper {
 
         // ---- 金合欢/深色橡木原木 (log2) ----
         final String[] woods2 = {"acacia", "dark_oak"};
-        VMMDataLoader.registerMetadataMapping(Blocks.log2, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.log2, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("wood", woods2[meta & 1]);
             props.put("axis", axes[(meta >> 2) % 3]);
@@ -56,28 +56,28 @@ public class VanillaMetadataMapper {
         });
 
         // ---- 树叶 (leaves) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.leaves, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.leaves, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("wood", woods[meta & 3]);
             return props;
         });
 
         // ---- 金合欢/深色橡木树叶 (leaves2) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.leaves2, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.leaves2, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("wood", woods2[meta & 1]);
             return props;
         });
 
         // ---- 染色玻璃板 (stained_glass_pane) - meta=颜色索引(0-15) ----> per-color blockstate ---
-        VMMDataLoader.registerBlockstateRedirect(Blocks.stained_glass_pane, meta -> COLORS[meta & 15] + "_stained_glass_pane");
+        ModelManagerDataLoader.registerBlockstateRedirect(Blocks.stained_glass_pane, meta -> COLORS[meta & 15] + "_stained_glass_pane");
 
         // ==================== Block Variants ====================
 
         // ---- 树苗 (sapling) ----
         // meta 0-5: oak, spruce, birch, jungle, acacia, dark_oak
         final String[] SAPLING_TYPES = {"oak", "spruce", "birch", "jungle", "acacia", "dark_oak"};
-        VMMDataLoader.registerMetadataMapping(Blocks.sapling, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.sapling, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("variant", SAPLING_TYPES[Math.min(meta & 7, SAPLING_TYPES.length - 1)]);
             return props;
@@ -87,7 +87,7 @@ public class VanillaMetadataMapper {
         // meta: facing=bits 0-1, damage=bits 2-3 (0=intact,1=slightly,2=very)
         final String[] FACINGS = {"south", "north", "east", "west"};
         final String[] ANVIL_DAMAGES = {"0", "1", "2"};
-        VMMDataLoader.registerMetadataMapping(Blocks.anvil, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.anvil, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("facing", FACINGS[meta & 3]);
             props.put("damage", ANVIL_DAMAGES[Math.min((meta >> 2) & 3, 2)]);
@@ -98,7 +98,7 @@ public class VanillaMetadataMapper {
         // meta low 3 bits = type, bit 3 = half (0=bottom, 1=top)
         final String[] SLAB_TYPES = {"stone", "sandstone", "wood", "cobblestone",
             "brick", "stone_brick", "nether_brick", "quartz"};
-        VMMDataLoader.registerMetadataMapping(Blocks.stone_slab, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.stone_slab, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("half", (meta & 8) == 0 ? "bottom" : "top");
             props.put("variant", SLAB_TYPES[meta & 7]);
@@ -106,7 +106,7 @@ public class VanillaMetadataMapper {
         });
 
         // ---- 地毯 (carpet) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.carpet, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.carpet, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("color", COLORS[meta & 15]);
             return props;
@@ -116,28 +116,28 @@ public class VanillaMetadataMapper {
         // meta 0-5: stone, cobblestone, stone_brick, mossy_stone_brick, cracked_stone_brick, chiseled_stone_brick
         final String[] EGG_VARIANTS = {"stone", "cobblestone", "stone_brick",
             "mossy_stone_brick", "cracked_stone_brick", "chiseled_stone_brick"};
-        VMMDataLoader.registerMetadataMapping(Blocks.monster_egg, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.monster_egg, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("variant", EGG_VARIANTS[Math.min(meta & 7, EGG_VARIANTS.length - 1)]);
             return props;
         });
 
         // ---- 羊毛 (wool) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.wool, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.wool, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("color", COLORS[meta & 15]);
             return props;
         });
 
         // ---- 染色玻璃 (stained_glass) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.stained_glass, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.stained_glass, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("color", COLORS[meta & 15]);
             return props;
         });
 
         // ---- 染色硬化粘土 (stained_hardened_clay) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.stained_hardened_clay, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.stained_hardened_clay, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("color", COLORS[meta & 15]);
             return props;
@@ -145,14 +145,14 @@ public class VanillaMetadataMapper {
 
         // ---- 木板 (planks) ----
         final String[] WOOD_TYPES = {"oak", "spruce", "birch", "jungle", "acacia", "dark_oak"};
-        VMMDataLoader.registerMetadataMapping(Blocks.planks, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.planks, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("wood", WOOD_TYPES[Math.min(meta, WOOD_TYPES.length - 1)]);
             return props;
         });
 
         // ---- 石砖 (stonebrick) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.stonebrick, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.stonebrick, meta -> {
             Map<String, String> props = new HashMap<>();
             String[] variants = {"stonebrick", "mossy_stonebrick", "cracked_stonebrick", "chiseled_stonebrick"};
             props.put("variant", variants[Math.min(meta, variants.length - 1)]);
@@ -160,7 +160,7 @@ public class VanillaMetadataMapper {
         });
 
         // ---- 石英块 (quartz_block) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.quartz_block, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.quartz_block, meta -> {
             Map<String, String> props = new HashMap<>();
             switch (meta) {
                 case 0: props.put("type", "quartz_block"); break;
@@ -173,15 +173,61 @@ public class VanillaMetadataMapper {
             return props;
         });
 
+        /** Crops (wheat, carrots, potatoes, reeds) */
+        // Key definition: age=0~7
+
+        // ---- 小麦 (wheat) ----
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.wheat, meta -> {
+            Map<String, String> props = new HashMap<>();
+            props.put("age", String.valueOf(meta & 7));
+            return props;
+        });
+
+        // ---- 胡萝卜 (carrots) ----
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.carrots, meta -> {
+            Map<String, String> props = new HashMap<>();
+            props.put("age", String.valueOf(meta & 7));
+            return props;
+        });
+
+        // ---- 土豆 (potatoes) ----
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.potatoes, meta -> {
+            Map<String, String> props = new HashMap<>();
+            props.put("age", String.valueOf(meta & 7));
+            return props;
+        });
+
+        // ---- 西瓜苗 (melon_stem) ----
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.melon_stem, meta -> {
+            Map<String, String> props = new HashMap<>();
+            props.put("age", String.valueOf(meta & 7));
+            return props;
+        });
+
+        // ---- 南瓜苗 (pumpkin_stem) ----
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.pumpkin_stem, meta -> {
+            Map<String, String> props = new HashMap<>();
+            props.put("age", String.valueOf(meta & 7));
+            return props;
+        });
+        
+        // ---- 甘蔗 (reeds) ----
+        // meta 0-15: 生长阶段，blockstate 只定义 age=0~7，8-15 映射到 age=7
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.reeds, meta -> {
+            Map<String, String> props = new HashMap<>();
+            props.put("age", String.valueOf(meta & 7));
+            return props;
+        });
+
         // ---- 沙子 (sand) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.sand, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.sand, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("variant", meta == 0 ? "sand" : "red_sand");
             return props;
         });
 
         // ---- 砂岩 (sandstone) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.sandstone, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.sandstone, meta -> {
             Map<String, String> props = new HashMap<>();
             String[] variants = {"sandstone", "chiseled_sandstone", "smooth_sandstone"};
             props.put("variant", variants[Math.min(meta, variants.length - 1)]);
@@ -190,14 +236,14 @@ public class VanillaMetadataMapper {
 
         // ---- 泥土 (dirt) ----
         // meta: 0=dirt, 2=podzol（1.7.10 无 coarse_dirt）
-        VMMDataLoader.registerMetadataMapping(Blocks.dirt, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.dirt, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("variant", meta == 2 ? "podzol" : "dirt");
             return props;
         });
 
         // ---- 圆石墙 (cobblestone_wall) ----
-        VMMDataLoader.registerMetadataMapping(Blocks.cobblestone_wall, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.cobblestone_wall, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("variant", meta == 0 ? "cobblestone" : "mossy_cobblestone");
             return props;
@@ -207,7 +253,7 @@ public class VanillaMetadataMapper {
 
         // ---- 玻璃板 (glass_pane) ----
         // metadata: bitmask of {north=1, east=2, south=4, west=8}
-        VMMDataLoader.registerMetadataMapping(Blocks.glass_pane, meta -> {
+        ModelManagerDataLoader.registerMetadataMapping(Blocks.glass_pane, meta -> {
             Map<String, String> props = new HashMap<>();
             props.put("north", (meta & 1) != 0 ? "true" : "false");
             props.put("east", (meta & 2) != 0 ? "true" : "false");

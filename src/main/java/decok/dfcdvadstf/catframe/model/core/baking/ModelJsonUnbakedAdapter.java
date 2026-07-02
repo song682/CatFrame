@@ -1,7 +1,10 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.core.baking;
 
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.BlockJsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.*;
+import decok.dfcdvadstf.catframe.model.core.TextureSlots;
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.util.IIcon;
 
@@ -106,7 +109,7 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         // 4. 遍历 elements 烘焙为 BakedQuad
         List<BakedQuad> quads = new ArrayList<>();
         for (ModelJson.Element element : json.elements) {
-            List<BakedQuad> elementQuads = BlockJsonModelBake.bakeElement(element, iconMap, texSize);
+            List<BakedQuad> elementQuads = JsonModelBake.bakeElement(element, iconMap, texSize);
             if (elementQuads != null) {
                 quads.addAll(elementQuads);
             }
@@ -153,10 +156,10 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
 
         // 8. 应用旋转（深拷贝，不污染基础缓存）
         if (rotationY != 0) {
-            quads = BlockJsonModelBake.applyYRotation(quads, rotationY);
+            quads = JsonModelBake.applyYRotation(quads, rotationY);
         }
         if (rotationX != 0) {
-            quads = BlockJsonModelBake.applyXRotation(quads, rotationX);
+            quads = JsonModelBake.applyXRotation(quads, rotationX);
         }
 
         CatFrame.logger.debug("[ModelJsonUnbakedAdapter] bake: '{}' | elements={} | quads={} | rotX={} rotY={}",

@@ -1,6 +1,10 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.core.baking;
 
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.model.*;
+import decok.dfcdvadstf.catframe.model.core.ModelJson;
+import decok.dfcdvadstf.catframe.model.core.ModelResolver;
+import decok.dfcdvadstf.catframe.model.core.TextureSlots;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.util.IIcon;
 

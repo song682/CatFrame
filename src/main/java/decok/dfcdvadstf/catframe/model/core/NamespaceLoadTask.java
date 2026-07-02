@@ -1,9 +1,12 @@
-package decok.dfcdvadstf.catframe.model;
+package decok.dfcdvadstf.catframe.model.core;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
+import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -12,7 +15,7 @@ import java.util.*;
 /**
  * 单个 namespace 的数据加载任务。
  * <p>
- * 从 {@link VMMDataLoader} 提取的纯执行逻辑：所有写入都发生在本地集合中，
+ * 从 {@link ModelManagerDataLoader} 提取的纯执行逻辑：所有写入都发生在本地集合中，
  * 不触碰 {@link VanillaModelManager} 的共享静态字段。
  * 这使得本类可以被多线程安全地并发执行（如 Akka Futures 或线程池）。
  * <p>

@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.mixin.middle;
 
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
-import decok.dfcdvadstf.catframe.model.render.BlockStateISBRH;
+import decok.dfcdvadstf.catframe.model.render.RenderJsonBlockModel;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.world.IBlockAccess;
@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * (loaded from blockstates / model_mappings), routing them through
  * {@link VanillaModelManager.PublicRenderAPI#renderBlock} → UniformRenderPipeline.
  * <p>
- * Mod blocks that register via {@link BlockStateISBRH#register(Block)} have a custom
+ * Mod blocks that register via {@link RenderJsonBlockModel#register(Block)} have a custom
  * renderType and are handled by Forge through ISBRH <b>before</b> this Mixin fires —
  * they are explicitly skipped here to avoid double-interception.
  */
@@ -31,7 +31,7 @@ public class MixinRenderBlocks {
     /**
      * Inject at the head of renderBlockByRenderType.
      * <p>
-     * Skips mod blocks registered via {@link BlockStateISBRH} — they have a custom
+     * Skips mod blocks registered via {@link RenderJsonBlockModel} — they have a custom
      * renderType that Forge dispatches to ISBRH before this Mixin fires.
      * For vanilla blocks with a VMM model override, intercepts and routes through
      * {@link VanillaModelManager.PublicRenderAPI}.
@@ -39,7 +39,7 @@ public class MixinRenderBlocks {
     @Inject(method = "renderBlockByRenderType", at = @At("HEAD"), cancellable = true)
     private void catframe$onRenderBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
         // Mod blocks with ISBRH — Forge handles them via custom renderType, skip here
-        if (BlockStateISBRH.isRegistered(block)) return;
+        if (RenderJsonBlockModel.isRegistered(block)) return;
 
         if (VanillaModelManager.ModelRegistration.hasModel(block)) {
             boolean result = VanillaModelManager.PublicRenderAPI.renderBlock(

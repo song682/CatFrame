@@ -2,15 +2,13 @@ package decok.dfcdvadstf.catframe.exception;
 
 /**
  * <p>
- * mcmeta 元数据校验失败时抛出。<br>
  * Thrown when mcmeta metadata validation fails.
  * </p>
- *
- * <p>覆盖场景 / Covered scenarios:</p>
+ * <p> Covered scenarios:</p>
  * <ul>
- *   <li>default width/height 为负数 / negative</li>
- *   <li>edge 值为负数 / negative</li>
- *   <li>type 字段不是已知类型 / unknown type</li>
+ *   <li>default width/height is negative</li>
+ *   <li>edge value is negative</li>
+ *   <li>type field is not a known type</li>
  * </ul>
  */
 public class WrongMetadataError extends IllegalArgumentException {

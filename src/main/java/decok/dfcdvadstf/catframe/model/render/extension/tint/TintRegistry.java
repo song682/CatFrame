@@ -44,6 +44,22 @@ public final class TintRegistry {
 
     // ==================== 注册 API ====================
 
+    /**
+     * 注册实现 {@link IBlockTintProvider} 的实例，委托其 {@link IBlockTintProvider#register()} 完成具体注册。
+     * 对齐 {@code ModelRenderRegistry.register(new XxxExtension())} 风格。
+     */
+    public static void register(IBlockTintProvider provider) {
+        if (provider != null) provider.register();
+    }
+
+    /**
+     * 注册实现 {@link IItemTintProvider} 的实例，委托其 {@link IItemTintProvider#register()} 完成具体注册。
+     * 对齐 {@code ModelRenderRegistry.register(new XxxExtension())} 风格。
+     */
+    public static void register(IItemTintProvider provider) {
+        if (provider != null) provider.register();
+    }
+
     public static void registerBlockTint(Block block, IBlockTintProvider provider) {
         if (block == null || provider == null) return;
         BLOCK_PROVIDERS.put(block, provider);

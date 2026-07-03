@@ -6,6 +6,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
+import javax.annotation.Nullable;
+import javax.vecmath.Matrix4d;
+
 /**
  * 一次 quad 渲染的上下文，扩展链 {@link ModelRenderRegistry#apply(RenderContext)}
  * 会按注册顺序遍历 {@link IModelRenderExtension}，每个扩展都可以读 / 改本对象。
@@ -73,6 +76,14 @@ public final class RenderContext {
      * 适用于运行时的纹理切换（例如根据画质切换树叶纹理）。
      */
     public IIcon iconOverride = null;
+
+    /**
+     * Display transform 矩阵（向量空间）。
+     * 由 {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
+     * 在扩展链中计算并设置，管线在提交顶点前应用此矩阵变换顶点坐标。
+     */
+    @Nullable
+    public Matrix4d displayTransform = null;
 
     public RenderContext(RenderPhase phase, BakedQuad quad,
                          IBlockAccess world, int x, int y, int z, Block block,

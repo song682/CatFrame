@@ -2,6 +2,10 @@ package decok.dfcdvadstf.catframe.component;
 
 import net.minecraft.util.ResourceLocation;
 
+import java.util.Optional;
+
+import decok.dfcdvadstf.catframe.Tags;
+
 /**
  * 已知的已注册组件类型常量。
  * <p>
@@ -98,6 +102,13 @@ public final class RegisteredComponents {
                     .networkSynchronized(ComponentSerializers.ofInt("Damage"))
                     .build();
 
+    /** 工具提示样式标识（对应 ResourceLocation，如 "catframe:blue_tooltip"） */
+    public static final DataComponentType<String> TOOLTIP_STYLE =
+            DataComponentType.<String>builder(new ResourceLocation(Tags.MODID, "tooltip_style"))
+                    .persistent(ComponentSerializers.ofString("TooltipStyle"))
+                    .networkSynchronized(ComponentSerializers.ofString("TooltipStyle"))
+                    .build();
+
     // ========== 注册方法 ==========
 
     /**
@@ -116,10 +127,6 @@ public final class RegisteredComponents {
         DataComponents.register(REPAIR_COST);
         DataComponents.register(MAX_STACK_SIZE);
         DataComponents.register(DAMAGE);
-    }
-
-    // 避免 Tags.java 循环引用
-    private static final class Tags {
-        static final String MODID = "dfdvdsfsAPI";
+        DataComponents.register(TOOLTIP_STYLE);
     }
 }

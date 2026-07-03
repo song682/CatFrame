@@ -3,16 +3,11 @@ package decok.dfcdvadstf.catframe.model.render;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import net.minecraft.block.Block;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.IItemRenderer;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-
-import java.nio.FloatBuffer;
+import javax.vecmath.Matrix4d;
+import javax.vecmath.Vector3d;
 
 /**
  * Forge {@link IItemRenderer}，将 CatFrame 模型系统接入 Forge 物品渲染管线。
@@ -66,12 +61,6 @@ public class RenderJsonItemModel implements IItemRenderer {
     public static final RenderJsonItemModel INSTANCE = new RenderJsonItemModel();
 
     private RenderJsonItemModel() {}
-
-    // ====== 诊断日志：状态驱动（按视角/物品切换触发，不逐帧打印） ======
-    private static final Logger LOGGER = LogManager.getLogger(RenderJsonItemModel.class);
-    private static ItemRenderType lastDebugType = null;
-    private static int lastDebugItemId = -1;
-    private static int lastDebugItemDamage = -1;
 
     // ==================== handleRenderType ====================
 
@@ -128,8 +117,8 @@ public class RenderJsonItemModel implements IItemRenderer {
      * + 管线的 {@code scale(16, -16, 16)} 投影构成，
      * 不再依赖 Forge 的 legacy 等距变换（{@code scale(10) + rotate}）。
      *
-     * <p>Model JSON 的 {@code display} 字段在烘焙时写入
-     * {@code BakedQuad.modelDisplay}，由 {@link DisplayTransformExtension}
+     * <p>Model JSON 的 {@code display} 字段在烘焙时存入
+     * {@code BlockStateModelPart.partDisplay}，由 {@link DisplayTransformExtension}
      * 在扩展链中消费。</p>
      */
     @Override
@@ -200,114 +189,118 @@ public class RenderJsonItemModel implements IItemRenderer {
     public void renderItem(ItemRenderType type, ItemStack stack, Object... data) {
         if (stack == null || stack.getItem() == null) return;
     
-        // ---- 反抵消 Forge 的遗留前置变换 ----
-        // ====== 状态驱动诊断日志：仅视角/物品变更时触发 ======
-        int equipItemId = Item.getIdFromItem(stack.getItem());
-        int equipItemDamage = stack.getItemDamage();
-        boolean typeChanged = (type != lastDebugType);
-        boolean itemChanged = (equipItemId != lastDebugItemId || equipItemDamage != lastDebugItemDamage);
-        boolean debugLog = (type == ItemRenderType.EQUIPPED || type == ItemRenderType.EQUIPPED_FIRST_PERSON)
-                && (typeChanged || itemChanged);
-        if (debugLog) {
-            lastDebugType = type;
-            lastDebugItemId = equipItemId;
-            lastDebugItemDamage = equipItemDamage;
-        }
-        // ====== 打印当前模型视图矩阵 (仅状态变更时) ======
-        if (debugLog) {
-            FloatBuffer beforeBuf = BufferUtils.createFloatBuffer(16);
-            GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, beforeBuf);
-            float b0 = beforeBuf.get(0), b1 = beforeBuf.get(1), b2 = beforeBuf.get(2), b3 = beforeBuf.get(3);
-            float b4 = beforeBuf.get(4), b5 = beforeBuf.get(5), b6 = beforeBuf.get(6), b7 = beforeBuf.get(7);
-            float b8 = beforeBuf.get(8), b9 = beforeBuf.get(9), b10 = beforeBuf.get(10), b11 = beforeBuf.get(11);
-            float b12 = beforeBuf.get(12), b13 = beforeBuf.get(13), b14 = beforeBuf.get(14), b15 = beforeBuf.get(15);
-            LOGGER.info(String.format("[DFXDBG] %s BEFORE counter | item=%s", type, stack.getDisplayName()));
-            LOGGER.info(String.format("  M = [%+.4f %+.4f %+.4f %+.4f]", b0, b4, b8, b12));
-            LOGGER.info(String.format("      [%+.4f %+.4f %+.4f %+.4f]", b1, b5, b9, b13));
-            LOGGER.info(String.format("      [%+.4f %+.4f %+.4f %+.4f]", b2, b6, b10, b14));
-            LOGGER.info(String.format("      [%+.4f %+.4f %+.4f %+.4f]", b3, b7, b11, b15));
-        }
-        // Forge 调用链 (GL 后乘, 先调用者在左):
-        //   第一人称: rotate(45°Y) → swing_rot → scale(0.4) → [FHClient: translate(-0.5)]
-        //   第三人称: [RenderPlayer] T_hand(-0.0625, 0.4375, 0.0625)
-        //             → translate(0,0.1875,-0.3125) → rotate(20°X) → rotate(45°Y)
-        //             → scale(-0.375,-0.375,0.375) → [FHClient: translate(-0.5)]
-        // 反抵消 (GL 后乘逆序): 先抵消 FHClient, 再抵消上游额外变换
-        if (type == ItemRenderType.EQUIPPED_FIRST_PERSON) {
-            // ① 反抵消 FHClient translate(-0.5)
-            GL11.glTranslatef(0.5F, 0.5F, 0.5F);
-            // ② 反抵消 Forge renderItemInFirstPerson (26.1 中不存在):
-            //    scale(0.4) → scale(2.5)
-            GL11.glScalef(2.5F, 2.5F, 2.5F);
-            //    rotate(45°Y) → rotate(-45°Y)
-            GL11.glRotatef(-45.0F, 0.0F, 1.0F, 0.0F);
-        } else if (type == ItemRenderType.EQUIPPED) {
-            // ① 反抵消 FHClient translate(-0.5)
-            GL11.glTranslatef(0.5F, 0.5F, 0.5F);
-            // ② 反抵消 RenderPlayer BLOCK_3D 路径 (所有物品统一, BLOCK_3D=true):
-            //    scale(-0.375, -0.375, 0.375) → scale(-2.667, -2.667, 2.667)
-            GL11.glScalef(-2.667F, -2.667F, 2.667F);
-            //    rotate(45°Y) → rotate(-45°Y)
-            GL11.glRotatef(-45.0F, 0.0F, 1.0F, 0.0F);
-            //    rotate(20°X) → rotate(-20°X)
-            GL11.glRotatef(-20.0F, 1.0F, 0.0F, 0.0F);
-            //    translate(0,0.1875,-0.3125) → translate(0,-0.1875,0.3125)
-            GL11.glTranslatef(0.0F, -0.1875F, 0.3125F);
-            // ③ 反抵消 RenderPlayer line319 translate(-0.0625, 0.4375, 0.0625)
-            //    该偏移从手臂骨骼旋转点移动向手部区域，但 26.1.2 的 translateToHand
-            //    仅做 arm.postRender()，不包含此偏移，必须抵消才能对齐
-            GL11.glTranslatef(0.0625F, -0.4375F, -0.0625F);
-
-            // ④ 应用 26.1.2 ItemInHandLayer 标准对齐变换
-            //    反抵消后矩阵空间 = ArmBone (与 26.1.2 translateToHand 对齐)
-            //    补充 R(-90°X) × R(180°Y) × T(1/16, 2/16, -10/16) 对齐高版本
-            //    所有物品统一走此路径，thirdperson_righthand display 数据负责具体旋转/缩放/位移
-            GL11.glRotatef(-90.0F, 1.0F, 0.0F, 0.0F);
-            GL11.glRotatef(180.0F, 0.0F, 1.0F, 0.0F);
-            GL11.glTranslatef(1.0F / 16.0F, 2.0F / 16.0F, -10.0F / 16.0F);
-        } else if (type == ItemRenderType.ENTITY) {
-            // Forge ForgeHooksClient.renderEntityItem 在 BLOCK_3D=false 时
-            // 走 else 分支预应用 scale(0.5, 0.5, 0.5)。
-            // 反抵消: scale(2.0) → Forge(0.5) × counter(2.0) = 1.0
-            // 再经 display.ground.scale(0.5) → 净 0.5（半格，对齐原版 2D 掉落物）
-            GL11.glScalef(2.0F, 2.0F, 2.0F);
-        }
-        if (debugLog) {
-            FloatBuffer afterBuf = BufferUtils.createFloatBuffer(16);
-            GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterBuf);
-            float a0 = afterBuf.get(0), a1 = afterBuf.get(1), a2 = afterBuf.get(2), a3 = afterBuf.get(3);
-            float a4 = afterBuf.get(4), a5 = afterBuf.get(5), a6 = afterBuf.get(6), a7 = afterBuf.get(7);
-            float a8 = afterBuf.get(8), a9 = afterBuf.get(9), a10 = afterBuf.get(10), a11 = afterBuf.get(11);
-            float a12 = afterBuf.get(12), a13 = afterBuf.get(13), a14 = afterBuf.get(14), a15 = afterBuf.get(15);
-            LOGGER.info(String.format("[DFXDBG] %s AFTER  counter | item=%s", type, stack.getDisplayName()));
-            LOGGER.info(String.format("  M = [%+.4f %+.4f %+.4f %+.4f]", a0, a4, a8, a12));
-            LOGGER.info(String.format("      [%+.4f %+.4f %+.4f %+.4f]", a1, a5, a9, a13));
-            LOGGER.info(String.format("      [%+.4f %+.4f %+.4f %+.4f]", a2, a6, a10, a14));
-            LOGGER.info(String.format("      [%+.4f %+.4f %+.4f %+.4f]", a3, a7, a11, a15));
-        }
-        
         RenderPhase phase = toRenderPhase(type, stack);
         if (phase == null) return;
-    
-        // ====== 诊断：phase 和 model 查找（仅状态变更时） ======
-        if (debugLog) {
-            LOGGER.info(String.format("[DFXDBG] Phase=%s displayKey=%s",
-                    phase.name(),
-                    decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension.phaseToDisplayKey(phase.name())));
-        }
-        // ====== 诊断结束 =======
+
+        // ---- 计算反抵消预变换 ----
+        // 将反抵消变换计算为 Matrix4d 矩阵，由管线在顶点提交时统一变换
+        Matrix4d preTransform = computePreTransform(type);
 
         // getRegisteredItemModel 对方块物品有 BlockStateModel fallback
         IItemStateProvider model = VanillaModelManager.ModelRegistration.getRegisteredItemModel(stack.getItem());
-        if (model == null) {
-            if (debugLog) LOGGER.info(String.format("[DFXDBG] NULL model for item=%s", stack.getDisplayName()));
-            return;
-        }
+        if (model == null) return;
     
-        model.render(stack, phase);
+        model.render(stack, phase, preTransform);
     }
 
     // ==================== 内部映射 ====================
+
+    /**
+     * 计算反抵消预变换矩阵。
+     * <p>
+     * Forge 在调用 {@code renderItem} 前已经做过一批 GL 变换（见 {@link #shouldUseRenderHelper}），
+     * 这些变换与 26.1 的 {@code ItemTransform.apply()} 语义不兼容。
+     * 本方法将反抵消操作计算为 {@link Matrix4d} 矩阵，
+     * 由管线在顶点提交时应用于顶点坐标。
+     * <p>
+     * 矩阵构造顺序与 GL 后乘顺序一致：先调用的操作对应最终矩阵左乘。
+     *
+     * @param type  Forge 物品渲染类型
+     * @return 反抵消 Matrix4d 矩阵，若无需要返回 null
+     */
+    @javax.annotation.Nullable
+    private static Matrix4d computePreTransform(ItemRenderType type) {
+        if (type == ItemRenderType.EQUIPPED_FIRST_PERSON) {
+            // Forge 调用链: rotate(45°Y) → swing_rot → scale(0.4) → [FHClient: translate(-0.5)]
+            // 反抵消矩阵: T(0.5) × S(2.5) × RY(-45)
+            // 构造顺序与 GL 同序（后乘）：先 T 再 S 再 R
+            Matrix4d m = new Matrix4d();
+            Matrix4d tmp = new Matrix4d();
+            tmp.setIdentity();
+            tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
+            m.mul(tmp);
+            tmp.setIdentity();
+            tmp.m00 = 2.5; tmp.m11 = 2.5; tmp.m22 = 2.5;
+            m.mul(tmp);
+            tmp.rotY(Math.toRadians(-45));
+            m.mul(tmp);
+            return m;
+        } else if (type == ItemRenderType.EQUIPPED) {
+            // Forge 调用链:
+            //   [RenderPlayer] T_hand(-0.0625, 0.4375, 0.0625)
+            //     → translate(0,0.1875,-0.3125) → rotate(20°X) → rotate(45°Y)
+            //     → scale(-0.375,-0.375,0.375) → [FHClient: translate(-0.5)]
+            // 反抵消矩阵 (同序):
+            //   T(0.5) × S(-2.667,-2.667,2.667) × RY(-45) × RX(-20)
+            //   × T(0,-0.1875,0.3125) × T(0.0625,-0.4375,-0.0625)
+            //   × RX(-90) × RY(180) × T(1/16, 2/16, -10/16)
+            Matrix4d m = new Matrix4d();
+            Matrix4d tmp = new Matrix4d();
+
+            // ① 反抵消 FHClient translate(-0.5)
+            tmp.setIdentity();
+            tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
+            m.mul(tmp);
+
+            // ② 反抵消 RenderPlayer BLOCK_3D 路径
+            //    scale(-2.667, -2.667, 2.667)
+            tmp.setIdentity();
+            tmp.m00 = -2.667; tmp.m11 = -2.667; tmp.m22 = 2.667;
+            m.mul(tmp);
+
+            //    RY(-45)
+            tmp.rotY(Math.toRadians(-45));
+            m.mul(tmp);
+
+            //    RX(-20)
+            tmp.rotX(Math.toRadians(-20));
+            m.mul(tmp);
+
+            //    T(0, -0.1875, 0.3125)
+            tmp.setIdentity();
+            tmp.setTranslation(new Vector3d(0, -0.1875, 0.3125));
+            m.mul(tmp);
+
+            // ③ 反抵消 RenderPlayer line319 T(-0.0625, 0.4375, 0.0625)
+            tmp.setIdentity();
+            tmp.setTranslation(new Vector3d(0.0625, -0.4375, -0.0625));
+            m.mul(tmp);
+
+            // ④ 应用 26.1.2 ItemInHandLayer 标准对齐变换
+            //    RX(-90)
+            tmp.rotX(Math.toRadians(-90));
+            m.mul(tmp);
+
+            //    RY(180)
+            tmp.rotY(Math.toRadians(180));
+            m.mul(tmp);
+
+            //    T(1/16, 2/16, -10/16)
+            tmp.setIdentity();
+            tmp.setTranslation(new Vector3d(1.0 / 16.0, 2.0 / 16.0, -10.0 / 16.0));
+            m.mul(tmp);
+
+            return m;
+        } else if (type == ItemRenderType.ENTITY) {
+            // Forge renderEntityItem 在 BLOCK_3D=false 时走 else 分支
+            // 预应用 scale(0.5, 0.5, 0.5)。反抵消: scale(2.0)
+            Matrix4d s = new Matrix4d();
+            s.setIdentity();
+            s.m00 = 2.0; s.m11 = 2.0; s.m22 = 2.0;
+            return s;
+        }
+        return null;
+    }
 
     /**
      * Forge ItemRenderType → CatFrame RenderPhase。

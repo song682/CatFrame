@@ -2,8 +2,6 @@ package decok.dfcdvadstf.catframe.model.state.item;
 
 import decok.dfcdvadstf.catframe.model.BakedModelCache;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
-import decok.dfcdvadstf.catframe.model.core.ModelJson;
-import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -69,11 +67,8 @@ public class ItemStateModel implements IItemStateProvider {
         BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
         if (part == null || part.isEmpty()) return;
 
-        // 4. 解析 display transforms
-        Map<String, ModelJson.DisplayTransform> display = resolveDisplay(resolvedPath);
-
-        // 5. 渲染
-        UniformRenderPipeline.renderItemQuads(part, stack, phase, display);
+        // 4. 渲染（display 已由 BlockStateModelPart 持有，无需单独传入）
+        UniformRenderPipeline.renderItemQuads(part, stack, phase);
     }
 
     /**
@@ -81,14 +76,5 @@ public class ItemStateModel implements IItemStateProvider {
      */
     public ItemStateNode getRootNode() {
         return rootNode;
-    }
-
-    /**
-     * 从 ModelJson 解析 display transforms。
-     */
-    private static Map<String, ModelJson.DisplayTransform> resolveDisplay(String modelPath) {
-        if (modelPath == null) return null;
-        ModelJson resolved = ModelResolver.resolve(modelPath);
-        return resolved != null ? resolved.display : null;
     }
 }

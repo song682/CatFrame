@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.state;
 
+import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IIcon;
@@ -23,10 +24,25 @@ public class BlockStateModelPart {
     private final List<BakedQuad> generalQuads;
     private List<BakedQuad> allQuadsCache;
 
+    /**
+     * 模型级别的 display transforms（从 ModelJson.display 传播）。
+     * 键为 display 场景（"gui", "firstperson_righthand", "thirdperson_righthand" 等）。
+     * 由 DisplayTransformExtension 在渲染时读取并应用。
+     */
+    @Nullable
+    private final Map<String, ModelJson.DisplayTransform> partDisplay;
+
     private BlockStateModelPart(Map<EnumFacing, List<BakedQuad>> faceQuads,
                                 List<BakedQuad> generalQuads) {
+        this(faceQuads, generalQuads, null);
+    }
+
+    private BlockStateModelPart(Map<EnumFacing, List<BakedQuad>> faceQuads,
+                                List<BakedQuad> generalQuads,
+                                @Nullable Map<String, ModelJson.DisplayTransform> partDisplay) {
         this.faceQuads = faceQuads;
         this.generalQuads = generalQuads;
+        this.partDisplay = partDisplay;
     }
 
     // ==================== 工厂方法 ====================
@@ -35,6 +51,11 @@ public class BlockStateModelPart {
      * 从 BakedQuad 列表构建 BlockStateModelPart，自动按 cullface 分组。
      */
     public static BlockStateModelPart fromQuads(List<BakedQuad> quads) {
+        return fromQuads(quads, null);
+    }
+
+    public static BlockStateModelPart fromQuads(List<BakedQuad> quads,
+                                                 @Nullable Map<String, ModelJson.DisplayTransform> display) {
         Map<EnumFacing, List<BakedQuad>> faceMap = new EnumMap<>(EnumFacing.class);
         List<BakedQuad> general = new ArrayList<>();
 
@@ -48,7 +69,7 @@ public class BlockStateModelPart {
             }
         }
 
-        return new BlockStateModelPart(faceMap, general);
+        return new BlockStateModelPart(faceMap, general, display);
     }
 
     /**
@@ -57,9 +78,17 @@ public class BlockStateModelPart {
     public static BlockStateModelPart fromFaceMap(
             Map<EnumFacing, List<BakedQuad>> faceMap,
             List<BakedQuad> generalQuads) {
+        return fromFaceMap(faceMap, generalQuads, null);
+    }
+
+    public static BlockStateModelPart fromFaceMap(
+            Map<EnumFacing, List<BakedQuad>> faceMap,
+            List<BakedQuad> generalQuads,
+            @Nullable Map<String, ModelJson.DisplayTransform> display) {
         return new BlockStateModelPart(
                 faceMap != null ? new EnumMap<>(faceMap) : new EnumMap<>(EnumFacing.class),
-                generalQuads != null ? new ArrayList<>(generalQuads) : new ArrayList<>()
+                generalQuads != null ? new ArrayList<>(generalQuads) : new ArrayList<>(),
+                display
         );
     }
 
@@ -67,7 +96,25 @@ public class BlockStateModelPart {
      * 空的 BlockStateModelPart。
      */
     public static BlockStateModelPart empty() {
-        return new BlockStateModelPart(new EnumMap<>(EnumFacing.class), new ArrayList<>());
+        return new BlockStateModelPart(new EnumMap<>(EnumFacing.class), new ArrayList<>(), null);
+    }
+
+    /**
+     * 获取模型级别的 display transforms。
+     */
+    @Nullable
+    public Map<String, ModelJson.DisplayTransform> getDisplay() {
+        return partDisplay;
+    }
+
+    /**
+     * 创建一个新的 BlockStateModelPart，以给定的 display 替换原有 display。
+     * 如果 display 与当前相同则返回 this（避免不必要分配）。
+     */
+    public BlockStateModelPart withDisplay(@Nullable Map<String, ModelJson.DisplayTransform> display) {
+        if (display == this.partDisplay) return this;
+        if (display != null && display.equals(this.partDisplay)) return this;
+        return new BlockStateModelPart(faceQuads, generalQuads, display);
     }
 
     // ==================== 查询 ====================
@@ -129,7 +176,11 @@ public class BlockStateModelPart {
         }
         List<BakedQuad> mergedGeneral = new ArrayList<>(this.generalQuads);
         mergedGeneral.addAll(other.generalQuads);
-        return new BlockStateModelPart(mergedFace, mergedGeneral);
+        // 合并 display：优先使用 this 的，如果 this 没有则使用 other 的
+        Map<String, ModelJson.DisplayTransform> mergedDisplay = this.partDisplay != null
+                ? this.partDisplay
+                : other.partDisplay;
+        return new BlockStateModelPart(mergedFace, mergedGeneral, mergedDisplay);
     }
 
     // ==================== 新增（对齐 26.1.2） ====================

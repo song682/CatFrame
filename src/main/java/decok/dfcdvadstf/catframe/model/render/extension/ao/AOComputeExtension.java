@@ -79,8 +79,8 @@ public final class AOComputeExtension implements IModelRenderExtension {
         double minE1 = Double.MAX_VALUE, maxE1 = -Double.MAX_VALUE;
         double minE2 = Double.MAX_VALUE, maxE2 = -Double.MAX_VALUE;
         for (int v = 0; v < 4; v++) {
-            double v1 = axisVal(q.vx[v], q.vy[v], q.vz[v], e1Axis);
-            double v2 = axisVal(q.vx[v], q.vy[v], q.vz[v], e2Axis);
+            double v1 = axisVal(q.vx(v), q.vy(v), q.vz(v), e1Axis);
+            double v2 = axisVal(q.vx(v), q.vy(v), q.vz(v), e2Axis);
             if (v1 < minE1) minE1 = v1;
             if (v1 > maxE1) maxE1 = v1;
             if (v2 < minE2) minE2 = v2;
@@ -102,7 +102,7 @@ public final class AOComputeExtension implements IModelRenderExtension {
         // 面法线轴 = face 方向的轴（与 e1Axis/e2Axis 正交的第三个轴）
         int faceAxis = (foX != 0) ? 0 : (foY != 0) ? 1 : 2;
         // 取面上任一顶点在面法线轴上的坐标（同一面所有顶点该值相同）
-        double facePos = axisVal(q.vx[0], q.vy[0], q.vz[0], faceAxis);
+        double facePos = axisVal(q.vx(0), q.vy(0), q.vz(0), faceAxis);
         boolean faceAtEdge = facePos <= 0.001 || facePos >= 0.999;
         boolean faceCubic = faceAtEdge
                 && (minE1 <= 0.001 && maxE1 >= 0.999)
@@ -135,8 +135,8 @@ public final class AOComputeExtension implements IModelRenderExtension {
 
         // --- 4. 逐顶点 AO ---
         for (int v = 0; v < 4; v++) {
-            double v1 = axisVal(q.vx[v], q.vy[v], q.vz[v], e1Axis);
-            double v2 = axisVal(q.vx[v], q.vy[v], q.vz[v], e2Axis);
+            double v1 = axisVal(q.vx(v), q.vy(v), q.vz(v), e1Axis);
+            double v2 = axisVal(q.vx(v), q.vy(v), q.vz(v), e2Axis);
 
             // 确定该顶点在两条边轴上的方向 (min→-1, max→+1)
             int s1 = Math.abs(v1 - minE1) < 0.001 ? -1 : 1;

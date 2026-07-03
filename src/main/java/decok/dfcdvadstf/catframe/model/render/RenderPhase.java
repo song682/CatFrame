@@ -39,5 +39,32 @@ public enum RenderPhase {
      * @deprecated 使用 {@link #ITEM_HAND_FIRST_PERSON} 或 {@link #ITEM_HAND_THIRD_PERSON} 替代。
      */
     @Deprecated
-    ITEM_HAND
+    ITEM_HAND;
+
+    /**
+     * 将此渲染阶段映射到 JSON model 的 display 键名。
+     * <p>
+     * [S2] 当前 1.7.10 无副手系统，因此仅映射 righthand 变体。
+     *
+     * @return display 键名（如 "gui", "firstperson_righthand"），若无对应返回 null
+     */
+    @javax.annotation.Nullable
+    public String getDisplayKey() {
+        switch (this) {
+            case ITEM_GUI:
+            case BLOCK_GUI:
+                return "gui";
+            case ITEM_HAND_FIRST_PERSON:
+                return "firstperson_righthand";
+            case ITEM_HAND_THIRD_PERSON:
+                return "thirdperson_righthand";
+            case DROPPED_ITEM_GROUND:
+            case DROPPED_BLOCK_GROUND:
+                return "ground";
+            case ITEM_HAND:
+                return "firstperson_righthand";
+            default:
+                return null;
+        }
+    }
 }

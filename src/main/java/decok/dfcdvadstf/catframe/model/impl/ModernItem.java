@@ -5,8 +5,6 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.BakedModelCache;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
-import decok.dfcdvadstf.catframe.model.core.ModelJson;
-import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -275,8 +273,7 @@ public class ModernItem extends Item implements IItemStateProvider {
         BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
         if (part == null || part.isEmpty()) return;
 
-        Map<String, ModelJson.DisplayTransform> display = resolveDisplay(resolvedPath);
-        UniformRenderPipeline.renderItemQuads(part, stack, phase, display);
+        UniformRenderPipeline.renderItemQuads(part, stack, phase);
     }
 
     /**
@@ -301,12 +298,6 @@ public class ModernItem extends Item implements IItemStateProvider {
      */
     public String getHandModelPath() {
         return handModelPath;
-    }
-
-    private static Map<String, ModelJson.DisplayTransform> resolveDisplay(String modelPath) {
-        if (modelPath == null) return null;
-        ModelJson resolved = ModelResolver.resolve(modelPath);
-        return resolved != null ? resolved.display : null;
     }
 
     // ==================== Convenience ====================

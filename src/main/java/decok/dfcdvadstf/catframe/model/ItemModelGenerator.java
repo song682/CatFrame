@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
+import javax.vecmath.Vector3d;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IIcon;
@@ -197,16 +198,17 @@ public class ItemModelGenerator {
         // 顶点绕序：对标 BlockJsonModelBake.emitFaceFromCorners
         //   UP:  v0(idx=010)=MIN_X,MIN_Z  v1(idx=011)=MIN_X,MAX_Z  v2(idx=111)=MAX_X,MAX_Z  v3(idx=110)=MAX_X,MIN_Z
         //   DOWN:v0(idx=001)=MIN_X,MAX_Z  v1(idx=000)=MIN_X,MIN_Z  v2(idx=100)=MAX_X,MIN_Z  v3(idx=101)=MAX_X,MAX_Z
+        float minZ = MIN_Z / 16.0F, maxZ = MAX_Z / 16.0F;
         if (isTop) {
-            q.vx[0] = worldX0; q.vy[0] = worldY; q.vz[0] = MIN_Z / 16.0F;
-            q.vx[1] = worldX0; q.vy[1] = worldY; q.vz[1] = MAX_Z / 16.0F;
-            q.vx[2] = worldX1; q.vy[2] = worldY; q.vz[2] = MAX_Z / 16.0F;
-            q.vx[3] = worldX1; q.vy[3] = worldY; q.vz[3] = MIN_Z / 16.0F;
+            q.vertices[0] = new Vector3d(worldX0, worldY, minZ);
+            q.vertices[1] = new Vector3d(worldX0, worldY, maxZ);
+            q.vertices[2] = new Vector3d(worldX1, worldY, maxZ);
+            q.vertices[3] = new Vector3d(worldX1, worldY, minZ);
         } else {
-            q.vx[0] = worldX0; q.vy[0] = worldY; q.vz[0] = MAX_Z / 16.0F;
-            q.vx[1] = worldX0; q.vy[1] = worldY; q.vz[1] = MIN_Z / 16.0F;
-            q.vx[2] = worldX1; q.vy[2] = worldY; q.vz[2] = MIN_Z / 16.0F;
-            q.vx[3] = worldX1; q.vy[3] = worldY; q.vz[3] = MAX_Z / 16.0F;
+            q.vertices[0] = new Vector3d(worldX0, worldY, maxZ);
+            q.vertices[1] = new Vector3d(worldX0, worldY, minZ);
+            q.vertices[2] = new Vector3d(worldX1, worldY, minZ);
+            q.vertices[3] = new Vector3d(worldX1, worldY, maxZ);
         }
         // UV 按顶点分配：v0→MIN_Z 顶点, v1→MAX_Z 顶点；u0→MIN_X, u1→MAX_X
         q.up[0] = u0; q.vp[0] = v0;
@@ -263,18 +265,19 @@ public class ItemModelGenerator {
         // 顶点绕序：对标 BlockJsonModelBake.emitFaceFromCorners
         //   EAST: v0(idx=111)=MAX_Y,MAX_Z  v1(idx=101)=MIN_Y,MAX_Z  v2(idx=100)=MIN_Y,MIN_Z  v3(idx=110)=MAX_Y,MIN_Z
         //   WEST: v0(idx=010)=MAX_Y,MIN_Z  v1(idx=000)=MIN_Y,MIN_Z  v2(idx=001)=MIN_Y,MAX_Z  v3(idx=011)=MAX_Y,MAX_Z
+        float minZ = MIN_Z / 16.0F, maxZ = MAX_Z / 16.0F;
         if (isLeft) {
             // EAST face (LEFT edge)
-            q.vx[0] = worldX; q.vy[0] = worldY1; q.vz[0] = MAX_Z / 16.0F;
-            q.vx[1] = worldX; q.vy[1] = worldY0; q.vz[1] = MAX_Z / 16.0F;
-            q.vx[2] = worldX; q.vy[2] = worldY0; q.vz[2] = MIN_Z / 16.0F;
-            q.vx[3] = worldX; q.vy[3] = worldY1; q.vz[3] = MIN_Z / 16.0F;
+            q.vertices[0] = new Vector3d(worldX, worldY1, maxZ);
+            q.vertices[1] = new Vector3d(worldX, worldY0, maxZ);
+            q.vertices[2] = new Vector3d(worldX, worldY0, minZ);
+            q.vertices[3] = new Vector3d(worldX, worldY1, minZ);
         } else {
             // WEST face (RIGHT edge)
-            q.vx[0] = worldX; q.vy[0] = worldY1; q.vz[0] = MIN_Z / 16.0F;
-            q.vx[1] = worldX; q.vy[1] = worldY0; q.vz[1] = MIN_Z / 16.0F;
-            q.vx[2] = worldX; q.vy[2] = worldY0; q.vz[2] = MAX_Z / 16.0F;
-            q.vx[3] = worldX; q.vy[3] = worldY1; q.vz[3] = MAX_Z / 16.0F;
+            q.vertices[0] = new Vector3d(worldX, worldY1, minZ);
+            q.vertices[1] = new Vector3d(worldX, worldY0, minZ);
+            q.vertices[2] = new Vector3d(worldX, worldY0, maxZ);
+            q.vertices[3] = new Vector3d(worldX, worldY1, maxZ);
         }
         // UV 按顶点分配：v0→MAX_Y(top) 顶点, v1→MIN_Y(bottom) 顶点；u 统一
         q.up[0] = u0; q.vp[0] = v0;
@@ -301,15 +304,15 @@ public class ItemModelGenerator {
         return (flatPixels[idx] >> 24 & 0xFF) == 0;
     }
 
-    private static double[] faceNormal(EnumFacing face) {
+    private static Vector3d faceNormal(EnumFacing face) {
         switch (face) {
-            case DOWN:  return new double[]{ 0, -1,  0};
-            case UP:    return new double[]{ 0,  1,  0};
-            case NORTH: return new double[]{ 0,  0, -1};
-            case SOUTH: return new double[]{ 0,  0,  1};
-            case WEST:  return new double[]{-1,  0,  0};
-            case EAST:  return new double[]{ 1,  0,  0};
-            default:    return new double[]{ 0,  1,  0};
+            case DOWN:  return new Vector3d( 0, -1,  0);
+            case UP:    return new Vector3d( 0,  1,  0);
+            case NORTH: return new Vector3d( 0,  0, -1);
+            case SOUTH: return new Vector3d( 0,  0,  1);
+            case WEST:  return new Vector3d(-1,  0,  0);
+            case EAST:  return new Vector3d( 1,  0,  0);
+            default:    return new Vector3d( 0,  1,  0);
         }
     }
 }

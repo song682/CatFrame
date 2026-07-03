@@ -5,6 +5,9 @@ import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IIcon;
 
+import javax.vecmath.Matrix4d;
+import javax.vecmath.AxisAngle4d;
+import javax.vecmath.Vector3d;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,15 +38,15 @@ public class JsonModelBake {
         final Boolean elemShade = e.shade;
         double x0 = e.from[0] / 16.0, y0 = e.from[1] / 16.0, z0 = e.from[2] / 16.0;
         double x1 = e.to[0] / 16.0, y1 = e.to[1] / 16.0, z1 = e.to[2] / 16.0;
-        double[][] C = new double[8][3];
-        C[idx(0, 0, 0)] = new double[]{x0, y0, z0};
-        C[idx(1, 0, 0)] = new double[]{x1, y0, z0};
-        C[idx(0, 1, 0)] = new double[]{x0, y1, z0};
-        C[idx(1, 1, 0)] = new double[]{x1, y1, z0};
-        C[idx(0, 0, 1)] = new double[]{x0, y0, z1};
-        C[idx(1, 0, 1)] = new double[]{x1, y0, z1};
-        C[idx(0, 1, 1)] = new double[]{x0, y1, z1};
-        C[idx(1, 1, 1)] = new double[]{x1, y1, z1};
+        Vector3d[] C = new Vector3d[8];
+        C[idx(0, 0, 0)] = new Vector3d(x0, y0, z0);
+        C[idx(1, 0, 0)] = new Vector3d(x1, y0, z0);
+        C[idx(0, 1, 0)] = new Vector3d(x0, y1, z0);
+        C[idx(1, 1, 0)] = new Vector3d(x1, y1, z0);
+        C[idx(0, 0, 1)] = new Vector3d(x0, y0, z1);
+        C[idx(1, 0, 1)] = new Vector3d(x1, y0, z1);
+        C[idx(0, 1, 1)] = new Vector3d(x0, y1, z1);
+        C[idx(1, 1, 1)] = new Vector3d(x1, y1, z1);
         // 归一化旋转格式：兼容 x/y/z 字段（高版本 Blockbench 格式）→ angle/axis
         if (e.rotation != null && e.rotation.angle == 0f && e.rotation.axis == null) {
             if (e.rotation.x != 0f) {
@@ -76,17 +79,22 @@ public class JsonModelBake {
                 double[] rescaleS = computeRescaleFactors(ax, ang);
                 double ox = oxPx / 16.0, oy = oyPx / 16.0, oz = ozPx / 16.0;
                 for (int i = 0; i < 8; i++) {
-                    C[i][0] = (C[i][0] - ox) * rescaleS[0] + ox;
-                    C[i][1] = (C[i][1] - oy) * rescaleS[1] + oy;
-                    C[i][2] = (C[i][2] - oz) * rescaleS[2] + oz;
+                    C[i].x = (C[i].x - ox) * rescaleS[0] + ox;
+                    C[i].y = (C[i].y - oy) * rescaleS[1] + oy;
+                    C[i].z = (C[i].z - oz) * rescaleS[2] + oz;
                 }
             }
 
+            double angleRad = Math.toRadians(ang);
+            Vector3d axisVec = new Vector3d(ax == 'x' ? 1 : 0, ax == 'y' ? 1 : 0, ax == 'z' ? 1 : 0);
+            Vector3d origin = new Vector3d(oxPx / 16.0, oyPx / 16.0, ozPx / 16.0);
+            Matrix4d rot = new Matrix4d();
+            rot.setIdentity();
+            rot.setRotation(new AxisAngle4d(axisVec, angleRad));
             for (int i = 0; i < 8; i++) {
-                double[] r = rotateAxisExact(C[i][0], C[i][1], C[i][2], oxPx, oyPx, ozPx, ax, ang);
-                C[i][0] = r[0];
-                C[i][1] = r[1];
-                C[i][2] = r[2];
+                C[i].sub(origin);
+                rot.transform(C[i]);
+                C[i].add(origin);
             }
         }
         emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, EnumFacing.NORTH, elemFrom, elemTo, elemAO, elemShade, textureSize);
@@ -98,7 +106,7 @@ public class JsonModelBake {
         return out;
     }
 
-    private static void emitFaceFromCorners(List<BakedQuad> out, ModelJson.Face f, Map<String, IIcon> iconMap, double[][] C, int[] id, EnumFacing facing,
+    private static void emitFaceFromCorners(List<BakedQuad> out, ModelJson.Face f, Map<String, IIcon> iconMap, Vector3d[] C, int[] id, EnumFacing facing,
                                             float[] elemFrom, float[] elemTo, Boolean elemAO, Boolean elemShade, int[] textureSize) {
         if (f == null || f.texture == null) {
             return;
@@ -109,17 +117,16 @@ public class JsonModelBake {
         }
         double[] vx = new double[4], vy = new double[4], vz = new double[4];
         for (int i = 0; i < 4; i++) {
-            vx[i] = C[id[i]][0];
-            vy[i] = C[id[i]][1];
-            vz[i] = C[id[i]][2];
+            Vector3d c = C[id[i]];
+            vx[i] = c.x;
+            vy[i] = c.y;
+            vz[i] = c.z;
         }
         float[] up = new float[4], vp = new float[4];
         assignUVForFace(f, facing, id, up, vp, elemFrom, elemTo, textureSize);
         BakedQuad q = new BakedQuad();
         for (int i = 0; i < 4; i++) {
-            q.vx[i] = vx[i];
-            q.vy[i] = vy[i];
-            q.vz[i] = vz[i];
+            q.vertices[i] = new Vector3d(vx[i], vy[i], vz[i]);
             q.up[i] = up[i];
             q.vp[i] = vp[i];
         }
@@ -127,7 +134,14 @@ public class JsonModelBake {
         q.face = facing;
         q.tintIndex = f.tintIndex;
         q.cullface = parseCullface(f.cullface);
-        q.faceNormal = normal(q.vx, q.vy, q.vz);
+        // 用 vecmath 向量运算替代标量 normal() 函数
+        Vector3d a = new Vector3d(q.vertices[1]);
+        a.sub(q.vertices[0]);
+        Vector3d b = new Vector3d(q.vertices[2]);
+        b.sub(q.vertices[0]);
+        q.faceNormal = new Vector3d();
+        q.faceNormal.cross(a, b);
+        q.faceNormal.normalize();
         // 传递元素级别的 AO 和 shade 设置
         q.ambientOcclusion = elemAO;
         q.shadeEnabled = elemShade;
@@ -246,30 +260,6 @@ public class JsonModelBake {
         return (iy << 2) | (iz << 1) | ix;
     }
 
-    static double[] rotateAxisExact(double x, double y, double z, float oxPx, float oyPx, float ozPx, char axis, float angleDeg) {
-        double ox = oxPx / 16.0, oy = oyPx / 16.0, oz = ozPx / 16.0;
-        double px = x - ox, py = y - oy, pz = z - oz;
-        double a = Math.toRadians(angleDeg), c = Math.cos(a), s = Math.sin(a);
-        double rx = px, ry = py, rz = pz;
-        switch (Character.toLowerCase(axis)) {
-            case 'x':
-                ry = py * c - pz * s;
-                rz = py * s + pz * c;
-                break;
-            case 'y':
-                rx = px * c - pz * s;
-                rz = px * s + pz * c;
-                break;
-            case 'z':
-                rx = px * c - py * s;
-                ry = px * s + py * c;
-                break;
-            default:
-                return new double[]{x, y, z};
-        }
-        return new double[]{rx + ox, ry + oy, rz + oz};
-    }
-
     /**
      * 计算 rescale 非均匀缩放因子，对齐 26.1 {@code CuboidRotation.computeRescale}。
      * <p>对旋转轴对应的单位向量做变换，取变换后各分量的最大绝对值，缩放因子 = 1 / maxComponent。
@@ -312,21 +302,22 @@ public class JsonModelBake {
         if (quads == null || quads.isEmpty() || degY == 0) return quads;
         // Minecraft blockstate y 旋转遵循标准 CCW（右手定则），
         // 即北(-Z)→东(+X) 对应 degY=90，无需取反。
-        double a = Math.toRadians(degY);
-        double cos = Math.cos(a), sin = Math.sin(a);
+        Matrix4d rotY = new Matrix4d();
+        rotY.rotY(Math.toRadians(degY));
         List<BakedQuad> result = new ArrayList<>(quads.size());
         for (BakedQuad src : quads) {
             BakedQuad q = deepCopyQuad(src);
             for (int i = 0; i < 4; i++) {
-                double px = q.vx[i] - 0.5, pz = q.vz[i] - 0.5;
-                q.vx[i] = px * cos - pz * sin + 0.5;
-                q.vz[i] = px * sin + pz * cos + 0.5;
+                // Tuple3d 没有 sub(double,double,double)，手动偏移
+                q.vertices[i].x -= 0.5;
+                q.vertices[i].z -= 0.5;
+                rotY.transform(q.vertices[i]);
+                q.vertices[i].x += 0.5;
+                q.vertices[i].z += 0.5;
             }
             // 旋转法线
             if (q.faceNormal != null) {
-                double nx = q.faceNormal[0], nz = q.faceNormal[2];
-                q.faceNormal[0] = nx * cos - nz * sin;
-                q.faceNormal[2] = nx * sin + nz * cos;
+                rotY.transform(q.faceNormal);
             }
             result.add(q);
         }
@@ -345,21 +336,21 @@ public class JsonModelBake {
      */
     public static List<BakedQuad> applyXRotation(List<BakedQuad> quads, int degX) {
         if (quads == null || quads.isEmpty() || degX == 0) return quads;
-        double a = Math.toRadians(degX);
-        double cos = Math.cos(a), sin = Math.sin(a);
+        Matrix4d rotX = new Matrix4d();
+        rotX.rotX(Math.toRadians(degX));
         List<BakedQuad> result = new ArrayList<>(quads.size());
         for (BakedQuad src : quads) {
             BakedQuad q = deepCopyQuad(src);
             for (int i = 0; i < 4; i++) {
-                double py = q.vy[i] - 0.5, pz = q.vz[i] - 0.5;
-                q.vy[i] = py * cos - pz * sin + 0.5;
-                q.vz[i] = py * sin + pz * cos + 0.5;
+                q.vertices[i].y -= 0.5;
+                q.vertices[i].z -= 0.5;
+                rotX.transform(q.vertices[i]);
+                q.vertices[i].y += 0.5;
+                q.vertices[i].z += 0.5;
             }
             // 旋转法线
             if (q.faceNormal != null) {
-                double ny = q.faceNormal[1], nz = q.faceNormal[2];
-                q.faceNormal[1] = ny * cos - nz * sin;
-                q.faceNormal[2] = ny * sin + nz * cos;
+                rotX.transform(q.faceNormal);
             }
             // X 轴旋转会改变面朝向，需要重新计算 EnumFacing
             q.face = recomputeFace(q);
@@ -373,14 +364,13 @@ public class JsonModelBake {
      */
     private static BakedQuad deepCopyQuad(BakedQuad src) {
         BakedQuad q = new BakedQuad();
-        System.arraycopy(src.vx, 0, q.vx, 0, 4);
-        System.arraycopy(src.vy, 0, q.vy, 0, 4);
-        System.arraycopy(src.vz, 0, q.vz, 0, 4);
+        for (int i = 0; i < 4; i++) {
+            q.vertices[i] = src.vertices[i] != null ? new Vector3d(src.vertices[i]) : null;
+        }
         System.arraycopy(src.up, 0, q.up, 0, 4);
         System.arraycopy(src.vp, 0, q.vp, 0, 4);
         if (src.faceNormal != null) {
-            q.faceNormal = new double[3];
-            System.arraycopy(src.faceNormal, 0, q.faceNormal, 0, 3);
+            q.faceNormal = new Vector3d(src.faceNormal);
         }
         q.icon = src.icon;
         q.face = src.face;
@@ -389,7 +379,6 @@ public class JsonModelBake {
         q.ambientOcclusion = src.ambientOcclusion;
         q.shadeEnabled = src.shadeEnabled;
         q.guiLight = src.guiLight;
-        q.modelDisplay = src.modelDisplay;
         q.solidColor = src.solidColor;
         return q;
     }
@@ -399,10 +388,10 @@ public class JsonModelBake {
      */
     private static EnumFacing recomputeFace(BakedQuad q) {
         if (q.faceNormal == null) return q.face;
-        double ax = Math.abs(q.faceNormal[0]), ay = Math.abs(q.faceNormal[1]), az = Math.abs(q.faceNormal[2]);
-        if (ay >= ax && ay >= az) return q.faceNormal[1] > 0 ? EnumFacing.UP : EnumFacing.DOWN;
-        if (ax >= ay && ax >= az) return q.faceNormal[0] > 0 ? EnumFacing.EAST : EnumFacing.WEST;
-        return q.faceNormal[2] > 0 ? EnumFacing.SOUTH : EnumFacing.NORTH;
+        double ax = Math.abs(q.faceNormal.x), ay = Math.abs(q.faceNormal.y), az = Math.abs(q.faceNormal.z);
+        if (ay >= ax && ay >= az) return q.faceNormal.y > 0 ? EnumFacing.UP : EnumFacing.DOWN;
+        if (ax >= ay && ax >= az) return q.faceNormal.x > 0 ? EnumFacing.EAST : EnumFacing.WEST;
+        return q.faceNormal.z > 0 ? EnumFacing.SOUTH : EnumFacing.NORTH;
     }
 
     /**
@@ -428,21 +417,12 @@ public class JsonModelBake {
         }
     }
 
-    public static double[] normal(double[] vx, double[] vy, double[] vz) {
-        double ax = vx[1] - vx[0], ay = vy[1] - vy[0], az = vz[1] - vz[0];
-        double bx = vx[2] - vx[0], by = vy[2] - vy[0], bz = vz[2] - vz[0];
-        double nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bz;
-        double len = Math.sqrt(nx * nx + ny * ny + nz * nz);
-        return len == 0 ? new double[]{0, 1, 0} : new double[]{nx / len, ny / len, nz / len};
-    }
-
     public static class BakedQuad {
-        public final double[] vx = new double[4];
-        public final double[] vy = new double[4];
-        public final double[] vz = new double[4];
+        /** 4 个顶点的 3D 坐标（替换旧的 vx/vy/vz 标量数组） */
+        public final Vector3d[] vertices = new Vector3d[4];
         public final float[] up = new float[4];
         public final float[] vp = new float[4];
-        public double[] faceNormal = new double[3];
+        public Vector3d faceNormal;
         public IIcon icon;
         public EnumFacing face;
         /**
@@ -463,6 +443,24 @@ public class JsonModelBake {
         public Boolean shadeEnabled = null;
 
         /**
+         * 便利方法：获取顶点 i 的 X 坐标。
+         * 在向 Tessellator 提交时替代旧的 vx[i] 引用。
+         */
+        public double vx(int i) { return vertices[i] != null ? vertices[i].x : 0; }
+
+        /**
+         * 便利方法：获取顶点 i 的 Y 坐标。
+         * 在向 Tessellator 提交时替代旧的 vy[i] 引用。
+         */
+        public double vy(int i) { return vertices[i] != null ? vertices[i].y : 0; }
+
+        /**
+         * 便利方法：获取顶点 i 的 Z 坐标。
+         * 在向 Tessellator 提交时替代旧的 vz[i] 引用。
+         */
+        public double vz(int i) { return vertices[i] != null ? vertices[i].z : 0; }
+
+        /**
          * 光照模式（模型级别）。
          * <ul>
          *   <li>{@code "front"} — 正面光照（物品/平面光照）</li>
@@ -472,12 +470,6 @@ public class JsonModelBake {
          */
         public String guiLight = null;
 
-        /**
-         * 模型级别的 display transforms（烘焙时从 ModelJson 传播）。
-         * 键为 display 场景（"gui", "firstperson_righthand", "thirdperson_righthand" 等）。
-         * 由 DisplayTransformExtension 在渲染时读取并应用。
-         */
-        public Map<String, ModelJson.DisplayTransform> modelDisplay = null;
 
         /**
          * 纯色填充（ARGB，0 表示不使用纯色，正常纹理采样）。

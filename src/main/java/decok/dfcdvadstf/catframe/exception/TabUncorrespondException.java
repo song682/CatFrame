@@ -4,11 +4,9 @@ import decok.dfcdvadstf.catframe.ui.tab.TabRegistry;
 
 /**
  * <p>
- * 当 {@link TabRegistry} 注册时声明的 tabId 与 Tab 实例构造器内部的 tabId 不一致时抛出。<br>
  * Thrown when the tabId declared during {@link TabRegistry} registration
  * does not match the tabId baked into the Tab instance's constructor.
  * </p>
- *
  * <p>
  * 例如：<br>
  * Example:

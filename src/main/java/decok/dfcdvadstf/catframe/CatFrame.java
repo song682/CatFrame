@@ -18,8 +18,10 @@ import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
+import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesInHandTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.SpawnEggAndPotionTintProvider;
+import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
 import decok.dfcdvadstf.catframe.tags.CatFrameTags;
 import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
@@ -68,8 +70,9 @@ public class CatFrame {
                 ModelRegistry.registerItemModel(blueyPlushy, blueyPlushy);
             }
 
-            LeavesTintProvider.register();
-            SpawnEggAndPotionTintProvider.register();
+            TintRegistry.register(new LeavesTintProvider());
+            TintRegistry.register(new LeavesInHandTintProvider());
+            TintRegistry.register(new SpawnEggAndPotionTintProvider());
             ModelRenderRegistry.register(new LeavesGraphicsExtension());
         }
 

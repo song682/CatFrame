@@ -46,7 +46,7 @@ public final class TintRenderExtension implements IModelRenderExtension {
                 } else if (ctx.block != null) {
                     rgb = ctx.block.getRenderColor(0) & 0xFFFFFF;
                 } else if (ctx.stack != null) {
-                    // [S6 修复] 无世界上下文时退回到物品染色（如树叶掉落物）
+                    // 无世界上下文时退回到物品染色（如树叶掉落物）
                     rgb = TintRegistry.getItemTint(ctx.stack, idx);
                 } else {
                     return;

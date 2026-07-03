@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.model.render;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.FaceCullExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.GuiLightExtension;
@@ -83,10 +84,10 @@ public final class ModelRenderRegistry {
      * 渲染器内部使用：按注册顺序对 quad 列表调用每个扩展的 {@link IModelRenderExtension#beforePart}。
      * 在各 quad 处理循环之前调用一次。
      */
-    public static void applyBeforePart(List<BakedQuad> allQuads, RenderPhase phase) {
+    public static void applyBeforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
         ensureDefaults();
         for (int i = 0, n = EXTS.size(); i < n; i++) {
-            EXTS.get(i).beforePart(allQuads, phase);
+            EXTS.get(i).beforePart(allQuads, phase, part);
         }
     }
 

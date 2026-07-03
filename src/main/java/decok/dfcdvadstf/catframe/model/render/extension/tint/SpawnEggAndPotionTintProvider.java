@@ -5,6 +5,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import net.minecraft.entity.EntityList;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.potion.PotionHelper;
 
 /**
@@ -28,36 +29,17 @@ import net.minecraft.potion.PotionHelper;
  * layer1 是液体（染色），因此 tintIndex 语义与原版 pass 恰好相反。
  */
 @SideOnly(Side.CLIENT)
-public final class SpawnEggAndPotionTintProvider {
+public final class SpawnEggAndPotionTintProvider implements IItemTintProvider {
 
-    private static boolean registered = false;
+    private Item spawnEggItem;
+    private Item potionItem;
 
-    private SpawnEggAndPotionTintProvider() {
-    }
+    @Override
+    public int getTint(ItemStack stack, int tintIndex) {
+        Item item = stack.getItem();
 
-    /**
-     * 注册刷怪蛋和药水染色。应在客户端 preInit 阶段调用。
-     */
-    public static void register() {
-        if (registered) return;
-        registered = true;
-
-        registerSpawnEgg();
-        registerPotion();
-
-        CatFrame.logger.info("[TintProvider] registered spawn_egg & potion tints");
-    }
-
-    // ==================== 刷怪蛋 ====================
-
-    private static void registerSpawnEgg() {
-        Item spawnEgg = (Item) Item.itemRegistry.getObject("spawn_egg");
-        if (spawnEgg == null) {
-            CatFrame.logger.warn("[TintProvider] spawn_egg item not found, skipping tint registration");
-            return;
-        }
-
-        TintRegistry.registerItemTint(spawnEgg, (stack, tintIndex) -> {
+        // ==================== 刷怪蛋 ====================
+        if (item == spawnEggItem) {
             EntityList.EntityEggInfo eggInfo =
                     (EntityList.EntityEggInfo) EntityList.entityEggs.get(stack.getItemDamage());
             if (eggInfo == null) return 0xFFFFFF;
@@ -65,23 +47,36 @@ public final class SpawnEggAndPotionTintProvider {
             // tintIndex 0 = layer0 (底纹) → primaryColor
             // tintIndex 1 = layer1 (斑点) → secondaryColor
             return tintIndex == 0 ? eggInfo.primaryColor : eggInfo.secondaryColor;
-        });
-    }
-
-    // ==================== 药水 ====================
-
-    private static void registerPotion() {
-        Item potion = (Item) Item.itemRegistry.getObject("potion");
-        if (potion == null) {
-            CatFrame.logger.warn("[TintProvider] potion item not found, skipping tint registration");
-            return;
         }
 
-        TintRegistry.registerItemTint(potion, (stack, tintIndex) -> {
+        // ==================== 药水 ====================
+        if (item == potionItem) {
             // tintIndex 0 = layer0 (瓶身) → 不染色
             // tintIndex 1 = layer1 (药水液体) → PotionHelper 计算颜色
             if (tintIndex == 0) return 0xFFFFFF;
             return PotionHelper.func_77915_a(stack.getItemDamage(), false) & 0xFFFFFF;
-        });
+        }
+
+        return 0xFFFFFF;
+    }
+
+    @Override
+    public void register() {
+        spawnEggItem = (Item) Item.itemRegistry.getObject("spawn_egg");
+        potionItem = (Item) Item.itemRegistry.getObject("potion");
+
+        if (spawnEggItem != null) {
+            TintRegistry.registerItemTint(spawnEggItem, this);
+        } else {
+            CatFrame.logger.warn("[TintProvider] spawn_egg item not found, skipping tint registration");
+        }
+
+        if (potionItem != null) {
+            TintRegistry.registerItemTint(potionItem, this);
+        } else {
+            CatFrame.logger.warn("[TintProvider] potion item not found, skipping tint registration");
+        }
+
+        CatFrame.logger.info("[TintProvider] registered spawn_egg & potion tints");
     }
 }

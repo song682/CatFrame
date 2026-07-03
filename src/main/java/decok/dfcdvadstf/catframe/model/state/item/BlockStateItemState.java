@@ -17,6 +17,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 
+import javax.vecmath.Matrix4d;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -78,24 +79,23 @@ public class BlockStateItemState implements IItemStateProvider {
     }
 
     private final BlockStateModel blockModel;
-    private final Map<String, ModelJson.DisplayTransform> display;
 
     public BlockStateItemState(BlockStateModel blockModel) {
-        this(blockModel, null);
+        this.blockModel = blockModel;
     }
 
     public BlockStateItemState(BlockStateModel blockModel, Map<String, ModelJson.DisplayTransform> display) {
         this.blockModel = blockModel;
-        this.display = display;
     }
 
     public BlockStateItemState(BlockStateModelPart part) {
-        this(part, null);
+        this.blockModel = new SingleBlockModel(part);
     }
 
     public BlockStateItemState(BlockStateModelPart part, Map<String, ModelJson.DisplayTransform> display) {
-        this.blockModel = new SingleBlockModel(part);
-        this.display = display;
+        // display 已由 BlockStateModelPart 持有，合并到 part 一级
+        this.blockModel = new SingleBlockModel(
+                display != null ? part.withDisplay(display) : part);
     }
 
     /**
@@ -106,7 +106,8 @@ public class BlockStateItemState implements IItemStateProvider {
     }
 
     public static BlockStateItemState fromQuads(List<BakedQuad> quads, Map<String, ModelJson.DisplayTransform> display) {
-        return new BlockStateItemState(BlockStateModelPart.fromQuads(quads), display);
+        BlockStateModelPart part = BlockStateModelPart.fromQuads(quads, display);
+        return new BlockStateItemState(part);
     }
 
     /**
@@ -121,6 +122,11 @@ public class BlockStateItemState implements IItemStateProvider {
 
     @Override
     public void render(ItemStack stack, RenderPhase phase) {
+        render(stack, phase, null);
+    }
+
+    @Override
+    public void render(ItemStack stack, RenderPhase phase, @javax.annotation.Nullable Matrix4d preTransform) {
         if (stack != null && stack.getItem() instanceof ItemBlock) {
             Block block = ((ItemBlock) stack.getItem()).field_150939_a;
 
@@ -128,7 +134,7 @@ public class BlockStateItemState implements IItemStateProvider {
             if (block instanceof IBlockStateProvider) {
                 String flatModel = ((IBlockStateProvider) block).inventoryFlatModel();
                 if (flatModel != null) {
-                    renderFlatModel(stack, phase, flatModel);
+                    renderFlatModel(stack, phase, flatModel, preTransform);
                     return;
                 }
             }
@@ -140,7 +146,7 @@ public class BlockStateItemState implements IItemStateProvider {
                 if (itemName != null) {
                     // minecraft:sapling → minecraft:item/sapling
                     String flatModel = itemName.replace(":", ":item/");
-                    renderFlatModel(stack, phase, flatModel);
+                    renderFlatModel(stack, phase, flatModel, preTransform);
                     return;
                 }
             }
@@ -151,18 +157,25 @@ public class BlockStateItemState implements IItemStateProvider {
         BlockStateModelPart part = blockModel.collectParts(null, 0, 0, 0, damage);
         if (part == null || part.isEmpty()) return;
 
-        UniformRenderPipeline.renderItemQuads(part, stack, phase, display);
+        UniformRenderPipeline.renderItemQuads(part, stack, phase,
+                null, 0, 0, 0, null, preTransform);
     }
 
     /**
      * 渲染扁平 item 模型。
      */
     private void renderFlatModel(ItemStack stack, RenderPhase phase, String modelPath) {
+        renderFlatModel(stack, phase, modelPath, null);
+    }
+
+    private void renderFlatModel(ItemStack stack, RenderPhase phase, String modelPath,
+                                  @javax.annotation.Nullable Matrix4d preTransform) {
         String cacheKey = BakedModelCache.buildKey(modelPath, 0, 0);
         BlockStateModelPart flatPart = BakedModelCache.INSTANCE.get(cacheKey);
         if (flatPart != null && !flatPart.isEmpty()) {
-            Map<String, ModelJson.DisplayTransform> flatDisplay = resolveDisplay(modelPath);
-            UniformRenderPipeline.renderItemQuads(flatPart, stack, phase, flatDisplay);
+            // display 已由 blockstate model part 持有（来自烘焙），无需单独传入
+            UniformRenderPipeline.renderItemQuads(flatPart, stack, phase,
+                    null, 0, 0, 0, null, preTransform);
         }
     }
 }

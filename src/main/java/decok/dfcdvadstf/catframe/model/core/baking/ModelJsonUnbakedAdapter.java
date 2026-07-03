@@ -147,12 +147,8 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
             }
         }
 
-        // 7. 传播模型级别的 display transforms 到所有 quad
-        if (json.display != null) {
-            for (BakedQuad q : quads) {
-                q.modelDisplay = json.display;
-            }
-        }
+        // 7. display transforms 已通过 BlockStateModelPart 的 partDisplay 字段传播，
+        //    不再需要逐个设置到 BakedQuad 上
 
         // 8. 应用旋转（深拷贝，不污染基础缓存）
         if (rotationY != 0) {
@@ -165,7 +161,7 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         CatFrame.logger.debug("[ModelJsonUnbakedAdapter] bake: '{}' | elements={} | quads={} | rotX={} rotY={}",
                 modelPath, json.elements.size(), quads.size(), rotationX, rotationY);
 
-        // 9. 包装为 BlockStateModelPart
-        return BlockStateModelPart.fromQuads(quads);
+        // 9. 包装为 BlockStateModelPart（携带 display transforms）
+        return BlockStateModelPart.fromQuads(quads, json.display);
     }
 }

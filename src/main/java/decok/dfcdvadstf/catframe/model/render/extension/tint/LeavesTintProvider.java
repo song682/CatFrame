@@ -2,10 +2,10 @@ package decok.dfcdvadstf.catframe.model.render.extension.tint;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.CatFrame;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.world.ColorizerFoliage;
 import net.minecraft.world.IBlockAccess;
 
@@ -22,67 +22,42 @@ import net.minecraft.world.IBlockAccess;
  * </ul>
  */
 @SideOnly(Side.CLIENT)
-public final class LeavesTintProvider {
+public final class LeavesTintProvider implements IBlockTintProvider {
 
-    private static boolean registered = false;
-
-    private LeavesTintProvider() {
-    }
-
-    /**
-     * 注册所有树叶染色。应在客户端初始化时调用（如 FMLInitializationEvent）。
-     */
-    public static void register() {
-        if (registered) return;
-        registered = true;
-
-        registerLeaves1();
-        registerLeaves2();
-
-        CatFrame.logger.info("LeavesTintRegistration: registered all leaf tints");
-    }
-
-    // ==================== Blocks.leaves (oak, spruce, birch, jungle) ====================
-
-    private static void registerLeaves1() {
-        if (Blocks.leaves == null) return;
-
-        // ——— 方块染色 ———
-        TintRegistry.registerBlockTint(Blocks.leaves, (world, x, y, z, block, tintIndex) -> {
-            int meta = world.getBlockMetadata(x, y, z) & 3;
-            return getBlockColor(block, meta, world, x, y, z);
-        });
-
-        // ——— 物品染色（对齐 BlockOldLeaf.getRenderColor） ———
-        Item item = Item.getItemFromBlock(Blocks.leaves);
-        if (item != null) {
-            TintRegistry.registerItemTint(item, (stack, tintIndex) -> {
-                int meta = stack.getItemDamage() & 3;
-                if (meta == 1) return ColorizerFoliage.getFoliageColorPine();
-                if (meta == 2) return ColorizerFoliage.getFoliageColorBirch();
-                return ColorizerFoliage.getFoliageColorBasic();
-            });
-        }
-    }
-
-    // ==================== Blocks.leaves2 (acacia, dark_oak) — 可能不存在 ====================
-
-    private static void registerLeaves2() {
-        Block leaves2 = getLeaves2Block();
-        if (leaves2 == null) return;
-
-        // BlockNewLeaf 未覆写 colorMultiplier，与 BlockLeaves 基类一致：全部 3x3 平均
-        TintRegistry.registerBlockTint(leaves2, (world, x, y, z, block, tintIndex) -> {
+    @Override
+    public int getTint(IBlockAccess world, int x, int y, int z, Block block, int tintIndex) {
+        // leaves2（金合欢/深色橡木）：全部按 3x3 平均 foliage 色
+        if (block == getLeaves2Block()) {
             if (world != null) {
                 return averageFoliageColor(world, x, y, z);
             }
             return ColorizerFoliage.getFoliageColorBasic();
-        });
-
-        Item item = Item.getItemFromBlock(leaves2);
-        if (item != null) {
-            TintRegistry.registerItemTint(item, (stack, tintIndex) -> ColorizerFoliage.getFoliageColorBasic());
         }
+
+        // leaves1（橡木/云杉/白桦/丛林木）：按 metadata 区分
+        int meta = world.getBlockMetadata(x, y, z) & 3;
+        return getBlockColor(block, meta, world, x, y, z);
+    }
+
+    @Override
+    public void register() {
+        registerLeaves1();
+        registerLeaves2();
+    }
+
+    // ==================== 注册（Blocks.leaves: oak, spruce, birch, jungle） ====================
+
+    private void registerLeaves1() {
+        if (Blocks.leaves == null) return;
+        TintRegistry.registerBlockTint(Blocks.leaves, this);
+    }
+
+    // ==================== 注册（Blocks.leaves2: acacia, dark_oak — 可能不存在） ====================
+
+    private void registerLeaves2() {
+        Block leaves2 = getLeaves2Block();
+        if (leaves2 == null) return;
+        TintRegistry.registerBlockTint(leaves2, this);
     }
 
     // ==================== 颜色查询（对齐原版 BlockOldLeaf / BlockNewLeaf） ====================

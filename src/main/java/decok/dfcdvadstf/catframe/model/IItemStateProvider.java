@@ -3,6 +3,9 @@ package decok.dfcdvadstf.catframe.model;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import net.minecraft.item.ItemStack;
 
+import javax.annotation.Nullable;
+import javax.vecmath.Matrix4d;
+
 /**
  * 物品状态模型接口 — CatFrame 物品渲染的唯一抽象。
  * <p>
@@ -67,4 +70,19 @@ public interface IItemStateProvider {
      * @param phase 渲染上下文（GUI / 手持 / 掉落物等）
      */
     void render(ItemStack stack, RenderPhase phase);
+
+    /**
+     * 渲染物品，带预变换（反抵消）。
+     * <p>
+     * 预变换在管线内部的 display transform 之前应用，以 Matrix4d 向量空间矩阵形式传入。
+     * 默认实现直接委托给 {@link #render(ItemStack, RenderPhase)}。
+     *
+     * @param stack        物品栈
+     * @param phase        渲染上下文
+     * @param preTransform 预变换矩阵（可为 null），在 display transform 之前作用于顶点
+     */
+    default void render(ItemStack stack, RenderPhase phase,
+                        @Nullable Matrix4d preTransform) {
+        render(stack, phase);
+    }
 }

@@ -124,7 +124,7 @@ public class RenderJsonBlockModel implements ISimpleBlockRenderingHandler {
         if (model != null) {
             BlockStateModelPart part = model.collectParts(null, 0, 0, 0, metadata);
             if (part != null && !part.isEmpty()) {
-                UniformRenderPipeline.renderBlockQuadsGUI(part, block, null, metadata);
+                UniformRenderPipeline.renderBlockQuadsGUI(part, block, metadata);
             }
             return;
         }
@@ -132,7 +132,7 @@ public class RenderJsonBlockModel implements ISimpleBlockRenderingHandler {
         // 兜底：registeredBlockModels 未命中时，尝试从 blockstate 的 "normal" variant 取模型
         BlockStateModelPart part = collectFromBlockstate(block, metadata);
         if (part != null && !part.isEmpty()) {
-            UniformRenderPipeline.renderBlockQuadsGUI(part, block, null, metadata);
+            UniformRenderPipeline.renderBlockQuadsGUI(part, block, metadata);
         }
     }
 

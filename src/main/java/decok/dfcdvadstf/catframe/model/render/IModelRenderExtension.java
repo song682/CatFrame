@@ -2,6 +2,8 @@ package decok.dfcdvadstf.catframe.model.render;
 
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+
 import java.util.List;
 
 /**
@@ -54,8 +56,9 @@ public interface IModelRenderExtension {
      *
      * @param allQuads 当前部件的所有 BakedQuad
      * @param phase    当前渲染阶段
+     * @param part     当前渲染的 BlockStateModelPart（提供 part 级别元数据）
      */
-    default void beforePart(List<BakedQuad> allQuads, RenderPhase phase) {
+    default void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
     }
 
     /**
@@ -71,5 +74,13 @@ public interface IModelRenderExtension {
      * 例如恢复 {@code beforePart} 中修改的 GL 状态。
      */
     default void afterPart() {
+    }
+
+    /**
+     * 旧版两参数 beforePart，默认委托给三参数版本（part=null）。
+     * 实现类应优先覆写 {@link #beforePart(List, RenderPhase, BlockStateModelPart)}。
+     */
+    default void beforePart(List<BakedQuad> allQuads, RenderPhase phase) {
+        beforePart(allQuads, phase, null);
     }
 }

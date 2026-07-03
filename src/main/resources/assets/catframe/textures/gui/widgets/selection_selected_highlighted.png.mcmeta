@@ -1,0 +1,9 @@
+{
+    "stretching": {
+        "type": "static",
+        "default": {
+            "width": 8,
+            "height": 8
+        }
+    }
+}

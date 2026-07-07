@@ -6,7 +6,7 @@ import net.minecraftforge.common.config.Configuration;
 import java.io.File;
 
 /**
- * CatFrame 模组配置。
+ * CatFrame Mod Configuration
  */
 public class CatFrameConfig {
 
@@ -24,14 +24,14 @@ public class CatFrameConfig {
     }
 
     /**
-     * @return 是否应该输出调试日志：开发环境 或 {@link #debugLogThingsEnabled} 为 true
+     * @return Whether debug logging should be output: development environment or {@link #debugLogThingsEnabled} is true
      */
     public static boolean shouldLogDebug() {
         return debugLogThingsEnabled || isDevEnvironment();
     }
 
     /**
-     * 检查是否运行在开发环境（反编译环境）。
+     * Check if running in a development environment (deobfuscated environment). 
      */
     private static boolean isDevEnvironment() {
         try {

@@ -40,8 +40,6 @@ public class CatFrame {
 
         // Register data components
         RegisteredComponents.registerAll();
-
-        //
         MinecraftForge.EVENT_BUS.register(new TexturesStitch());
         MinecraftForge.EVENT_BUS.register(new ODorTag());
         MinecraftForge.EVENT_BUS.register(new VanillaMetadataMapper());

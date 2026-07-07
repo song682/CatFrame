@@ -123,7 +123,8 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
     private static Matrix4d computeMatrix(ModelJson.DisplayTransform dt) {
         if (dt == null) return null;
 
-        Matrix4d m = new Matrix4d(); // 初始化为单位矩阵
+        Matrix4d m = new Matrix4d();
+        m.setIdentity();
 
         // ④ translate(display) — 像素 × 0.0625 = 方块单位
         if (dt.translation != null && dt.translation.length >= 3) {

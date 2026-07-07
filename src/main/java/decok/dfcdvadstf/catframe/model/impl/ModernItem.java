@@ -276,6 +276,24 @@ public class ModernItem extends Item implements IItemStateProvider {
         UniformRenderPipeline.renderItemQuads(part, stack, phase);
     }
 
+    @Override
+    @SideOnly(Side.CLIENT)
+    public void render(ItemStack stack, RenderPhase phase,
+                       @javax.annotation.Nullable javax.vecmath.Matrix4d preTransform) {
+        if (itemStateRoot == null) return;
+
+        Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
+        String resolvedPath = itemStateRoot.evaluate(props);
+        if (resolvedPath == null) return;
+
+        String cacheKey = BakedModelCache.buildKey(resolvedPath, 0, 0);
+        BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
+        if (part == null || part.isEmpty()) return;
+
+        UniformRenderPipeline.renderItemQuads(part, stack, phase,
+                null, 0, 0, 0, null, preTransform);
+    }
+
     /**
      * IItemState: 返回 inventory（2D GUI）模型路径。
      * <p>

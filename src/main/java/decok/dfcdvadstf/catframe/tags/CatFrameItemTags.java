@@ -3,81 +3,81 @@ package decok.dfcdvadstf.catframe.tags;
 import net.minecraft.item.Item;
 
 /**
- * CatFrame 物品标签常量
+ * CatFrame Item Tags Constants
  * 
- * 类似 26.1 的 ItemTags，定义所有 CatFrame 使用的物品标签
- * 所有标签的命名空间统一为 "catframe"
+ * Similar to 26.1's ItemTags, defining all item tags used by CatFrame
+ * All tags have a uniform namespace of "catframe"
  * 
- * 使用方式：
+ * Usage:
  * <pre>
  * if (CatFrameItemTags.is(item, CatFrameItemTags.TOOLS)) {
- *     // 这是一个工具
+ *     // This is a tool
  * }
  * </pre>
  */
 public final class CatFrameItemTags {
     
-    // ==================== 工具类标签 ====================
+    // ==================== Tool Class Tags ====================
     
-    /** 所有剑 */
+    /** All swords */
     public static final TagKey<Item> SWORDS = create("swords");
     
-    /** 所有斧头 */
+    /** All axes */
     public static final TagKey<Item> AXES = create("axes");
     
-    /** 所有镐子 */
+    /** All pickaxes */
     public static final TagKey<Item> PICKAXES = create("pickaxes");
     
-    /** 所有铲子 */
+    /** All shovels */
     public static final TagKey<Item> SHOVELS = create("shovels");
     
-    /** 所有锄头 */
+    /** All hoes */
     public static final TagKey<Item> HOES = create("hoes");
     
-    /** 所有工具 */
+    /** All tools */
     public static final TagKey<Item> TOOLS = create("tools");
     
-    // ==================== 材料类标签 ====================
+    // ==================== Material Class Tags ====================
     
-    /** 所有木板 */
+    /** All planks */
     public static final TagKey<Item> PLANKS = create("planks");
     
-    /** 所有原木 */
+    /** All logs */
     public static final TagKey<Item> LOGS = create("logs");
     
-    /** 所有石头 */
+    /** All stones */
     public static final TagKey<Item> STONES = create("stones");
     
-    /** 所有羊毛 */
+    /** All wool */
     public static final TagKey<Item> WOOL = create("wool");
     
-    /** 所有染料 */
+    /** All dyes */
     public static final TagKey<Item> DYES = create("dyes");
     
-    // ==================== 功能类标签 ====================
+    // ==================== Function Class Tags ====================
     
-    /** 可食用物品 */
+    /** Edible items */
     public static final TagKey<Item> FOODS = create("foods");
     
-    /** 可酿造物品 */
+    /** Brewable items */
     public static final TagKey<Item> BREWING_ITEMS = create("brewing_items");
     
-    /** 燃料物品 */
+    /** Fuel items */
     public static final TagKey<Item> FUELS = create("fuels");
     
     private CatFrameItemTags() {
-        // 工具类，禁止实例化
+        // Tool class, do not instantiate
     }
     
     /**
-     * 创建一个物品 TagKey
+     * Create an item TagKey
      */
     private static TagKey<Item> create(String name) {
         return TagKey.createItem("catframe", name);
     }
     
     /**
-     * 检查物品是否属于某个标签
+     * Check if an item belongs to a certain tag
      */
     public static boolean is(Item item, TagKey<Item> tag) {
         return CatFrameTags.is(item, tag.getFullIdentifier());

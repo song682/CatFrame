@@ -50,6 +50,30 @@ public final class ScreenRectangle {
         return this.y + this.height;
     }
 
+    /**
+     * 判断两个矩形是否相交（有重叠区域）。
+     * <p>对标 26.1.2 {@code ScreenRectangle.intersects()}，
+     * 用于 {@code GuiRenderState.Node} 的自动分层判定。</p>
+     */
+    public boolean intersects(final ScreenRectangle other) {
+        return this.x < other.x + other.width
+                && this.x + this.width > other.x
+                && this.y < other.y + other.height
+                && this.y + this.height > other.y;
+    }
+
+    /**
+     * 判断本矩形是否完全包含另一个矩形。
+     * <p>对标 26.1.2 {@code ScreenRectangle.encompasses()}，
+     * 用于 {@code GuiRenderState} 判断新元素是否属于当前节点的子层级。</p>
+     */
+    public boolean encompasses(final ScreenRectangle other) {
+        return other.x >= this.x
+                && other.y >= this.y
+                && other.x + other.width <= this.x + this.width
+                && other.y + other.height <= this.y + this.height;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;

@@ -10,7 +10,8 @@
   ],
   "client": [
     "middle.MixinRenderBlocks",
-    "middle.MixinTextureMap"
+    "middle.MixinTextureMap",
+    "middle.MixinWorldRenderer"
   ],
   "server": []
 }

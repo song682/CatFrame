@@ -15,40 +15,41 @@ import java.io.FileReader;
 import java.util.*;
 
 /**
- * Tag 加载器 - 负责加载和管理标签系统
+ * Tag loader - responsible for loading and managing the tag system
  * 
+ * Similar to 26.1's TagLoader<T>, but adapted for 1.7.10 Forge environment
  * 类似 26.1 的 TagLoader<T>，但适配 1.7.10 Forge 环境
- * 支持：
- * - 从 JSON 文件加载标签定义
- * - 标签引用（#namespace:tag_name）
- * - 依赖排序（先加载被引用的标签）
+ * Support:
+ * - Loading tag definitions from JSON files
+ * - Tag references (e.g. #namespace:tag_name)
+ * - Dependency sorting (load tags that are referenced first)
  * 
- * 使用方式：
+ * Usage:
  * <pre>
- * // 在 preInit 阶段初始化
+ * // Initialize in preInit phase
  * TagLoader<Item> itemTagLoader = new TagLoader<>("item", TagLoader.createItemLookup());
  * itemTagLoader.loadFromDirectory(new File(configDir, "tags/items"));
  * 
- * // 查询标签
+ * // Query tag contents
  * Set<Item> woolItems = itemTagLoader.getTagContents("catframe", "wool");
  * </pre>
  * 
- * @param <T> 标签类型（Item 或 Block）
+ * @param <T> Tag type (Item or Block)
  */
 public class TagLoader<T> {
     
     private static final Logger LOGGER = LogManager.getLogger(TagLoader.class);
     
-    /** 注册表类型（"item" 或 "block"） */
+    /** Registry type (e.g. "item" or "block") */
     private final String registryType;
     
-    /** 标签注册表: tag名称 -> 该标签下的所有对象集合 */
+    /** Tag registry: tag name -> set of objects in the tag */
     private final Map<ResourceLocation, Set<T>> tagRegistry = new HashMap<>();
     
-    /** 原始条目注册表（未解析的 TagEntry） */
+    /** Raw entry registry (unresolved TagEntry) */
     private final Map<ResourceLocation, List<TagEntry>> rawEntries = new HashMap<>();
     
-    /** 元素查找器 */
+    /** Element lookup function */
     private final ElementLookup<T> elementLookup;
     
     public TagLoader(String registryType, ElementLookup<T> elementLookup) {
@@ -57,9 +58,9 @@ public class TagLoader<T> {
     }
     
     /**
-     * 从目录加载所有标签文件
+     * Load all tag files from the directory
      * 
-     * @param tagsDir 标签目录（如 config/tags/items）
+     * @param tagsDir Tag directory (e.g. config/tags/items)
      */
     public void loadFromDirectory(File tagsDir) {
         if (!tagsDir.exists() || !tagsDir.isDirectory()) {
@@ -70,12 +71,12 @@ public class TagLoader<T> {
         LOGGER.info("Loading {} tags from: {}", registryType, tagsDir.getPath());
         loadDirectoryRecursive(tagsDir, "");
         
-        // 加载完成后，构建所有标签
+        // Load all tags after processing
         buildAllTags();
     }
     
     /**
-     * 递归加载目录中的标签文件
+     * Recursively load tag files from the directory
      */
     private void loadDirectoryRecursive(File dir, String prefix) {
         File[] files = dir.listFiles();
@@ -83,11 +84,11 @@ public class TagLoader<T> {
         
         for (File file : files) {
             if (file.isDirectory()) {
-                // 递归子目录
+                // Recurse the folder
                 String newPrefix = prefix.isEmpty() ? file.getName() : prefix + "/" + file.getName();
                 loadDirectoryRecursive(file, newPrefix);
             } else if (file.getName().endsWith(".json")) {
-                // 加载 JSON 文件
+                // Load JSON file
                 String tagName = prefix.isEmpty() ? file.getName().replace(".json", "") 
                                                    : prefix + "/" + file.getName().replace(".json", "");
                 loadFromFile(file, "catframe", tagName);
@@ -96,7 +97,7 @@ public class TagLoader<T> {
     }
     
     /**
-     * 从单个 JSON 文件加载标签
+     * Load tag file from single JSON
      */
     public void loadFromFile(File jsonFile, String namespace, String tagName) {
         try {
@@ -120,27 +121,27 @@ public class TagLoader<T> {
             ResourceLocation tagLocation = new ResourceLocation(namespace, tagName);
             
             if (tagFile.isReplace()) {
-                // 如果 replace 为 true，清空已有内容
+                // If replace is true, clear existing content
                 rawEntries.remove(tagLocation);
             }
             
-            // 添加条目
+            // Add entries
             rawEntries.computeIfAbsent(tagLocation, k -> new ArrayList<>())
                       .addAll(tagFile.getEntries());
             
             LOGGER.debug("Loaded tag file: {} -> {}", jsonFile.getName(), tagLocation);
             
-        } catch (Exception e) {
+        } catch (Exception e) { 
             LOGGER.error("Failed to load tag JSON from: {}", jsonFile.getPath(), e);
         }
     }
     
     /**
-     * 构建所有标签（解析所有 TagEntry）
+     * Build all tags (resolve all TagEntry)
      */
     private void buildAllTags() {
-        // 简单实现：直接构建所有标签
-        // 26.1 使用 DependencySorter 处理依赖关系，这里简化处理
+        // Simple implementation: build all tags directly
+        // 26.1 uses DependencySorter to handle dependency relationships, which is simplified here
         for (Map.Entry<ResourceLocation, List<TagEntry>> entry : rawEntries.entrySet()) {
             ResourceLocation tagLocation = entry.getKey();
             List<TagEntry> entries = entry.getValue();
@@ -158,7 +159,7 @@ public class TagLoader<T> {
     }
     
     /**
-     * 创建查找器
+     * Create lookup
      */
     private TagEntry.Lookup<T> createLookup() {
         return new TagEntry.Lookup<T>() {
@@ -175,14 +176,14 @@ public class TagLoader<T> {
     }
     
     /**
-     * 获取标签中的所有对象（只读）
+     * Get all objects in the tag (read-only)
      */
     public Set<T> getTagContents(String namespace, String name) {
         return getTagContents(new ResourceLocation(namespace, name));
     }
     
     /**
-     * 获取标签中的所有对象（只读）
+     * Get all objects in the tag (read-only)
      */
     public Set<T> getTagContents(ResourceLocation location) {
         return Collections.unmodifiableSet(
@@ -191,7 +192,7 @@ public class TagLoader<T> {
     }
     
     /**
-     * 获取或创建标签内容集合（用于硬编码注册）
+     * Get or create tag content set (for hard-coded registration)
      * 如果标签不存在，会自动创建
      */
     public Set<T> getOrCreateTagContents(ResourceLocation location) {
@@ -204,21 +205,21 @@ public class TagLoader<T> {
     }
     
     /**
-     * 获取或创建标签内容集合（用于硬编码注册）
+     * Get or create tag content set (for hard-coded registration)
      */
     public Set<T> getOrCreateTagContents(String namespace, String name) {
         return getOrCreateTagContents(new ResourceLocation(namespace, name));
     }
     
     /**
-     * 检查对象是否属于某个标签
+     * Check if object belongs to a tag
      */
     public boolean is(T object, String namespace, String name) {
         return is(object, new ResourceLocation(namespace, name));
     }
     
     /**
-     * 检查对象是否属于某个标签
+     * Check if object belongs to a tag
      */
     public boolean is(T object, ResourceLocation location) {
         Set<T> tagContents = tagRegistry.get(location);
@@ -226,28 +227,28 @@ public class TagLoader<T> {
     }
     
     /**
-     * 检查标签是否存在
+     * Check if tag exists
      */
     public boolean exists(String namespace, String name) {
         return exists(new ResourceLocation(namespace, name));
     }
     
     /**
-     * 检查标签是否存在
+     * Check if tag exists
      */
     public boolean exists(ResourceLocation location) {
         return tagRegistry.containsKey(location);
     }
     
     /**
-     * 获取所有已注册的标签名称
+     * Get all registered tag names
      */
     public Set<ResourceLocation> getAllTagNames() {
         return Collections.unmodifiableSet(tagRegistry.keySet());
     }
     
     /**
-     * 清空所有标签
+     * Clear all tags
      */
     public void clear() {
         tagRegistry.clear();
@@ -255,7 +256,7 @@ public class TagLoader<T> {
     }
     
     /**
-     * 元素查找器接口
+     * Element lookup interface
      */
     public interface ElementLookup<T> {
         /**
@@ -269,7 +270,7 @@ public class TagLoader<T> {
     }
     
     /**
-     * 创建物品 ElementLookup
+     * Create item ElementLookup
      */
     public static ElementLookup<Item> createItemLookup() {
         return (id, required) -> {
@@ -279,7 +280,7 @@ public class TagLoader<T> {
     }
     
     /**
-     * 创建方块 ElementLookup
+     * Create block ElementLookup
      */
     public static ElementLookup<Block> createBlockLookup() {
         return (id, required) -> {

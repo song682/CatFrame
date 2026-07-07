@@ -8,6 +8,8 @@ import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.property.ItemProperties;
 import net.minecraft.item.ItemStack;
 
+import javax.annotation.Nullable;
+import javax.vecmath.Matrix4d;
 import java.util.Map;
 
 /**
@@ -55,6 +57,12 @@ public class ItemStateModel implements IItemStateProvider {
 
     @Override
     public void render(ItemStack stack, RenderPhase phase) {
+        render(stack, phase, null);
+    }
+
+    @Override
+    public void render(ItemStack stack, RenderPhase phase,
+                       @Nullable Matrix4d preTransform) {
         // 1. 构建运行时属性集
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
 
@@ -68,7 +76,9 @@ public class ItemStateModel implements IItemStateProvider {
         if (part == null || part.isEmpty()) return;
 
         // 4. 渲染（display 已由 BlockStateModelPart 持有，无需单独传入）
-        UniformRenderPipeline.renderItemQuads(part, stack, phase);
+        //    preTransform 传递到管线，使反抵消矩阵（如 GUI 的 S(16,-16,16)）正确作用于顶点
+        UniformRenderPipeline.renderItemQuads(part, stack, phase,
+                null, 0, 0, 0, null, preTransform);
     }
 
     /**

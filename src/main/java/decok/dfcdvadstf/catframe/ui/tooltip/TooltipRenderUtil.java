@@ -2,13 +2,18 @@ package decok.dfcdvadstf.catframe.ui.tooltip;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.ui.components.GuiDrawing;
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
+import net.minecraft.util.ResourceLocation;
 
 /**
- * 工具提示背景渲染工具——绘制 tooltip 的深色背景与边框。
+ * 工具提示背景渲染工具——使用九宫格纹理绘制 tooltip 背景与边框。</p>
  * <p>
  * 对应 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil}。
- * 使用 UI 包的 {@link GuiDrawing} 进行绘制，与 UI 包渲染风格一致。
+ * 使用两层纹理：
+ * <ul>
+ *   <li>{@link #BACKGROUND_TEXTURE background} — 背景填充层</li>
+ *   <li>{@link #FRAME_TEXTURE frame} — 边框层</li>
+ * </ul>
  */
 @SideOnly(Side.CLIENT)
 public class TooltipRenderUtil {
@@ -20,12 +25,14 @@ public class TooltipRenderUtil {
     public static final int PADDING_TOP = 4;
     public static final int PADDING_BOTTOM = 4;
 
-    private static final int BACKGROUND_COLOR = 0xF0100010;
-    private static final int BORDER_COLOR_TOP_LEFT = 0x505000FF;
-    private static final int BORDER_COLOR_BOTTOM_RIGHT = 0x5028007F;
+    /** 背景填充纹理（中心平铺） */
+    private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation("catframe", "textures/gui/tooltips/background.png");
+    /** 边框纹理（中心拉伸） */
+    private static final ResourceLocation FRAME_TEXTURE = new ResourceLocation("catframe", "textures/gui/tooltips/frame.png");
 
     /**
      * 渲染 tooltip 背景。
+     * <p>先绘制背景填充层，再叠加边框层。</p>
      *
      * @param x tooltip 文字区域左上 X
      * @param y tooltip 文字区域左上 Y
@@ -38,13 +45,10 @@ public class TooltipRenderUtil {
         int bgW = w + PADDING + PADDING;
         int bgH = h + PADDING + PADDING;
 
-        // 深色半透明背景
-        GuiDrawing.drawRect(bgX, bgY, bgX + bgW, bgY + bgH, BACKGROUND_COLOR);
+        // 第一层：背景填充（center 不平铺）
+        TextureStretching.drawAutoNinePatch(BACKGROUND_TEXTURE, bgX, bgY, bgW, bgH, 100, 100, PADDING);
 
-        // 边框：分别绘制四条边
-        GuiDrawing.drawRect(bgX, bgY - 1, bgX + bgW, bgY, BORDER_COLOR_TOP_LEFT);                       // 上边
-        GuiDrawing.drawRect(bgX, bgY + bgH, bgX + bgW, bgY + bgH + 1, BORDER_COLOR_BOTTOM_RIGHT);        // 下边
-        GuiDrawing.drawRect(bgX - 1, bgY, bgX, bgY + bgH, BORDER_COLOR_TOP_LEFT);                        // 左边
-        GuiDrawing.drawRect(bgX + bgW, bgY, bgX + bgW + 1, bgY + bgH, BORDER_COLOR_BOTTOM_RIGHT);        // 右边
+        // 第二层：边框（center 拉伸覆盖背景）
+        TextureStretching.drawAutoNinePatch(FRAME_TEXTURE, bgX, bgY, bgW, bgH, 100, 100, PADDING);
     }
 }

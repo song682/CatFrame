@@ -8,25 +8,25 @@ import java.util.Collection;
 import java.util.function.Consumer;
 
 /**
- * Tag 条目 - 表示标签中的一个元素或引用
+ * Tag entry - represents an element or reference within a tag
  * 
- * 类似 26.1 的 TagEntry，支持两种类型：
- * 1. 直接引用元素（如 "minecraft:wool"）
- * 2. 引用其他标签（如 "#catframe:wool_like"）
+ * Similar to 26.1's TagEntry, supporting two types:
+ * 1. Direct element reference (e.g. "minecraft:wool")
+ * 2. Tag reference (e.g. "#catframe:wool_like")
  * 
- * 支持 required 标记，控制找不到时是否报错
+ * Support required mark, control whether to error when not found
  */
 public class TagEntry {
     
     private static final Logger LOGGER = LogManager.getLogger(TagEntry.class);
     
-    /** 引用的标识符 */
+    /** Identifier of the entry */
     private final ResourceLocation id;
     
-    /** 是否为标签引用（true=引用其他标签，false=直接元素） */
+    /** Whether it is a tag reference (true=reference to another tag, false=direct element) */
     private final boolean tag;
     
-    /** 是否必须存在（true=找不到报错，false=找不到则忽略） */
+    /** Whether it is required to exist (true=not found will error, false=not found will be ignored) */
     private final boolean required;
     
     private TagEntry(ResourceLocation id, boolean tag, boolean required) {
@@ -36,35 +36,35 @@ public class TagEntry {
     }
     
     /**
-     * 创建一个直接元素条目（必须存在）
+     * Create a direct element entry (required to exist)
      */
     public static TagEntry element(ResourceLocation id) {
         return new TagEntry(id, false, true);
     }
     
     /**
-     * 创建一个直接元素条目（可选）
+     * Create a direct element entry (optional)
      */
     public static TagEntry optionalElement(ResourceLocation id) {
         return new TagEntry(id, false, false);
     }
     
     /**
-     * 创建一个标签引用条目（必须存在）
+     * Create a tag reference entry (required to exist)
      */
     public static TagEntry tag(ResourceLocation id) {
         return new TagEntry(id, true, true);
     }
     
     /**
-     * 创建一个标签引用条目（可选）
+     * Create a tag reference entry (optional)
      */
     public static TagEntry optionalTag(ResourceLocation id) {
         return new TagEntry(id, true, false);
     }
     
     /**
-     * 从字符串解析 TagEntry
+     * Parse TagEntry from string
      * 支持格式：
      * - "minecraft:wool" -> 直接元素
      * - "#catframe:wool" -> 标签引用
@@ -97,7 +97,7 @@ public class TagEntry {
     }
     
     /**
-     * 构建（解析）此条目的实际对象
+     * Build (resolve) the actual object of this entry
      * 
      * @param lookup 查找器
      * @param output 输出收集器
@@ -132,7 +132,7 @@ public class TagEntry {
     }
     
     /**
-     * 访问所需的依赖标签
+     * Visit required dependency tags
      */
     public void visitRequiredDependencies(Consumer<ResourceLocation> output) {
         if (this.tag && this.required) {
@@ -141,7 +141,7 @@ public class TagEntry {
     }
     
     /**
-     * 访问可选的依赖标签
+     * Visit optional dependency tags
      */
     public void visitOptionalDependencies(Consumer<ResourceLocation> output) {
         if (this.tag && !this.required) {
@@ -150,21 +150,21 @@ public class TagEntry {
     }
     
     /**
-     * 获取引用的标识符
+     * Get the referenced identifier
      */
     public ResourceLocation getId() {
         return id;
     }
     
     /**
-     * 是否为标签引用
+     * Whether it is a tag reference
      */
     public boolean isTag() {
         return tag;
     }
     
     /**
-     * 是否必须存在
+     * Whether it is required to exist  
      */
     public boolean isRequired() {
         return required;

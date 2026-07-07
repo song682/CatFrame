@@ -39,7 +39,7 @@ public final class GuiLightExtension implements IModelRenderExtension {
 
     @Override
     @SuppressWarnings("deprecation")
-    public void beforePart(List<BakedQuad> allQuads, RenderPhase phase) {
+    public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, decok.dfcdvadstf.catframe.model.state.BlockStateModelPart part) {
         // 物品渲染阶段一律关闭 GL_LIGHTING，用固定亮度（fullbright）
         // 不依赖模型的 gui_light 字段——原版 RenderItem 对所有物品都关 GL_LIGHTING
         boolean isItemPhase = (phase == RenderPhase.ITEM_GUI
@@ -75,7 +75,7 @@ public final class GuiLightExtension implements IModelRenderExtension {
             return;
         }
 
-        // "side" 或 null：保留默认方向阴影（由 shadeByNormal 计算）
+        // "side" 或 null：保留默认方向阴影（由 CardinalLighting.byFace 计算）
         // 注意：不修改 ctx.quad.guiLight，避免副作用影响其他渲染通道
     }
 

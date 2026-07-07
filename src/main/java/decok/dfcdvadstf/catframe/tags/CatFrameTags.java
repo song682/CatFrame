@@ -6,56 +6,56 @@ import net.minecraft.item.Item;
 import java.util.Set;
 
 /**
- * CatFrame 标签便捷工具类
+ * CatFrame tag utility class
  * 
- * 提供简单的 API 来注册和查询标签
- * 底层使用 TagLoader 实现，命名空间统一为 "catframe"
+ * Provides simple API for registering and querying tags
+ * Bottom layer uses TagLoader implementation, with a uniform namespace of "catframe"
  * 
- * 使用方式：
+ * Usage:
  * <pre>
- * // 在 preInit 或 init 阶段注册标签
+ * // In preInit or init phase, register tags
  * CatFrameTags.add("wool", Blocks.wool);
  * CatFrameTags.add("wool", Blocks.carpet_white);
  * 
- * // 查询方块/物品是否属于某个标签
+ * // Check if a block/item belongs to a certain tag
  * if (CatFrameTags.is(Blocks.wool, "wool")) {
- *     // 这是一个羊毛方块
+ *     // This is a wool block or item
  * }
  * </pre>
  */
 public final class CatFrameTags {
     
-    /** CatFrame 命名空间 */
+    /** CatFrame namespace */
     public static final String NAMESPACE = "catframe";
     
-    /** 物品标签加载器 */
+    /** Item tag loader */
     private static final TagLoader<Item> ITEM_LOADER = new TagLoader<>("item", TagLoader.createItemLookup());
     
-    /** 方块标签加载器 */
+    /** Block tag loader */
     private static final TagLoader<Block> BLOCK_LOADER = new TagLoader<>("block", TagLoader.createBlockLookup());
     
     private CatFrameTags() {
-        // 工具类，禁止实例化
+        // Utility class, do not instantiate
     }
     
     /**
-     * 获取物品标签加载器
+     * Get item tag loader
      */
     public static TagLoader<Item> itemLoader() {
         return ITEM_LOADER;
     }
     
     /**
-     * 获取方块标签加载器
+     * Get block tag loader
      */
     public static TagLoader<Block> blockLoader() {
         return BLOCK_LOADER;
     }
     
-    // ==================== 物品标签 API ====================
+    // ==================== Item Tag API ====================
     
     /**
-     * 将物品添加到指定标签
+     * Add item to a specified tag
      * 
      * @param tagName 标签名称（不含命名空间，自动使用 "catframe"）
      * @param item 物品
@@ -65,7 +65,7 @@ public final class CatFrameTags {
     }
     
     /**
-     * 批量添加物品到标签
+     * Batch add items to a tag
      */
     public static void addAll(String tagName, Item... items) {
         for (Item item : items) {
@@ -74,30 +74,30 @@ public final class CatFrameTags {
     }
     
     /**
-     * 检查物品是否属于某个标签
+     * Check if an item belongs to a certain tag
      */
     public static boolean is(Item item, String tagName) {
         return ITEM_LOADER.is(item, NAMESPACE, tagName);
     }
     
     /**
-     * 检查物品是否属于某个标签（使用 TagKey）
+     * Check if an item belongs to a certain tag (using TagKey)
      */
     public static boolean is(Item item, TagKey<Item> tag) {
         return ITEM_LOADER.is(item, tag.getLocation());
     }
     
     /**
-     * 获取标签中的所有物品
+     * Get all items in a tag
      */
     public static Set<Item> getItems(String tagName) {
         return ITEM_LOADER.getTagContents(NAMESPACE, tagName);
     }
     
-    // ==================== 方块标签 API ====================
+    // ==================== Block Tag API ====================
     
     /**
-     * 将方块添加到指定标签
+     * Add block to a specified tag
      * 
      * @param tagName 标签名称（不含命名空间，自动使用 "catframe"）
      * @param block 方块
@@ -107,7 +107,7 @@ public final class CatFrameTags {
     }
     
     /**
-     * 批量添加方块到标签
+     * Batch add blocks to a tag
      */
     public static void addAll(String tagName, Block... blocks) {
         for (Block block : blocks) {
@@ -116,30 +116,30 @@ public final class CatFrameTags {
     }
     
     /**
-     * 检查方块是否属于某个标签
+     * Check if a block belongs to a certain tag
      */
     public static boolean is(Block block, String tagName) {
         return BLOCK_LOADER.is(block, NAMESPACE, tagName);
     }
     
     /**
-     * 检查方块是否属于某个标签（使用 TagKey）
+     * Check if a block belongs to a certain tag (using TagKey)
      */
     public static boolean is(Block block, TagKey<Block> tag) {
         return BLOCK_LOADER.is(block, tag.getLocation());
     }
     
     /**
-     * 获取标签中的所有方块
+     * Get all blocks in a tag
      */
     public static Set<Block> getBlocks(String tagName) {
         return BLOCK_LOADER.getTagContents(NAMESPACE, tagName);
     }
     
-    // ==================== 通用 API ====================
+    // ==================== General API ====================
     
     /**
-     * 检查对象是否属于某个标签
+     * Check if an object belongs to a certain tag
      */
     public static boolean is(Object object, String tagName) {
         if (object instanceof Item) {
@@ -151,7 +151,7 @@ public final class CatFrameTags {
     }
     
     /**
-     * 加载 JSON 标签文件
+     * Load JSON tags from directory
      * 
      * @param tagsDir 标签目录
      */
@@ -161,7 +161,7 @@ public final class CatFrameTags {
     }
     
     /**
-     * 清空所有标签
+     * Clear all tags
      */
     public static void clear() {
         ITEM_LOADER.clear();

@@ -8,13 +8,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tag 文件 - 表示从 JSON 文件加载的完整标签定义
+ * Tag file - represents a complete tag definition loaded from a JSON file
  * 
- * 类似 26.1 的 TagFile，包含：
- * - entries: 标签条目列表
- * - replace: 是否替换已有内容
+ * Similar to 26.1's TagFile, containing:
+ * - entries: List of tag entries
+ * - replace: Whether to replace existing content   
  * 
- * JSON 格式示例：
+ * JSON format example:
  * <pre>
  * {
  *   "replace": false,
@@ -29,10 +29,10 @@ public class TagFile {
     
     private static final Logger LOGGER = LogManager.getLogger(TagFile.class);
     
-    /** 标签条目列表 */
+    /** List of tag entries */
     private final List<TagEntry> entries;
     
-    /** 是否替换已有内容 */
+    /** Whether to replace existing content */
     private final boolean replace;
     
     public TagFile(List<TagEntry> entries, boolean replace) {
@@ -41,7 +41,7 @@ public class TagFile {
     }
     
     /**
-     * 从 JSON 对象解析 TagFile
+     * Parse TagFile from JSON object
      */
     public static TagFile fromJson(JsonObject json) {
         if (json == null) {
@@ -49,13 +49,13 @@ public class TagFile {
             return new TagFile(new ArrayList<>(), false);
         }
         
-        // 解析 replace 字段
+        // Parse replace field
         boolean replace = false;
         if (json.has("replace")) {
             replace = json.get("replace").getAsBoolean();
         }
         
-        // 解析 values 数组
+        // Parse values array
         List<TagEntry> entries = new ArrayList<>();
         if (json.has("values")) {
             com.google.gson.JsonArray valuesArray = json.getAsJsonArray("values");
@@ -72,14 +72,14 @@ public class TagFile {
     }
     
     /**
-     * 获取标签条目列表
+     * Get the list of tag entries
      */
     public List<TagEntry> getEntries() {
         return entries;
     }
     
     /**
-     * 是否替换已有内容
+     * Whether to replace existing content
      */
     public boolean isReplace() {
         return replace;

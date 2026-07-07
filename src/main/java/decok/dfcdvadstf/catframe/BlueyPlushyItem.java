@@ -4,9 +4,8 @@ import decok.dfcdvadstf.catframe.model.impl.ModernItem;
 import net.minecraft.creativetab.CreativeTabs;
 
 /**
- * Bluey 毛绒玩偶物品。
- * <p>
- * 2D inventory 模型（GUI + 掉落物）和 3D 手持模型例子。
+ * Bluey Plushy Item <br>
+ * 2D inventory model (GUI + drop) and 3D held model example.
  */
 public class BlueyPlushyItem extends ModernItem {
 

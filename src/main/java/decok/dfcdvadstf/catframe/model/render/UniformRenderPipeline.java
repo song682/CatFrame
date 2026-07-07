@@ -3,8 +3,9 @@ package decok.dfcdvadstf.catframe.model.render;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
-import javax.vecmath.Vector3d;
+import javax.vecmath.Point3d;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
+import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLighting;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -18,16 +19,17 @@ import org.lwjgl.opengl.GL11;
 import java.util.List;
 
 /**
- * 统一渲染管线。职责限定为：
+ * Uniform Render Pipeline. The responsibility is limited to:
  * <ol>
- *   <li>创建 {@link RenderContext} 并填入默认值（亮度、方向阴影）</li>
- *   <li>调度 {@link ModelRenderRegistry#apply(RenderContext)} 扩展链</li>
- *   <li>将处理后的数据提交到 {@link Tessellator}</li>
+ *   <li>Create {@link RenderContext} and fill default values (brightness, direction shadow)</li>
+ *   <li>Dispatch the {@link ModelRenderRegistry#apply(RenderContext)} extension chain</li>
+ *   <li>Submit the processed data to {@link Tessellator}</li>
  * </ol>
  *
- * <p>所有扩展性逻辑（AO 计算、display transform、面剔除、染色、GL_LIGHTING 管理）
- * 均已下沉至对应的 {@link IModelRenderExtension} 实现中。
- * 管线仅负责正交的渲染生命周期（GL 矩阵 push/pop、纹理绑定、Tessellator 绘制）。
+ * <p> The pipeline is responsible for the orthogonal rendering lifecycle (GL matrix push/pop, texture binding, Tessellator drawing).
+ * All extension logic (AO computation, display transform, face culling, coloring, GL_LIGHTING management)
+ * has been sunk to the corresponding {@link IModelRenderExtension} implementation.
+ * </p>
  */
 public final class UniformRenderPipeline {
 
@@ -78,7 +80,7 @@ public final class UniformRenderPipeline {
 
         double a = Math.toRadians(rotationDeg);
         double cos = Math.cos(a), sin = Math.sin(a);
-        Vector3d tmpVec = new Vector3d();
+        Point3d tmpVec = new Point3d();
 
         // [C3 修复] 所有 GL 状态操作移入 try 块内，确保异常时 finally 能正确恢复
         try {
@@ -101,8 +103,10 @@ public final class UniformRenderPipeline {
 
         boolean hasVertices = false;
         for (BakedQuad q : allQuads) {
-            int baseBrightness = isGui ? 255 : getFaceBrightness(world, x, y, z, block, q.face);
-            float baseShade = shadeByNormal(q.faceNormal);
+            int baseBrightness = isGui ? 255
+                    : (world != null ? block.getMixedBrightnessForBlock(world, x, y, z) : 0);
+            float baseShade = isGui ? 1.0f
+                    : CardinalLighting.DEFAULT.byFace(q.face);
 
             // 创建上下文并运行扩展链
             RenderContext ctx = new RenderContext(phase, q,
@@ -245,24 +249,23 @@ public final class UniformRenderPipeline {
         boolean dropped = (phase == RenderPhase.DROPPED_ITEM_GROUND
                 || phase == RenderPhase.DROPPED_BLOCK_GROUND);
 
-        Vector3d tmpVec = new Vector3d();
+        Point3d tmpVec = new Point3d();
 
         try {
             // 禁用面剔除
             GL11.glDisable(GL11.GL_CULL_FACE);
+            // 纹理图集绑定：ItemBlock 的模型 quad 引用 blocks atlas 的纹理，
+            // 必须绑定 locationBlocksTexture；非方块物品绑定 locationItemsTexture。
+            // 注意：getSpriteNumber() 不可靠——许多 ItemBlock 返回 1 导致绑错图集，
+            // 而世界渲染（renderBlockQuads）始终硬编码绑定 blocks atlas。
+            boolean isBlockItem = (stack != null && stack.getItem() instanceof net.minecraft.item.ItemBlock);
             int spriteNumber = (stack != null && stack.getItem() != null)
                     ? stack.getItem().getSpriteNumber() : 1;
             Minecraft.getMinecraft().getTextureManager().bindTexture(
-                    spriteNumber == 0
+                    (isBlockItem || spriteNumber == 0)
                             ? TextureMap.locationBlocksTexture
                             : TextureMap.locationItemsTexture);
 
-            // GUI 视口变换：translate(8,8,0) × scale(16,-16,16)
-            if (gui) {
-                GL11.glPushMatrix();
-                GL11.glTranslatef(8F, 8F, 0F);
-                GL11.glScalef(16F, -16F, 16F);
-            }
             if (gui || dropped) {
                 GL11.glEnable(GL11.GL_BLEND);
                 GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
@@ -324,9 +327,6 @@ public final class UniformRenderPipeline {
             if (gui || dropped) {
                 GL11.glDisable(GL11.GL_BLEND);
             }
-            if (gui) {
-                GL11.glPopMatrix();
-            }
         }
     }
 
@@ -339,37 +339,4 @@ public final class UniformRenderPipeline {
     }
 
     // ==================== 光照与阴影辅助 ====================
-
-    /**
-     * 根据面法线计算方向阴影系数。
-     * 对齐原版 1.7.10 RenderBlocks 的 shade 值：
-     * 顶面 1.0、底面 0.5、侧面 0.6/0.8。
-     *
-     * TODO [S6] 当前简化为三档分类（顶/底/侧），混合角度面光照不连续。
-     * 原版 1.7.10 使用更复杂的角度 shade 计算，待后续对齐。
-     */
-    static float shadeByNormal(Vector3d n) {
-        if (n == null) return 1.0f;
-        double ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
-        if (ay >= ax && ay >= az) return n.y > 0 ? 1.0f : 0.5f;
-        if (ax >= ay && ax >= az) return 0.6f;
-        return 0.8f;
-    }
-
-    /**
-     * 获取指定面的亮度值。对齐原版 RenderBlocks.getFaceBrightness。
-     */
-    private static int getFaceBrightness(IBlockAccess w, int x, int y, int z,
-                                          Block b, net.minecraft.util.EnumFacing face) {
-        if (face == null) return b.getMixedBrightnessForBlock(w, x, y, z);
-        switch (face) {
-            case UP:    return w.getLightBrightnessForSkyBlocks(x, y + 1, z, 0);
-            case DOWN:  return w.getLightBrightnessForSkyBlocks(x, y - 1, z, 0);
-            case NORTH: return w.getLightBrightnessForSkyBlocks(x, y, z - 1, 0);
-            case SOUTH: return w.getLightBrightnessForSkyBlocks(x, y, z + 1, 0);
-            case WEST:  return w.getLightBrightnessForSkyBlocks(x - 1, y, z, 0);
-            case EAST:  return w.getLightBrightnessForSkyBlocks(x + 1, y, z, 0);
-            default:    return b.getMixedBrightnessForBlock(w, x, y, z);
-        }
-    }
 }

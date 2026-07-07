@@ -7,7 +7,7 @@ package decok.dfcdvadstf.catframe.ui.components;
  * common fields with default implementations.
  * </p>
  */
-public abstract class AbstractComponent implements Component {
+public abstract class AbstractComponent implements Component, TabOrderedElement {
 
     protected int x;
     protected int y;

@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui.tab;
 
 import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
 import decok.dfcdvadstf.catframe.ui.components.TabButton;
+import decok.dfcdvadstf.catframe.ui.components.events.KeyTypedEvent;
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.gui.Gui;
@@ -477,7 +478,7 @@ public abstract class TabBar implements ILayout {
         Tab current = tabManager.getCurrentTab();
         int currentIndex = current != null ? tabList.indexOf(current) : NO_TAB;
 
-        if (keyCode == 15) { // Tab key
+        if (KeyTypedEvent.isTabKeyPressed()) { // Tab key
             int step = shiftDown ? -1 : 1;
             int nextIndex = currentIndex != NO_TAB
                     ? Math.floorMod(currentIndex + step, tabList.size())

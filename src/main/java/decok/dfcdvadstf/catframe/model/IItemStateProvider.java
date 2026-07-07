@@ -60,7 +60,7 @@ public interface IItemStateProvider {
      * @return {@code true} 接管，{@code false} 走原版
      */
     default boolean handles(RenderPhase phase) {
-        return phase != RenderPhase.ITEM_HAND_FIRST_PERSON;
+        return true;
     }
 
     /**

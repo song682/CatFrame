@@ -1,6 +1,8 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
+import net.minecraft.client.Minecraft;
+import org.lwjgl.input.Keyboard;
 
 /**
  * <p>

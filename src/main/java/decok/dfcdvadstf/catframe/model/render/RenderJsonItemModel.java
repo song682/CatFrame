@@ -85,13 +85,8 @@ public class RenderJsonItemModel implements IItemRenderer {
         if (item == null || item.getItem() == null) return false;
         if (type == ItemRenderType.FIRST_PERSON_MAP) return false;
 
-        // Block items → check if block has a CatFrame model
-        if (item.getItem() instanceof ItemBlock) {
-            Block block = Block.getBlockFromItem(item.getItem());
-            return block != null && VanillaModelManager.ModelRegistration.hasModel(block);
-        }
-
-        // Non-block items → get IItemState and delegate to handles(RenderPhase)
+        // 统一路径：通过 getRegisteredItemModel 获取物品模型
+        // （对 ItemBlock 自动 fallback 到 BlockStateModel）
         IItemStateProvider model = VanillaModelManager.ModelRegistration.getRegisteredItemModel(item.getItem());
         if (model == null) return false;
 
@@ -220,11 +215,36 @@ public class RenderJsonItemModel implements IItemRenderer {
      */
     @javax.annotation.Nullable
     private static Matrix4d computePreTransform(ItemRenderType type) {
-        if (type == ItemRenderType.EQUIPPED_FIRST_PERSON) {
+        if (type == ItemRenderType.INVENTORY) {
+            // GUI：将模型空间 [0,1]³ 映射到 16×16 像素 GUI 槽位
+            // Forge 已经设置了 glTranslatef(x, y, -3+zLevel) 定位到槽位原点
+            // 需要将 display-centered 顶点 [-0.5,0.5]³ 映射到 [0,16]×[16,0]×[-8,8] 像素空间
+            // 变换: T(8,8,0) × S(16,-16,16)
+            // 与 display transform T(-0.5) 组合后:
+            //   v' = T(8,8,0) × S(16,-16,16) × T(-0.5) × v
+            //   v(0,0,0) → (0, 16, -8) 左上角
+            //   v(1,1,1) → (16, 0, 8)  右下角
+            Matrix4d m = new Matrix4d();
+            m.setIdentity();
+            Matrix4d tmp = new Matrix4d();
+
+            // 先平移 (8, 8, 0)
+            tmp.setIdentity();
+            tmp.setTranslation(new Vector3d(8.0, 8.0, 0.0));
+            m.mul(tmp);
+
+            // 再缩放 (16, -16, 16) — 翻转 Y 使 GUI Y-down 匹配模型 Y-up
+            tmp.setIdentity();
+            tmp.m00 = 16.0; tmp.m11 = -16.0; tmp.m22 = 16.0;
+            m.mul(tmp);
+
+            return m;
+        } else if (type == ItemRenderType.EQUIPPED_FIRST_PERSON) {
             // Forge 调用链: rotate(45°Y) → swing_rot → scale(0.4) → [FHClient: translate(-0.5)]
             // 反抵消矩阵: T(0.5) × S(2.5) × RY(-45)
             // 构造顺序与 GL 同序（后乘）：先 T 再 S 再 R
             Matrix4d m = new Matrix4d();
+            m.setIdentity();
             Matrix4d tmp = new Matrix4d();
             tmp.setIdentity();
             tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
@@ -245,6 +265,7 @@ public class RenderJsonItemModel implements IItemRenderer {
             //   × T(0,-0.1875,0.3125) × T(0.0625,-0.4375,-0.0625)
             //   × RX(-90) × RY(180) × T(1/16, 2/16, -10/16)
             Matrix4d m = new Matrix4d();
+            m.setIdentity();
             Matrix4d tmp = new Matrix4d();
 
             // ① 反抵消 FHClient translate(-0.5)

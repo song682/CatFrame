@@ -1,12 +1,11 @@
 package decok.dfcdvadstf.catframe.mixin.middle;
 
+import decok.dfcdvadstf.catframe.model.render.extension.ao.light.BlockModelLighter;
 import net.minecraft.client.renderer.WorldRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import decok.dfcdvadstf.catframe.model.render.extension.ao.light.BlockModelLighter;
 
 /**
  * 在 chunk 编译（{@link WorldRenderer#updateRenderer}）前后管理

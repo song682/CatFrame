@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.component;
 
+import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
 
 import javax.annotation.Nullable;
@@ -7,25 +8,52 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 数据组件注册中心。
+ * DataComponent 全局注册表——与 OreDictionary 平行的组件类型注册中心。
  * <p>
- * 管理所有已知的 {@link DataComponentType}，分配网络编码 ID。
+ * 设计定位：类似 {@code OreDictionary} 对 NBT 的关系，
+ * DataComponents 是一个全局的、类型级别的注册表，负责：
+ * <ul>
+ *   <li>注册和查询 {@link DataComponentType}（组件类型）</li>
+ *   <li>为每种 {@link Item} 注册默认组件值（原型）</li>
+ *   <li>提供与 NBT 的双向转换基础（通过 {@link ComponentMigration}）</li>
+ * </ul>
+ * <p>
+ * per-ItemStack 实例数据仍存储在 NBT (stackTagCompound) 中，
+ * 运行时通过 {@link ItemStackComponents} 合并默认值 + NBT 实例数据。
+ * <p>
  * 参考 26.1.2 {@code net.minecraft.core.component.DataComponents}。
  */
 public final class DataComponents {
 
     private DataComponents() {}
 
-    // ========== 注册表 ==========
+    // ========== 内置组件类型（对标 26.1.2 DataComponents 常量） ==========
+
+    /** 附魔光效覆盖（对标 26.1.2 ENCHANTMENT_GLINT_OVERRIDE） */
+    public static final DataComponentType<Boolean> ENCHANTMENT_GLINT =
+            DataComponentType.<Boolean>builder(new ResourceLocation("minecraft", "enchantment_glint"))
+                    .persistent(ComponentSerializers.ofBoolean("EnchantmentGlint"))
+                    .networkSynchronized(ComponentSerializers.ofBoolean("EnchantmentGlint"))
+                    .build();
+
+    // ========== 类型注册表 ==========
 
     private static final Map<ResourceLocation, DataComponentType<?>> BY_ID = new LinkedHashMap<>();
     private static final List<DataComponentType<?>> BY_NETWORK_ID = new ArrayList<>();
     private static final AtomicInteger NETWORK_ID_GEN = new AtomicInteger(0);
 
-    // ========== 注册 API ==========
+    // ========== 物品默认组件（原型） ==========
+
+    /** 全局空原型 */
+    private static final DataComponentMap EMPTY_DEFAULTS = DataComponentMap.EMPTY;
+
+    /** Item → 默认组件映射 */
+    private static final Map<Item, DataComponentMap> DEFAULTS = new IdentityHashMap<>();
+
+    // ========== 类型注册 API ==========
 
     /**
-     * 注册一个数据组件类型。
+     * 注册一个组件类型。
      *
      * @throws IllegalArgumentException 如果 ID 已注册
      */
@@ -48,7 +76,7 @@ public final class DataComponents {
         return register(builder.build());
     }
 
-    // ========== 查询 API ==========
+    // ========== 类型查询 API ==========
 
     /**
      * 通过 ID 查找组件类型。
@@ -94,5 +122,70 @@ public final class DataComponents {
             }
         }
         return result;
+    }
+
+    // ========== 物品默认组件 API ==========
+
+    /**
+     * 为指定物品注册默认组件。
+     */
+    public static synchronized void registerDefaults(Item item, DataComponentMap defaults) {
+        DEFAULTS.put(item, defaults);
+    }
+
+    /**
+     * 获取指定物品的默认组件。
+     */
+    public static DataComponentMap getDefaults(Item item) {
+        DataComponentMap map = DEFAULTS.get(item);
+        return map != null ? map : EMPTY_DEFAULTS;
+    }
+
+    /**
+     * 获取物品默认组件构建器。
+     */
+    public static DefaultsBuilder defaultsBuilder() {
+        return new DefaultsBuilder();
+    }
+
+    // ========== DefaultsBuilder ==========
+
+    /**
+     * 物品默认组件构建器——支持链式为多种物品注册默认组件。
+     */
+    public static final class DefaultsBuilder {
+        private final Map<Item, DataComponentMap.Builder> builders = new IdentityHashMap<>();
+        private DataComponentMap.Builder currentBuilder;
+        private Item currentItem;
+
+        private DefaultsBuilder() {}
+
+        public DefaultsBuilder item(Item item) {
+            if (currentBuilder != null && currentItem != null) {
+                builders.put(currentItem, currentBuilder);
+            }
+            currentItem = item;
+            currentBuilder = DataComponentMap.builder();
+            return this;
+        }
+
+        public <T> DefaultsBuilder with(DataComponentType<T> type, T value) {
+            if (currentBuilder != null) {
+                currentBuilder.set(type, value);
+            }
+            return this;
+        }
+
+        public void build() {
+            if (currentBuilder != null && currentItem != null) {
+                builders.put(currentItem, currentBuilder);
+            }
+            for (Map.Entry<Item, DataComponentMap.Builder> entry : builders.entrySet()) {
+                registerDefaults(entry.getKey(), entry.getValue().build());
+            }
+            builders.clear();
+            currentItem = null;
+            currentBuilder = null;
+        }
     }
 }

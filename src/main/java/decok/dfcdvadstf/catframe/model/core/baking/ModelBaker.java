@@ -1,7 +1,8 @@
 package decok.dfcdvadstf.catframe.model.core.baking;
 
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.*;
+import decok.dfcdvadstf.catframe.model.BakedModelCache;
+import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.core.TextureSlots;

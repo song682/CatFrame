@@ -4,6 +4,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.BakedModelCache;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
+import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
@@ -16,6 +17,8 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
 
+import javax.annotation.Nullable;
+import javax.vecmath.Matrix4d;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -196,14 +199,14 @@ public class ModernItem extends Item implements IItemStateProvider {
     /**
      * Set separate 2D and 3D model paths for this item.
      * <p>
-     * 内部会构建一棵 {@link ItemStateNode} 决策树：
+     * Set an internal {@link ItemStateNode} node：
      * <ul>
-     *   <li>GUI / 掉落物阶段（display_context = ITEM_GUI / DROPPED_ITEM_GROUND）→ 2D inventory 模型</li>
-     *   <li>手持阶段（display_context = ITEM_HAND_FIRST_PERSON / ITEM_HAND_THIRD_PERSON）→ 3D 手持模型</li>
+     *   <li>GUI / looting stage（display_context = ITEM_GUI / DROPPED_ITEM_GROUND）→ 2D inventory model</li>
+     *   <li>手持阶段（display_context = ITEM_HAND_FIRST_PERSON / ITEM_HAND_THIRD_PERSON）→ 3D handheld model</li>
      * </ul>
-     * 若只传入一个模型路径，则退化为单 {@link ItemStateNode.ModelLeaf}。
+     * If only a model is input, regressed to the single {@link ItemStateNode.ModelLeaf}。
      * <p>
-     * Must be called <b>before</b> {@link VanillaModelManager.DataLoading#init()}
+     * Must be called <b>before</b> {@link ModelManagerDataLoader#init()}
      * so that texture collection can pick up both models' textures.
      *
      * @param inventoryModel 2D model path for GUI and dropped items (e.g. "item/bluey_inventory")
@@ -279,7 +282,7 @@ public class ModernItem extends Item implements IItemStateProvider {
     @Override
     @SideOnly(Side.CLIENT)
     public void render(ItemStack stack, RenderPhase phase,
-                       @javax.annotation.Nullable javax.vecmath.Matrix4d preTransform) {
+                       @Nullable Matrix4d preTransform) {
         if (itemStateRoot == null) return;
 
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
@@ -309,7 +312,7 @@ public class ModernItem extends Item implements IItemStateProvider {
     /**
      * 3D handheld 模型路径的公开访问器。
      * <p>
-     * 供 {@link VanillaModelManager.DataLoading#init()} 扫描时
+     * 供 {@link ModelManagerDataLoader#init()} 扫描时
      * 额外收集双模型物品的 hand 模型纹理。
      *
      * @return hand 模型路径，如果未设置则返回 null

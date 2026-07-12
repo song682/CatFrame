@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.component;
 import net.minecraft.nbt.NBTTagCompound;
 
 import javax.annotation.Nullable;
-import java.util.Objects;
 
 /**
  * 自定义数据 - 兜底的 NBT 数据容器。

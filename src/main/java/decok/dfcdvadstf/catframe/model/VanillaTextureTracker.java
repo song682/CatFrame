@@ -12,7 +12,10 @@ import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Texture tracking and management extracted from {@link VanillaModelManager}.
@@ -159,7 +162,7 @@ public class VanillaTextureTracker {
         CatFrame.logger.info("[VTT-diag] BakedModelCache.clear(iconMap) called | textureIcons.size={}",
                 textureIcons.size());
         // 注册懒模型（不执行同步烘焙，烘焙由 BakedModelCache 懒烘焙 + AsyncBakePipeline 异步预烘焙承担）
-        VMMModelBaking.registerAllModels();
+        VanillaModelManager.Baking.registerAllModels();
         // 异步预烘焙管线：将常用模型预烘焙到 BakedModelCache（传入 iconMap）
         AsyncBakePipeline.triggerAsyncBake(textureIcons);
     }
@@ -194,7 +197,7 @@ public class VanillaTextureTracker {
         // item iconMap 更新到缓存（懒烘焙时使用）
         BakedModelCache.INSTANCE.clear(textureIcons);
         // [W2 修复] 仅增量更新 item 模型注册（懒模型，无需实际烘焙）
-        VMMModelBaking.registerItemModels();
+        VanillaModelManager.Baking.registerItemModels();
         // item atlas 就绪后再次触发异步预烘焙（确保 item 模型也被预烘焙）
         AsyncBakePipeline.triggerAsyncBake(textureIcons);
     }

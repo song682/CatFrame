@@ -1,11 +1,13 @@
 package decok.dfcdvadstf.catframe.model.render;
 
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
-import decok.dfcdvadstf.catframe.model.VanillaModelManager;
+import decok.dfcdvadstf.catframe.model.ModelRegistry;
+import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.IItemRenderer;
+
 import javax.vecmath.Matrix4d;
 import javax.vecmath.Vector3d;
 
@@ -15,7 +17,7 @@ import javax.vecmath.Vector3d;
  * <h3>核心设计</h3>
  * <ul>
  *   <li><b>Block 和 ItemBlock 共用同一个模型</b>——方块物品不创建独立 IItemState，
- *       而是通过 {@link VanillaModelManager.ModelRegistration#getRegisteredItemModel}
+ *       而是通过 {@link ModelRegistry#getRegisteredItemModel}
  *       的 fallback 逻辑直接从 {@code registeredBlockModels}
  *       取 BlockStateModel，包装为 BlockStateItemState。</li>
  *   <li><b>{@link #shouldUseRenderHelper} 对 EQUIPPED_BLOCK 返回 true
@@ -68,7 +70,7 @@ public class RenderJsonItemModel implements IItemRenderer {
      * 检查 CatFrame 是否接管该物品在指定阶段的渲染。
      *
      * <p>对于 {@link ItemBlock}：检查方块是否有 CatFrame 模型
-     * （{@link VanillaModelManager.ModelRegistration#hasModel(Block)}）。
+     * （{@link ModelRegistry#hasModel(Block)}）。
      * 对于非方块物品：先获取注册的 {@link IItemStateProvider}，再将其
      * {@link IItemStateProvider#handles(RenderPhase)} 映射到 Forge 的
      * {@code handleRenderType} 返回值。</p>
@@ -87,7 +89,7 @@ public class RenderJsonItemModel implements IItemRenderer {
 
         // 统一路径：通过 getRegisteredItemModel 获取物品模型
         // （对 ItemBlock 自动 fallback 到 BlockStateModel）
-        IItemStateProvider model = VanillaModelManager.ModelRegistration.getRegisteredItemModel(item.getItem());
+        IItemStateProvider model = ModelRegistry.getRegisteredItemModel(item.getItem());
         if (model == null) return false;
 
         RenderPhase phase = toRenderPhase(type, item);
@@ -177,7 +179,7 @@ public class RenderJsonItemModel implements IItemRenderer {
      * → {@link DisplayTransformExtension} 在扩展链中应用 JSON model 的
      * {@code display} 变换（translate(-0.5) 中心偏移 → scale → rotate → translate）。</p>
      *
-     * <p>模型查找通过 {@link VanillaModelManager.ModelRegistration#getRegisteredItemModel}，
+     * <p>模型查找通过 {@link ModelRegistry#getRegisteredItemModel}，
      * 对方块物品会自动 fallback 到 BlockStateModel（不经独立注册表）。</p>
      */
     @Override
@@ -192,7 +194,7 @@ public class RenderJsonItemModel implements IItemRenderer {
         Matrix4d preTransform = computePreTransform(type);
 
         // getRegisteredItemModel 对方块物品有 BlockStateModel fallback
-        IItemStateProvider model = VanillaModelManager.ModelRegistration.getRegisteredItemModel(stack.getItem());
+        IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
         if (model == null) return;
     
         model.render(stack, phase, preTransform);

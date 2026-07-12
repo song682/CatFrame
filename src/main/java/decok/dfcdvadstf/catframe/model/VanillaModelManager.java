@@ -2,13 +2,26 @@ package decok.dfcdvadstf.catframe.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
+import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.model.core.ModelJson;
+import decok.dfcdvadstf.catframe.model.core.ModelResolver;
+import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
+import decok.dfcdvadstf.catframe.model.lazy.LazyBlockstateModel;
+import decok.dfcdvadstf.catframe.model.lazy.LazyRedirectModel;
+import decok.dfcdvadstf.catframe.model.lazy.LazySingleBlockModel;
+import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
+import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
+import decok.dfcdvadstf.catframe.model.state.block.PaneMultipartRedirectModel;
+import decok.dfcdvadstf.catframe.model.state.block.SingleBlockModel;
+import decok.dfcdvadstf.catframe.model.state.item.BlockStateItemState;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.block.Block;
-import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.block.BlockPane;
 import net.minecraft.item.Item;
-import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.client.MinecraftForgeClient;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -22,7 +35,7 @@ import java.util.*;
  *   <li>{@link ModelManagerDataLoader} — namespace discovery, blockstate/mappings loading, IItemState discovery</li>
  *   <li>{@link VanillaTextureTracker} — texture collection, stitch callbacks</li>
  *   <li>{@link ModelRegistry} — model/blockstate registration API</li>
- *   <li>{@link VMMModelBaking} — baking pipeline, caches</li>
+ *   <li>{@link Baking} — baking pipeline, caches</li>
  *   <li>{@link RenderDispatcher} — rendering dispatch</li>
  * </ul>
  */
@@ -101,37 +114,387 @@ public class VanillaModelManager {
     }
 
     // ==================== 向后兼容内层类 (模块拆分 E3 后作为委托) ====================
+
     /**
      * Backward-compatible delegate to {@link ModelManagerDataLoader}.
      */
     public static class DataLoading {
-        public static void init() { ModelManagerDataLoader.init(); }
-        public static void registerNamespace(String namespace) { ModelManagerDataLoader.registerNamespace(namespace); }
-        public static void registerMetadataMapping(Block block, IMetadataMapper mapper) { ModelManagerDataLoader.registerMetadataMapping(block, mapper); }
-        public static void registerBlockstateRedirect(Block block, IMetadataBlockstateRedirect redirect) { ModelManagerDataLoader.registerBlockstateRedirect(block, redirect); }
+        public static void init() {
+            ModelManagerDataLoader.init();
+        }
+
+        public static void registerNamespace(String namespace) {
+            ModelManagerDataLoader.registerNamespace(namespace);
+        }
+
+        public static void registerMetadataMapping(Block block, IMetadataMapper mapper) {
+            ModelManagerDataLoader.registerMetadataMapping(block, mapper);
+        }
+
+        public static void registerBlockstateRedirect(Block block, IMetadataBlockstateRedirect redirect) {
+            ModelManagerDataLoader.registerBlockstateRedirect(block, redirect);
+        }
     }
 
     /**
-     * Backward-compatible delegate to {@link ModelRegistry}.
+     * 模型注册：异步烘焙架构下的模型注册入口。
+     * <p>
+     * 不再执行同步烘焙。所有烘焙由 {@link BakedModelCache}（懒烘焙）和
+     * {@link AsyncBakePipeline}（异步预烘焙）承担。
+     * <p>
+     * 本类职责：
+     * <ul>
+     *   <li>注册 metadata mapper（从 metadata_map.json）</li>
+     *   <li>为 blockstate 创建懒模型（{@link LazyBlockstateModel}、{@link LazyRedirectModel}）</li>
+     *   <li>为 model_mappings 创建懒模型（{@link SingleBlockModel}、{@link ItemStateModel}）</li>
+     *   <li>处理 BlockPane 特殊注册</li>
+     *   <li>注册 Forge IItemRenderer</li>
+     * </ul>
      */
-    public static class ModelRegistration {
-        public static boolean hasModel(Block block) { return ModelRegistry.hasModel(block); }
-        public static boolean hasItemModel(Item item) { return ModelRegistry.hasItemModel(item); }
-        public static BlockStateModel getBlockModel(Block block) { return ModelRegistry.getBlockModel(block); }
-        public static IItemStateProvider getRegisteredItemModel(Item item) { return ModelRegistry.getRegisteredItemModel(item); }
-        public static void registerBlockModel(Block block, BlockStateModel model) { ModelRegistry.registerBlockModel(block, model); }
-        public static void registerItemModel(Item item, IItemStateProvider model) { ModelRegistry.registerItemModel(item, model); }
-        public static void registerBlockRotation(Block block, int metadata, int rotationDeg) { ModelRegistry.registerBlockRotation(block, metadata, rotationDeg); }
-        public static void markRandomRotation(Block block) { ModelRegistry.markRandomRotation(block); }
-        public static void markAutoOverlay(Block block) { ModelRegistry.markAutoOverlay(block); }
-    }
+    public static class Baking {
 
-    /**
-     * Backward-compatible delegate to {@link RenderDispatcher}.
-     */
-    public static class PublicRenderAPI {
-        public static boolean renderBlock(IBlockAccess world, int x, int y, int z, Block block, RenderBlocks renderer) {
-            return RenderDispatcher.renderBlock(world, x, y, z, block, renderer);
+        // ==================== 模型注册入口 ====================
+
+        /**
+         * 注册所有模型（不执行烘焙）。
+         * <p>
+         * 在 {@link VanillaTextureTracker#onTextureStitchPost} 中调用，
+         * 此时纹理已缝合、iconMap 已通过参数传入缓存和烘焙管线，懒烘焙可正确解析纹理。
+         * <p>
+         * 替代旧系统的 {@code bakeAllModels()}。
+         */
+        public static void registerAllModels() {
+            // 清空注册表（保留 persistent 项）
+            ModelRegistry.registeredBlockModels.clear();
+            ModelRegistry.registeredBlockRotations.clear();
+            ModelRegistry.registeredItemModels.keySet()
+                    .removeIf(item -> !ModelRegistry.persistentItemModels.contains(item));
+
+            // Step 1: 自动注册 metadata mapper（从 metadata_map.json）
+            for (Map.Entry<String, Map<String, Map<Integer, Map<String, String>>>> nsEntry :
+                    ModelManagerDataLoader.loadedMetadataMaps.entrySet()) {
+                String namespace = nsEntry.getKey();
+                for (Map.Entry<String, Map<Integer, Map<String, String>>> blockEntry :
+                        nsEntry.getValue().entrySet()) {
+                    String blockName = blockEntry.getKey();
+                    Block block = Utilities.findBlock(namespace, blockName);
+                    if (block != null && !ModelManagerDataLoader.metadataMappers.containsKey(block)) {
+                        IMetadataMapper jsonMapper = Utilities.findMetadataMapEntry(namespace, blockName);
+                        if (jsonMapper != null) {
+                            ModelManagerDataLoader.metadataMappers.put(block, jsonMapper);
+                            CatFrame.logger.debug("Auto-registered metadata mapper from metadata_map.json for {}:{}",
+                                    namespace, blockName);
+                        }
+                    }
+                }
+            }
+
+            // Step 2: 处理 blockstates — 注册懒 BlockStateModel
+            for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry :
+                    new ArrayList<>(ModelManagerDataLoader.loadedBlockstates.entrySet())) {
+                String namespace = nsEntry.getKey();
+                for (Map.Entry<String, BlockstateJson> bsEntry :
+                        new ArrayList<>(nsEntry.getValue().entrySet())) {
+                    String blockName = bsEntry.getKey();
+                    BlockstateJson bs = bsEntry.getValue();
+                    Block block = Utilities.findBlock(namespace, blockName);
+                    if (block == null) continue;
+
+                    // BlockPane: 使用运行时连接模型
+                    if (block instanceof BlockPane) {
+                        IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
+                        String blockId = Block.blockRegistry.getNameForObject(block);
+                        String ns = blockId.contains(":") ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
+                        if (redirect != null) {
+                            ModelRegistry.registerBlockModel(block,
+                                    new PaneMultipartRedirectModel(block, redirect, ns, false));
+                        } else {
+                            ModelRegistry.registerBlockModel(block,
+                                    new PaneMultipartRedirectModel(block, bs, false));
+                        }
+                        continue;
+                    }
+
+                    // Blockstate redirect: 使用懒重定向模型
+                    IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
+                    if (redirect != null) {
+                        String blockId = Block.blockRegistry.getNameForObject(block);
+                        String ns = blockId.contains(":") ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
+                        IMetadataMapper mapper = ModelManagerDataLoader.metadataMappers.get(block);
+                        ModelRegistry.registerBlockModel(block,
+                                new LazyRedirectModel(redirect, mapper, ns));
+                        continue;
+                    }
+
+                    // 常规 variants/multipart: 使用懒 blockstate 模型
+                    IMetadataMapper mapper = ModelManagerDataLoader.metadataMappers.get(block);
+                    ModelRegistry.registerBlockModel(block, new LazyBlockstateModel(bs, mapper));
+                }
+            }
+
+            // Step 3: 处理 model_mappings 中的 blocks（无 blockstate 的方块）
+            for (Map.Entry<String, ModelMappings> entry :
+                    ModelManagerDataLoader.loadedMappings.entrySet()) {
+                String namespace = entry.getKey();
+                ModelMappings mappings = entry.getValue();
+
+                if (mappings.blocks != null) {
+                    for (Map.Entry<String, String> blockEntry : mappings.blocks.entrySet()) {
+                        String key = blockEntry.getKey();
+                        String blockName;
+
+                        if (key.contains(":")) {
+                            String[] parts = key.split(":", 2);
+                            blockName = parts[0];
+                        } else {
+                            blockName = key;
+                        }
+
+                        Block block = Utilities.findBlock(namespace, blockName);
+                        if (block == null) continue;
+                        // 已被 blockstate 处理的方块跳过
+                        if (ModelRegistry.registeredBlockModels.containsKey(block)) continue;
+
+                        // 使用懒单模型：持有 modelPath，渲染时从 BakedModelCache 获取
+                        ModelRegistry.registerBlockModel(block,
+                                new LazySingleBlockModel(blockEntry.getValue()));
+                    }
+                }
+            }
+
+            // Step 4: 注册 item 模型
+
+            // 4a: items/ ItemState 决策树（最高优先 — 包括 ItemBlock）
+            for (Map.Entry<String, Map<String, ItemStateNode>> nsEntry :
+                    new ArrayList<>(ModelManagerDataLoader.loadedItemStates.entrySet())) {
+                String namespace = nsEntry.getKey();
+                for (Map.Entry<String, ItemStateNode> itemEntry : nsEntry.getValue().entrySet()) {
+                    String itemName = itemEntry.getKey();
+                    Item item = Utilities.findItem(namespace, itemName);
+                    if (item == null) continue;
+                    if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
+
+                    ModelRegistry.registeredItemModels.put(item,
+                            new ItemStateModel(itemEntry.getValue()));
+                    CatFrame.logger.debug("[VMM] Registered ItemState: {}:{}", namespace, itemName);
+                }
+            }
+
+            // 4b: model_mappings 中的 items（跳过已被 ItemState 注册的）
+            for (Map.Entry<String, ModelMappings> entry :
+                    ModelManagerDataLoader.loadedMappings.entrySet()) {
+                ModelMappings mappings = entry.getValue();
+                if (mappings.items == null) continue;
+
+                for (Map.Entry<String, String> itemEntry : mappings.items.entrySet()) {
+                    String key = itemEntry.getKey();
+                    String itemName;
+
+                    if (key.contains(":")) {
+                        String[] parts = key.split(":", 2);
+                        itemName = parts[0];
+                    } else {
+                        itemName = key;
+                    }
+
+                    Item item = Utilities.findItem(entry.getKey(), itemName);
+                    if (item == null) continue;
+                    // 跳过已被 ItemState 注册的
+                    if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
+
+                    ModelRegistry.registeredItemModels.put(item,
+                            new ItemStateModel(itemEntry.getValue()));
+                }
+            }
+
+            // 4c: IItemState (Tier 3 接口发现)
+            for (Map.Entry<Item, IItemStateProvider> entry : ModelManagerDataLoader.interfaceItemStates.entrySet()) {
+                Item item = entry.getKey();
+                if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
+
+                String registryName = Item.itemRegistry.getNameForObject(item);
+                if (registryName == null) continue;
+
+                ModelRegistry.registeredItemModels.put(item, entry.getValue());
+                ModelRegistry.persistentItemModels.add(item);
+                CatFrame.logger.debug("[VMM] Registered IItemState: {}", registryName);
+            }
+
+            // 4d: blockstate fallback — 为未被 ItemState/model_mappings/IItemState 覆盖的
+            //     ItemBlock 注册 BlockStateItemState（"小方块"兜底）
+            for (Map.Entry<Block, BlockstateJson> entry : collectBlockstateBlocks()) {
+                Block block = entry.getKey();
+                Item item = Item.getItemFromBlock(block);
+                if (item == null) continue;
+                if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
+
+                String modelPath = findFirstModelPath(entry.getValue());
+                if (modelPath == null) continue;
+
+                Map<String, ModelJson.DisplayTransform> display = resolveDisplay(modelPath);
+                ModelRegistry.registeredItemModels.put(item,
+                        new BlockStateItemState(ModelRegistry.registeredBlockModels.get(block), display));
+            }
+
+            // Step 5: Forge IItemRenderer 注册
+            Set<Item> registered = new HashSet<>();
+            int forgeRegistered = 0;
+
+            for (Item item : ModelRegistry.registeredItemModels.keySet()) {
+                if (registered.add(item)) {
+                    MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
+                    forgeRegistered++;
+                }
+            }
+            for (Block block : ModelRegistry.registeredBlockModels.keySet()) {
+                Item item = Item.getItemFromBlock(block);
+                if (item != null && registered.add(item)) {
+                    MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
+                    forgeRegistered++;
+                }
+            }
+
+            CatFrame.logger.info("VanillaModelManager: Registered {} block models, {} item models ({} Forge renderers)",
+                    ModelRegistry.registeredBlockModels.size(),
+                    ModelRegistry.registeredItemModels.size(), forgeRegistered);
+        }
+
+        /**
+         * 增量重建 item 模型（item atlas 缝合后调用）。
+         * <p>
+         * 仅重新创建非 persistent 的 IItemState wrapper。
+         * 由于使用懒模型，无需实际烘焙 — 只需更新注册表中的 wrapper 引用。
+         */
+        public static void registerItemModels() {
+            // 移除非 persistent item models
+            ModelRegistry.registeredItemModels.keySet()
+                    .removeIf(item -> !ModelRegistry.persistentItemModels.contains(item));
+
+            // 重新注册 ItemState 决策树（最高优先）
+            for (Map.Entry<String, Map<String, ItemStateNode>> nsEntry :
+                    ModelManagerDataLoader.loadedItemStates.entrySet()) {
+                String namespace = nsEntry.getKey();
+                for (Map.Entry<String, ItemStateNode> itemEntry : nsEntry.getValue().entrySet()) {
+                    Item item = Utilities.findItem(namespace, itemEntry.getKey());
+                    if (item == null) continue;
+                    ModelRegistry.registeredItemModels.put(item,
+                            new ItemStateModel(itemEntry.getValue()));
+                }
+            }
+
+            // 重新注册 model_mappings items（跳过已被 ItemState 注册的）
+            for (Map.Entry<String, ModelMappings> entry :
+                    ModelManagerDataLoader.loadedMappings.entrySet()) {
+                String namespace = entry.getKey();
+                ModelMappings mappings = entry.getValue();
+                if (mappings.items == null) continue;
+
+                for (Map.Entry<String, String> itemEntry : mappings.items.entrySet()) {
+                    String key = itemEntry.getKey();
+                    String itemName;
+
+                    if (key.contains(":")) {
+                        String[] parts = key.split(":", 2);
+                        itemName = parts[0];
+                    } else {
+                        itemName = key;
+                    }
+
+                    Item item = Utilities.findItem(namespace, itemName);
+                    if (item == null) continue;
+                    // 跳过已被 ItemState 注册的
+                    if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
+
+                    ModelRegistry.registeredItemModels.put(item,
+                            new ItemStateModel(itemEntry.getValue()));
+                }
+            }
+
+            // 重新注册 IItemState items（跳过已有手动注册模型的 persistent 项）
+            for (Map.Entry<Item, IItemStateProvider> entry : ModelManagerDataLoader.interfaceItemStates.entrySet()) {
+                Item item = entry.getKey();
+                if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
+
+                String registryName = Item.itemRegistry.getNameForObject(item);
+                if (registryName == null) continue;
+
+                ModelRegistry.registeredItemModels.put(item, entry.getValue());
+                ModelRegistry.persistentItemModels.add(item);
+                MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
+            }
+
+            // blockstate fallback — 为未被上层注册的 ItemBlock 提供 BlockStateItemState 兜底
+            for (Map.Entry<Block, BlockstateJson> entry : collectBlockstateBlocks()) {
+                Block block = entry.getKey();
+                Item item = Item.getItemFromBlock(block);
+                if (item == null) continue;
+                if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
+
+                String modelPath = findFirstModelPath(entry.getValue());
+                if (modelPath == null) continue;
+
+                Map<String, ModelJson.DisplayTransform> display = resolveDisplay(modelPath);
+                ModelRegistry.registeredItemModels.put(item,
+                        new BlockStateItemState(ModelRegistry.registeredBlockModels.get(block), display));
+            }
+
+            CatFrame.logger.info("VanillaModelManager: Re-registered {} item models (incremental, lazy)",
+                    ModelRegistry.registeredItemModels.size());
+        }
+
+        // ==================== 辅助方法 ====================
+
+        /**
+         * 从 ModelJson 解析 display transforms（仅读 JSON，不烘焙 quads）。
+         */
+        @Nullable
+        private static Map<String, ModelJson.DisplayTransform> resolveDisplay(String modelPath) {
+            if (modelPath == null) return null;
+            ModelJson resolved = ModelResolver.resolve(modelPath);
+            return resolved != null ? resolved.display : null;
+        }
+
+        /**
+         * 收集所有有 blockstate 的 block 及其 BlockstateJson（快照迭代）。
+         */
+        private static List<Map.Entry<Block, BlockstateJson>> collectBlockstateBlocks() {
+            List<Map.Entry<Block, BlockstateJson>> result = new ArrayList<>();
+            for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry :
+                    new ArrayList<>(ModelManagerDataLoader.loadedBlockstates.entrySet())) {
+                String namespace = nsEntry.getKey();
+                for (Map.Entry<String, BlockstateJson> bsEntry : nsEntry.getValue().entrySet()) {
+                    Block block = Utilities.findBlock(namespace, bsEntry.getKey());
+                    if (block != null) {
+                        result.add(new AbstractMap.SimpleEntry<>(block, bsEntry.getValue()));
+                    }
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Extract the first model path from a blockstate JSON.
+         */
+        private static String findFirstModelPath(BlockstateJson bs) {
+            if (bs.variants != null) {
+                for (BlockstateJson.VariantEntry ve : bs.variants.values()) {
+                    if (ve.isArray()) {
+                        if (ve.list != null && !ve.list.isEmpty() && ve.list.get(0).model != null) {
+                            return ve.list.get(0).model;
+                        }
+                    } else if (ve.single != null && ve.single.model != null) {
+                        return ve.single.model;
+                    }
+                }
+            }
+            if (bs.multipart != null) {
+                for (BlockstateJson.MultipartCase mpc : bs.multipart) {
+                    if (mpc.apply != null && mpc.apply.model != null) {
+                        return mpc.apply.model;
+                    }
+                }
+            }
+            return null;
         }
     }
 }

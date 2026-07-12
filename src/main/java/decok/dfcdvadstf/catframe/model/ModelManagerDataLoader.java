@@ -1,11 +1,12 @@
 package decok.dfcdvadstf.catframe.model;
 
+import akka.dispatch.Futures;
 import com.google.gson.Gson;
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.impl.ModernItem;
 import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.core.NamespaceLoadResult;
 import decok.dfcdvadstf.catframe.model.core.NamespaceLoadTask;
+import decok.dfcdvadstf.catframe.model.impl.ModernItem;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonBlockModel;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
@@ -16,15 +17,10 @@ import net.minecraft.item.Item;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
-import akka.dispatch.Futures;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 /**
@@ -41,13 +37,13 @@ public class ModelManagerDataLoader {
 
     // ==================== 共享注册表（从 VanillaModelManager 迁入） ====================
 
-    static boolean initialized = false;
+    public static boolean initialized = false;
     public static final List<String> namespaces = new ArrayList<>();
     public static final Map<String, Map<String, BlockstateJson>> loadedBlockstates = new HashMap<>();
     public static final Map<String, VanillaModelManager.ModelMappings> loadedMappings = new HashMap<>();
     static final Map<String, Map<String, Map<Integer, Map<String, String>>>> loadedMetadataMaps = new HashMap<>();
     static final List<Block> registeredStateBlocks = new ArrayList<>();
-    static final Map<Block, BlockstateJson> stateBlockData = new HashMap<>();
+    public static final Map<Block, BlockstateJson> stateBlockData = new HashMap<>();
     static final Map<Block, IMetadataMapper> metadataMappers = new HashMap<>();
     static final Map<Block, IMetadataBlockstateRedirect> blockstateRedirects = new HashMap<>();
     public static final Map<Item, IItemStateProvider> interfaceItemStates = new LinkedHashMap<>();

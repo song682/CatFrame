@@ -2,9 +2,9 @@ package decok.dfcdvadstf.catframe.ui.tooltip;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.component.ItemStackComponents;
 import decok.dfcdvadstf.catframe.component.PatchedDataComponentMap;
 import decok.dfcdvadstf.catframe.component.RegisteredComponents;
-import decok.dfcdvadstf.catframe.mixin.middle.MixinItemStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.item.ItemStack;
@@ -45,14 +45,13 @@ public class TooltipHelper {
 
     /**
      * 获取物品的 tooltip 样式 ID（来自 DataComponent TOOLTIP_STYLE）。
-     * 通过 MixinItemStack 访问 DataComponent 系统。
+     * 通过 {@link ItemStackComponents} 访问 DataComponent 系统。
      */
     @Nullable
     public static ResourceLocation getTooltipStyle(ItemStack itemStack) {
         if (itemStack == null) return null;
         try {
-            MixinItemStack access = (MixinItemStack) (Object) itemStack;
-            PatchedDataComponentMap components = access.catframe$getComponents();
+            PatchedDataComponentMap components = ItemStackComponents.get(itemStack);
             if (components != null) {
                 String styleId = components.get(RegisteredComponents.TOOLTIP_STYLE);
                 if (styleId != null && !styleId.isEmpty()) {

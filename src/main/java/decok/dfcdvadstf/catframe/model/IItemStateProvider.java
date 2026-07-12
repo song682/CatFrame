@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model;
 
+import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import net.minecraft.item.ItemStack;
 

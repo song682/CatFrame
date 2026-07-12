@@ -11,6 +11,6 @@
       },
       "fallback": { "type": "minecraft:model", "model": "catframe:item/bluey" }
     },
-    "on_false": { "type": "minecraft:model", "model": "catframe:item/bluey_inventory" }
+    "on_false": { "type": "minecraft:model", "model": "catframe:item/bluey" }
   }
 }

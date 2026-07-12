@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.component;
 import net.minecraft.nbt.NBTTagCompound;
 
 import javax.annotation.Nullable;
-import java.util.Objects;
 import java.util.function.Function;
 
 /**

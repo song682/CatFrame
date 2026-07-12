@@ -1,7 +1,9 @@
 package decok.dfcdvadstf.catframe.model.core.baking;
 
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.*;
+import decok.dfcdvadstf.catframe.model.BakedModelCache;
+import decok.dfcdvadstf.catframe.model.VanillaModelManager;
+import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -13,7 +15,7 @@ import java.util.Map;
 /**
  * 烘焙纯函数。无状态、无静态字段写入，天然线程安全。
  * <p>
- * 从 {@link VMMModelBaking#bakeModel} 和 {@link ModelBaker} 提取的核心烘焙逻辑：
+ * 从 {@link VanillaModelManager.VMMModelBaking#bakeModel} 和 {@link ModelBaker} 提取的核心烘焙逻辑：
  * <pre>
  *   modelPath → ModelResolver.resolve() → ModelBaker.bake() → BlockStateModelPart
  * </pre>

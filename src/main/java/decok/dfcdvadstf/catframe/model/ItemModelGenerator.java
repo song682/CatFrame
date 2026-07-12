@@ -2,11 +2,11 @@ package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
-import javax.vecmath.Vector3d;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IIcon;
 
+import javax.vecmath.Vector3d;
 import java.util.*;
 
 /**

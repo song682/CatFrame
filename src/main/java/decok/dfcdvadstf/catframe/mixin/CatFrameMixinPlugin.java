@@ -33,7 +33,6 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
     @Override
     public List<String> getMixins() {
         return Arrays.asList(
-            "middle.MixinItemStack",
             "middle.MixinRenderBlocks",
             "middle.MixinTextureMap"
         );

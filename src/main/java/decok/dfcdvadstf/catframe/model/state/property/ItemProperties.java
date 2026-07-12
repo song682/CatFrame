@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * 预定义的物品属性常量 + 运行时属性集构建工具。
  * <p>
- * 复用方块侧的 {@link Property<T>} 体系定义物品属性的类型安全常量。
+ * 复用方块侧的 {@link Property} 体系定义物品属性的类型安全常量。
  * 运行时每帧从 ItemStack + RenderPhase 构建 {@code Map<String, Comparable<?>>} 属性集，
  * 供 {@link ItemStateNode} 决策树求值。
  *

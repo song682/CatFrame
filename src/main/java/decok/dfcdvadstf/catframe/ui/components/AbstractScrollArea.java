@@ -1,8 +1,8 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
-import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import org.lwjgl.opengl.GL11;
 
 /**

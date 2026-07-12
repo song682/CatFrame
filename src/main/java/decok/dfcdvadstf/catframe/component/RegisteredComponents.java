@@ -1,10 +1,7 @@
 package decok.dfcdvadstf.catframe.component;
 
-import net.minecraft.util.ResourceLocation;
-
-import java.util.Optional;
-
 import decok.dfcdvadstf.catframe.Tags;
+import net.minecraft.util.ResourceLocation;
 
 /**
  * 已知的已注册组件类型常量。
@@ -128,5 +125,6 @@ public final class RegisteredComponents {
         DataComponents.register(MAX_STACK_SIZE);
         DataComponents.register(DAMAGE);
         DataComponents.register(TOOLTIP_STYLE);
+        DataComponents.register(DataComponents.ENCHANTMENT_GLINT);
     }
 }

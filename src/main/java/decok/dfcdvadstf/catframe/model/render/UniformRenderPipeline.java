@@ -1,9 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render;
 
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
-import javax.annotation.Nullable;
-import javax.vecmath.Matrix4d;
-import javax.vecmath.Point3d;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLighting;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -16,6 +13,9 @@ import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import org.lwjgl.opengl.GL11;
 
+import javax.annotation.Nullable;
+import javax.vecmath.Matrix4d;
+import javax.vecmath.Point3d;
 import java.util.List;
 
 /**

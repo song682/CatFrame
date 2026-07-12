@@ -1,0 +1,18 @@
+{
+    "model": {
+        "type": "minecraft:exact_match",
+        "property": "minecraft:damage",
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:item/oak_sapling"
+        },
+        "cases": {
+            "0": {"type": "minecraft:model", "model": "minecraft:item/oak_sapling"},
+            "1": {"type": "minecraft:model", "model": "minecraft:item/spruce_sapling"},
+            "2": {"type": "minecraft:model", "model": "minecraft:item/birch_sapling"},
+            "3": {"type": "minecraft:model", "model": "minecraft:item/jungle_sapling"},
+            "4": {"type": "minecraft:model", "model": "minecraft:item/acacia_sapling"},
+            "5": {"type": "minecraft:model", "model": "minecraft:item/dark_oak_sapling"}
+        }
+    }
+}

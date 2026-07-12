@@ -20,7 +20,7 @@ import net.minecraft.util.ResourceLocation;
  * or forced vertical bar cursor.
  * </p>
  */
-public class EditBox extends AbstractComponent {
+public class AbstractEditBox extends AbstractComponent {
 
     /** CatFrame custom text field textures / CatFrame 自定义文本框纹理 */
     protected static final ResourceLocation TEXT_FIELD_TEXTURE =
@@ -61,11 +61,11 @@ public class EditBox extends AbstractComponent {
      */
     protected boolean forceVerticalCursor = false;
 
-    public EditBox(int x, int y, int width, int height) {
+    public AbstractEditBox(int x, int y, int width, int height) {
         super(x, y, width, height);
     }
 
-    public EditBox(int x, int y, int width, int height, Text message) {
+    public AbstractEditBox(int x, int y, int width, int height, Text message) {
         super(x, y, width, height);
         this.message = message;
     }
@@ -76,7 +76,7 @@ public class EditBox extends AbstractComponent {
      * If true, use vanilla grey/black text field background.
      * <p>为 true 时使用原版灰/黑文本框背景。</p>
      */
-    public EditBox setUseVanillaTexture(boolean useVanilla) {
+    public AbstractEditBox setUseVanillaTexture(boolean useVanilla) {
         this.useVanillaTexture = useVanilla;
         return this;
     }
@@ -85,7 +85,7 @@ public class EditBox extends AbstractComponent {
      * If true, always draw vertical bar cursor instead of vanilla underscore-at-end.
      * <p>为 true 时始终绘制竖线光标，而非原版的末尾下划线。</p>
      */
-    public EditBox setForceVerticalCursor(boolean force) {
+    public AbstractEditBox setForceVerticalCursor(boolean force) {
         this.forceVerticalCursor = force;
         return this;
     }
@@ -96,6 +96,7 @@ public class EditBox extends AbstractComponent {
         this.text = text;
         this.cursorPosition = text.length();
         this.selectionEnd = cursorPosition;
+        onTextChanged();
     }
 
     public String getText() {
@@ -172,12 +173,14 @@ public class EditBox extends AbstractComponent {
                 }
                 selectionEnd = cursorPosition;
             }
+            onTextChanged();
             return;
         }
         // Ctrl+X: cut
         if (keyCode == 45 && isCtrlKeyDown()) {
             setClipboardString(getSelectedText());
             deleteSelection();
+            onTextChanged();
             return;
         }
 
@@ -189,6 +192,7 @@ public class EditBox extends AbstractComponent {
                 cursorPosition--;
                 selectionEnd = cursorPosition;
             }
+            onTextChanged();
         } else if (keyCode == 28) { // Enter
             // ignore
         } else if (keyCode == 211) { // Delete
@@ -198,6 +202,7 @@ public class EditBox extends AbstractComponent {
                 text = text.substring(0, cursorPosition) + text.substring(cursorPosition + 1);
                 selectionEnd = cursorPosition;
             }
+            onTextChanged();
         } else if (keyCode == 203) { // Left arrow
             if (cursorPosition > 0) {
                 cursorPosition--;
@@ -219,6 +224,7 @@ public class EditBox extends AbstractComponent {
             text = text.substring(0, cursorPosition) + typedChar + text.substring(cursorPosition);
             cursorPosition++;
             selectionEnd = cursorPosition;
+            onTextChanged();
         }
     }
 
@@ -248,6 +254,15 @@ public class EditBox extends AbstractComponent {
 
     private static String getClipboardString() {
         return GuiScreen.getClipboardString();
+    }
+
+    // ──── Text change hook ────
+
+    /**
+     * Called whenever the text content changes. Subclasses can override to react.
+     * <p>当文本内容变化时调用。子类可重写以响应变化。</p>
+     */
+    protected void onTextChanged() {
     }
 
     // ──── ChatAllowedCharacters helper ────

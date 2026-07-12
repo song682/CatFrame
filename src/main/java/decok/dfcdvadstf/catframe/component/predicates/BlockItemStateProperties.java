@@ -1,5 +1,6 @@
-package decok.dfcdvadstf.catframe.component;
+package decok.dfcdvadstf.catframe.component.predicates;
 
+import decok.dfcdvadstf.catframe.component.ComponentSerializer;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 

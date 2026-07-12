@@ -1,4 +1,7 @@
-package decok.dfcdvadstf.catframe.component;
+package decok.dfcdvadstf.catframe.component.predicates;
+
+import decok.dfcdvadstf.catframe.component.DataComponentHolder;
+import decok.dfcdvadstf.catframe.component.DataComponentType;
 
 import java.util.Map;
 import java.util.Objects;

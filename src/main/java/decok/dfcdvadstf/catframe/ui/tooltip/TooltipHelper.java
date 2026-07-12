@@ -2,9 +2,9 @@ package decok.dfcdvadstf.catframe.ui.tooltip;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.component.ItemStackComponents;
-import decok.dfcdvadstf.catframe.component.PatchedDataComponentMap;
-import decok.dfcdvadstf.catframe.component.RegisteredComponents;
+import decok.dfcdvadstf.catframe.component.predicates.ItemStackComponents;
+import decok.dfcdvadstf.catframe.component.predicates.PatchedDataComponentMap;
+import decok.dfcdvadstf.catframe.component.predicates.RegisteredComponents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.item.ItemStack;

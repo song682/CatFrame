@@ -1,5 +1,7 @@
 package decok.dfcdvadstf.catframe.component;
 
+import decok.dfcdvadstf.catframe.component.predicates.TypedDataComponent;
+
 import javax.annotation.Nullable;
 import java.util.*;
 
@@ -21,7 +23,7 @@ public final class DataComponentPatch {
     /**
      * 包级私有构造函数，由 PatchedDataComponentMap 和 Builder 调用。
      */
-    DataComponentPatch(Map<DataComponentType<?>, Optional<?>> map) {
+    public DataComponentPatch(Map<DataComponentType<?>, Optional<?>> map) {
         this.map = map;
     }
 
@@ -67,7 +69,7 @@ public final class DataComponentPatch {
     /**
      * 返回补丁的原始映射（仅供内部使用）。
      */
-    Map<DataComponentType<?>, Optional<?>> getRawMap() {
+    public Map<DataComponentType<?>, Optional<?>> getRawMap() {
         return map;
     }
 

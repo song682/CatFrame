@@ -1,5 +1,9 @@
-package decok.dfcdvadstf.catframe.component;
+package decok.dfcdvadstf.catframe.component.predicates;
 
+import decok.dfcdvadstf.catframe.component.ComponentMigration;
+import decok.dfcdvadstf.catframe.component.DataComponentMap;
+import decok.dfcdvadstf.catframe.component.DataComponentType;
+import decok.dfcdvadstf.catframe.component.DataComponents;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 

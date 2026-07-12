@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.component;
 
+import decok.dfcdvadstf.catframe.component.predicates.ItemStackComponents;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
 

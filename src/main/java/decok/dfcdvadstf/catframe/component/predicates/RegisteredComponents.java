@@ -1,6 +1,10 @@
-package decok.dfcdvadstf.catframe.component;
+package decok.dfcdvadstf.catframe.component.predicates;
 
 import decok.dfcdvadstf.catframe.Tags;
+import decok.dfcdvadstf.catframe.component.ComponentSerializers;
+import decok.dfcdvadstf.catframe.component.CustomData;
+import decok.dfcdvadstf.catframe.component.DataComponentType;
+import decok.dfcdvadstf.catframe.component.DataComponents;
 import net.minecraft.util.ResourceLocation;
 
 /**

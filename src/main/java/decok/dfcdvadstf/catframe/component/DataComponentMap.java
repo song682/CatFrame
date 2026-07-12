@@ -1,5 +1,7 @@
 package decok.dfcdvadstf.catframe.component;
 
+import decok.dfcdvadstf.catframe.component.predicates.TypedDataComponent;
+
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Predicate;

@@ -80,6 +80,6 @@ public final class CatFrameItemTags {
      * Check if an item belongs to a certain tag
      */
     public static boolean is(Item item, TagKey<Item> tag) {
-        return CatFrameTags.is(item, tag.getFullIdentifier());
+        return CatFrameTags.itemLoader().is(item, tag.getLocation());
     }
 }

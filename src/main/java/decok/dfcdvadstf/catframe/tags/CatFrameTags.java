@@ -65,6 +65,17 @@ public final class CatFrameTags {
     }
     
     /**
+     * Add item to a tag with custom namespace
+     * 
+     * @param namespace 自定义命名空间
+     * @param tagName 标签名称
+     * @param item 物品
+     */
+    public static void add(String namespace, String tagName, Item item) {
+        ITEM_LOADER.getOrCreateTagContents(namespace, tagName).add(item);
+    }
+    
+    /**
      * Batch add items to a tag
      */
     public static void addAll(String tagName, Item... items) {
@@ -74,10 +85,26 @@ public final class CatFrameTags {
     }
     
     /**
+     * Batch add Items to a tag with custom namespace
+     */
+    public static void addAll(String namespace, String tagName, Item... items) {
+        for (Item item : items) {
+            add(namespace, tagName, item);
+        }
+    }
+    
+    /**
      * Check if an item belongs to a certain tag
      */
     public static boolean is(Item item, String tagName) {
         return ITEM_LOADER.is(item, NAMESPACE, tagName);
+    }
+    
+    /**
+     * Check if an item belongs to a tag with custom namespace
+     */
+    public static boolean is(Item item, String namespace, String tagName) {
+        return ITEM_LOADER.is(item, namespace, tagName);
     }
     
     /**
@@ -94,6 +121,13 @@ public final class CatFrameTags {
         return ITEM_LOADER.getTagContents(NAMESPACE, tagName);
     }
     
+    /**
+     * Get all items in a tag with custom namespace
+     */
+    public static Set<Item> getItems(String namespace, String tagName) {
+        return ITEM_LOADER.getTagContents(namespace, tagName);
+    }
+    
     // ==================== Block Tag API ====================
     
     /**
@@ -107,6 +141,17 @@ public final class CatFrameTags {
     }
     
     /**
+     * Add block to a tag with custom namespace
+     * 
+     * @param namespace 自定义命名空间
+     * @param tagName 标签名称
+     * @param block 方块
+     */
+    public static void add(String namespace, String tagName, Block block) {
+        BLOCK_LOADER.getOrCreateTagContents(namespace, tagName).add(block);
+    }
+    
+    /**
      * Batch add blocks to a tag
      */
     public static void addAll(String tagName, Block... blocks) {
@@ -116,10 +161,26 @@ public final class CatFrameTags {
     }
     
     /**
+     * Batch add blocks to a tag with custom namespace
+     */
+    public static void addAll(String namespace, String tagName, Block... blocks) {
+        for (Block block : blocks) {
+            add(namespace, tagName, block);
+        }
+    }
+    
+    /**
      * Check if a block belongs to a certain tag
      */
     public static boolean is(Block block, String tagName) {
         return BLOCK_LOADER.is(block, NAMESPACE, tagName);
+    }
+    
+    /**
+     * Check if a block belongs to a tag with custom namespace
+     */
+    public static boolean is(Block block, String namespace, String tagName) {
+        return BLOCK_LOADER.is(block, namespace, tagName);
     }
     
     /**
@@ -134,6 +195,13 @@ public final class CatFrameTags {
      */
     public static Set<Block> getBlocks(String tagName) {
         return BLOCK_LOADER.getTagContents(NAMESPACE, tagName);
+    }
+    
+    /**
+     * Get all blocks in a tag with custom namespace
+     */
+    public static Set<Block> getBlocks(String namespace, String tagName) {
+        return BLOCK_LOADER.getTagContents(namespace, tagName);
     }
     
     // ==================== General API ====================
@@ -151,13 +219,45 @@ public final class CatFrameTags {
     }
     
     /**
-     * Load JSON tags from directory
+     * Check if an object belongs to a tag with custom namespace
+     */
+    public static boolean is(Object object, String namespace, String tagName) {
+        if (object instanceof Item) {
+            return is((Item) object, namespace, tagName);
+        } else if (object instanceof Block) {
+            return is((Block) object, namespace, tagName);
+        }
+        return false;
+    }
+    
+    /**
+     * Load JSON tags from directory (using default "catframe" namespace)
      * 
      * @param tagsDir 标签目录
      */
     public static void loadFromDirectory(java.io.File tagsDir) {
         ITEM_LOADER.loadFromDirectory(new java.io.File(tagsDir, "items"));
         BLOCK_LOADER.loadFromDirectory(new java.io.File(tagsDir, "blocks"));
+    }
+    
+    /**
+     * Load JSON tags from directory with custom namespace
+     * 
+     * @param tagsDir 标签目录
+     * @param namespace 自定义命名空间
+     */
+    public static void loadFromDirectory(java.io.File tagsDir, String namespace) {
+        String prevItemNs = ITEM_LOADER.getDefaultNamespace();
+        String prevBlockNs = BLOCK_LOADER.getDefaultNamespace();
+        try {
+            ITEM_LOADER.setDefaultNamespace(namespace);
+            BLOCK_LOADER.setDefaultNamespace(namespace);
+            ITEM_LOADER.loadFromDirectory(new java.io.File(tagsDir, "items"));
+            BLOCK_LOADER.loadFromDirectory(new java.io.File(tagsDir, "blocks"));
+        } finally {
+            ITEM_LOADER.setDefaultNamespace(prevItemNs);
+            BLOCK_LOADER.setDefaultNamespace(prevBlockNs);
+        }
     }
     
     /**

@@ -44,7 +44,7 @@ public final class TypedDataComponent<T> {
      * 从 Map.Entry 创建实例（用于内部迭代）。
      */
     @SuppressWarnings("unchecked")
-    static <T> TypedDataComponent<T> fromEntry(Map.Entry<DataComponentType<?>, Object> entry) {
+    public static <T> TypedDataComponent<T> fromEntry(Map.Entry<DataComponentType<?>, Object> entry) {
         return new TypedDataComponent<>(
                 (DataComponentType<T>) entry.getKey(),
                 (T) entry.getValue()

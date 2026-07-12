@@ -43,6 +43,9 @@ public class TagLoader<T> {
     /** Registry type (e.g. "item" or "block") */
     private final String registryType;
     
+    /** Default namespace for tags loaded from directory */
+    private String defaultNamespace = "catframe";
+    
     /** Tag registry: tag name -> set of objects in the tag */
     private final Map<ResourceLocation, Set<T>> tagRegistry = new HashMap<>();
     
@@ -55,6 +58,24 @@ public class TagLoader<T> {
     public TagLoader(String registryType, ElementLookup<T> elementLookup) {
         this.registryType = registryType;
         this.elementLookup = elementLookup;
+    }
+    
+    /**
+     * Set the default namespace used when loading tags from directory
+     * 
+     * @param namespace default namespace (e.g. "catframe", "forge", "my_mod")
+     * @return this loader for chaining
+     */
+    public TagLoader<T> setDefaultNamespace(String namespace) {
+        this.defaultNamespace = namespace;
+        return this;
+    }
+    
+    /**
+     * Get the current default namespace
+     */
+    public String getDefaultNamespace() {
+        return defaultNamespace;
     }
     
     /**
@@ -91,7 +112,7 @@ public class TagLoader<T> {
                 // Load JSON file
                 String tagName = prefix.isEmpty() ? file.getName().replace(".json", "") 
                                                    : prefix + "/" + file.getName().replace(".json", "");
-                loadFromFile(file, "catframe", tagName);
+                loadFromFile(file, defaultNamespace, tagName);
             }
         }
     }

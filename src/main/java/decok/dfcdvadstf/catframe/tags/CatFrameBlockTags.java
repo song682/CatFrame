@@ -87,6 +87,6 @@ public final class CatFrameBlockTags {
      * 检查方块是否属于某个标签
      */
     public static boolean is(Block block, TagKey<Block> tag) {
-        return CatFrameTags.is(block, tag.getFullIdentifier());
+        return CatFrameTags.blockLoader().is(block, tag.getLocation());
     }
 }

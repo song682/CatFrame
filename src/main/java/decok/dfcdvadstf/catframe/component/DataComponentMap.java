@@ -13,7 +13,7 @@ import java.util.stream.StreamSupport;
  * <p>
  * 参考 26.1.2 {@code net.minecraft.core.component.DataComponentMap}。
  * <p>
- * 提供 {@link #EMPTY} 空映射、{@link #Builder} 构建器、{@link #composite} 组合视图。
+ * 提供 {@link #EMPTY} 空映射、{@link Builder} 构建器、{@link #composite} 组合视图。
  */
 public interface DataComponentMap extends Iterable<TypedDataComponent<?>>, DataComponentGetter {
 

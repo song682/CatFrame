@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "minecraft:blocks/acacia_sapling"
+    "layer0": "minecraft:blocks/sapling_acacia"
   }
 }

@@ -8,6 +8,8 @@ import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 
+import net.minecraft.item.Item;
+
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
@@ -235,10 +237,11 @@ public class NamespaceLoadTask {
     /**
      * 加载 items/ 目录下的 ItemState 决策树 JSON。
      * <p>
-     * 支持两种发现方式：
+     * 支持三种发现方式（按优先级）：
      * <ol>
-     *   <li>{@code /assets/{ns}/items/_index.json} 索引文件（JSON 数组，列出所有物品名）</li>
      *   <li>对于 minecraft namespace，从 model_mappings.json 的 items 字段推断</li>
+     *   <li>遍历 Item 注册表，对每个属于该 namespace 的物品尝试加载 {@code items/{name}.json}<br>
+     *       （与高版本 Minecraft 行为一致：有则用，无则跳过）</li>
      * </ol>
      *
      * @param namespace    命名空间
@@ -252,33 +255,18 @@ public class NamespaceLoadTask {
                                         VanillaModelManager.ModelMappings mappings) {
         Set<String> itemNames = new LinkedHashSet<>();
 
-        // 1. 尝试加载 _index.json 索引文件
-        String indexPath = "/assets/" + namespace + "/items/_index.json";
-        try (InputStream stream = NamespaceLoadTask.class.getResourceAsStream(indexPath)) {
-            if (stream != null) {
-                InputStreamReader reader = new InputStreamReader(stream);
-                String[] names = GSON.fromJson(reader, String[].class);
-                if (names != null) {
-                    for (String name : names) {
-                        itemNames.add(name);
-                    }
-                }
-                CatFrame.logger.debug("Loaded items/_index.json for namespace: {} ({} items)",
-                        namespace, itemNames.size());
-            }
-        } catch (Exception e) {
-            CatFrame.logger.debug("No items/_index.json for namespace {}: {}", namespace, e.getMessage());
+        // 1. 遍历 Item 注册表自动发现（与高版本 Minecraft 行为一致：有 items/{name}.json 就加载）
+        for (Object obj : Item.itemRegistry) {
+            if (obj == null) continue;
+            String registryName = Item.itemRegistry.getNameForObject(obj);
+            if (registryName == null) continue;
+            String ns = registryName.contains(":") ? registryName.substring(0, registryName.indexOf(':')) : "minecraft";
+            if (!ns.equals(namespace)) continue;
+            String name = registryName.contains(":") ? registryName.substring(registryName.indexOf(':') + 1) : registryName;
+            itemNames.add(name);
         }
 
-        // 2. 对于 minecraft namespace，从 model_mappings 推断
-        if (namespace.equals("minecraft") && mappings != null && mappings.items != null) {
-            for (String key : mappings.items.keySet()) {
-                String itemName = key.contains(":") ? key.split(":")[0] : key;
-                itemNames.add(itemName);
-            }
-        }
-
-        // 3. 加载每个物品的 ItemState JSON
+        // 2. 加载每个物品的 ItemState JSON
         for (String itemName : itemNames) {
             String path = "/assets/" + namespace + "/items/" + itemName + ".json";
             try (InputStream stream = NamespaceLoadTask.class.getResourceAsStream(path)) {
@@ -305,9 +293,18 @@ public class NamespaceLoadTask {
         }
 
         if (!localItemStates.isEmpty()) {
-            CatFrame.logger.info("Loaded {} ItemState files for namespace: {}",
-                    localItemStates.size(), namespace);
+            CatFrame.logger.info("Loaded {} ItemState files for namespace: {} (scanned {} candidates)",
+                    localItemStates.size(), namespace, itemNames.size());
         }
+
+        // 3. 补充：从 model_mappings 的 items 字段推断（覆盖未注册到 Item 注册表的特殊情况）
+        if (mappings != null && mappings.items != null) {
+            for (String key : mappings.items.keySet()) {
+                String itemName = key.contains(":") ? key.split(":")[0] : key;
+                itemNames.add(itemName);
+            }
+        }
+
     }
 
     // ==================== 纹理收集（本地版本，写本地集合） ====================

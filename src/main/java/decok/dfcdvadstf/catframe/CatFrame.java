@@ -48,7 +48,7 @@ public class CatFrame {
         if (config.enableBlueyPlushy) {
             blueyPlushy = new BlueyPlushyItem();
             GameRegistry.registerItem(blueyPlushy, "bluey_plushy");
-            CatFrameTags.add("plushy", blueyPlushy);
+            CatFrameTags.add(Tags.MODID, "plushy", blueyPlushy);
         }
 
         if (event.getSide() == Side.CLIENT) {

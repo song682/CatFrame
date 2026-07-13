@@ -358,7 +358,7 @@ public class RenderDispatcher {
         // ① T(0, 0.05, 0) — 原版 renderInFrame 的 Y 轴偏移
         Matrix4d t = new Matrix4d();
         t.setIdentity();
-        t.setTranslation(new Vector3d(0, 0.05, 0));
+        t.setTranslation(new Vector3d(0, 0.15, 0));
         framePreTransform.mul(t);
 
         // ② S(0.5) — 渲染器侧缩放

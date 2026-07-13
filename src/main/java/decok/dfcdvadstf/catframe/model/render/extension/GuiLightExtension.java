@@ -14,9 +14,9 @@ import java.util.List;
  * <p>根据 JSON model 的 {@code gui_light} 设置来控制方向阴影和 OpenGL GL_LIGHTING 状态：
  * <ul>
  *   <li>{@code "front"} — 正面光照，无方向阴影（{@link RenderContext#shade} = 1.0），
- *       关闭 GL_LIGHTING（平面光照，如物品）。{@code afterPart} 自动恢复。</li>
+ *       关闭 GL_LIGHTING（平面光照）。{@code afterPart} 自动恢复。</li>
  *   <li>{@code "side"} — 侧面光照，保留默认方向阴影（{@code shade} 由法线决定），
- *       不修改 GL_LIGHTING 状态。</li>
+ *       保持 GL_LIGHTING 状态，由 OpenGL 根据法线计算方向亮度。</li>
  *   <li>未设置 — 默认 {@code "side"} 行为。</li>
  * </ul>
  *
@@ -38,25 +38,10 @@ public final class GuiLightExtension implements IModelRenderExtension {
     private boolean changedLighting = false;
 
     @Override
-    @SuppressWarnings("deprecation")
     public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, decok.dfcdvadstf.catframe.model.state.BlockStateModelPart part) {
-        // 物品渲染阶段一律关闭 GL_LIGHTING，用固定亮度（fullbright）
-        // 不依赖模型的 gui_light 字段——原版 RenderItem 对所有物品都关 GL_LIGHTING
-        boolean isItemPhase = (phase == RenderPhase.ITEM_GUI
-                || phase == RenderPhase.ITEM_HAND_FIRST_PERSON
-                || phase == RenderPhase.ITEM_HAND_THIRD_PERSON
-                || phase == RenderPhase.ITEM_HAND
-                || phase == RenderPhase.DROPPED_ITEM_GROUND
-                || phase == RenderPhase.DROPPED_BLOCK_GROUND
-                || phase == RenderPhase.ITEM_FIXED);
-
-        if (isItemPhase) {
-            changedLighting = true;
-            GL11.glDisable(GL11.GL_LIGHTING);
-            return;
-        }
-
-        // 方块渲染：按模型 gui_light 字段决定
+        // 所有渲染阶段均按模型 gui_light 字段决定：
+        // "front" 关闭 GL_LIGHTING，使所有面均匀受光（平面光照）；
+        // "side" 或 null 保持 GL_LIGHTING 原状态，由 OpenGL 根据法线产生方向阴影。
         boolean frontLight = needsFrontLighting(allQuads);
         if (frontLight) {
             changedLighting = true;

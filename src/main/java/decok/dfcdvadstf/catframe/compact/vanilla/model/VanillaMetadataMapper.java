@@ -85,7 +85,10 @@ public class VanillaMetadataMapper {
 
         // ---- 铁砧 (anvil) ----
         // meta: facing=bits 0-1, damage=bits 2-3 (0=intact,1=slightly,2=very)
-        final String[] FACINGS = {"south", "north", "east", "west"};
+        // 1.7.10 onBlockPlacedBy: player_facing +1 (mod 4) → meta, which is equivalent to
+        // high-version FACING = player_direction.getClockWise()
+        // meta&3=0→north, 1→east, 2→south, 3→west
+        final String[] FACINGS = {"north", "east", "south", "west"};
         final String[] ANVIL_DAMAGES = {"0", "1", "2"};
         ModelManagerDataLoader.registerMetadataMapping(Blocks.anvil, meta -> {
             Map<String, String> props = new HashMap<>();

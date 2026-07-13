@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
+import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 
@@ -101,7 +102,7 @@ public class NamespaceLoadTask {
         loadMetadataMaps(namespace, localMetadataMaps);
 
         // 4. 加载 items/ ItemState 决策树
-        loadItemStates(namespace, localItemStates, localItemTextures, localMappings);
+        loadItemStates(namespace, localItemStates, localBlockTextures, localItemTextures, localMappings);
 
         CatFrame.logger.debug("[NamespaceLoadTask] namespace '{}' loaded: {} blockstates, {} item states, {} block textures, {} item textures",
                 namespace, localBlockstates.size(), localItemStates.size(), localBlockTextures.size(), localItemTextures.size());
@@ -251,6 +252,7 @@ public class NamespaceLoadTask {
      */
     private static void loadItemStates(String namespace,
                                         Map<String, ItemStateNode> localItemStates,
+                                        Set<String> localBlockTextures,
                                         Set<String> localItemTextures,
                                         VanillaModelManager.ModelMappings mappings) {
         Set<String> itemNames = new LinkedHashSet<>();
@@ -266,7 +268,15 @@ public class NamespaceLoadTask {
             itemNames.add(name);
         }
 
-        // 2. 加载每个物品的 ItemState JSON
+        // 2. 补充：从 model_mappings 的 items 字段推断（覆盖未注册到 Item 注册表的特殊情况）
+        if (mappings != null && mappings.items != null) {
+            for (String key : mappings.items.keySet()) {
+                String itemName = key.contains(":") ? key.split(":")[0] : key;
+                itemNames.add(itemName);
+            }
+        }
+
+        // 3. 加载每个物品的 ItemState JSON
         for (String itemName : itemNames) {
             String path = "/assets/" + namespace + "/items/" + itemName + ".json";
             try (InputStream stream = NamespaceLoadTask.class.getResourceAsStream(path)) {
@@ -282,7 +292,25 @@ public class NamespaceLoadTask {
                     Set<String> modelPaths = new HashSet<>();
                     root.collectModelPaths(modelPaths);
                     for (String modelPath : modelPaths) {
-                        collectTexturesFromModel(modelPath, true, localItemTextures);
+                        // 收集模型纹理，按路径前缀分流：block/ 开头 → block atlas，items/ 开头 → item atlas
+                        ModelJson resolved = ModelResolver.resolve(modelPath);
+                        if (resolved != null) {
+                            Set<String> modelTextures = ModelResolver.collectTextures(resolved);
+                            for (String tex : modelTextures) {
+                                // 提取 namespace 后的路径部分用于前缀判断
+                                // 例: "minecraft:block/sapling_oak" → "block/sapling_oak"
+                                String pathPart = tex;
+                                int colon = tex.indexOf(':');
+                                if (colon >= 0) {
+                                    pathPart = tex.substring(colon + 1);
+                                }
+                                if (pathPart.startsWith("block/") || pathPart.startsWith("blocks/")) {
+                                    localBlockTextures.add(tex);
+                                } else {
+                                    localItemTextures.add(tex);
+                                }
+                            }
+                        }
                     }
                     CatFrame.logger.debug("Loaded ItemState: {}/items/{}", namespace, itemName);
                 }
@@ -296,15 +324,6 @@ public class NamespaceLoadTask {
             CatFrame.logger.info("Loaded {} ItemState files for namespace: {} (scanned {} candidates)",
                     localItemStates.size(), namespace, itemNames.size());
         }
-
-        // 3. 补充：从 model_mappings 的 items 字段推断（覆盖未注册到 Item 注册表的特殊情况）
-        if (mappings != null && mappings.items != null) {
-            for (String key : mappings.items.keySet()) {
-                String itemName = key.contains(":") ? key.split(":")[0] : key;
-                itemNames.add(itemName);
-            }
-        }
-
     }
 
     // ==================== 纹理收集（本地版本，写本地集合） ====================

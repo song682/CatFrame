@@ -66,7 +66,20 @@ public class VanillaTextureTracker {
         if (resolved != null) {
             Set<String> textures = ModelResolver.collectTextures(resolved);
             for (String tex : textures) {
-                if (isItemModel) {
+                // Extract path after namespace for prefix checking
+                // e.g., "minecraft:block/sapling_oak" → pathPart = "block/sapling_oak"
+                String pathPart = tex;
+                int colon = tex.indexOf(':');
+                if (colon >= 0) {
+                    pathPart = tex.substring(colon + 1);
+                }
+                // Block textures belong to block atlas regardless of calling model type
+                // Item models (like items/oak_sapling.json) may reference block textures (layer0: "minecraft:block/sapling_oak")
+                if (pathPart.startsWith("block/") || pathPart.startsWith("blocks/")) {
+                    pendingTextures.add(tex);
+                } else if (pathPart.startsWith("item/") || pathPart.startsWith("items/")) {
+                    pendingItemTextures.add(tex);
+                } else if (isItemModel) {
                     pendingItemTextures.add(tex);
                 } else {
                     pendingTextures.add(tex);

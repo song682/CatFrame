@@ -4,6 +4,10 @@ import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import net.minecraft.block.Block;
+import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Items;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.IItemRenderer;
@@ -189,9 +193,15 @@ public class RenderJsonItemModel implements IItemRenderer {
         RenderPhase phase = toRenderPhase(type, stack);
         if (phase == null) return;
 
+        // ---- 提取手持实体（data[0]=renderBlocks, data[1]=entity） ----
+        EntityLivingBase entity = null;
+        if (data != null && data.length > 1 && data[1] instanceof EntityLivingBase) {
+            entity = (EntityLivingBase) data[1];
+        }
+
         // ---- 计算反抵消预变换 ----
         // 将反抵消变换计算为 Matrix4d 矩阵，由管线在顶点提交时统一变换
-        Matrix4d preTransform = computePreTransform(type);
+        Matrix4d preTransform = computePreTransform(type, entity, stack);
 
         // getRegisteredItemModel 对方块物品有 BlockStateModel fallback
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
@@ -212,11 +222,15 @@ public class RenderJsonItemModel implements IItemRenderer {
      * <p>
      * 矩阵构造顺序与 GL 后乘顺序一致：先调用的操作对应最终矩阵左乘。
      *
-     * @param type  Forge 物品渲染类型
+     * @param type   Forge 物品渲染类型
+     * @param entity 手持物品的实体（可能为 null，用于 EQUIPPED 阶段判断 RenderBiped vs RenderPlayer）
+     * @param stack  物品栈（用于 EQUIPPED 阶段判断物品类型）
      * @return 反抵消 Matrix4d 矩阵，若无需要返回 null
      */
     @javax.annotation.Nullable
-    private static Matrix4d computePreTransform(ItemRenderType type) {
+    private static Matrix4d computePreTransform(ItemRenderType type,
+                                                 @javax.annotation.Nullable EntityLivingBase entity,
+                                                 @javax.annotation.Nullable ItemStack stack) {
         if (type == ItemRenderType.INVENTORY) {
             // GUI：将模型空间 [0,1]³ 映射到 16×16 像素 GUI 槽位
             // Forge 已经设置了 glTranslatef(x, y, -3+zLevel) 定位到槽位原点
@@ -258,62 +272,36 @@ public class RenderJsonItemModel implements IItemRenderer {
             m.mul(tmp);
             return m;
         } else if (type == ItemRenderType.EQUIPPED) {
-            // Forge 调用链:
-            //   [RenderPlayer] T_hand(-0.0625, 0.4375, 0.0625)
-            //     → translate(0,0.1875,-0.3125) → rotate(20°X) → rotate(45°Y)
-            //     → scale(-0.375,-0.375,0.375) → [FHClient: translate(-0.5)]
-            // 反抵消矩阵 (同序):
-            //   T(0.5) × S(-2.667,-2.667,2.667) × RY(-45) × RX(-20)
-            //   × T(0,-0.1875,0.3125) × T(0.0625,-0.4375,-0.0625)
-            //   × RX(-90) × RY(180) × T(1/16, 2/16, -10/16)
-            Matrix4d m = new Matrix4d();
-            m.setIdentity();
-            Matrix4d tmp = new Matrix4d();
+            // 手持物品实体 + 物品类型判断
+            // RenderPlayer 对所有物品统一走 BLOCK_3D 路径（因为 is3D=true）
+            // RenderBiped 对非 ItemBlock 物品走物品特定路径（弓/Full3D/默认）
+            boolean isPlayer = (entity instanceof EntityPlayer);
+            boolean isBlockItem = (stack != null && stack.getItem() instanceof ItemBlock);
 
-            // ① 反抵消 FHClient translate(-0.5)
-            tmp.setIdentity();
-            tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
-            m.mul(tmp);
-
-            // ② 反抵消 RenderPlayer BLOCK_3D 路径
-            //    scale(-2.667, -2.667, 2.667)
-            tmp.setIdentity();
-            tmp.m00 = -2.667; tmp.m11 = -2.667; tmp.m22 = 2.667;
-            m.mul(tmp);
-
-            //    RY(-45)
-            tmp.rotY(Math.toRadians(-45));
-            m.mul(tmp);
-
-            //    RX(-20)
-            tmp.rotX(Math.toRadians(-20));
-            m.mul(tmp);
-
-            //    T(0, -0.1875, 0.3125)
-            tmp.setIdentity();
-            tmp.setTranslation(new Vector3d(0, -0.1875, 0.3125));
-            m.mul(tmp);
-
-            // ③ 反抵消 RenderPlayer line319 T(-0.0625, 0.4375, 0.0625)
-            tmp.setIdentity();
-            tmp.setTranslation(new Vector3d(0.0625, -0.4375, -0.0625));
-            m.mul(tmp);
-
-            // ④ 应用 26.1.2 ItemInHandLayer 标准对齐变换
-            //    RX(-90)
-            tmp.rotX(Math.toRadians(-90));
-            m.mul(tmp);
-
-            //    RY(180)
-            tmp.rotY(Math.toRadians(180));
-            m.mul(tmp);
-
-            //    T(1/16, 2/16, -10/16)
-            tmp.setIdentity();
-            tmp.setTranslation(new Vector3d(1.0 / 16.0, 2.0 / 16.0, -10.0 / 16.0));
-            m.mul(tmp);
-
-            return m;
+            if (isPlayer || isBlockItem) {
+                // RenderPlayer 路径：所有物品走 BLOCK_3D
+                // RenderBiped + ItemBlock：也走 BLOCK_3D
+                return computePlayerBlock3DPreTransform();
+            } else {
+                // RenderBiped 路径：非方块物品走 RenderBiped 专用变换
+                Item item = stack != null ? stack.getItem() : null;
+                if (item == Items.bow) {
+                    // RenderBiped bow 路径 (lines 278-286):
+                    //   T(0,0.125,0.3125) × RY(-20) × S(0.625,-0.625,0.625)
+                    //   × RX(-100) × RY(45) × FHClient T(-0.5)
+                    return computeBipedBowPreTransform();
+                } else if (item != null && item.isFull3D()) {
+                    // RenderBiped isFull3D 路径 (lines 287-301):
+                    //   T(0,0.1875,0) × S(0.625,-0.625,0.625) × RX(-100) × RY(45)
+                    //   × FHClient T(-0.5)
+                    return computeBipedFull3DPreTransform();
+                } else {
+                    // RenderBiped 默认 2D 路径 (lines 302-310):
+                    //   T(0.25,0.1875,-0.1875) × S(0.375) × RZ(60) × RX(-90) × RZ(20)
+                    //   × FHClient T(-0.5)
+                    return computeBipedDefaultPreTransform();
+                }
+            }
         } else if (type == ItemRenderType.ENTITY) {
             // Forge renderEntityItem 在 BLOCK_3D=false 时走 else 分支
             // 预应用 scale(0.5, 0.5, 0.5)。反抵消: scale(2.0)
@@ -323,6 +311,242 @@ public class RenderJsonItemModel implements IItemRenderer {
             return s;
         }
         return null;
+    }
+
+    // ==================== EQUIPPED 反抵消子方法（按实体/物品类型分流） ====================
+
+    /**
+     * RenderPlayer（或 RenderBiped + ItemBlock）的 BLOCK_3D 路径反抵消 + 26.1 对齐。
+     * <p>
+     * 反抵消 RenderPlayer BLOCK_3D 变换链：
+     *   T(-0.0625,0.4375,0.0625) × T(0,0.1875,-0.3125) × RX(20) × RY(45)
+     *   × S(-0.375,-0.375,0.375) × FHClient T(-0.5)
+     */
+    private static Matrix4d computePlayerBlock3DPreTransform() {
+        Matrix4d m = new Matrix4d();
+        m.setIdentity();
+        Matrix4d tmp = new Matrix4d();
+
+        // ① 反抵消 FHClient translate(-0.5)
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
+        m.mul(tmp);
+
+        // ② 反抵消 RenderPlayer BLOCK_3D 路径
+        //    scale(-2.667, -2.667, 2.667)
+        tmp.setIdentity();
+        tmp.m00 = -2.667; tmp.m11 = -2.667; tmp.m22 = 2.667;
+        m.mul(tmp);
+
+        //    RY(-45)
+        tmp.rotY(Math.toRadians(-45));
+        m.mul(tmp);
+
+        //    RX(-20)
+        tmp.rotX(Math.toRadians(-20));
+        m.mul(tmp);
+
+        //    T(0, -0.1875, 0.3125)
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0, -0.1875, 0.3125));
+        m.mul(tmp);
+
+        // ③ 反抵消 hand offset T(-0.0625, 0.4375, 0.0625)
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0.0625, -0.4375, -0.0625));
+        m.mul(tmp);
+
+        // ④ 应用 26.1.2 ItemInHandLayer 标准对齐变换
+        //    RX(-90)
+        tmp.rotX(Math.toRadians(-90));
+        m.mul(tmp);
+
+        //    RY(180)
+        tmp.rotY(Math.toRadians(180));
+        m.mul(tmp);
+
+        //    T(1/16, 2/16, -10/16)
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(1.0 / 16.0, 2.0 / 16.0, -10.0 / 16.0));
+        m.mul(tmp);
+
+        return m;
+    }
+
+    /**
+     * RenderBiped bow 路径反抵消 + 26.1 对齐。
+     * <p>
+     * RenderBiped 对 {@code Items.bow} 的变换链 (lines 278-286)：
+     *   T(-0.0625,0.4375,0.0625) × T(0,0.125,0.3125) × RY(-20)
+     *   × S(0.625,-0.625,0.625) × RX(-100) × RY(45) × FHClient T(-0.5)
+     * <p>
+     * 反抵消矩阵（后乘序）：
+     *   T(0.5) × RY(-45) × RX(100) × S(1.6,-1.6,1.6) × RY(20)
+     *   × T(0,-0.125,-0.3125) × T(0.0625,-0.4375,-0.0625)
+     *   × RX(-90) × RY(180) × T(1/16, 2/16, -10/16)
+     */
+    private static Matrix4d computeBipedBowPreTransform() {
+        Matrix4d m = new Matrix4d();
+        m.setIdentity();
+        Matrix4d tmp = new Matrix4d();
+
+        // ① 反抵消 FHClient translate(-0.5)
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
+        m.mul(tmp);
+
+        // ② 反抵消 bow 路径:
+        //    RY(-45) 逆 RY(45)
+        tmp.rotY(Math.toRadians(-45));
+        m.mul(tmp);
+
+        //    RX(100) 逆 RX(-100)
+        tmp.rotX(Math.toRadians(100));
+        m.mul(tmp);
+
+        //    S(1.6,-1.6,1.6) 逆 S(0.625,-0.625,0.625)
+        tmp.setIdentity();
+        tmp.m00 = 1.6; tmp.m11 = -1.6; tmp.m22 = 1.6;
+        m.mul(tmp);
+
+        //    RY(20) 逆 RY(-20)
+        tmp.rotY(Math.toRadians(20));
+        m.mul(tmp);
+
+        //    T(0,-0.125,-0.3125) 逆 T(0,0.125,0.3125)
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0, -0.125, -0.3125));
+        m.mul(tmp);
+
+        // ③ 反抵消 hand offset T(-0.0625, 0.4375, 0.0625)
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0.0625, -0.4375, -0.0625));
+        m.mul(tmp);
+
+        // ④ 26.1.2 对齐
+        tmp.rotX(Math.toRadians(-90));
+        m.mul(tmp);
+        tmp.rotY(Math.toRadians(180));
+        m.mul(tmp);
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(1.0 / 16.0, 2.0 / 16.0, -10.0 / 16.0));
+        m.mul(tmp);
+
+        return m;
+    }
+
+    /**
+     * RenderBiped isFull3D 路径反抵消 + 26.1 对齐。
+     * <p>
+     * RenderBiped 对 {@code isFull3D()} 物品的变换链 (lines 287-301)：
+     *   T(-0.0625,0.4375,0.0625) × T(0,0.1875,0) × S(0.625,-0.625,0.625)
+     *   × RX(-100) × RY(45) × FHClient T(-0.5)
+     * <p>
+     * 注意：func_82422_c() 被不同实体重写（骷髅加 X=0.09375），
+     * 此处使用基类 RenderBiped 的默认值 T(0,0.1875,0)。
+     */
+    private static Matrix4d computeBipedFull3DPreTransform() {
+        Matrix4d m = new Matrix4d();
+        m.setIdentity();
+        Matrix4d tmp = new Matrix4d();
+
+        // ① 反抵消 FHClient
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
+        m.mul(tmp);
+
+        // ② 反抵消 Full3D 路径:
+        //    RY(-45) 逆 RY(45)
+        tmp.rotY(Math.toRadians(-45));
+        m.mul(tmp);
+
+        //    RX(100) 逆 RX(-100)
+        tmp.rotX(Math.toRadians(100));
+        m.mul(tmp);
+
+        //    S(1.6,-1.6,1.6) 逆 S(0.625,-0.625,0.625)
+        tmp.setIdentity();
+        tmp.m00 = 1.6; tmp.m11 = -1.6; tmp.m22 = 1.6;
+        m.mul(tmp);
+
+        //    T(0,-0.1875,0) 逆 T(0,0.1875,0) [func_82422_c 基类默认值]
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0, -0.1875, 0));
+        m.mul(tmp);
+
+        // ③ 反抵消 hand offset
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0.0625, -0.4375, -0.0625));
+        m.mul(tmp);
+
+        // ④ 26.1.2 对齐
+        tmp.rotX(Math.toRadians(-90));
+        m.mul(tmp);
+        tmp.rotY(Math.toRadians(180));
+        m.mul(tmp);
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(1.0 / 16.0, 2.0 / 16.0, -10.0 / 16.0));
+        m.mul(tmp);
+
+        return m;
+    }
+
+    /**
+     * RenderBiped 默认 2D 路径反抵消 + 26.1 对齐。
+     * <p>
+     * RenderBiped 默认 2D 物品的变换链 (lines 302-310)：
+     *   T(-0.0625,0.4375,0.0625) × T(0.25,0.1875,-0.1875) × S(0.375)
+     *   × RZ(60) × RX(-90) × RZ(20) × FHClient T(-0.5)
+     */
+    private static Matrix4d computeBipedDefaultPreTransform() {
+        Matrix4d m = new Matrix4d();
+        m.setIdentity();
+        Matrix4d tmp = new Matrix4d();
+
+        // ① 反抵消 FHClient
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
+        m.mul(tmp);
+
+        // ② 反抵消默认 2D 路径:
+        //    RZ(-20) 逆 RZ(20)
+        tmp.rotZ(Math.toRadians(-20));
+        m.mul(tmp);
+
+        //    RX(90) 逆 RX(-90)
+        tmp.rotX(Math.toRadians(90));
+        m.mul(tmp);
+
+        //    RZ(-60) 逆 RZ(60)
+        tmp.rotZ(Math.toRadians(-60));
+        m.mul(tmp);
+
+        //    S(2.667) 逆 S(0.375) — 均匀缩放
+        tmp.setIdentity();
+        double invScale = 1.0 / 0.375; // ≈ 2.667
+        tmp.m00 = invScale; tmp.m11 = invScale; tmp.m22 = invScale;
+        m.mul(tmp);
+
+        //    T(-0.25,-0.1875,0.1875) 逆 T(0.25,0.1875,-0.1875)
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(-0.25, -0.1875, 0.1875));
+        m.mul(tmp);
+
+        // ③ 反抵消 hand offset
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(0.0625, -0.4375, -0.0625));
+        m.mul(tmp);
+
+        // ④ 26.1.2 对齐
+        tmp.rotX(Math.toRadians(-90));
+        m.mul(tmp);
+        tmp.rotY(Math.toRadians(180));
+        m.mul(tmp);
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(1.0 / 16.0, 2.0 / 16.0, -10.0 / 16.0));
+        m.mul(tmp);
+
+        return m;
     }
 
     /**

@@ -47,7 +47,8 @@ public final class GuiLightExtension implements IModelRenderExtension {
                 || phase == RenderPhase.ITEM_HAND_THIRD_PERSON
                 || phase == RenderPhase.ITEM_HAND
                 || phase == RenderPhase.DROPPED_ITEM_GROUND
-                || phase == RenderPhase.DROPPED_BLOCK_GROUND);
+                || phase == RenderPhase.DROPPED_BLOCK_GROUND
+                || phase == RenderPhase.ITEM_FIXED);
 
         if (isItemPhase) {
             changedLighting = true;

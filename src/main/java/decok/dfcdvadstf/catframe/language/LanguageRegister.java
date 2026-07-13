@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.langguage;
+package decok.dfcdvadstf.catframe.language;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;

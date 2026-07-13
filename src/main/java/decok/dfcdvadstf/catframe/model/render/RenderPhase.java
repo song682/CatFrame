@@ -36,6 +36,11 @@ public enum RenderPhase {
      */
     DROPPED_BLOCK_GROUND,
     /**
+     * 物品在展示框（Item Frame）中渲染（有 ItemStack）。
+     * 对应 JSON model 的 fixed。
+     */
+    ITEM_FIXED,
+    /**
      * @deprecated 使用 {@link #ITEM_HAND_FIRST_PERSON} 或 {@link #ITEM_HAND_THIRD_PERSON} 替代。
      */
     @Deprecated
@@ -61,6 +66,8 @@ public enum RenderPhase {
             case DROPPED_ITEM_GROUND:
             case DROPPED_BLOCK_GROUND:
                 return "ground";
+            case ITEM_FIXED:
+                return "fixed";
             case ITEM_HAND:
                 return "firstperson_righthand";
             default:

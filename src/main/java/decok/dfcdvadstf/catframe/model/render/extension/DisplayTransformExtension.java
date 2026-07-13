@@ -26,6 +26,15 @@ import java.util.List;
  *   <li>{@code translate(tx, ty, tz)} — display 位移（像素 × 0.0625 = 方块单位）</li>
  * </ol>
  *
+ * <h3>字段默认值与范围钳制（对齐高版本 display transform 规范）</h3>
+ * <table border="1">
+ *   <caption>display transform 字段规范</caption>
+ *   <tr><th>字段</th><th>默认值</th><th>钳制范围</th></tr>
+ *   <tr><td>rotation</td><td>[0, 0, 0]</td><td>无限制（角度制）</td></tr>
+ *   <tr><td>translation</td><td>[0, 0, 0]</td><td>[-80, 80]（像素单位，1/16 方块）</td></tr>
+ *   <tr><td>scale</td><td>[1, 1, 1]</td><td>[-4, 4]</td></tr>
+ * </table>
+ *
  * <p>本实现采用向量空间建模：将 display transform 计算为 {@link Matrix4d} 矩阵，
  * 通过 {@link RenderContext#displayTransform} 传递给管线，由管线在提交顶点前
  * 统一执行矩阵乘法变换顶点坐标。不再使用 GL 矩阵栈操作。</p>
@@ -109,6 +118,15 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
     }
 
     /**
+     * translation 各分量钳制范围（像素单位，1/16 方块）。
+     * 对齐高版本 ItemTransform.Deserializer 规范。
+     */
+    private static final float TRANSLATION_CLAMP = 80.0f;
+
+    /** scale 各分量钳制范围，对齐高版本 ItemTransform.Deserializer 规范。 */
+    private static final float SCALE_CLAMP = 4.0f;
+
+    /**
      * 从 display transform 数据计算 4×4 变换矩阵。
      *
      * <p>顶点变换顺序（作用于顶点 v）：
@@ -117,49 +135,62 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
      * <p>对齐 26.1 ItemTransform.apply() 语义，
      * 与旧版 GL 即时模式的矩阵计算结果一致。
      *
+     * <p>在读取字段时同步执行高版本规范约束：
+     * <ul>
+     *   <li>null / 长度不足 → 对应默认值顶替（rotation=[0,0,0], translation=[0,0,0], scale=[1,1,1]）</li>
+     *   <li>translation 各分量钳制到 [-80, 80]</li>
+     *   <li>scale 各分量钳制到 [-4, 4]</li>
+     *   <li>rotation 无范围限制（角度制自由范围）</li>
+     * </ul>
+     *
      * @param dt display transform 数据
      * @return 4×4 变换矩阵
      */
     private static Matrix4d computeMatrix(ModelJson.DisplayTransform dt) {
         if (dt == null) return null;
 
+        // ===== 读取字段值，同步执行默认值顶替 + 范围钳制 =====
+        // 默认值：rotation=[0,0,0], translation=[0,0,0], scale=[1,1,1]
+        // 钳制：translation ∈ [-80,80], scale ∈ [-4,4], rotation 无限制
+        float rx = (dt.rotation != null && dt.rotation.length > 0) ? dt.rotation[0] : 0f;
+        float ry = (dt.rotation != null && dt.rotation.length > 1) ? dt.rotation[1] : 0f;
+        float rz = (dt.rotation != null && dt.rotation.length > 2) ? dt.rotation[2] : 0f;
+        float tx = clamp((dt.translation != null && dt.translation.length > 0) ? dt.translation[0] : 0f,
+                -TRANSLATION_CLAMP, TRANSLATION_CLAMP);
+        float ty = clamp((dt.translation != null && dt.translation.length > 1) ? dt.translation[1] : 0f,
+                -TRANSLATION_CLAMP, TRANSLATION_CLAMP);
+        float tz = clamp((dt.translation != null && dt.translation.length > 2) ? dt.translation[2] : 0f,
+                -TRANSLATION_CLAMP, TRANSLATION_CLAMP);
+        float sx = clamp((dt.scale != null && dt.scale.length > 0) ? dt.scale[0] : 1f,
+                -SCALE_CLAMP, SCALE_CLAMP);
+        float sy = clamp((dt.scale != null && dt.scale.length > 1) ? dt.scale[1] : 1f,
+                -SCALE_CLAMP, SCALE_CLAMP);
+        float sz = clamp((dt.scale != null && dt.scale.length > 2) ? dt.scale[2] : 1f,
+                -SCALE_CLAMP, SCALE_CLAMP);
+
         Matrix4d m = new Matrix4d();
         m.setIdentity();
 
         // ④ translate(display) — 像素 × 0.0625 = 方块单位
-        if (dt.translation != null && dt.translation.length >= 3) {
-            Matrix4d tDisplay = new Matrix4d();
-            tDisplay.setIdentity();
-            tDisplay.setTranslation(new Vector3d(
-                    dt.translation[0] * 0.0625,
-                    dt.translation[1] * 0.0625,
-                    dt.translation[2] * 0.0625));
-            m.mul(tDisplay);
-        }
+        Matrix4d tDisplay = new Matrix4d();
+        tDisplay.setIdentity();
+        tDisplay.setTranslation(new Vector3d(tx * 0.0625, ty * 0.0625, tz * 0.0625));
+        m.mul(tDisplay);
 
         // ③ rotate XYZ — 对齐 26.1 Quaternionf.rotationXYZ
-        //    矩阵结果 M = T_display × RX × RY × RZ × S × T_center
-        //    mul 操作为 this = this × other，因此依次：
-        //    m = I → m × RX → m × RY → m × RZ
-        if (dt.rotation != null && dt.rotation.length >= 3) {
-            Matrix4d r = new Matrix4d();
-            r.rotX(Math.toRadians(dt.rotation[0]));
-            m.mul(r);
-            r.rotY(Math.toRadians(dt.rotation[1]));
-            m.mul(r);
-            r.rotZ(Math.toRadians(dt.rotation[2]));
-            m.mul(r);
-        }
+        Matrix4d r = new Matrix4d();
+        r.rotX(Math.toRadians(rx));
+        m.mul(r);
+        r.rotY(Math.toRadians(ry));
+        m.mul(r);
+        r.rotZ(Math.toRadians(rz));
+        m.mul(r);
 
         // ② scale
-        if (dt.scale != null && dt.scale.length >= 3) {
-            Matrix4d s = new Matrix4d();
-            s.setIdentity();
-            s.m00 = dt.scale[0];
-            s.m11 = dt.scale[1];
-            s.m22 = dt.scale[2];
-            m.mul(s);
-        }
+        Matrix4d s = new Matrix4d();
+        s.setIdentity();
+        s.m00 = sx; s.m11 = sy; s.m22 = sz;
+        m.mul(s);
 
         // ① translate(-0.5) — 中心偏移，高版本模型原点在方块角上
         Matrix4d tCenter = new Matrix4d();
@@ -168,6 +199,13 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
         m.mul(tCenter);
 
         return m;
+    }
+
+    /**
+     * 将值钳制到 [min, max] 范围。
+     */
+    private static float clamp(float val, float min, float max) {
+        return Math.max(min, Math.min(max, val));
     }
 
     /**
@@ -203,6 +241,10 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
                 break;
             case "ground":
                 dt.translation = new float[]{0, 2, 0};
+                dt.scale = new float[]{0.5f, 0.5f, 0.5f};
+                break;
+            case "fixed":
+                dt.translation = new float[]{0, 0, 0};
                 dt.scale = new float[]{0.5f, 0.5f, 0.5f};
                 break;
             default:

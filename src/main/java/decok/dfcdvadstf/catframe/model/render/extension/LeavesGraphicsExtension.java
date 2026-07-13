@@ -246,6 +246,7 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
             case ITEM_HAND_THIRD_PERSON:
             case DROPPED_ITEM_GROUND:
             case DROPPED_BLOCK_GROUND:
+            case ITEM_FIXED:
                 // 物品阶段：从 ItemStack 推导方块和 metadata
                 if (ctx.stack == null || !(ctx.stack.getItem() instanceof ItemBlock)) return;
                 leafBlock = ((ItemBlock) ctx.stack.getItem()).field_150939_a;

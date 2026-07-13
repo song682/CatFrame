@@ -13,6 +13,8 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.IBlockAccess;
 
+import javax.vecmath.Matrix4d;
+import javax.vecmath.Vector3d;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -320,6 +322,55 @@ public class RenderDispatcher {
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             itemModel.render(stack, phase);
+        }
+    }
+
+    /**
+     * 在物品展示框（Item Frame）中渲染物品。
+     * <p>
+     * 由 {@code RenderItemInFrameEvent} handler 调用，
+     * 使用 {@link RenderPhase#ITEM_FIXED} 阶段，
+     * 对应 JSON model 的 {@code display.fixed} transform。
+     * <p>
+     * GL 上下文中已由 {@code RenderItemFrame.func_82402_b} 设置好
+     * 展示框朝向旋转和物品旋转，本方法仅负责模型绘制。
+     * <p>
+     * 对齐高版本 {@code ItemFrameRenderer.submit()}：
+     * 渲染器侧额外 {@code scale(0.5)}，与 display.fixed 的 scale(0.5) 叠加后
+     * 净缩放 0.25，与原版 1.7.10 RenderItem.renderInFrame 路径的
+     * scale(1.25)×scale(0.25)=0.3125 接近。
+     *
+     * @param stack 展示框内的物品栈
+     */
+    public static void renderItemInFrame(ItemStack stack) {
+        if (stack == null) return;
+        Item item = stack.getItem();
+        if (item == null) return;
+
+        // --- 渲染器侧预变换，对齐高版本 ItemFrameRenderer.submit() + 1.7.10 RenderItem.doRender renderInFrame 偏移 ---
+        // 原版 RenderItem.doRender 在 renderInFrame=true 时:
+        //   T(0, 0.05, 0) × RY(-90) × S(1.25) × S(0.25) × T(-0.5)
+        // CatFrame display.fixed: S(0.5) × T(-0.5)
+        // 差值: T(0, 0.05, 0) × S(0.5) [忽略 RY(-90)，func_82402_b 已处理朝向]
+        Matrix4d framePreTransform = new Matrix4d();
+        framePreTransform.setIdentity();
+
+        // ① T(0, 0.05, 0) — 原版 renderInFrame 的 Y 轴偏移
+        Matrix4d t = new Matrix4d();
+        t.setIdentity();
+        t.setTranslation(new Vector3d(0, 0.05, 0));
+        framePreTransform.mul(t);
+
+        // ② S(0.5) — 渲染器侧缩放
+        Matrix4d s = new Matrix4d();
+        s.setIdentity();
+        s.m00 = 0.5; s.m11 = 0.5; s.m22 = 0.5;
+        framePreTransform.mul(s);
+
+        // --- Check registered IItemState model (GTNHLib-style: ItemBlock falls back to block model) ---
+        IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
+        if (itemModel != null) {
+            itemModel.render(stack, RenderPhase.ITEM_FIXED, framePreTransform);
         }
     }
 }

@@ -7,13 +7,14 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 import decok.dfcdvadstf.catframe.compact.forge.event.ODorTag;
-import decok.dfcdvadstf.catframe.compact.vanilla.ClientEventHandler;
+import decok.dfcdvadstf.catframe.compact.vanilla.ClientToastHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
+import decok.dfcdvadstf.catframe.compact.vanilla.model.RenderItemInFrameHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.ResourcePackModelDetector;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.TexturesStitch;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaMetadataMapper;
 import decok.dfcdvadstf.catframe.component.predicates.RegisteredComponents;
-import decok.dfcdvadstf.catframe.langguage.LanguageRegister;
+import decok.dfcdvadstf.catframe.language.LanguageRegister;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
@@ -42,13 +43,13 @@ public class CatFrame {
         RegisteredComponents.registerAll();
         MinecraftForge.EVENT_BUS.register(new TexturesStitch());
         MinecraftForge.EVENT_BUS.register(new ODorTag());
-        MinecraftForge.EVENT_BUS.register(new VanillaMetadataMapper());
+        MinecraftForge.EVENT_BUS.register(new RenderItemInFrameHandler());
 
         BlueyPlushyItem blueyPlushy = null;
         if (config.enableBlueyPlushy) {
             blueyPlushy = new BlueyPlushyItem();
             GameRegistry.registerItem(blueyPlushy, "bluey_plushy");
-            CatFrameTags.add(Tags.MODID, "plushy", blueyPlushy);
+            CatFrameTags.add("catframe", "plushy", blueyPlushy);
         }
 
         if (event.getSide() == Side.CLIENT) {
@@ -56,7 +57,7 @@ public class CatFrame {
             // load() is now triggered automatically by LanguageRegister.domain()
 
             // Register client event handler (welcome toast + HUD toast rendering)
-            MinecraftForge.EVENT_BUS.register(new ClientEventHandler());
+            MinecraftForge.EVENT_BUS.register(new ClientToastHandler());
 
             VanillaMetadataMapper.registerVanillaMetadataMappings();
             ModelManagerDataLoader.registerNamespace("catframe");

@@ -246,8 +246,10 @@ public final class UniformRenderPipeline {
         List<BakedQuad> allQuads = part.getAllQuads();
 
         boolean gui = (phase == RenderPhase.ITEM_GUI);
-        boolean dropped = (phase == RenderPhase.DROPPED_ITEM_GROUND
-                || phase == RenderPhase.DROPPED_BLOCK_GROUND);
+        boolean blendRequired = (gui
+                || phase == RenderPhase.DROPPED_ITEM_GROUND
+                || phase == RenderPhase.DROPPED_BLOCK_GROUND
+                || phase == RenderPhase.ITEM_FIXED);
 
         Point3d tmpVec = new Point3d();
 
@@ -266,7 +268,7 @@ public final class UniformRenderPipeline {
                             ? TextureMap.locationBlocksTexture
                             : TextureMap.locationItemsTexture);
 
-            if (gui || dropped) {
+            if (blendRequired) {
                 GL11.glEnable(GL11.GL_BLEND);
                 GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             }
@@ -324,7 +326,7 @@ public final class UniformRenderPipeline {
             ModelRenderRegistry.applyAfterPart();
             // 恢复 GL 状态
             GL11.glEnable(GL11.GL_CULL_FACE);
-            if (gui || dropped) {
+            if (blendRequired) {
                 GL11.glDisable(GL11.GL_BLEND);
             }
         }

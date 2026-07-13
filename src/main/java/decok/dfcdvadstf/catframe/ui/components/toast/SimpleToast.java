@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
+import decok.dfcdvadstf.catframe.ui.Text;
 import net.minecraft.client.gui.FontRenderer;
 
 /**
@@ -14,11 +15,16 @@ import net.minecraft.client.gui.FontRenderer;
 public class SimpleToast extends BaseToast {
 
     private final long displayTime;
+    private Text textTitle;
     private String title;
     private String description;
 
     public SimpleToast(String title) {
         this(title, null, DEFAULT_DISPLAY_TIME);
+    }
+
+    public SimpleToast(String title, long displayTime) {
+        this(title, null, displayTime);
     }
 
     public SimpleToast(String title, String description) {

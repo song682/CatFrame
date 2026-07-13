@@ -236,6 +236,7 @@ public class ModernItem extends Item implements IItemStateProvider {
             Map<String, ItemStateNode> cases = new HashMap<>();
             cases.put(RenderPhase.ITEM_HAND_FIRST_PERSON.name(), handLeaf);
             cases.put(RenderPhase.ITEM_HAND_THIRD_PERSON.name(), handLeaf);
+            cases.put(RenderPhase.ITEM_FIXED.name(), handLeaf);
             cases.put(RenderPhase.ITEM_GUI.name(), inventoryLeaf);
             cases.put(RenderPhase.DROPPED_ITEM_GROUND.name(), inventoryLeaf);
             // 方块物品掉落物也使用 2D inventory 模型（ModernItem 本身不是 ItemBlock，但为兼容保留）

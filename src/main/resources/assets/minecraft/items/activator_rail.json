@@ -1,1 +1,6 @@
-{"model":{"type":"minecraft:model","model":"minecraft:item/activator_rail"}}
+{
+    "model": {
+        "type": "minecraft:item/generated",
+        "model": "minecraft:item/activator_rail"
+    }
+}

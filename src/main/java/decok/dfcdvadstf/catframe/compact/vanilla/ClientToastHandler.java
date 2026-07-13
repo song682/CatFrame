@@ -20,7 +20,7 @@ import net.minecraftforge.event.entity.EntityJoinWorldEvent;
  * </p>
  */
 @SideOnly(Side.CLIENT)
-public class ClientEventHandler {
+public class ClientToastHandler {
 
     /** Global ToastManager instance / 全局 Toast 管理器实例 */
     private static final ToastManager TOAST_MANAGER = new ToastManager(Minecraft.getMinecraft());

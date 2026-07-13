@@ -3,7 +3,7 @@ package decok.dfcdvadstf.catframe.compact.vanilla;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.langguage.LanguageRegister;
+import decok.dfcdvadstf.catframe.language.LanguageRegister;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.client.resources.IResourceManager;

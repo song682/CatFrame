@@ -36,6 +36,7 @@ public final class TintRenderExtension implements IModelRenderExtension {
             case ITEM_HAND_FIRST_PERSON:
             case ITEM_HAND_THIRD_PERSON:
             case DROPPED_ITEM_GROUND:
+            case ITEM_FIXED:
                 rgb = TintRegistry.getItemTint(ctx.stack, idx);
                 break;
             case DROPPED_BLOCK_GROUND:

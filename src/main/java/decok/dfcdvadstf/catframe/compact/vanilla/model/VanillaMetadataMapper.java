@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.compact.vanilla.model;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
+import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 
 import java.util.HashMap;
@@ -251,6 +252,23 @@ public class VanillaMetadataMapper {
             props.put("variant", meta == 0 ? "cobblestone" : "mossy_cobblestone");
             return props;
         });
+
+        // ---- 楼梯 (stairs) ----
+        // meta low 2 bits = facing (0=east,1=west,2=south,3=north), bit 3 = half (0=bottom,1=top)
+        final String[] STAIR_FACINGS = {"east", "west", "south", "north"};
+        Block[] stairsBlocks = {
+            Blocks.oak_stairs, Blocks.stone_stairs, Blocks.brick_stairs, Blocks.stone_brick_stairs,
+            Blocks.nether_brick_stairs, Blocks.sandstone_stairs, Blocks.spruce_stairs, Blocks.birch_stairs,
+            Blocks.jungle_stairs, Blocks.quartz_stairs, Blocks.acacia_stairs, Blocks.dark_oak_stairs
+        };
+        for (Block stair : stairsBlocks) {
+            ModelManagerDataLoader.registerMetadataMapping(stair, meta -> {
+                Map<String, String> props = new HashMap<>();
+                props.put("facing", STAIR_FACINGS[meta & 3]);
+                props.put("half", (meta & 4) == 0 ? "bottom" : "top");
+                return props;
+            });
+        }
 
         // ==================== Multipart (Connection-based) ====================
 

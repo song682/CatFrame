@@ -9,6 +9,7 @@ import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.lazy.LazyBlockstateModel;
 import decok.dfcdvadstf.catframe.model.lazy.LazyRedirectModel;
 import decok.dfcdvadstf.catframe.model.lazy.LazySingleBlockModel;
+import decok.dfcdvadstf.catframe.model.lazy.StairsBlockModel;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
@@ -20,6 +21,7 @@ import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockPane;
+import net.minecraft.block.BlockStairs;
 import net.minecraft.item.Item;
 import net.minecraftforge.client.MinecraftForgeClient;
 
@@ -212,6 +214,13 @@ public class VanillaModelManager {
                             ModelRegistry.registerBlockModel(block,
                                     new PaneMultipartRedirectModel(block, bs, false));
                         }
+                        continue;
+                    }
+
+                    // BlockStairs: 运行时转角检测
+                    if (block instanceof BlockStairs) {
+                        IMetadataMapper stairsMapper = ModelManagerDataLoader.metadataMappers.get(block);
+                        ModelRegistry.registerBlockModel(block, new StairsBlockModel(bs, stairsMapper));
                         continue;
                     }
 

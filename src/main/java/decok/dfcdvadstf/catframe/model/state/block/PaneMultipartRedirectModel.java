@@ -13,7 +13,7 @@ import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockPane;
-import net.minecraft.util.EnumFacing;
+import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -110,8 +110,8 @@ public class PaneMultipartRedirectModel implements BlockStateModel {
                     targetBs.multipart != null ? targetBs.multipart.size() : 0);
         }
 
-        Map<EnumFacing, List<JsonModelBake.BakedQuad>> mergedFace
-                = new EnumMap<>(EnumFacing.class);
+        Map<Direction, List<JsonModelBake.BakedQuad>> mergedFace
+                = new EnumMap<>(Direction.class);
         List<JsonModelBake.BakedQuad> mergedGeneral = new ArrayList<>();
 
         for (BlockstateJson.MultipartCase mpc : targetBs.multipart) {
@@ -127,7 +127,7 @@ public class PaneMultipartRedirectModel implements BlockStateModel {
                     CatFrame.logger.info("[PaneMP]   bake('{}', x={}, y={}) -> part={}", mpc.apply.model, mpc.apply.x, mpc.apply.y, part);
                 }
                 if (part != null) {
-                    for (EnumFacing dir : EnumFacing.values()) {
+                    for (Direction dir : Direction.values()) {
                         mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())
                                 .addAll(part.getQuads(dir));
                     }

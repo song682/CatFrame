@@ -60,52 +60,17 @@ public class ItemProperties {
     /**
      * 从 ItemStack + RenderPhase 构建运行时属性集。
      * <p>
-     * 返回的 Map 以 property name 为 key（对齐 {@link ItemStateNode}
-     * 的 {@code evaluate(Map<String, Comparable<?>>)} 签名）。
-     * <p>
-     * 为兼容高版本 item model JSON 的命名空间写法（如 {@code "minecraft:damage"}），
-     * 同时为每个属性写入无命名空间别名。
+     * 返回惰性 Map（{@link LazyPropertyMap}），只在决策树实际访问属性时才调用 provider 计算值。
+     * 大多数决策树每帧只访问 1-3 个属性，避免了无谓的 NBT 读取和玩家状态查询。
      *
      * @param stack 当前渲染的 ItemStack
      * @param phase 当前渲染阶段
-     * @return 属性集（property name → value）
+     * @return 惰性属性集（property name → value）
      */
     public static Map<String, Comparable<?>> buildProperties(ItemStack stack, RenderPhase phase) {
-        Map<String, Comparable<?>> props = new HashMap<>();
-
-        // damage
-        int damage;
-        int maxDamage;
-        if (stack != null) {
-            damage = stack.getItemDamage();
-            maxDamage = stack.getMaxDamage();
-        } else {
-            damage = 0;
-            maxDamage = 0;
-        }
-        putProperty(props, DAMAGE, damage);
-        putProperty(props, MAX_DAMAGE, maxDamage);
-
-        // display context（始终设置）
-        putProperty(props, DISPLAY_CONTEXT, phase);
-
-        // using 状态（仅手持阶段检测）
-        boolean usingItem = false;
-        int useDuration = 0;
-        if (stack != null) {
-            EntityPlayer player = getPlayerSafe();
-            if (player != null && player.isUsingItem()) {
-                ItemStack usingStack = player.getItemInUse();
-                if (usingStack != null && usingStack == stack) {
-                    usingItem = true;
-                    useDuration = computeUseDuration(player);
-                }
-            }
-        }
-        putProperty(props, USING_ITEM, usingItem);
-        putProperty(props, USE_DURATION, useDuration);
-
-        return props;
+        // 确保默认属性已注册
+        ItemPropertyRegistry.registerDefaults();
+        return new LazyPropertyMap(ItemPropertyRegistry.getAll(), stack, phase);
     }
 
     /**

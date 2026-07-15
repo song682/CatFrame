@@ -3,7 +3,7 @@ package decok.dfcdvadstf.catframe.model.render.extension.ao.light;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
 import net.minecraft.block.Block;
-import net.minecraft.util.EnumFacing;
+import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.LinkedHashMap;
@@ -82,13 +82,13 @@ public final class BlockModelLighter {
 
         prepareQuadShape(world, bx, by, bz, block, quad, true);
 
-        EnumFacing direction = quad.face;
+        Direction direction = quad.face;
         if (direction == null) return;
 
         // 满块面：基准位置 = 面外侧；非满块面：基准位置 = 方块自身
-        int baseX = faceCubic ? bx + faceOffsetX(direction) : bx;
-        int baseY = faceCubic ? by + faceOffsetY(direction) : by;
-        int baseZ = faceCubic ? bz + faceOffsetZ(direction) : bz;
+        int baseX = faceCubic ? bx + direction.getStepX() : bx;
+        int baseY = faceCubic ? by + direction.getStepY() : by;
+        int baseZ = faceCubic ? bz + direction.getStepZ() : bz;
 
         AdjacencyInfo info = AdjacencyInfo.fromFacing(direction);
 
@@ -98,9 +98,9 @@ public final class BlockModelLighter {
         float[] shade = new float[4];
 
         for (int i = 0; i < 4; i++) {
-            cx[i] = baseX + dirOffsetX(info.corners[i]);
-            cy[i] = baseY + dirOffsetY(info.corners[i]);
-            cz[i] = baseZ + dirOffsetZ(info.corners[i]);
+            cx[i] = baseX + info.corners[i].getStepX();
+            cy[i] = baseY + info.corners[i].getStepY();
+            cz[i] = baseZ + info.corners[i].getStepZ();
             Block cornerBlock = world.getBlock(cx[i], cy[i], cz[i]);
             light[i] = cache.getBrightness(cornerBlock, world, cx[i], cy[i], cz[i]);
             shade[i] = cache.getShadeBrightness(cornerBlock, world, cx[i], cy[i], cz[i]);
@@ -109,9 +109,9 @@ public final class BlockModelLighter {
         // --- 4 个面外侧角（用于边角回退判定） ---
         boolean[] translucent = new boolean[4];
         for (int i = 0; i < 4; i++) {
-            int ox = cx[i] + faceOffsetX(direction);
-            int oy = cy[i] + faceOffsetY(direction);
-            int oz = cz[i] + faceOffsetZ(direction);
+            int ox = cx[i] + direction.getStepX();
+            int oy = cy[i] + direction.getStepY();
+            int oz = cz[i] + direction.getStepZ();
             Block outerBlock = world.getBlock(ox, oy, oz);
             translucent[i] = !outerBlock.isOpaqueCube();
         }
@@ -124,9 +124,9 @@ public final class BlockModelLighter {
         if (!translucent[2] && !translucent[0]) {
             shadeCorner02 = shade[0]; lightCorner02 = light[0];
         } else {
-            int dx = baseX + dirOffsetX(info.corners[0]) + dirOffsetX(info.corners[2]);
-            int dy = baseY + dirOffsetY(info.corners[0]) + dirOffsetY(info.corners[2]);
-            int dz = baseZ + dirOffsetZ(info.corners[0]) + dirOffsetZ(info.corners[2]);
+            int dx = baseX + info.corners[0].getStepX() + info.corners[2].getStepX();
+            int dy = baseY + info.corners[0].getStepY() + info.corners[2].getStepY();
+            int dz = baseZ + info.corners[0].getStepZ() + info.corners[2].getStepZ();
             Block b02 = world.getBlock(dx, dy, dz);
             shadeCorner02 = cache.getShadeBrightness(b02, world, dx, dy, dz);
             lightCorner02 = cache.getBrightness(b02, world, dx, dy, dz);
@@ -135,9 +135,9 @@ public final class BlockModelLighter {
         if (!translucent[3] && !translucent[0]) {
             shadeCorner03 = shade[0]; lightCorner03 = light[0];
         } else {
-            int dx = baseX + dirOffsetX(info.corners[0]) + dirOffsetX(info.corners[3]);
-            int dy = baseY + dirOffsetY(info.corners[0]) + dirOffsetY(info.corners[3]);
-            int dz = baseZ + dirOffsetZ(info.corners[0]) + dirOffsetZ(info.corners[3]);
+            int dx = baseX + info.corners[0].getStepX() + info.corners[3].getStepX();
+            int dy = baseY + info.corners[0].getStepY() + info.corners[3].getStepY();
+            int dz = baseZ + info.corners[0].getStepZ() + info.corners[3].getStepZ();
             Block b03 = world.getBlock(dx, dy, dz);
             shadeCorner03 = cache.getShadeBrightness(b03, world, dx, dy, dz);
             lightCorner03 = cache.getBrightness(b03, world, dx, dy, dz);
@@ -146,9 +146,9 @@ public final class BlockModelLighter {
         if (!translucent[2] && !translucent[1]) {
             shadeCorner12 = shade[0]; lightCorner12 = light[0];
         } else {
-            int dx = baseX + dirOffsetX(info.corners[1]) + dirOffsetX(info.corners[2]);
-            int dy = baseY + dirOffsetY(info.corners[1]) + dirOffsetY(info.corners[2]);
-            int dz = baseZ + dirOffsetZ(info.corners[1]) + dirOffsetZ(info.corners[2]);
+            int dx = baseX + info.corners[1].getStepX() + info.corners[2].getStepX();
+            int dy = baseY + info.corners[1].getStepY() + info.corners[2].getStepY();
+            int dz = baseZ + info.corners[1].getStepZ() + info.corners[2].getStepZ();
             Block b12 = world.getBlock(dx, dy, dz);
             shadeCorner12 = cache.getShadeBrightness(b12, world, dx, dy, dz);
             lightCorner12 = cache.getBrightness(b12, world, dx, dy, dz);
@@ -157,9 +157,9 @@ public final class BlockModelLighter {
         if (!translucent[3] && !translucent[1]) {
             shadeCorner13 = shade[0]; lightCorner13 = light[0];
         } else {
-            int dx = baseX + dirOffsetX(info.corners[1]) + dirOffsetX(info.corners[3]);
-            int dy = baseY + dirOffsetY(info.corners[1]) + dirOffsetY(info.corners[3]);
-            int dz = baseZ + dirOffsetZ(info.corners[1]) + dirOffsetZ(info.corners[3]);
+            int dx = baseX + info.corners[1].getStepX() + info.corners[3].getStepX();
+            int dy = baseY + info.corners[1].getStepY() + info.corners[3].getStepY();
+            int dz = baseZ + info.corners[1].getStepZ() + info.corners[3].getStepZ();
             Block b13 = world.getBlock(dx, dy, dz);
             shadeCorner13 = cache.getShadeBrightness(b13, world, dx, dy, dz);
             lightCorner13 = cache.getBrightness(b13, world, dx, dy, dz);
@@ -167,9 +167,9 @@ public final class BlockModelLighter {
 
         // --- 中心亮度 ---
         int lightCenter = cache.getBrightness(block, world, bx, by, bz);
-        int outX = bx + faceOffsetX(direction);
-        int outY = by + faceOffsetY(direction);
-        int outZ = bz + faceOffsetZ(direction);
+        int outX = bx + direction.getStepX();
+        int outY = by + direction.getStepY();
+        int outZ = bz + direction.getStepZ();
         Block outsideBlock = world.getBlock(outX, outY, outZ);
         if (faceCubic || !outsideBlock.isOpaqueCube()) {
             lightCenter = cache.getBrightness(outsideBlock, world, outX, outY, outZ);
@@ -259,7 +259,7 @@ public final class BlockModelLighter {
 
         prepareQuadShape(world, bx, by, bz, block, quad, false);
 
-        EnumFacing direction = quad.face;
+        Direction direction = quad.face;
         int lightX = faceCubic ? bx + faceOffsetX(direction) : bx;
         int lightY = faceCubic ? by + faceOffsetY(direction) : by;
         int lightZ = faceCubic ? bz + faceOffsetZ(direction) : bz;
@@ -306,7 +306,7 @@ public final class BlockModelLighter {
         }
 
         float minEps = 1.0E-4F, maxEps = 0.9999F;
-        EnumFacing dir = quad.face;
+        Direction dir = quad.face;
 
         switch (dir) {
             case DOWN: case UP:
@@ -370,23 +370,14 @@ public final class BlockModelLighter {
 
     // ==================== 面方向偏移 ====================
 
-    private static int faceOffsetX(EnumFacing f) {
-        switch (f) { case WEST: return -1; case EAST: return 1; default: return 0; }
+    private static int faceOffsetX(Direction f) {
+        return f.getStepX();
     }
-    private static int faceOffsetY(EnumFacing f) {
-        switch (f) { case DOWN: return -1; case UP: return 1; default: return 0; }
+    private static int faceOffsetY(Direction f) {
+        return f.getStepY();
     }
-    private static int faceOffsetZ(EnumFacing f) {
-        switch (f) { case NORTH: return -1; case SOUTH: return 1; default: return 0; }
-    }
-    private static int dirOffsetX(EnumFacing f) {
-        switch (f) { case WEST: return -1; case EAST: return 1; default: return 0; }
-    }
-    private static int dirOffsetY(EnumFacing f) {
-        switch (f) { case DOWN: return -1; case UP: return 1; default: return 0; }
-    }
-    private static int dirOffsetZ(EnumFacing f) {
-        switch (f) { case NORTH: return -1; case SOUTH: return 1; default: return 0; }
+    private static int faceOffsetZ(Direction f) {
+        return f.getStepZ();
     }
 
     // ==================== 缓存管理 ====================
@@ -435,19 +426,19 @@ public final class BlockModelLighter {
 
         private static final AmbientVertexRemap[] BY_FACING = new AmbientVertexRemap[6];
         static {
-            BY_FACING[EnumFacing.DOWN.ordinal()] = DOWN;
-            BY_FACING[EnumFacing.UP.ordinal()] = UP;
-            BY_FACING[EnumFacing.NORTH.ordinal()] = NORTH;
-            BY_FACING[EnumFacing.SOUTH.ordinal()] = SOUTH;
-            BY_FACING[EnumFacing.WEST.ordinal()] = WEST;
-            BY_FACING[EnumFacing.EAST.ordinal()] = EAST;
+            BY_FACING[Direction.DOWN.ordinal()] = DOWN;
+            BY_FACING[Direction.UP.ordinal()] = UP;
+            BY_FACING[Direction.NORTH.ordinal()] = NORTH;
+            BY_FACING[Direction.SOUTH.ordinal()] = SOUTH;
+            BY_FACING[Direction.WEST.ordinal()] = WEST;
+            BY_FACING[Direction.EAST.ordinal()] = EAST;
         }
 
         AmbientVertexRemap(int v0, int v1, int v2, int v3) {
             this.vert0 = v0; this.vert1 = v1; this.vert2 = v2; this.vert3 = v3;
         }
 
-        static AmbientVertexRemap fromFacing(EnumFacing face) {
+        static AmbientVertexRemap fromFacing(Direction face) {
             return BY_FACING[face.ordinal()];
         }
     }
@@ -462,7 +453,7 @@ public final class BlockModelLighter {
      */
     private enum AdjacencyInfo {
         DOWN(
-                new EnumFacing[]{EnumFacing.WEST, EnumFacing.EAST, EnumFacing.NORTH, EnumFacing.SOUTH},
+                new Direction[]{Direction.WEST, Direction.EAST, Direction.NORTH, Direction.SOUTH},
                 true,
                 new SizeInfo[]{SizeInfo.FLIP_WEST, SizeInfo.SOUTH, SizeInfo.FLIP_WEST, SizeInfo.FLIP_SOUTH, SizeInfo.WEST, SizeInfo.FLIP_SOUTH, SizeInfo.WEST, SizeInfo.SOUTH},
                 new SizeInfo[]{SizeInfo.FLIP_WEST, SizeInfo.NORTH, SizeInfo.FLIP_WEST, SizeInfo.FLIP_NORTH, SizeInfo.WEST, SizeInfo.FLIP_NORTH, SizeInfo.WEST, SizeInfo.NORTH},
@@ -470,7 +461,7 @@ public final class BlockModelLighter {
                 new SizeInfo[]{SizeInfo.FLIP_EAST, SizeInfo.SOUTH, SizeInfo.FLIP_EAST, SizeInfo.FLIP_SOUTH, SizeInfo.EAST, SizeInfo.FLIP_SOUTH, SizeInfo.EAST, SizeInfo.SOUTH}
         ),
         UP(
-                new EnumFacing[]{EnumFacing.EAST, EnumFacing.WEST, EnumFacing.NORTH, EnumFacing.SOUTH},
+                new Direction[]{Direction.EAST, Direction.WEST, Direction.NORTH, Direction.SOUTH},
                 true,
                 new SizeInfo[]{SizeInfo.EAST, SizeInfo.SOUTH, SizeInfo.EAST, SizeInfo.FLIP_SOUTH, SizeInfo.FLIP_EAST, SizeInfo.FLIP_SOUTH, SizeInfo.FLIP_EAST, SizeInfo.SOUTH},
                 new SizeInfo[]{SizeInfo.EAST, SizeInfo.NORTH, SizeInfo.EAST, SizeInfo.FLIP_NORTH, SizeInfo.FLIP_EAST, SizeInfo.FLIP_NORTH, SizeInfo.FLIP_EAST, SizeInfo.NORTH},
@@ -478,7 +469,7 @@ public final class BlockModelLighter {
                 new SizeInfo[]{SizeInfo.WEST, SizeInfo.SOUTH, SizeInfo.WEST, SizeInfo.FLIP_SOUTH, SizeInfo.FLIP_WEST, SizeInfo.FLIP_SOUTH, SizeInfo.FLIP_WEST, SizeInfo.SOUTH}
         ),
         NORTH(
-                new EnumFacing[]{EnumFacing.UP, EnumFacing.DOWN, EnumFacing.EAST, EnumFacing.WEST},
+                new Direction[]{Direction.UP, Direction.DOWN, Direction.EAST, Direction.WEST},
                 true,
                 new SizeInfo[]{SizeInfo.UP, SizeInfo.FLIP_WEST, SizeInfo.UP, SizeInfo.WEST, SizeInfo.FLIP_UP, SizeInfo.WEST, SizeInfo.FLIP_UP, SizeInfo.FLIP_WEST},
                 new SizeInfo[]{SizeInfo.UP, SizeInfo.FLIP_EAST, SizeInfo.UP, SizeInfo.EAST, SizeInfo.FLIP_UP, SizeInfo.EAST, SizeInfo.FLIP_UP, SizeInfo.FLIP_EAST},
@@ -486,7 +477,7 @@ public final class BlockModelLighter {
                 new SizeInfo[]{SizeInfo.DOWN, SizeInfo.FLIP_WEST, SizeInfo.DOWN, SizeInfo.WEST, SizeInfo.FLIP_DOWN, SizeInfo.WEST, SizeInfo.FLIP_DOWN, SizeInfo.FLIP_WEST}
         ),
         SOUTH(
-                new EnumFacing[]{EnumFacing.WEST, EnumFacing.EAST, EnumFacing.DOWN, EnumFacing.UP},
+                new Direction[]{Direction.WEST, Direction.EAST, Direction.DOWN, Direction.UP},
                 true,
                 new SizeInfo[]{SizeInfo.UP, SizeInfo.FLIP_WEST, SizeInfo.FLIP_UP, SizeInfo.FLIP_WEST, SizeInfo.FLIP_UP, SizeInfo.WEST, SizeInfo.UP, SizeInfo.WEST},
                 new SizeInfo[]{SizeInfo.DOWN, SizeInfo.FLIP_WEST, SizeInfo.FLIP_DOWN, SizeInfo.FLIP_WEST, SizeInfo.FLIP_DOWN, SizeInfo.WEST, SizeInfo.DOWN, SizeInfo.WEST},
@@ -494,7 +485,7 @@ public final class BlockModelLighter {
                 new SizeInfo[]{SizeInfo.UP, SizeInfo.FLIP_EAST, SizeInfo.FLIP_UP, SizeInfo.FLIP_EAST, SizeInfo.FLIP_UP, SizeInfo.EAST, SizeInfo.UP, SizeInfo.EAST}
         ),
         WEST(
-                new EnumFacing[]{EnumFacing.UP, EnumFacing.DOWN, EnumFacing.NORTH, EnumFacing.SOUTH},
+                new Direction[]{Direction.UP, Direction.DOWN, Direction.NORTH, Direction.SOUTH},
                 true,
                 new SizeInfo[]{SizeInfo.UP, SizeInfo.SOUTH, SizeInfo.UP, SizeInfo.FLIP_SOUTH, SizeInfo.FLIP_UP, SizeInfo.FLIP_SOUTH, SizeInfo.FLIP_UP, SizeInfo.SOUTH},
                 new SizeInfo[]{SizeInfo.UP, SizeInfo.NORTH, SizeInfo.UP, SizeInfo.FLIP_NORTH, SizeInfo.FLIP_UP, SizeInfo.FLIP_NORTH, SizeInfo.FLIP_UP, SizeInfo.NORTH},
@@ -502,7 +493,7 @@ public final class BlockModelLighter {
                 new SizeInfo[]{SizeInfo.DOWN, SizeInfo.SOUTH, SizeInfo.DOWN, SizeInfo.FLIP_SOUTH, SizeInfo.FLIP_DOWN, SizeInfo.FLIP_SOUTH, SizeInfo.FLIP_DOWN, SizeInfo.SOUTH}
         ),
         EAST(
-                new EnumFacing[]{EnumFacing.DOWN, EnumFacing.UP, EnumFacing.NORTH, EnumFacing.SOUTH},
+                new Direction[]{Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH},
                 true,
                 new SizeInfo[]{SizeInfo.FLIP_DOWN, SizeInfo.SOUTH, SizeInfo.FLIP_DOWN, SizeInfo.FLIP_SOUTH, SizeInfo.DOWN, SizeInfo.FLIP_SOUTH, SizeInfo.DOWN, SizeInfo.SOUTH},
                 new SizeInfo[]{SizeInfo.FLIP_DOWN, SizeInfo.NORTH, SizeInfo.FLIP_DOWN, SizeInfo.FLIP_NORTH, SizeInfo.DOWN, SizeInfo.FLIP_NORTH, SizeInfo.DOWN, SizeInfo.NORTH},
@@ -510,21 +501,21 @@ public final class BlockModelLighter {
                 new SizeInfo[]{SizeInfo.FLIP_UP, SizeInfo.SOUTH, SizeInfo.FLIP_UP, SizeInfo.FLIP_SOUTH, SizeInfo.UP, SizeInfo.FLIP_SOUTH, SizeInfo.UP, SizeInfo.SOUTH}
         );
 
-        final EnumFacing[] corners;
+        final Direction[] corners;
         final boolean doNonCubicWeight;
         final SizeInfo[] vert0Weights, vert1Weights, vert2Weights, vert3Weights;
 
         private static final AdjacencyInfo[] BY_FACING = new AdjacencyInfo[6];
         static {
-            BY_FACING[EnumFacing.DOWN.ordinal()] = DOWN;
-            BY_FACING[EnumFacing.UP.ordinal()] = UP;
-            BY_FACING[EnumFacing.NORTH.ordinal()] = NORTH;
-            BY_FACING[EnumFacing.SOUTH.ordinal()] = SOUTH;
-            BY_FACING[EnumFacing.WEST.ordinal()] = WEST;
-            BY_FACING[EnumFacing.EAST.ordinal()] = EAST;
+            BY_FACING[Direction.DOWN.ordinal()] = DOWN;
+            BY_FACING[Direction.UP.ordinal()] = UP;
+            BY_FACING[Direction.NORTH.ordinal()] = NORTH;
+            BY_FACING[Direction.SOUTH.ordinal()] = SOUTH;
+            BY_FACING[Direction.WEST.ordinal()] = WEST;
+            BY_FACING[Direction.EAST.ordinal()] = EAST;
         }
 
-        AdjacencyInfo(EnumFacing[] corners, boolean doNonCubicWeight,
+        AdjacencyInfo(Direction[] corners, boolean doNonCubicWeight,
                        SizeInfo[] v0w, SizeInfo[] v1w, SizeInfo[] v2w, SizeInfo[] v3w) {
             this.corners = corners;
             this.doNonCubicWeight = doNonCubicWeight;
@@ -534,7 +525,7 @@ public final class BlockModelLighter {
             this.vert3Weights = v3w;
         }
 
-        static AdjacencyInfo fromFacing(EnumFacing face) {
+        static AdjacencyInfo fromFacing(Direction face) {
             return BY_FACING[face.ordinal()];
         }
     }

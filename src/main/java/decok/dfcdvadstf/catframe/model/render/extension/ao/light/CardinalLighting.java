@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render.extension.ao.light;
 
-import net.minecraft.util.EnumFacing;
+import decok.dfcdvadstf.catframe.core.Direction;
 
 /**
  * 方向亮度表 — 定义每个面接收的方向光照系数。
@@ -46,10 +46,10 @@ public final class CardinalLighting {
     /**
      * 按面方向获取亮度系数。
      *
-     * @param face 面方向（EnumFacing）
+     * @param face 面方向（Direction）
      * @return 该方向的光照系数（0.0~1.0）
      */
-    public float byFace(EnumFacing face) {
+    public float byFace(Direction face) {
         if (face == null) return up;
         switch (face) {
             case DOWN:  return down;

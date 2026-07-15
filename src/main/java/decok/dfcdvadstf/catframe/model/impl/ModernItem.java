@@ -9,6 +9,7 @@ import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+import decok.dfcdvadstf.catframe.model.state.item.EvalResult;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import decok.dfcdvadstf.catframe.model.state.property.ItemProperties;
 import net.minecraft.client.renderer.texture.IIconRegister;
@@ -270,14 +271,15 @@ public class ModernItem extends Item implements IItemStateProvider {
         if (itemStateRoot == null) return;
 
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
-        String resolvedPath = itemStateRoot.evaluate(props);
-        if (resolvedPath == null) return;
+        EvalResult result = itemStateRoot.evaluate(props);
+        if (result.isEmpty()) return;
 
-        String cacheKey = BakedModelCache.buildKey(resolvedPath, 0, 0);
-        BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
-        if (part == null || part.isEmpty()) return;
-
-        UniformRenderPipeline.renderItemQuads(part, stack, phase);
+        for (String path : result.getModels()) {
+            String cacheKey = BakedModelCache.buildKey(path, 0, 0);
+            BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
+            if (part == null || part.isEmpty()) continue;
+            UniformRenderPipeline.renderItemQuads(part, stack, phase);
+        }
     }
 
     @Override
@@ -287,15 +289,16 @@ public class ModernItem extends Item implements IItemStateProvider {
         if (itemStateRoot == null) return;
 
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
-        String resolvedPath = itemStateRoot.evaluate(props);
-        if (resolvedPath == null) return;
+        EvalResult result = itemStateRoot.evaluate(props);
+        if (result.isEmpty()) return;
 
-        String cacheKey = BakedModelCache.buildKey(resolvedPath, 0, 0);
-        BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
-        if (part == null || part.isEmpty()) return;
-
-        UniformRenderPipeline.renderItemQuads(part, stack, phase,
-                null, 0, 0, 0, null, preTransform);
+        for (String path : result.getModels()) {
+            String cacheKey = BakedModelCache.buildKey(path, 0, 0);
+            BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
+            if (part == null || part.isEmpty()) continue;
+            UniformRenderPipeline.renderItemQuads(part, stack, phase,
+                    null, 0, 0, 0, null, preTransform);
+        }
     }
 
     /**

@@ -4,7 +4,7 @@ import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
-import net.minecraft.util.EnumFacing;
+import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.ArrayList;
@@ -31,8 +31,8 @@ public class MultipartBlockModel implements BlockStateModel {
 
     @Override
     public BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z, int metadata) {
-        Map<EnumFacing, List<JsonModelBake.BakedQuad>> mergedFace
-                = new EnumMap<>(EnumFacing.class);
+        Map<Direction, List<JsonModelBake.BakedQuad>> mergedFace
+                = new EnumMap<>(Direction.class);
         List<JsonModelBake.BakedQuad> mergedGeneral = new ArrayList<>();
 
         for (MultipartEntry entry : entries) {
@@ -41,7 +41,7 @@ public class MultipartBlockModel implements BlockStateModel {
                 BlockStateModelPart part = ModelBaker.bake(entry.modelPath);
                 if (part != null) {
                     mergedGeneral.addAll(part.getGeneralQuads());
-                    for (EnumFacing dir : EnumFacing.values()) {
+                    for (Direction dir : Direction.values()) {
                         mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())
                                 .addAll(part.getQuads(dir));
                     }

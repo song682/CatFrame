@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.state.block;
 
+import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
@@ -72,8 +73,8 @@ public class StateProviderBlockModel implements BlockStateModel {
 
         } else if (blockstate.multipart != null) {
             // Multipart: 合并所有匹配的部件
-            Map<net.minecraft.util.EnumFacing, java.util.List<JsonModelBake.BakedQuad>> mergedFace
-                    = new java.util.EnumMap<>(net.minecraft.util.EnumFacing.class);
+            Map<Direction, java.util.List<JsonModelBake.BakedQuad>> mergedFace
+                    = new java.util.EnumMap<>(Direction.class);
             java.util.List<JsonModelBake.BakedQuad> mergedGeneral = new java.util.ArrayList<>();
 
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
@@ -81,7 +82,7 @@ public class StateProviderBlockModel implements BlockStateModel {
                 if (applies && mpc.apply != null && mpc.apply.model != null) {
                     BlockStateModelPart part = ModelBaker.bake(mpc.apply.model);
                     if (part != null) {
-                        for (net.minecraft.util.EnumFacing dir : net.minecraft.util.EnumFacing.values()) {
+                        for (Direction dir : Direction.values()) {
                             mergedFace.computeIfAbsent(dir, k -> new java.util.ArrayList<>())
                                     .addAll(part.getQuads(dir));
                         }

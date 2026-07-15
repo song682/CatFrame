@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.model.core.baking;
 
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.core.ModelJson;
-import net.minecraft.util.EnumFacing;
+import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.util.IIcon;
 
 import javax.vecmath.AxisAngle4d;
@@ -97,16 +97,16 @@ public class JsonModelBake {
                 C[i].add(origin);
             }
         }
-        emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, EnumFacing.NORTH, elemFrom, elemTo, elemAO, elemShade, textureSize);
-        emitFaceFromCorners(out, e.faces.south, iconMap, C, new int[]{idx(0, 1, 1), idx(0, 0, 1), idx(1, 0, 1), idx(1, 1, 1)}, EnumFacing.SOUTH, elemFrom, elemTo, elemAO, elemShade, textureSize);
-        emitFaceFromCorners(out, e.faces.west, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 0, 0), idx(0, 0, 1), idx(0, 1, 1)}, EnumFacing.WEST, elemFrom, elemTo, elemAO, elemShade, textureSize);
-        emitFaceFromCorners(out, e.faces.east, iconMap, C, new int[]{idx(1, 1, 1), idx(1, 0, 1), idx(1, 0, 0), idx(1, 1, 0)}, EnumFacing.EAST, elemFrom, elemTo, elemAO, elemShade, textureSize);
-        emitFaceFromCorners(out, e.faces.down, iconMap, C, new int[]{idx(0, 0, 1), idx(0, 0, 0), idx(1, 0, 0), idx(1, 0, 1)}, EnumFacing.DOWN, elemFrom, elemTo, elemAO, elemShade, textureSize);
-        emitFaceFromCorners(out, e.faces.up, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 1, 1), idx(1, 1, 1), idx(1, 1, 0)}, EnumFacing.UP, elemFrom, elemTo, elemAO, elemShade, textureSize);
+        emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, Direction.NORTH, elemFrom, elemTo, elemAO, elemShade, textureSize);
+        emitFaceFromCorners(out, e.faces.south, iconMap, C, new int[]{idx(0, 1, 1), idx(0, 0, 1), idx(1, 0, 1), idx(1, 1, 1)}, Direction.SOUTH, elemFrom, elemTo, elemAO, elemShade, textureSize);
+        emitFaceFromCorners(out, e.faces.west, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 0, 0), idx(0, 0, 1), idx(0, 1, 1)}, Direction.WEST, elemFrom, elemTo, elemAO, elemShade, textureSize);
+        emitFaceFromCorners(out, e.faces.east, iconMap, C, new int[]{idx(1, 1, 1), idx(1, 0, 1), idx(1, 0, 0), idx(1, 1, 0)}, Direction.EAST, elemFrom, elemTo, elemAO, elemShade, textureSize);
+        emitFaceFromCorners(out, e.faces.down, iconMap, C, new int[]{idx(0, 0, 1), idx(0, 0, 0), idx(1, 0, 0), idx(1, 0, 1)}, Direction.DOWN, elemFrom, elemTo, elemAO, elemShade, textureSize);
+        emitFaceFromCorners(out, e.faces.up, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 1, 1), idx(1, 1, 1), idx(1, 1, 0)}, Direction.UP, elemFrom, elemTo, elemAO, elemShade, textureSize);
         return out;
     }
 
-    private static void emitFaceFromCorners(List<BakedQuad> out, ModelJson.Face f, Map<String, IIcon> iconMap, Vector3d[] C, int[] id, EnumFacing facing,
+    private static void emitFaceFromCorners(List<BakedQuad> out, ModelJson.Face f, Map<String, IIcon> iconMap, Vector3d[] C, int[] id, Direction facing,
                                             float[] elemFrom, float[] elemTo, Boolean elemAO, Boolean elemShade, int[] textureSize) {
         if (f == null || f.texture == null) {
             return;
@@ -148,7 +148,7 @@ public class JsonModelBake {
         out.add(q);
     }
 
-    private static void assignUVForFace(ModelJson.Face f, EnumFacing face, int[] ids, float[] outU, float[] outV,
+    private static void assignUVForFace(ModelJson.Face f, Direction face, int[] ids, float[] outU, float[] outV,
                                         float[] elemFrom, float[] elemTo, int[] textureSize) {
         // Auto-compute default UV from element from/to (pixel space) if not specified in JSON
         if (f.uv == null) {
@@ -157,7 +157,7 @@ public class JsonModelBake {
         final float u0 = f.uv[0], v0 = f.uv[1], u1 = f.uv[2], v1 = f.uv[3];
         final float du = u1 - u0, dv = v1 - v0;
         int steps = (f.rotation == null) ? 0 : ((Integer.parseInt(f.rotation) / 90) & 3);
-        if (face == EnumFacing.UP || face == EnumFacing.DOWN) {
+        if (face == Direction.UP || face == Direction.DOWN) {
             switch (steps) {
                 case 1:
                     steps = 3;
@@ -235,7 +235,7 @@ public class JsonModelBake {
             && v[2] >= -16.0f && v[2] <= 32.0f;
     }
 
-    private static float[] computeDefaultUV(float[] from, float[] to, EnumFacing face) {
+    private static float[] computeDefaultUV(float[] from, float[] to, Direction face) {
         float x0 = from[0], y0 = from[1], z0 = from[2];
         float x1 = to[0], y1 = to[1], z1 = to[2];
         switch (face) {
@@ -352,7 +352,7 @@ public class JsonModelBake {
             if (q.faceNormal != null) {
                 rotX.transform(q.faceNormal);
             }
-            // X 轴旋转会改变面朝向，需要重新计算 EnumFacing
+            // X 轴旋转会改变面朝向，需要重新计算 Direction
             q.face = recomputeFace(q);
             result.add(q);
         }
@@ -384,37 +384,21 @@ public class JsonModelBake {
     }
 
     /**
-     * 根据面法线重新确定 EnumFacing（X 轴旋转后面朝向可能改变）。
+     * 根据面法线重新确定 Direction（X 轴旋转后面朝向可能改变）。
      */
-    private static EnumFacing recomputeFace(BakedQuad q) {
+    private static Direction recomputeFace(BakedQuad q) {
         if (q.faceNormal == null) return q.face;
         double ax = Math.abs(q.faceNormal.x), ay = Math.abs(q.faceNormal.y), az = Math.abs(q.faceNormal.z);
-        if (ay >= ax && ay >= az) return q.faceNormal.y > 0 ? EnumFacing.UP : EnumFacing.DOWN;
-        if (ax >= ay && ax >= az) return q.faceNormal.x > 0 ? EnumFacing.EAST : EnumFacing.WEST;
-        return q.faceNormal.z > 0 ? EnumFacing.SOUTH : EnumFacing.NORTH;
+        if (ay >= ax && ay >= az) return q.faceNormal.y > 0 ? Direction.UP : Direction.DOWN;
+        if (ax >= ay && ax >= az) return q.faceNormal.x > 0 ? Direction.EAST : Direction.WEST;
+        return q.faceNormal.z > 0 ? Direction.SOUTH : Direction.NORTH;
     }
 
     /**
-     * Parse cullface string (e.g. "south", "up") to EnumFacing. Returns null if invalid or null.
+     * Parse cullface string (e.g. "south", "up") to Direction. Returns null if invalid or null.
      */
-    private static EnumFacing parseCullface(String cullface) {
-        if (cullface == null || cullface.isEmpty()) return null;
-        switch (cullface.toLowerCase()) {
-            case "down":
-                return EnumFacing.DOWN;
-            case "up":
-                return EnumFacing.UP;
-            case "north":
-                return EnumFacing.NORTH;
-            case "south":
-                return EnumFacing.SOUTH;
-            case "west":
-                return EnumFacing.WEST;
-            case "east":
-                return EnumFacing.EAST;
-            default:
-                return null;
-        }
+    private static Direction parseCullface(String cullface) {
+        return Direction.byName(cullface != null && !cullface.isEmpty() ? cullface.toLowerCase() : null);
     }
 
     public static class BakedQuad {
@@ -424,7 +408,7 @@ public class JsonModelBake {
         public final float[] vp = new float[4];
         public Vector3d faceNormal;
         public IIcon icon;
-        public EnumFacing face;
+        public Direction face;
         /**
          * Tint index from JSON face. -1 = no tint, 0+ = use block.colorMultiplier for biome color.
          */
@@ -432,7 +416,7 @@ public class JsonModelBake {
         /**
          * Cullface direction from JSON face. null means no cullface.
          */
-        public EnumFacing cullface;
+        public Direction cullface;
         /**
          * 环境光遮蔽标记: null 表示使用模型级别默认值, true=启用 AO, false=禁用 AO
          */

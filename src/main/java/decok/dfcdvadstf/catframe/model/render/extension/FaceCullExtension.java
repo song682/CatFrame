@@ -8,7 +8,7 @@ import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import net.minecraft.block.Block;
-import net.minecraft.util.EnumFacing;
+import decok.dfcdvadstf.catframe.core.Direction;
 
 /**
  * 内建渲染扩展：根据 JSON 模型中 face 的 {@code "cullface"} 字段执行面剔除。
@@ -48,35 +48,14 @@ public final class FaceCullExtension implements IModelRenderExtension {
         if (ctx.phase != RenderPhase.BLOCK_WORLD) return;
         if (ctx.world == null || ctx.block == null) return;
 
-        EnumFacing cullDir = ctx.quad.cullface;
+        Direction cullDir = ctx.quad.cullface;
         if (cullDir == null) return;
 
         // 手动计算相邻方块坐标
-        // 注意：1.7.10 中 EnumFacing.getFrontOffsetX() 的东西偏移与实际相反
-        // (EAST=-1, WEST=+1)，而面法线指向正常方向，故手动 switch 确保正确
-        int nx = ctx.x, ny = ctx.y, nz = ctx.z;
-        switch (cullDir) {
-            case DOWN:
-                ny--;
-                break;
-            case UP:
-                ny++;
-                break;
-            case NORTH:
-                nz--;
-                break;
-            case SOUTH:
-                nz++;
-                break;
-            case WEST:
-                nx--;
-                break;
-            case EAST:
-                nx++;
-                break;
-            default:
-                return;
-        }
+        // 注意：使用 Direction 的 getStepX/Y/Z 确保正确偏移
+        int nx = ctx.x + cullDir.getStepX();
+        int ny = ctx.y + cullDir.getStepY();
+        int nz = ctx.z + cullDir.getStepZ();
 
         Block neighbor = ctx.world.getBlock(nx, ny, nz);
         if (neighbor == null) return;

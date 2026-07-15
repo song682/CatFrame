@@ -3,7 +3,7 @@ package decok.dfcdvadstf.catframe.model;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.util.EnumFacing;
+import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.util.IIcon;
 
 import javax.vecmath.Vector3d;
@@ -186,7 +186,7 @@ public class ItemModelGenerator {
             v1 = (y + 1.0F - UV_SHRINK) * yScale;
         }
 
-        EnumFacing face = isTop ? EnumFacing.UP : EnumFacing.DOWN;
+        Direction face = isTop ? Direction.UP : Direction.DOWN;
 
         JsonModelBake.BakedQuad q = new JsonModelBake.BakedQuad();
         q.icon = sprite;
@@ -253,7 +253,7 @@ public class ItemModelGenerator {
         float v1 = (y + 1.0F - UV_SHRINK) * yScale;
 
         // 26.1.2: LEFT→EAST, RIGHT→WEST
-        EnumFacing face = isLeft ? EnumFacing.EAST : EnumFacing.WEST;
+        Direction face = isLeft ? Direction.EAST : Direction.WEST;
 
         JsonModelBake.BakedQuad q = new JsonModelBake.BakedQuad();
         q.icon = sprite;
@@ -304,15 +304,7 @@ public class ItemModelGenerator {
         return (flatPixels[idx] >> 24 & 0xFF) == 0;
     }
 
-    private static Vector3d faceNormal(EnumFacing face) {
-        switch (face) {
-            case DOWN:  return new Vector3d( 0, -1,  0);
-            case UP:    return new Vector3d( 0,  1,  0);
-            case NORTH: return new Vector3d( 0,  0, -1);
-            case SOUTH: return new Vector3d( 0,  0,  1);
-            case WEST:  return new Vector3d(-1,  0,  0);
-            case EAST:  return new Vector3d( 1,  0,  0);
-            default:    return new Vector3d( 0,  1,  0);
-        }
+    private static Vector3d faceNormal(Direction face) {
+        return face.getNormalVec3d();
     }
 }

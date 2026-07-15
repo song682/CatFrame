@@ -28,7 +28,7 @@ import java.util.List;
  * ModelRenderRegistry.register(ctx -> {
  *     if (ctx.phase != RenderPhase.BLOCK_WORLD) return;
  *     if (ctx.block != MyBlocks.LAVA_ROCK) return;
- *     if (ctx.quad.face != EnumFacing.UP) return;
+ *     if (ctx.quad.face != Direction.UP) return;
  *     ctx.mulColor(0xFFAA66);
  * });
  *
@@ -40,7 +40,7 @@ import java.util.List;
  * // 3. 面剔除：当 quad 朝向北侧且北侧邻居是不透明方块时不渲染
  * ModelRenderRegistry.register(ctx -> {
  *     if (ctx.phase != RenderPhase.BLOCK_WORLD) return;
- *     if (ctx.quad.face != EnumFacing.NORTH) return;
+ *     if (ctx.quad.face != Direction.NORTH) return;
  *     if (ctx.world.getBlock(ctx.x, ctx.y, ctx.z - 1).isOpaqueCube()) ctx.skip = true;
  * });
  * }</pre>

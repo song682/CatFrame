@@ -11,6 +11,6 @@
       "credits": "${credits}",
       "logoFile": "${logo}",
       "screenshots": [],
-      "dependencies": ${dependencies}
+      "dependencie s": ${dependencies}
     }
 ]

@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.model.state;
 
 import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
-import net.minecraft.util.EnumFacing;
+import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.util.IIcon;
 
 import javax.annotation.Nullable;
@@ -14,13 +14,13 @@ import java.util.*;
  *
  * <p>结构：
  * <ul>
- *   <li>{@link #getQuads(EnumFacing)} — 返回按该方向剔除的 quad 列表</li>
+ *   <li>{@link #getQuads(Direction)} — 返回按该方向剔除的 quad 列表</li>
  *   <li>{@link #getGeneralQuads()} — 返回无剔除方向（总是渲染）的 quad 列表</li>
  *   <li>{@link #getAllQuads()} — 合并所有 quad，用于物品渲染等无需剔除的场景</li>
  * </ul>
  */
 public class BlockStateModelPart {
-    private final Map<EnumFacing, List<BakedQuad>> faceQuads;
+    private final Map<Direction, List<BakedQuad>> faceQuads;
     private final List<BakedQuad> generalQuads;
     private List<BakedQuad> allQuadsCache;
 
@@ -32,12 +32,12 @@ public class BlockStateModelPart {
     @Nullable
     private final Map<String, ModelJson.DisplayTransform> partDisplay;
 
-    private BlockStateModelPart(Map<EnumFacing, List<BakedQuad>> faceQuads,
+    private BlockStateModelPart(Map<Direction, List<BakedQuad>> faceQuads,
                                 List<BakedQuad> generalQuads) {
         this(faceQuads, generalQuads, null);
     }
 
-    private BlockStateModelPart(Map<EnumFacing, List<BakedQuad>> faceQuads,
+    private BlockStateModelPart(Map<Direction, List<BakedQuad>> faceQuads,
                                 List<BakedQuad> generalQuads,
                                 @Nullable Map<String, ModelJson.DisplayTransform> partDisplay) {
         this.faceQuads = faceQuads;
@@ -56,7 +56,7 @@ public class BlockStateModelPart {
 
     public static BlockStateModelPart fromQuads(List<BakedQuad> quads,
                                                  @Nullable Map<String, ModelJson.DisplayTransform> display) {
-        Map<EnumFacing, List<BakedQuad>> faceMap = new EnumMap<>(EnumFacing.class);
+        Map<Direction, List<BakedQuad>> faceMap = new EnumMap<>(Direction.class);
         List<BakedQuad> general = new ArrayList<>();
 
         if (quads != null) {
@@ -76,17 +76,17 @@ public class BlockStateModelPart {
      * 从按方向预分组的 map 创建（用于 multipart 合并等场景）。
      */
     public static BlockStateModelPart fromFaceMap(
-            Map<EnumFacing, List<BakedQuad>> faceMap,
+            Map<Direction, List<BakedQuad>> faceMap,
             List<BakedQuad> generalQuads) {
         return fromFaceMap(faceMap, generalQuads, null);
     }
 
     public static BlockStateModelPart fromFaceMap(
-            Map<EnumFacing, List<BakedQuad>> faceMap,
+            Map<Direction, List<BakedQuad>> faceMap,
             List<BakedQuad> generalQuads,
             @Nullable Map<String, ModelJson.DisplayTransform> display) {
         return new BlockStateModelPart(
-                faceMap != null ? new EnumMap<>(faceMap) : new EnumMap<>(EnumFacing.class),
+                faceMap != null ? new EnumMap<>(faceMap) : new EnumMap<>(Direction.class),
                 generalQuads != null ? new ArrayList<>(generalQuads) : new ArrayList<>(),
                 display
         );
@@ -96,7 +96,7 @@ public class BlockStateModelPart {
      * 空的 BlockStateModelPart。
      */
     public static BlockStateModelPart empty() {
-        return new BlockStateModelPart(new EnumMap<>(EnumFacing.class), new ArrayList<>(), null);
+        return new BlockStateModelPart(new EnumMap<>(Direction.class), new ArrayList<>(), null);
     }
 
     /**
@@ -123,7 +123,7 @@ public class BlockStateModelPart {
      * 返回给定剔除方向的所有 quad。若没有该方向的 quad 则返回空列表。
      * [W4 修复] 返回不可变视图，防止调用方意外修改内部状态。
      */
-    public List<BakedQuad> getQuads(EnumFacing side) {
+    public List<BakedQuad> getQuads(Direction side) {
         List<BakedQuad> q = faceQuads.get(side);
         return q != null ? Collections.unmodifiableList(q) : Collections.emptyList();
     }
@@ -169,9 +169,9 @@ public class BlockStateModelPart {
      * 合并两个 BlockStateModelPart（用于 multipart 组合）。
      */
     public BlockStateModelPart merge(BlockStateModelPart other) {
-        Map<EnumFacing, List<BakedQuad>> mergedFace = new EnumMap<>(EnumFacing.class);
+        Map<Direction, List<BakedQuad>> mergedFace = new EnumMap<>(Direction.class);
         mergedFace.putAll(this.faceQuads);
-        for (Map.Entry<EnumFacing, List<BakedQuad>> entry : other.faceQuads.entrySet()) {
+        for (Map.Entry<Direction, List<BakedQuad>> entry : other.faceQuads.entrySet()) {
             mergedFace.computeIfAbsent(entry.getKey(), k -> new ArrayList<>()).addAll(entry.getValue());
         }
         List<BakedQuad> mergedGeneral = new ArrayList<>(this.generalQuads);

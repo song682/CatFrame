@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.ui;
 
-import decok.dfcdvadstf.catframe.component.DataComponents;
-import decok.dfcdvadstf.catframe.component.predicates.ItemStackComponents;
+import decok.dfcdvadstf.catframe.core.component.DataComponents;
+import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;

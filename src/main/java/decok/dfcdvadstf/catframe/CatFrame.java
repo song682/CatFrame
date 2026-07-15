@@ -13,7 +13,7 @@ import decok.dfcdvadstf.catframe.compact.vanilla.model.RenderItemInFrameHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.ResourcePackModelDetector;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.TexturesStitch;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaMetadataMapper;
-import decok.dfcdvadstf.catframe.component.predicates.RegisteredComponents;
+import decok.dfcdvadstf.catframe.core.component.predicates.RegisteredComponents;
 import decok.dfcdvadstf.catframe.language.LanguageRegister;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;

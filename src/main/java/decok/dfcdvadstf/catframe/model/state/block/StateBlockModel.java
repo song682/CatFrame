@@ -5,7 +5,7 @@ import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.*;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
-import net.minecraft.util.EnumFacing;
+import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.*;
@@ -60,8 +60,8 @@ public class StateBlockModel implements BlockStateModel {
 
         } else if (blockstate.multipart != null) {
             // Multipart: 使用 CatBlockState.matches() 进行条件匹配
-            Map<EnumFacing, List<BakedQuad>> mergedFace
-                    = new EnumMap<>(EnumFacing.class);
+            Map<Direction, List<BakedQuad>> mergedFace
+                    = new EnumMap<>(Direction.class);
             List<BakedQuad> mergedGeneral = new ArrayList<>();
 
             // buildPropertyMap 对同一 state 结果不变，提到循环外避免重复计算
@@ -71,7 +71,7 @@ public class StateBlockModel implements BlockStateModel {
                 if (applies && mpc.apply != null && mpc.apply.model != null) {
                     BlockStateModelPart part = ModelBaker.bake(mpc.apply.model);
                     if (part != null) {
-                        for (EnumFacing dir : EnumFacing.values()) {
+                        for (Direction dir : Direction.values()) {
                             mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())
                                     .addAll(part.getQuads(dir));
                         }
@@ -122,8 +122,8 @@ public class StateBlockModel implements BlockStateModel {
             return part;
 
         } else if (blockstate.multipart != null) {
-            Map<EnumFacing, List<BakedQuad>> mergedFace
-                    = new EnumMap<>(EnumFacing.class);
+            Map<Direction, List<BakedQuad>> mergedFace
+                    = new EnumMap<>(Direction.class);
             List<BakedQuad> mergedGeneral = new ArrayList<>();
 
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
@@ -131,7 +131,7 @@ public class StateBlockModel implements BlockStateModel {
                 if (applies && mpc.apply != null && mpc.apply.model != null) {
                     BlockStateModelPart part = ModelBaker.bake(mpc.apply.model);
                     if (part != null) {
-                        for (EnumFacing dir : EnumFacing.values()) {
+                        for (Direction dir : Direction.values()) {
                             mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())
                                     .addAll(part.getQuads(dir));
                         }

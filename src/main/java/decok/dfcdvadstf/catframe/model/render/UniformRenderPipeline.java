@@ -1,35 +1,36 @@
 package decok.dfcdvadstf.catframe.model.render;
 
-import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
-import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLighting;
+import decok.dfcdvadstf.catframe.model.render.pipeline.RenderCommandBuffers;
+import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
+import decok.dfcdvadstf.catframe.model.render.pipeline.RenderType;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
-import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
-import javax.vecmath.Point3d;
-import java.util.List;
 
 /**
- * Uniform Render Pipeline. The responsibility is limited to:
- * <ol>
- *   <li>Create {@link RenderContext} and fill default values (brightness, direction shadow)</li>
- *   <li>Dispatch the {@link ModelRenderRegistry#apply(RenderContext)} extension chain</li>
- *   <li>Submit the processed data to {@link Tessellator}</li>
- * </ol>
- *
- * <p> The pipeline is responsible for the orthogonal rendering lifecycle (GL matrix push/pop, texture binding, Tessellator drawing).
- * All extension logic (AO computation, display transform, face culling, coloring, GL_LIGHTING management)
- * has been sunk to the corresponding {@link IModelRenderExtension} implementation.
- * </p>
+ * Uniform Render Pipeline —— 延迟命令管线的<b>提交端</b>。
+ * <p>
+ * 参照原版 26w+ 延迟渲染管线（Extract → Submit → Render），本类不再"立即写 Tessellator"，
+ * 而是把每次渲染调用<b>构建为不可变 {@link RenderSubmit} 命令</b>并交给
+ * {@link RenderCommandBuffers#submit(RenderSubmit)}：
+ * <ul>
+ *   <li>方块<b>世界</b>渲染（{@link RenderPhase#BLOCK_WORLD}）→ 内联即时写入当前 chunk
+ *       Tessellator（原版 chunk 系统已完成批处理）；</li>
+ *   <li>物品 / GUI 独立绘制路径 → 进入渲染作用域命令缓冲，按 {@link RenderType}
+ *       排序批量 flush（solid→translucent、单次纹理绑定）。</li>
+ * </ul>
+ * <p>
+ * 逐顶点写入循环已抽取到
+ * {@link decok.dfcdvadstf.catframe.model.render.pipeline.QuadWriter}，
+ * 命令执行 / 批量绘制在
+ * {@link decok.dfcdvadstf.catframe.model.render.pipeline.FeatureRenderDispatcher}。
+ * <p>
+ * <b>所有 public 方法签名保持不变</b>，调用方无需改动。
  */
 public final class UniformRenderPipeline {
 
@@ -39,10 +40,7 @@ public final class UniformRenderPipeline {
     // ==================== 方块世界/GUI 渲染 ====================
 
     /**
-     * 渲染方块的 quads（世界或 GUI），包含扩展链处理和 Tessellator 提交。
-     * AO 计算由 {@link AOComputeExtension}
-     * 在扩展链中完成。Display transform 由 {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
-     * 在扩展链中管理 GL 矩阵生命周期。
+     * 渲染方块的 quads（世界或 GUI）。构建 {@link RenderSubmit} 并提交至命令管线。
      *
      * @param part        渲染部件
      * @param world       世界（GUI 时可传 null）
@@ -63,135 +61,31 @@ public final class UniformRenderPipeline {
     /**
      * 渲染方块的 quads（带 metadata 支持，用于 BLOCK_GUI 染色等场景）。
      * Display transform 已由 {@link BlockStateModelPart#getDisplay()} 持有，
-     * 由 {@link DisplayTransformExtension} 在扩展链中消费，无需通过参数传递。
+     * 由 {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
+     * 在扩展链中消费。
      *
-     * @param part        渲染部件
-     * @param metadata    方块 metadata（用于染色）
+     * @param part     渲染部件
+     * @param metadata 方块 metadata（用于染色）
      */
     public static void renderBlockQuads(BlockStateModelPart part,
                                         IBlockAccess world, int x, int y, int z,
                                         Block block, int rotationDeg,
                                         RenderPhase phase,
                                         int metadata) {
-        Tessellator t = Tessellator.instance;
+        if (part == null) return;
+
         boolean isGui = (phase == RenderPhase.BLOCK_GUI);
+        // 方块渲染绑定 blocks atlas；GUI 恒开混合（对齐改造前 renderBlockQuads GUI 路径），
+        // 世界渲染不透明。方块路径均不关闭面剔除（disableCull=false）。
+        RenderType type = isGui ? RenderType.BLOCK_ATLAS_TRANSLUCENT : RenderType.BLOCK_ATLAS_SOLID;
 
-        List<BakedQuad> allQuads = part.getAllQuads();
-
-        double a = Math.toRadians(rotationDeg);
-        double cos = Math.cos(a), sin = Math.sin(a);
-        Point3d tmpVec = new Point3d();
-
-        // [C3 修复] 所有 GL 状态操作移入 try 块内，确保异常时 finally 能正确恢复
-        try {
-            if (isGui) {
-                // GUI 方块渲染：启用混合以支持纹理 alpha 通道（如玻璃、树叶透明边缘）
-                GL11.glEnable(GL11.GL_BLEND);
-                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            }
-
-            Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
-
-            // 生命周期：quad 处理前
-            ModelRenderRegistry.applyBeforePart(allQuads, phase, part);
-
-            // BLOCK_GUI 需要自行管理 Tessellator 绘制周期
-            // （ISBRH.renderInventoryBlock 不会为自定义渲染器管理 Tessellator）
-            if (isGui) {
-                t.startDrawingQuads();
-            }
-
-        boolean hasVertices = false;
-        for (BakedQuad q : allQuads) {
-            int baseBrightness = isGui ? 255
-                    : (world != null ? block.getMixedBrightnessForBlock(world, x, y, z) : 0);
-            // 方向阴影：世界与 GUI 一致，均按面方向取 CardinalLighting 系数。
-            // 这样 GUI 等轴渲染下 side 模型仍有方向阴影（顶面 1.0、侧面递减），
-            // front 模型则由 GuiLightExtension.apply() 覆盖为 shade=1.0（平面光照）。
-            float baseShade = CardinalLighting.DEFAULT.byFace(q.face);
-
-            // 创建上下文并运行扩展链
-            RenderContext ctx = new RenderContext(phase, q,
-                    world, x, y, z, block, null, baseBrightness, baseShade);
-            ctx.metadata = metadata;
-            ModelRenderRegistry.apply(ctx);
-            if (ctx.skip) continue;
-            hasVertices = true;
-
-            // 提交到 Tessellator
-            boolean hasVertexAO = ctx.aoBrightness[0] >= 0;
-
-            if (hasVertexAO && !isGui) {
-                for (int i = 0; i < 4; i++) {
-                    t.setBrightness(ctx.aoBrightness[i]);
-                    float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade * ctx.aoColorMul[i];
-                    float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade * ctx.aoColorMul[i];
-                    float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade * ctx.aoColorMul[i];
-                    t.setColorOpaque_F(cr, cg, cb);
-
-                    double vx = q.vx(i), vy = q.vy(i), vz = q.vz(i);
-                    if (rotationDeg != 0) {
-                        double px = vx - 0.5, pz = vz - 0.5;
-                        vx = px * cos - pz * sin + 0.5;
-                        vz = px * sin + pz * cos + 0.5;
-                    }
-                    // 应用 display transform（仅 BLOCK_GUI 时有值）
-                    if (ctx.displayTransform != null) {
-                        tmpVec.set(vx, vy, vz);
-                        ctx.displayTransform.transform(tmpVec);
-                        vx = tmpVec.x; vy = tmpVec.y; vz = tmpVec.z;
-                    }
-                    IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
-                    double U = icon.getInterpolatedU(q.up[i]);
-                    double V = icon.getInterpolatedV(q.vp[i]);
-                    t.addVertexWithUV(x + vx, y + vy, z + vz, U, V);
-                }
-            } else {
-                t.setBrightness(ctx.effectiveBrightness());
-                float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
-                float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
-                float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
-
-                IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
-                if (isGui) {
-                    // GUI 模式使用 RGBA 以正确处理纹理 alpha 通道
-                    t.setColorRGBA_F(cr, cg, cb, 1.0f);
-                } else {
-                    t.setColorOpaque_F(cr, cg, cb);
-                }
-                for (int i = 0; i < 4; i++) {
-                    double vx = q.vx(i), vy = q.vy(i), vz = q.vz(i);
-                    if (rotationDeg != 0) {
-                        double px = vx - 0.5, pz = vz - 0.5;
-                        vx = px * cos - pz * sin + 0.5;
-                        vz = px * sin + pz * cos + 0.5;
-                    }
-                    // 应用 display transform（仅 BLOCK_GUI 时有值）
-                    if (ctx.displayTransform != null) {
-                        tmpVec.set(vx, vy, vz);
-                        ctx.displayTransform.transform(tmpVec);
-                        vx = tmpVec.x; vy = tmpVec.y; vz = tmpVec.z;
-                    }
-                    double U = icon.getInterpolatedU(q.up[i]);
-                    double V = icon.getInterpolatedV(q.vp[i]);
-                    t.addVertexWithUV(x + vx, y + vy, z + vz, U, V);
-                }
-            }
-        }
-
-        // [W6] Tessellator 绘制与 GL 状态恢复
-        // 仅在有顶点时 draw，避免空 Tessellator 抛 IllegalStateException
-        if (isGui && hasVertices) {
-            t.draw();
-        }
-
-        } finally {
-            if (isGui) {
-                GL11.glDisable(GL11.GL_BLEND);
-            }
-            // 生命周期：quad 处理后（GuiLightExtension/DisplayTransformExtension 在此恢复 GL 状态）
-            ModelRenderRegistry.applyAfterPart();
-        }
+        RenderSubmit s = new RenderSubmit(
+                phase, part, type,
+                x, y, z, rotationDeg,
+                block, null, world, metadata,
+                null,
+                false, isGui);
+        RenderCommandBuffers.submit(s);
     }
 
     /**
@@ -213,8 +107,6 @@ public final class UniformRenderPipeline {
 
     /**
      * 渲染方块的 quads（GUI 模式，带 metadata 支持）。
-     * Display transform 已由 {@link BlockStateModelPart#getDisplay()} 持有，
-     * 由 {@link DisplayTransformExtension} 在扩展链中消费，无需通过参数传递。
      *
      * @param metadata 方块 metadata（用于 Block.getRenderColor(metadata) 染色）
      */
@@ -224,28 +116,29 @@ public final class UniformRenderPipeline {
                 RenderPhase.BLOCK_GUI, metadata);
     }
 
+    // ==================== 物品渲染 ====================
+
     /**
-     * 渲染物品的 quads（GUI / 手持 / 掉落物），含向量空间 display transform 和 GL_LIGHTING 管理。
-     * Display transform 由 {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
-     * 在扩展链中计算为 {@link Matrix4d} 矩阵，管线在顶点提交时统一执行矩阵乘法。
-     * 预变换（反抵消）同样以 Matrix4d 形式传入，在 display transform 之后应用于顶点。
+     * 渲染物品的 quads（GUI / 手持 / 掉落物 / 展示框）。构建 {@link RenderSubmit} 并提交。
+     * <p>
+     * Display transform 与 preTransform 已在扩展链 / 管线中以向量空间矩阵形式逐顶点烘焙进坐标，
+     * 因此批量 flush 时无需 GL 矩阵快照。
      *
-     * @param part    渲染部件
-     * @param stack   物品栈
-     * @param phase   渲染阶段（ITEM_GUI / ITEM_HAND_* / DROPPED_* ）
-     * @param world   世界上下文（仅 DROPPED_BLOCK_GROUND 等需要方块信息的阶段使用，其他传 null）
-     * @param x       方块 X 坐标（无世界上下文时传 0）
-     * @param y       方块 Y 坐标
-     * @param z       方块 Z 坐标
-     * @param block   方块实例（无时传 null）
+     * @param part         渲染部件
+     * @param stack        物品栈
+     * @param phase        渲染阶段（ITEM_GUI / ITEM_HAND_* / DROPPED_* / ITEM_FIXED）
+     * @param world        世界上下文（仅 DROPPED_BLOCK_GROUND 等需要方块信息的阶段使用，其他传 null）
+     * @param x            方块 X 坐标（无世界上下文时传 0）
+     * @param y            方块 Y 坐标
+     * @param z            方块 Z 坐标
+     * @param block        方块实例（无时传 null）
      * @param preTransform 可选的预变换矩阵（反抵消），在 display transform 之后作用于顶点，可为 null
      */
     public static void renderItemQuads(BlockStateModelPart part,
                                        ItemStack stack, RenderPhase phase,
                                        IBlockAccess world, int x, int y, int z, Block block,
                                        @Nullable Matrix4d preTransform) {
-        Tessellator t = Tessellator.instance;
-        List<BakedQuad> allQuads = part.getAllQuads();
+        if (part == null) return;
 
         boolean gui = (phase == RenderPhase.ITEM_GUI);
         boolean blendRequired = (gui
@@ -253,85 +146,24 @@ public final class UniformRenderPipeline {
                 || phase == RenderPhase.DROPPED_BLOCK_GROUND
                 || phase == RenderPhase.ITEM_FIXED);
 
-        Point3d tmpVec = new Point3d();
+        // 纹理图集选择：ItemBlock 的模型 quad 引用 blocks atlas，必须绑定 locationBlocksTexture；
+        // 非方块物品绑定 locationItemsTexture。getSpriteNumber()==0 亦视作 blocks atlas。
+        // 注意：getSpriteNumber() 不可靠——许多 ItemBlock 返回 1 导致绑错图集，故优先判 ItemBlock。
+        boolean isBlockItem = (stack != null && stack.getItem() instanceof ItemBlock);
+        int spriteNumber = (stack != null && stack.getItem() != null)
+                ? stack.getItem().getSpriteNumber() : 1;
+        boolean blockAtlas = (isBlockItem || spriteNumber == 0);
 
-        try {
-            // 禁用面剔除
-            GL11.glDisable(GL11.GL_CULL_FACE);
-            // 纹理图集绑定：ItemBlock 的模型 quad 引用 blocks atlas 的纹理，
-            // 必须绑定 locationBlocksTexture；非方块物品绑定 locationItemsTexture。
-            // 注意：getSpriteNumber() 不可靠——许多 ItemBlock 返回 1 导致绑错图集，
-            // 而世界渲染（renderBlockQuads）始终硬编码绑定 blocks atlas。
-            boolean isBlockItem = (stack != null && stack.getItem() instanceof net.minecraft.item.ItemBlock);
-            int spriteNumber = (stack != null && stack.getItem() != null)
-                    ? stack.getItem().getSpriteNumber() : 1;
-            Minecraft.getMinecraft().getTextureManager().bindTexture(
-                    (isBlockItem || spriteNumber == 0)
-                            ? TextureMap.locationBlocksTexture
-                            : TextureMap.locationItemsTexture);
+        RenderType type = RenderType.of(blockAtlas, blendRequired);
 
-            if (blendRequired) {
-                GL11.glEnable(GL11.GL_BLEND);
-                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            }
-
-            // 生命周期：quad 处理前（DisplayTransformExtension 在此计算 display 矩阵）
-            ModelRenderRegistry.applyBeforePart(allQuads, phase, part);
-
-            t.startDrawingQuads();
-
-            int baseBrightness = gui ? 255 : 15728880;
-            boolean hasVertices = false;
-
-            for (BakedQuad q : allQuads) {
-                float baseShade = 1.0f;
-                RenderContext ctx = new RenderContext(phase, q,
-                        world, x, y, z, block, stack, baseBrightness, baseShade);
-                ModelRenderRegistry.apply(ctx);
-                if (ctx.skip) continue;
-                hasVertices = true;
-
-                t.setBrightness(ctx.effectiveBrightness());
-                float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
-                float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
-                float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
-                if (gui) {
-                    t.setColorRGBA_F(cr, cg, cb, 1.0f);
-                } else {
-                    t.setColorOpaque_F(cr, cg, cb);
-                }
-
-                IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
-                for (int i = 0; i < 4; i++) {
-                    double U = icon.getInterpolatedU(q.up[i]);
-                    double V = icon.getInterpolatedV(q.vp[i]);
-
-                    // 向量空间变换：先应用 display transform，再应用 preTransform
-                    // 顶点变换顺序：v' = M_pre × M_display × v
-                    // 对应 GL 矩阵栈：preTransform(外) 包裹 displayTransform(内)
-                    tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
-                    if (ctx.displayTransform != null) {
-                        ctx.displayTransform.transform(tmpVec);
-                    }
-                    if (preTransform != null) {
-                        preTransform.transform(tmpVec);
-                    }
-                    t.addVertexWithUV(tmpVec.x, tmpVec.y, tmpVec.z, U, V);
-                }
-            }
-
-            if (hasVertices) {
-                t.draw();
-            }
-        } finally {
-            // 生命周期：quad 处理后（扩展恢复状态）
-            ModelRenderRegistry.applyAfterPart();
-            // 恢复 GL 状态
-            GL11.glEnable(GL11.GL_CULL_FACE);
-            if (blendRequired) {
-                GL11.glDisable(GL11.GL_BLEND);
-            }
-        }
+        // 物品路径恒关闭面剔除（对齐改造前 renderItemQuads 的 glDisable(GL_CULL_FACE)）
+        RenderSubmit s = new RenderSubmit(
+                phase, part, type,
+                x, y, z, 0,
+                block, stack, world, 0,
+                preTransform,
+                true, blendRequired);
+        RenderCommandBuffers.submit(s);
     }
 
     /**
@@ -341,6 +173,4 @@ public final class UniformRenderPipeline {
                                        ItemStack stack, RenderPhase phase) {
         renderItemQuads(part, stack, phase, null, 0, 0, 0, null, (Matrix4d) null);
     }
-
-    // ==================== 光照与阴影辅助 ====================
 }

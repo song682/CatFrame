@@ -1,11 +1,13 @@
 package decok.dfcdvadstf.catframe.model;
 
-import akka.dispatch.Futures;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.Gson;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.core.NamespaceLoadResult;
 import decok.dfcdvadstf.catframe.model.core.NamespaceLoadTask;
+import decok.dfcdvadstf.catframe.model.core.async.RenderExecutors;
 import decok.dfcdvadstf.catframe.model.impl.ModernItem;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonBlockModel;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
@@ -14,14 +16,12 @@ import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
-import scala.concurrent.Await;
-import scala.concurrent.Future;
-import scala.concurrent.duration.Duration;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 数据加载：namespace 发现、blockstate 加载、model_mappings 加载。
@@ -208,10 +208,12 @@ public class ModelManagerDataLoader {
     // ==================== 并行加载 ====================
 
     /**
-     * 使用 Akka Futures 并行加载所有已注册的 namespace。
+     * 使用 Guava {@link ListenableFuture} 并行加载所有已注册的 namespace。
      * <p>
-     * 每个 namespace 的加载由 {@link NamespaceLoadTask#execute(String)} 在独立线程中执行，
+     * 每个 namespace 的加载由 {@link NamespaceLoadTask#execute(String)} 在共享线程池中执行，
      * 所有结果收集到本地集合中，不触碰共享静态字段。
+     * <p>
+     * 复用 {@link RenderExecutors} 共享池。
      *
      * @return 所有 namespace 的加载结果列表
      */
@@ -226,33 +228,35 @@ public class ModelManagerDataLoader {
             return results;
         }
 
-        // 多 namespace 并行：使用 Akka ActorSystem 的 dispatcher 作为 ExecutionContext
-        scala.concurrent.ExecutionContext ec =
-                akka.actor.ActorSystem.create("VMM-Loader")
-                        .dispatcher();
-
-        List<Future<NamespaceLoadResult>> futures = new ArrayList<>();
-        for (final String namespace : namespaces) {
-            Future<NamespaceLoadResult> f = Futures.future(
+        // 多 namespace 并行：使用 Guava 共享线程池
+        List<ListenableFuture<NamespaceLoadResult>> futures = new ArrayList<>();
+        for (final String namespace : nsList) {
+            ListenableFuture<NamespaceLoadResult> f = RenderExecutors.get().submit(
                     new Callable<NamespaceLoadResult>() {
                         @Override
                         public NamespaceLoadResult call() {
                             return NamespaceLoadTask.execute(namespace);
                         }
-                    }, ec);
+                    });
             futures.add(f);
         }
 
-        // 等待所有 Future 完成（最多 30 秒）
-        List<NamespaceLoadResult> results = new ArrayList<>();
-        for (Future<NamespaceLoadResult> f : futures) {
-            try {
-                results.add(Await.result(f, Duration.create(30, "seconds")));
-            } catch (Exception e) {
-                CatFrame.logger.error("[VMM] namespace load failed: {}", e.getMessage());
+        // 等待所有 Future 完成（最多 30 秒），保持原超时语义
+        try {
+            return new ArrayList<>(Futures.allAsList(futures).get(30, TimeUnit.SECONDS));
+        } catch (Exception e) {
+            CatFrame.logger.error("[VMM] namespace parallel load failed: {}", e.getMessage());
+            // 回退：逐个同步执行，尽量收集成功结果
+            List<NamespaceLoadResult> results = new ArrayList<>();
+            for (String namespace : nsList) {
+                try {
+                    results.add(NamespaceLoadTask.execute(namespace));
+                } catch (Exception ex) {
+                    CatFrame.logger.error("[VMM] namespace load failed: {}", ex.getMessage());
+                }
             }
+            return results;
         }
-        return results;
     }
 
     /**

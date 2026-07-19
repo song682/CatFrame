@@ -5,6 +5,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
+import decok.dfcdvadstf.catframe.model.render.pipeline.RenderCommandBuffers;
 import decok.dfcdvadstf.catframe.model.state.*;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.block.Block;
@@ -223,7 +224,14 @@ public class RenderDispatcher {
         // --- Check registered IItemState model (GTNHLib-style: ItemBlock falls back to block model) ---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
-            itemModel.render(stack, RenderPhase.ITEM_GUI);
+            // 开渲染作用域：物品的多个子模型（双模型/composite/多层）在作用域内累积，
+            // endScope 时按 RenderType 排序批量 flush（solid→translucent、单次纹理绑定）。
+            RenderCommandBuffers.beginScope();
+            try {
+                itemModel.render(stack, RenderPhase.ITEM_GUI);
+            } finally {
+                RenderCommandBuffers.endScope();
+            }
         }
     }
 
@@ -257,7 +265,12 @@ public class RenderDispatcher {
         // --- Check registered IItemState model (GTNHLib-style: ItemBlock falls back to block model) ---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
-            itemModel.render(stack, phase);
+            RenderCommandBuffers.beginScope();
+            try {
+                itemModel.render(stack, phase);
+            } finally {
+                RenderCommandBuffers.endScope();
+            }
         }
     }
 
@@ -295,7 +308,12 @@ public class RenderDispatcher {
         // --- Check registered IItemState model ---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
-            itemModel.render(stack, phase);
+            RenderCommandBuffers.beginScope();
+            try {
+                itemModel.render(stack, phase);
+            } finally {
+                RenderCommandBuffers.endScope();
+            }
         }
     }
 
@@ -321,7 +339,12 @@ public class RenderDispatcher {
         // --- Check registered IItemState model ---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
-            itemModel.render(stack, phase);
+            RenderCommandBuffers.beginScope();
+            try {
+                itemModel.render(stack, phase);
+            } finally {
+                RenderCommandBuffers.endScope();
+            }
         }
     }
 
@@ -370,7 +393,12 @@ public class RenderDispatcher {
         // --- Check registered IItemState model (GTNHLib-style: ItemBlock falls back to block model) ---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
-            itemModel.render(stack, RenderPhase.ITEM_FIXED, framePreTransform);
+            RenderCommandBuffers.beginScope();
+            try {
+                itemModel.render(stack, RenderPhase.ITEM_FIXED, framePreTransform);
+            } finally {
+                RenderCommandBuffers.endScope();
+            }
         }
     }
 }

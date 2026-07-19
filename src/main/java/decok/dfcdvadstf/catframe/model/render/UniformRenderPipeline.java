@@ -105,8 +105,10 @@ public final class UniformRenderPipeline {
         for (BakedQuad q : allQuads) {
             int baseBrightness = isGui ? 255
                     : (world != null ? block.getMixedBrightnessForBlock(world, x, y, z) : 0);
-            float baseShade = isGui ? 1.0f
-                    : CardinalLighting.DEFAULT.byFace(q.face);
+            // 方向阴影：世界与 GUI 一致，均按面方向取 CardinalLighting 系数。
+            // 这样 GUI 等轴渲染下 side 模型仍有方向阴影（顶面 1.0、侧面递减），
+            // front 模型则由 GuiLightExtension.apply() 覆盖为 shade=1.0（平面光照）。
+            float baseShade = CardinalLighting.DEFAULT.byFace(q.face);
 
             // 创建上下文并运行扩展链
             RenderContext ctx = new RenderContext(phase, q,

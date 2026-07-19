@@ -4,6 +4,8 @@ import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+
 import org.lwjgl.opengl.GL11;
 
 import java.util.List;
@@ -14,9 +16,9 @@ import java.util.List;
  * <p>根据 JSON model 的 {@code gui_light} 设置来控制方向阴影和 OpenGL GL_LIGHTING 状态：
  * <ul>
  *   <li>{@code "front"} — 正面光照，无方向阴影（{@link RenderContext#shade} = 1.0），
- *       关闭 GL_LIGHTING（平面光照）。{@code afterPart} 自动恢复。</li>
+ *       关闭 GL_LIGHTING（平面光照，如物品）。{@code afterPart} 自动恢复。</li>
  *   <li>{@code "side"} — 侧面光照，保留默认方向阴影（{@code shade} 由法线决定），
- *       保持 GL_LIGHTING 状态，由 OpenGL 根据法线计算方向亮度。</li>
+ *       不修改 GL_LIGHTING 状态。</li>
  *   <li>未设置 — 默认 {@code "side"} 行为。</li>
  * </ul>
  *
@@ -38,10 +40,10 @@ public final class GuiLightExtension implements IModelRenderExtension {
     private boolean changedLighting = false;
 
     @Override
-    public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, decok.dfcdvadstf.catframe.model.state.BlockStateModelPart part) {
-        // 所有渲染阶段均按模型 gui_light 字段决定：
-        // "front" 关闭 GL_LIGHTING，使所有面均匀受光（平面光照）；
-        // "side" 或 null 保持 GL_LIGHTING 原状态，由 OpenGL 根据法线产生方向阴影。
+    @SuppressWarnings("deprecation")
+    public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
+
+        // 方块渲染：按模型 gui_light 字段决定
         boolean frontLight = needsFrontLighting(allQuads);
         if (frontLight) {
             changedLighting = true;

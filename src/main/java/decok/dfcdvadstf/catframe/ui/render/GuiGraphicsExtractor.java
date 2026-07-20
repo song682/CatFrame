@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.ui;
+package decok.dfcdvadstf.catframe.ui.render;
 
 import decok.dfcdvadstf.catframe.core.component.DataComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;

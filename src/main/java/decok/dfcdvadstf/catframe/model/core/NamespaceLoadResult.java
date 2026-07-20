@@ -38,13 +38,17 @@ public class NamespaceLoadResult {
     /** items/ ItemState 决策树: itemName → 决策树根节点 */
     public final Map<String, ItemStateNode> itemStates;
 
+    /** 声明 {@code oversized_in_gui=true} 的物品名集合 */
+    public final Set<String> oversizedItems;
+
     public NamespaceLoadResult(String namespace,
                                Map<String, BlockstateJson> blockstates,
                                VanillaModelManager.ModelMappings mappings,
                                Map<String, Map<Integer, Map<String, String>>> metadataMaps,
                                Set<String> blockTextures,
                                Set<String> itemTextures,
-                               Map<String, ItemStateNode> itemStates) {
+                               Map<String, ItemStateNode> itemStates,
+                               Set<String> oversizedItems) {
         this.namespace = namespace;
         this.blockstates = blockstates;
         this.mappings = mappings;
@@ -52,5 +56,6 @@ public class NamespaceLoadResult {
         this.blockTextures = blockTextures;
         this.itemTextures = itemTextures;
         this.itemStates = itemStates;
+        this.oversizedItems = oversizedItems;
     }
 }

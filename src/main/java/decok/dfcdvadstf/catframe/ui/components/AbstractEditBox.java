@@ -37,7 +37,6 @@ public class AbstractEditBox extends AbstractComponent {
     private String text = "";
     private String hint = "";
     private int maxLength = 32;
-    private boolean focused;
     private int cursorPosition;
     private int selectionEnd;
     private int cursorCounter;
@@ -117,14 +116,6 @@ public class AbstractEditBox extends AbstractComponent {
 
     public int getMaxLength() {
         return maxLength;
-    }
-
-    public void setFocused(boolean focused) {
-        this.focused = focused;
-    }
-
-    public boolean isFocused() {
-        return focused;
     }
 
     public Text getMessage() {
@@ -284,9 +275,11 @@ public class AbstractEditBox extends AbstractComponent {
         // Update cursor counter
         cursorCounter++;
 
+        boolean focused = isFocused();
+
         // Draw background
         if (useVanillaTexture) {
-            drawVanillaBackground();
+            drawVanillaBackground(focused);
         } else if (useTextureBackground) {
             ResourceLocation tex = focused ? TEXT_FIELD_HIGHLIGHTED_TEXTURE : TEXT_FIELD_TEXTURE;
             TextureStretching.drawAutoNinePatch(tex, x, y, width, height,
@@ -331,9 +324,14 @@ public class AbstractEditBox extends AbstractComponent {
         }
     }
 
-    /** Draw vanilla-style grey border + black fill background. */
-    private void drawVanillaBackground() {
-        drawRect(x - 1, y - 1, x + width + 1, y + height + 1, 0xFFA0A0A0);
+    /**
+     * Draw vanilla-style border + black fill background. When focused the border
+     * is highlighted white, matching vanilla {@code EditBox}.
+     * <p>绘制原版风格边框 + 黑色填充背景。获得焦点时边框高亮为白色，与原版 {@code EditBox} 一致。</p>
+     */
+    private void drawVanillaBackground(boolean focused) {
+        int borderColor = focused ? 0xFFFFFFFF : 0xFFA0A0A0;
+        drawRect(x - 1, y - 1, x + width + 1, y + height + 1, borderColor);
         drawRect(x, y, x + width, y + height, 0xFF000000);
     }
 

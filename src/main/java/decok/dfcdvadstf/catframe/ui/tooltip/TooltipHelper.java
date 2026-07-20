@@ -5,7 +5,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.PatchedDataComponentMap;
 import decok.dfcdvadstf.catframe.core.component.predicates.RegisteredComponents;
-import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
+import decok.dfcdvadstf.catframe.ui.render.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.item.ItemStack;

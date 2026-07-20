@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.layouts;
 
+import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -17,9 +18,7 @@ import java.util.function.Consumer;
  *
  * <p>
  * HeaderFooterLayout —— 三区域布局：顶部 header、中间 content、底部 footer。
- * 内部使用三个 {@link FrameLayout} 实例。默认会用
- * {@link ContentPanelRenderer#drawContentPanel} 绘制自身，
- * 内置平铺背景 + 顶底分隔线。调用 {@link #setDrawPanel(boolean) setDrawPanel(false)} 跳过绘制。
+ * 内部使用三个 {@link FrameLayout} 实例。
  * </p>
  */
 public class HeaderFooterLayout extends AbstractLayout {

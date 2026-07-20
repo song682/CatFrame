@@ -285,6 +285,10 @@ public class VanillaModelManager {
 
                     ModelRegistry.registeredItemModels.put(item,
                             new ItemStateModel(itemEntry.getValue()));
+                    Set<String> nsOversized = ModelManagerDataLoader.loadedOversizedItems.get(namespace);
+                    if (nsOversized != null && nsOversized.contains(itemName)) {
+                        ModelRegistry.oversizedItems.add(item);
+                    }
                     CatFrame.logger.debug("[VMM] Registered ItemState: {}:{}", namespace, itemName);
                 }
             }
@@ -388,6 +392,10 @@ public class VanillaModelManager {
                     if (item == null) continue;
                     ModelRegistry.registeredItemModels.put(item,
                             new ItemStateModel(itemEntry.getValue()));
+                    Set<String> nsOversized = ModelManagerDataLoader.loadedOversizedItems.get(namespace);
+                    if (nsOversized != null && nsOversized.contains(itemEntry.getKey())) {
+                        ModelRegistry.oversizedItems.add(item);
+                    }
                 }
             }
 

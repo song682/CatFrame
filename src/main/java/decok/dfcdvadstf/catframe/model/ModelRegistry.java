@@ -38,6 +38,8 @@ public class ModelRegistry {
     public static final Map<Block, Map<Integer, Integer>> registeredBlockRotations = new HashMap<>();
     public static final Map<Item, IItemStateProvider> registeredItemModels = new HashMap<>();
     public static final Set<Item> persistentItemModels = new HashSet<>();
+    /** items with {@code oversized_in_gui=true} — GUI 中允许模型几何溢出槽位（走 PiP 通道，不裁剪不钳制）。 */
+    public static final Set<Item> oversizedItems = new HashSet<>();
     static final Set<Item> autoDiscoveryMissCache = new HashSet<>();
     static final Set<Block> randomRotationBlocks = new HashSet<>();
     static final Set<Block> autoOverlayBlocks = new HashSet<>();
@@ -195,6 +197,16 @@ public class ModelRegistry {
                 MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
             }
             return wrapper;
+        }
+
+        /**
+         * Check if an item opts into oversized GUI rendering ({@code oversized_in_gui=true}).
+         * <p>
+         * When true, {@code GuiGraphicsExtractor.item()} routes the stack to the PiP
+         * oversized channel (natural size, no slot scissor, no clamp).
+         */
+        public static boolean isOversizedInGui(Item item) {
+            return item != null && oversizedItems.contains(item);
         }
 
         /**

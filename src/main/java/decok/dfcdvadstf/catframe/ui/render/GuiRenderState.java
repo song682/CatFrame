@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.ui;
+package decok.dfcdvadstf.catframe.ui.render;
 
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenArea;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;

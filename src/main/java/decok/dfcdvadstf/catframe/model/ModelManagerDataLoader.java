@@ -48,6 +48,8 @@ public class ModelManagerDataLoader {
     static final Map<Block, IMetadataBlockstateRedirect> blockstateRedirects = new HashMap<>();
     public static final Map<Item, IItemStateProvider> interfaceItemStates = new LinkedHashMap<>();
     public static final Map<String, Map<String, ItemStateNode>> loadedItemStates = new HashMap<>();
+    /** namespace → 声明 {@code oversized_in_gui=true} 的物品名集合。 */
+    public static final Map<String, Set<String>> loadedOversizedItems = new HashMap<>();
 
     // ==================== 初始化 ====================
 
@@ -80,6 +82,9 @@ public class ModelManagerDataLoader {
             }
             if (!result.itemStates.isEmpty()) {
                 loadedItemStates.put(result.namespace, result.itemStates);
+            }
+            if (result.oversizedItems != null && !result.oversizedItems.isEmpty()) {
+                loadedOversizedItems.put(result.namespace, result.oversizedItems);
             }
             // 合并纹理收集结果
             VanillaTextureTracker.pendingTextures.addAll(result.blockTextures);

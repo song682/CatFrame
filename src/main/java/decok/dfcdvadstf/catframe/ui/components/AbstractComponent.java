@@ -17,6 +17,7 @@ public abstract class AbstractComponent implements Component, TabOrderedElement 
     protected boolean active = true;
     protected float alpha = 1.0F;
     protected boolean isHovered;
+    protected boolean focused;
 
     // ──── Constructors ────
 
@@ -104,6 +105,18 @@ public abstract class AbstractComponent implements Component, TabOrderedElement 
 
     public boolean isHovered() {
         return isHovered;
+    }
+
+    // ──── Focus ────
+
+    @Override
+    public boolean isFocused() {
+        return focused;
+    }
+
+    @Override
+    public void setFocused(boolean focused) {
+        this.focused = focused;
     }
 
     // ──── Convenience ────

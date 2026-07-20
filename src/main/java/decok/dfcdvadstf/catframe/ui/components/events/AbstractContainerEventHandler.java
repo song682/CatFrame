@@ -1,60 +1,68 @@
-package decok.dfcdvadstf.catframe.ui.components;
+package decok.dfcdvadstf.catframe.ui.components.events;
 
-import decok.dfcdvadstf.catframe.ui.components.events.ComponentPath;
-import decok.dfcdvadstf.catframe.ui.components.events.ContainerEventHandler;
+import decok.dfcdvadstf.catframe.ui.components.AbstractComponent;
+import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 
 import javax.annotation.Nullable;
 
 /**
  * <p>
- * 容器控件 —— 组合滚动能力与焦点管理/事件分发。<br>
- * 对标高版本 Minecraft 的 {@code AbstractContainerWidget}。
+ * 容器事件处理器抽象基类 —— 为「无滚动」容器提供焦点字段、拖动状态与事件分发。<br>
+ * 对标高版本 Minecraft 的 {@code AbstractContainerEventHandler}。
  * </p>
  * <p>
- * Container widget — combines scrolling with focus management and event dispatch.<br>
- * Counterpart of the high-version Minecraft {@code AbstractContainerWidget}.
+ * Abstract base for container event handling — provides focus fields, dragging state and
+ * event dispatch for non-scrolling containers. Counterpart of the high-version Minecraft
+ * {@code AbstractContainerEventHandler}.
+ * </p>
+ * <p>
+ * 注：带滚动的容器请使用 {@link decok.dfcdvadstf.catframe.ui.components.AbstractContainerWidget}
+ * （它继承 {@code AbstractScrollArea}，无法再继承本类，但同样实现 {@link ContainerEventHandler}）。
  * </p>
  */
-public abstract class AbstractContainerWidget extends AbstractScrollArea implements ContainerEventHandler {
+public abstract class AbstractContainerEventHandler extends AbstractComponent implements ContainerEventHandler {
 
     @Nullable
-    private Component focused;
-    private boolean containerDragging;
+    private Component focusedChild;
+    private boolean dragging;
 
-    public AbstractContainerWidget(int x, int y, int width, int height, ScrollbarSettings scrollbarSettings) {
-        super(x, y, width, height, scrollbarSettings);
+    public AbstractContainerEventHandler() {
     }
 
-    // ──── ContainerEventHandler: dragging ────
+    public AbstractContainerEventHandler(int x, int y, int width, int height) {
+        super(x, y, width, height);
+    }
+
+    // ──── Dragging ────
 
     @Override
     public final boolean isDragging() {
-        return containerDragging;
+        return dragging;
     }
 
     @Override
     public final void setDragging(boolean dragging) {
-        this.containerDragging = dragging;
+        this.dragging = dragging;
     }
 
-    // ──── ContainerEventHandler: focus ────
+    // ──── Focus ────
 
     @Nullable
     @Override
     public Component getFocused() {
-        return focused;
+        return focusedChild;
     }
 
     @Override
     public void setFocused(@Nullable Component focused) {
-        if (this.focused == focused) {
+        if (this.focusedChild == focused) {
             return;
         }
-        if (this.focused != null) {
-            this.focused.setFocused(false);
+        if (this.focusedChild != null) {
+            this.focusedChild.setFocused(false);
         }
-        this.focused = focused;
+        this.focusedChild = focused;
         if (focused != null) {
             focused.setFocused(true);
         }
@@ -76,28 +84,27 @@ public abstract class AbstractContainerWidget extends AbstractScrollArea impleme
         return nextFocusPathInContainer(event);
     }
 
-    // ──── Event handling ────
-    // Component uses void return for event methods.
-    // We delegate to ContainerEventHandler's dispatch* methods internally.
+    // ──── Event handling (delegates to ContainerEventHandler dispatch) ────
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        // First check if we're starting to drag the scrollbar
-        updateScrolling(mouseX, mouseY, mouseButton);
-        // Then dispatch to children via ContainerEventHandler
         dispatchMouseClicked(mouseX, mouseY, mouseButton);
     }
 
     @Override
     public void mouseReleased(int mouseX, int mouseY, int mouseButton) {
-        super.mouseReleased(mouseX, mouseY, mouseButton);
         dispatchMouseReleased(mouseX, mouseY, mouseButton);
     }
 
     @Override
     public void mouseDrag(int mouseX, int mouseY, int mouseButton, long timeSinceLastClick) {
-        super.mouseDrag(mouseX, mouseY, mouseButton, timeSinceLastClick);
         dispatchMouseDragged(mouseX, mouseY, mouseButton, timeSinceLastClick);
+    }
+
+    @Override
+    public void mouseScrolled(int delta) {
+        // Non-scrolling container: forward to whichever child is hovered handled by
+        // dispatchMouseScrolled requires coordinates; subclasses may override.
     }
 
     @Override

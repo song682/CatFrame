@@ -2,10 +2,13 @@ package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.item.ItemStack;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 物品状态模型接口 — CatFrame 物品渲染的唯一抽象。
@@ -85,5 +88,18 @@ public interface IItemStateProvider {
     default void render(ItemStack stack, RenderPhase phase,
                         @Nullable Matrix4d preTransform) {
         render(stack, phase);
+    }
+
+    /**
+     * 返回该物品在 GUI 阶段选中的烘焙模型部件列表 — 供 GUI 溢出检测（oversized 保护）测量几何边界。
+     * <p>
+     * 默认返回空列表（视为不超出槽位，不触发钳制）。决策树驱动的实现应求值 GUI 阶段属性、
+     * 收集选中路径对应的 {@link BlockStateModelPart}。
+     *
+     * @param stack 物品栈
+     * @return GUI 阶段选中的模型部件（可能为空）
+     */
+    default List<BlockStateModelPart> getGuiModelParts(ItemStack stack) {
+        return Collections.emptyList();
     }
 }

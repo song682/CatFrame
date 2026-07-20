@@ -7,6 +7,7 @@ import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateRoot;
 
 import net.minecraft.item.Item;
 
@@ -89,6 +90,7 @@ public class NamespaceLoadTask {
         Set<String> localBlockTextures = new LinkedHashSet<>();
         Set<String> localItemTextures = new LinkedHashSet<>();
         Map<String, ItemStateNode> localItemStates = new HashMap<>();
+        Set<String> localOversizedItems = new HashSet<>();
 
         // 1. 加载 model_mappings.json
         localMappings = loadModelMappings(namespace, localBlockTextures, localItemTextures);
@@ -101,13 +103,13 @@ public class NamespaceLoadTask {
         loadMetadataMaps(namespace, localMetadataMaps);
 
         // 4. 加载 items/ ItemState 决策树
-        loadItemStates(namespace, localItemStates, localBlockTextures, localItemTextures, localMappings);
+        loadItemStates(namespace, localItemStates, localBlockTextures, localItemTextures, localMappings, localOversizedItems);
 
         CatFrame.logger.debug("[NamespaceLoadTask] namespace '{}' loaded: {} blockstates, {} item states, {} block textures, {} item textures",
                 namespace, localBlockstates.size(), localItemStates.size(), localBlockTextures.size(), localItemTextures.size());
 
         return new NamespaceLoadResult(namespace, localBlockstates, localMappings,
-                localMetadataMaps, localBlockTextures, localItemTextures, localItemStates);
+                localMetadataMaps, localBlockTextures, localItemTextures, localItemStates, localOversizedItems);
     }
 
     // ==================== 内部加载方法（从 VMMDataLoader 提取，改为写本地集合） ====================
@@ -253,7 +255,8 @@ public class NamespaceLoadTask {
                                         Map<String, ItemStateNode> localItemStates,
                                         Set<String> localBlockTextures,
                                         Set<String> localItemTextures,
-                                        VanillaModelManager.ModelMappings mappings) {
+                                        VanillaModelManager.ModelMappings mappings,
+                                        Set<String> localOversizedItems) {
         Set<String> itemNames = new LinkedHashSet<>();
 
         // 1. 遍历 Item 注册表自动发现（与高版本 Minecraft 行为一致：有 items/{name}.json 就加载）
@@ -284,9 +287,13 @@ public class NamespaceLoadTask {
                 JsonObject json = GSON.fromJson(reader, JsonObject.class);
                 if (json == null) continue;
 
-                ItemStateNode root = ItemStateNode.parseRoot(json);
+                ItemStateRoot rootFull = ItemStateNode.parseRootFull(json);
+                ItemStateNode root = rootFull != null ? rootFull.model : null;
                 if (root != null) {
                     localItemStates.put(itemName, root);
+                    if (rootFull.oversizedInGui) {
+                        localOversizedItems.add(itemName);
+                    }
                     // 收集决策树中引用的所有模型纹理
                     Set<String> modelPaths = new HashSet<>();
                     root.collectModelPaths(modelPaths);

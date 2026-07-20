@@ -172,4 +172,24 @@ public class ItemStateModel implements IItemStateProvider {
     public ItemStateNode getRootNode() {
         return rootNode;
     }
+
+    /**
+     * GUI 阶段求值决策树，收集选中路径对应的烘焙模型部件（供 oversized 溢出检测）。
+     */
+    @Override
+    public List<BlockStateModelPart> getGuiModelParts(ItemStack stack) {
+        Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, RenderPhase.ITEM_GUI);
+        EvalResult result = rootNode.evaluate(props);
+        if (result.isEmpty()) return java.util.Collections.emptyList();
+
+        List<BlockStateModelPart> parts = new java.util.ArrayList<>();
+        for (String path : result.getModels()) {
+            String cacheKey = BakedModelCache.buildKey(path, 0, 0);
+            BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
+            if (part != null && !part.isEmpty()) {
+                parts.add(part);
+            }
+        }
+        return parts;
+    }
 }

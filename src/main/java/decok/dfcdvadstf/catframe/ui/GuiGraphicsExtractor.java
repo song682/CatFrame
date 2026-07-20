@@ -5,11 +5,21 @@ import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.ui.tooltip.*;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+
+import javax.annotation.Nullable;
+import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * GUI 渲染上下文管理器 — 对标 26.1.2 {@code GuiGraphics}。
@@ -33,11 +43,10 @@ import org.lwjgl.opengl.GL11;
  *
  * <h3>使用方式</h3>
  * <pre>{@code
- * GuiGraphicsExtractor gui = new GuiGraphicsExtractor();
- * gui.item(stack, 0, 0);  // 在 GUI 中渲染物品（含附魔光效）
- *
- * // 帧开始时重置
- * gui.getRenderState().reset();
+ * GuiGraphicsExtractor gui = GuiGraphicsExtractor.getInstance();
+ * gui.resetForNewFrame();          // 帧开始（drawScreen HEAD）
+ * gui.item(stack, x, y);           // 提取：快照矩阵 + 收集状态（不立即绘制）
+ * gui.extractDeferredElements();   // 帧末（drawScreen RETURN）统一 flush 物品 + tooltip
  * }</pre>
  */
 public class GuiGraphicsExtractor {
@@ -53,14 +62,34 @@ public class GuiGraphicsExtractor {
     private static final int GL_SAVE_MASK =
             GL11.GL_ENABLE_BIT | GL11.GL_TEXTURE_BIT | GL11.GL_CURRENT_BIT;
 
+    /** 全局单例 — 1.7.10 没有每帧创建 GuiGraphics 的机制，用单例替代 */
+    private static final GuiGraphicsExtractor INSTANCE = new GuiGraphicsExtractor();
+
+    /**
+     * modelview 矩阵快照/恢复缓冲（客户端单线程复用）。
+     * <p>采集时 {@code glGetFloat} 写入后立即拷贝为 {@code float[16]}，flush 时再填回供 {@code glLoadMatrix}。</p>
+     */
+    private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
+
     private final Minecraft mc;
 
     /** 完整分层状态收集器（对标 26.1.2 GuiRenderState） */
     private final GuiRenderState renderState;
 
+    /** 延迟 tooltip — 对标 26.1.2 {@code GuiGraphics.deferredTooltip} */
+    @Nullable
+    private Runnable deferredTooltip;
+
     public GuiGraphicsExtractor() {
         this.mc = Minecraft.getMinecraft();
         this.renderState = new GuiRenderState();
+    }
+
+    /**
+     * 获取全局单例。
+     */
+    public static GuiGraphicsExtractor getInstance() {
+        return INSTANCE;
     }
 
     // ==================== 物品渲染 ====================
@@ -73,23 +102,43 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 在 GUI 中渲染物品。
+     * 在 GUI 中渲染物品（<b>延迟到帧末</b>）。
      * <p>
-     * 完整流程：
-     * <ol>
-     *   <li>{@code glPushAttrib} 保存当前 GL 状态</li>
-     *   <li>设置 GUI 物品渲染 GL 环境（enable depth, disable lighting, enable alpha/blend）</li>
-     *   <li>委托 {@link IItemStateProvider#render} 渲染模型</li>
-     *   <li>若物品有附魔，渲染附魔光效</li>
-     *   <li>将渲染记录提交到 {@link GuiRenderState}（自动分层）</li>
-     *   <li>{@code glPopAttrib} 恢复所有 GL 状态</li>
-     * </ol>
+     * 对标 LaterRenderer.md 路径一 / 26.1.2 {@code GuiGraphics.item()}：<b>提取阶段不绘制</b>，
+     * 仅快照当前 modelview 矩阵并将渲染状态收集到 {@link GuiRenderState} 树，
+     * 实际 GL 绘制推迟到 {@link #extractDeferredElements()}。
+     * <p>
+     * 与 {@code RenderCommandBuffers} 的<b>作用域内延迟</b>（begin→submit→endScope 均在同一 GL
+     * 上下文内 flush，无需矩阵快照）不同：<b>帧末延迟</b>的 flush 发生在 {@code drawScreen}
+     * 返回时，GL 上下文已切换，故必须在此快照 modelview 矩阵，帧末 {@code glLoadMatrix} 恢复。
      *
      * @param stack 待渲染的物品栈
-     * @param x     GUI 槽位 X 坐标（像素）
-     * @param y     GUI 槽位 Y 坐标（像素）
+     * @param x     GUI 槽位 X 坐标（像素，仅用于分层/追踪）
+     * @param y     GUI 槽位 Y 坐标（像素，仅用于分层/追踪）
      */
     public void item(ItemStack stack, int x, int y) {
+        if (stack == null || stack.getItem() == null) return;
+
+        IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
+        if (model == null) return;
+
+        // 延迟渲染：仅快照调用点的 modelview 矩阵 + 收集状态，不立即绘制。
+        float[] pose = captureModelViewMatrix();
+        renderState.addItem(new GuiRenderState.ItemRenderState(stack, x, y, pose));
+    }
+
+    /**
+     * 实际绘制一个已收集的物品渲染状态 — 对标 26.1.2 {@code GuiRenderer.prepareItemElements()} 的消费端。
+     * <p>
+     * 从旧 {@code item()} 抽取的即时渲染逻辑，由 {@link #extractDeferredElements()} 帧末统一驱动：
+     * <ol>
+     *   <li>{@code glPushAttrib} 保存 GL 状态 + 设置物品渲染环境</li>
+     *   <li>{@code glLoadMatrix} 恢复收集时的 modelview 矩阵（精确复现调用点的位置/缩放）</li>
+     *   <li>委托 {@link IItemStateProvider#render} 渲染模型 + 叠加附魔光效</li>
+     * </ol>
+     */
+    private void renderDeferredItem(GuiRenderState.ItemRenderState state) {
+        ItemStack stack = state.getStack();
         if (stack == null || stack.getItem() == null) return;
 
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
@@ -98,22 +147,40 @@ public class GuiGraphicsExtractor {
         // 保存完整 GL 状态 — 不依赖手动逐条恢复
         GL11.glPushAttrib(GL_SAVE_MASK);
         setupItemRenderState();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPushMatrix();
         try {
+            // 恢复收集时的 modelview 矩阵 — 帧末 GL 上下文已切换，需据快照重建调用点变换
+            float[] pose = state.getPoseMatrix();
+            if (pose != null) {
+                MATRIX_BUFFER.clear();
+                MATRIX_BUFFER.put(pose);
+                MATRIX_BUFFER.flip();
+                GL11.glLoadMatrix(MATRIX_BUFFER);
+            }
+
             // GUI 上下文不需要反抵消预变换（Forge INVENTORY 路径无 Forge 前置变换）
             model.render(stack, RenderPhase.ITEM_GUI, null);
 
             // 附魔光效 — 在模型渲染后叠加
-            // 对标 26.1.2 hasFoil()：先查 ENCHANTMENT_GLINT 组件，再走 hasEffect(0)
             if (hasFoil(stack)) {
                 renderEnchantmentGlint();
             }
-
-            // 提交到分层状态收集器（自动分层）
-            renderState.addItem(new GuiRenderState.ItemRenderState(stack, x, y));
         } finally {
-            // 一条 glPopAttrib 恢复所有 pushAttrib 前保存的状态
+            GL11.glPopMatrix();
             GL11.glPopAttrib();
         }
+    }
+
+    /**
+     * 快照当前 modelview 矩阵 — 供帧末延迟渲染恢复调用点的 GL 变换。
+     */
+    private static float[] captureModelViewMatrix() {
+        MATRIX_BUFFER.clear();
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, MATRIX_BUFFER);
+        float[] m = new float[16];
+        MATRIX_BUFFER.get(m);
+        return m;
     }
 
     // ==================== GL 状态管理 ====================
@@ -224,5 +291,185 @@ public class GuiGraphicsExtractor {
      */
     public GuiRenderState getRenderState() {
         return renderState;
+    }
+
+    // ==================== 延迟 Tooltip（对标 26.1.2 GuiGraphics.setTooltipForNextFrame） ====================
+
+    /**
+     * 设置简单文本 tooltip。
+     */
+    public void setTooltipForNextFrame(String text, int x, int y) {
+        List<String> lines = new ArrayList<>();
+        lines.add(text);
+        setTooltipForNextFrame(lines, x, y);
+    }
+
+    /**
+     * 设置多行文本 tooltip（使用默认定位器）。
+     */
+    public void setTooltipForNextFrame(List<String> lines, int x, int y) {
+        setTooltipForNextFrame(mc.fontRenderer, lines, DefaultTooltipPositioner.INSTANCE, x, y, false);
+    }
+
+    /**
+     * 设置物品 tooltip（含 component + style）。
+     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, ItemStack, int, int)}。</p>
+     */
+    public void setTooltipForNextFrame(FontRenderer font, ItemStack stack, int xo, int yo) {
+        if (stack == null) return;
+        List<String> lines = TooltipHelper.getTooltipFromItem(mc, stack);
+        Optional<TooltipComponent> image = TooltipHelper.getTooltipImage(stack);
+        ResourceLocation style = TooltipHelper.getTooltipStyle(stack);
+        setTooltipForNextFrame(font, lines, image, DefaultTooltipPositioner.INSTANCE, xo, yo, false, style);
+    }
+
+    /**
+     * 设置多行文本 tooltip（指定定位器）。
+     */
+    public void setTooltipForNextFrame(FontRenderer font, List<String> lines,
+                                       ClientTooltipPositioner positioner,
+                                       int xo, int yo, boolean replaceExisting) {
+        setTooltipForNextFrame(font, lines, Optional.empty(), positioner, xo, yo, replaceExisting, null);
+    }
+
+    /**
+     * 完整参数版 tooltip 设置。
+     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, ClientTooltipPositioner, int, int, boolean, Identifier)}。</p>
+     */
+    public void setTooltipForNextFrame(
+            FontRenderer font,
+            List<String> lines,
+            Optional<TooltipComponent> component,
+            ClientTooltipPositioner positioner,
+            int xo, int yo,
+            boolean replaceExisting,
+            @Nullable ResourceLocation style
+    ) {
+        List<ClientTooltipComponent> components = new ArrayList<>();
+        for (String line : lines) {
+            components.add(ClientTooltipComponent.create(line));
+        }
+        // TODO: 当 component 非空时，插入到第二行位置（如 BundleTooltip）
+        setTooltipForNextFrameInternal(font, components, xo, yo, positioner, style, replaceExisting);
+    }
+
+    /**
+     * 内部统一入口 — 对标 26.1.2 {@code setTooltipForNextFrameInternal()}。
+     */
+    private void setTooltipForNextFrameInternal(
+            FontRenderer font,
+            List<ClientTooltipComponent> components,
+            int xo, int yo,
+            ClientTooltipPositioner positioner,
+            @Nullable ResourceLocation style,
+            boolean replaceExisting
+    ) {
+        if (!components.isEmpty()) {
+            if (this.deferredTooltip == null || replaceExisting) {
+                this.deferredTooltip = () -> this.tooltip(font, components, xo, yo, positioner, style);
+            }
+        }
+    }
+
+    /**
+     * 实际渲染 tooltip — 对标 26.1.2 {@code GuiGraphics.tooltip()}。
+     * <p>
+     * 计算尺寸 → 定位 → 渲染背景 → 渲染文字 → 渲染图像。
+     */
+    public void tooltip(
+            FontRenderer font,
+            List<ClientTooltipComponent> lines,
+            int xo, int yo,
+            ClientTooltipPositioner positioner,
+            @Nullable ResourceLocation style
+    ) {
+        if (lines.isEmpty()) return;
+
+        // 计算 tooltip 尺寸（对标 26.1.2 同算法）
+        int textWidth = 0;
+        int tempHeight = lines.size() == 1 ? -2 : 0;
+        for (ClientTooltipComponent line : lines) {
+            int lineWidth = line.getWidth(font);
+            if (lineWidth > textWidth) textWidth = lineWidth;
+            tempHeight += line.getHeight(font);
+        }
+
+        int w = textWidth;
+        int h = tempHeight;
+
+        // 获取屏幕尺寸
+        int screenWidth, screenHeight;
+        if (mc.currentScreen != null) {
+            screenWidth = mc.currentScreen.width;
+            screenHeight = mc.currentScreen.height;
+        } else {
+            ScaledResolution res = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+            screenWidth = res.getScaledWidth();
+            screenHeight = res.getScaledHeight();
+        }
+
+        // 定位
+        int[] pos = positioner.positionTooltip(screenWidth, screenHeight, xo, yo, w, h);
+        int x = pos[0];
+        int y = pos[1];
+
+        // 保存 OpenGL 状态并渲染
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_CURRENT_BIT);
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+
+        // 渲染背景（带 style 支持）
+        TooltipRenderUtil.renderTooltipBackground(x, y, textWidth, tempHeight, style);
+
+        // 渲染文字行
+        int localY = y;
+        for (int i = 0; i < lines.size(); i++) {
+            ClientTooltipComponent line = lines.get(i);
+            line.renderText(font, x, localY);
+            localY += line.getHeight(font) + (i == 0 ? 2 : 0);
+        }
+
+        // 渲染图像组件
+        localY = y;
+        for (int i = 0; i < lines.size(); i++) {
+            ClientTooltipComponent line = lines.get(i);
+            line.renderImage(font, x, localY, w, h);
+            localY += line.getHeight(font) + (i == 0 ? 2 : 0);
+        }
+
+        GL11.glPopAttrib();
+    }
+
+    // ==================== 延迟元素 Flush ====================
+
+    /**
+     * 帧末 flush 延迟元素 — 对标 26.1.2 {@code GuiGraphics.extractDeferredElements()}。
+     * <p>
+     * 在 Screen 渲染末尾调用，统一驱动两条延迟路径：
+     * <ol>
+     *   <li><b>路径一（物品模型）</b>：按 {@link GuiRenderState} 树的 z-order 绘制所有收集的物品（内容层）。</li>
+     *   <li><b>路径三（tooltip）</b>：新建 stratum 后绘制，确保 tooltip 始终在最上层。</li>
+     * </ol>
+     */
+    public void extractDeferredElements() {
+        // 路径一：先绘制收集到的物品模型（位于 tooltip 之下的内容层）
+        renderState.forEachItem(this::renderDeferredItem);
+
+        // 路径三：tooltip 始终在最上层
+        if (this.deferredTooltip != null) {
+            this.renderState.nextStratum();
+            this.deferredTooltip.run();
+            this.deferredTooltip = null;
+        }
+    }
+
+    /**
+     * 帧开始时重置状态。
+     */
+    public void resetForNewFrame() {
+        this.renderState.reset();
+        this.deferredTooltip = null;
     }
 }

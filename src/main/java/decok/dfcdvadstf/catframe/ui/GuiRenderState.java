@@ -425,11 +425,22 @@ public class GuiRenderState {
         private final int x;
         private final int y;
         private final ScreenRectangle bounds;
+        /**
+         * 收集时的 modelview 矩阵快照 — 对标 26.1.2 {@code GuiItemRenderState} 携带的 pose matrix。
+         * <p>帧末延迟渲染据此 {@code glLoadMatrix} 恢复调用点的 GL 变换；可为 null（无快照则按当前 GL 状态绘制）。</p>
+         */
+        @Nullable
+        private final float[] poseMatrix;
 
         public ItemRenderState(ItemStack stack, int x, int y) {
+            this(stack, x, y, null);
+        }
+
+        public ItemRenderState(ItemStack stack, int x, int y, @Nullable float[] poseMatrix) {
             this.stack = stack;
             this.x = x;
             this.y = y;
+            this.poseMatrix = poseMatrix;
             // 标准 GUI 物品占 16×16 像素
             this.bounds = new ScreenRectangle(x, y, 16, 16);
         }
@@ -437,6 +448,10 @@ public class GuiRenderState {
         public ItemStack getStack() { return stack; }
         public int getX() { return x; }
         public int getY() { return y; }
+
+        /** 收集时的 modelview 矩阵快照，可为 null。 */
+        @Nullable
+        public float[] getPoseMatrix() { return poseMatrix; }
 
         /** 物品模型标识 — 用于去重和追踪 */
         public Object getIdentity() {

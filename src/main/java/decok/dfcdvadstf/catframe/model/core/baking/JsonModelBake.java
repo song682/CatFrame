@@ -300,10 +300,11 @@ public class JsonModelBake {
      */
     public static List<BakedQuad> applyYRotation(List<BakedQuad> quads, int degY) {
         if (quads == null || quads.isEmpty() || degY == 0) return quads;
-        // Minecraft blockstate y 旋转遵循标准 CCW（右手定则），
-        // 即北(-Z)→东(+X) 对应 degY=90，无需取反。
+        // Minecraft blockstate 的 y 旋转是「俯视顺时针」（北→东→南→西），
+        // 而 vecmath Matrix4d.rotY 是右手系逆时针（北→西），二者方向相反，
+        // 故取负角度对齐 Minecraft 约定，否则会出现玻璃板等方块东西方向反转。
         Matrix4d rotY = new Matrix4d();
-        rotY.rotY(Math.toRadians(degY));
+        rotY.rotY(Math.toRadians(-degY));
         List<BakedQuad> result = new ArrayList<>(quads.size());
         for (BakedQuad src : quads) {
             BakedQuad q = deepCopyQuad(src);
@@ -319,6 +320,10 @@ public class JsonModelBake {
             if (q.faceNormal != null) {
                 rotY.transform(q.faceNormal);
             }
+            // Y 轴旋转会改变面朝向与遮挡方向：同步旋转 face 与 cullface，
+            // 否则玻璃板等依赖 cullface 的连接方块会出现东西方向错乱、剔除错误。
+            q.face = recomputeFace(q);
+            q.cullface = rotateCullface(q.cullface, rotY);
             result.add(q);
         }
         return result;
@@ -352,8 +357,9 @@ public class JsonModelBake {
             if (q.faceNormal != null) {
                 rotX.transform(q.faceNormal);
             }
-            // X 轴旋转会改变面朝向，需要重新计算 Direction
+            // X 轴旋转会改变面朝向与遮挡方向，需要重新计算 face 并同步旋转 cullface
             q.face = recomputeFace(q);
+            q.cullface = rotateCullface(q.cullface, rotX);
             result.add(q);
         }
         return result;
@@ -381,6 +387,22 @@ public class JsonModelBake {
         q.guiLight = src.guiLight;
         q.solidColor = src.solidColor;
         return q;
+    }
+
+    /**
+     * 用与几何体相同的旋转矩阵变换 cullface 的法向量，再映射回最近的 {@link Direction}。
+     * <p>保证 cullface（遮挡检测方向）始终与旋转后的几何朝向一致，
+     * 避免旋转后仍以原始方向检测相邻方块导致的剔除错误。
+     *
+     * @param cull 原始 cullface（可为 null）
+     * @param rot  与顶点/法线相同的旋转矩阵
+     * @return 旋转后的 cullface，输入为 null 时返回 null
+     */
+    private static Direction rotateCullface(Direction cull, Matrix4d rot) {
+        if (cull == null) return null;
+        Vector3d n = cull.getNormalVec3d();
+        rot.transform(n);
+        return Direction.getApproximateNearest(n.x, n.y, n.z);
     }
 
     /**

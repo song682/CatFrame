@@ -152,11 +152,14 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         //    不再需要逐个设置到 BakedQuad 上
 
         // 8. 应用旋转（深拷贝，不污染基础缓存）
-        if (rotationY != 0) {
-            quads = JsonModelBake.applyYRotation(quads, rotationY);
-        }
+        //    顺序必须与 Minecraft blockstate 一致：先绕 X 轴、再绕 Y 轴。
+        //    3D 旋转不可交换，若先 Y 后 X 会导致 axis=x 原木被摆成 Z 轴、
+        //    以及 x:180 顶部楼梯朝向错误（180° 翻转会对 Y 旋转做共轭取反）。
         if (rotationX != 0) {
             quads = JsonModelBake.applyXRotation(quads, rotationX);
+        }
+        if (rotationY != 0) {
+            quads = JsonModelBake.applyYRotation(quads, rotationY);
         }
 
         CatFrame.logger.debug("[ModelJsonUnbakedAdapter] bake: '{}' | elements={} | quads={} | rotX={} rotY={}",

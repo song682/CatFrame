@@ -5,6 +5,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.PatchedDataComponentMap;
 import decok.dfcdvadstf.catframe.core.component.predicates.RegisteredComponents;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.item.ItemStack;
@@ -65,7 +66,7 @@ public class TooltipHelper {
     }
 
     /**
-     * 在屏幕上渲染物品的 tooltip。
+     * 在屏幕上渲染物品的 tooltip（延迟到帧末）。
      *
      * @param font    字体渲染器
      * @param stack   物品
@@ -74,8 +75,6 @@ public class TooltipHelper {
      */
     public static void renderItemTooltip(FontRenderer font, ItemStack stack, int mouseX, int mouseY) {
         if (stack == null) return;
-        Minecraft mc = Minecraft.getMinecraft();
-        List<String> lines = getTooltipFromItem(mc, stack);
-        TooltipRenderer.renderTooltip(font, lines, mouseX, mouseY, DefaultTooltipPositioner.INSTANCE);
+        GuiGraphicsExtractor.getInstance().setTooltipForNextFrame(font, stack, mouseX, mouseY);
     }
 }

@@ -7,6 +7,7 @@
   "compatibilityLevel": "JAVA_8",
   "mixins": [],
   "client": [
+    "middle.MixinGuiScreen",
     "middle.MixinRenderBlocks",
     "middle.MixinTextureMap",
     "middle.MixinWorldRenderer"

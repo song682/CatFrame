@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui.tooltip;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import net.minecraft.client.Minecraft;
 
@@ -86,12 +87,12 @@ public class WidgetTooltipHolder {
             }
 
             List<String> lines = tooltip.getLines(mc);
-            TooltipRenderer.renderTooltip(
+            GuiGraphicsExtractor.getInstance().setTooltipForNextFrame(
                     mc.fontRenderer,
                     lines,
                     tooltip.getComponent(),
-                    mouseX, mouseY,
                     positioner,
+                    mouseX, mouseY,
                     false,
                     tooltip.getStyle()
             );

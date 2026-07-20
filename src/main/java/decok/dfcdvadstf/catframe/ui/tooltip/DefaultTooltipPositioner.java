@@ -18,12 +18,12 @@ public class DefaultTooltipPositioner implements ClientTooltipPositioner {
 
     @Override
     public int[] positionTooltip(int screenWidth, int screenHeight, int mouseX, int mouseY, int tooltipWidth, int tooltipHeight) {
-        int x = mouseX + 12;
-        int y = mouseY - 12;
+        int x = mouseX + TooltipRenderUtil.MOUSE_OFFSET;
+        int y = mouseY - TooltipRenderUtil.MOUSE_OFFSET;
 
         // 水平溢出：翻转到左侧
         if (x + tooltipWidth > screenWidth) {
-            x = Math.max(x - 24 - tooltipWidth, 4);
+            x = Math.max(x - TooltipRenderUtil.MOUSE_OFFSET * 2 - tooltipWidth, 4);
         }
 
         // 垂直溢出：上移

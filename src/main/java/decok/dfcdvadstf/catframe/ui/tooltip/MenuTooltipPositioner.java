@@ -13,6 +13,9 @@ import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 public class MenuTooltipPositioner implements ClientTooltipPositioner {
 
     private static final int MARGIN = 5;
+    private static final int MOUSE_OFFSET_X = 12;
+    public static final int MAX_OVERLAP_WITH_WIDGET = 3;
+    public static final int MAX_DISTANCE_TO_WIDGET = 5;
 
     private final int widgetX, widgetY, widgetWidth, widgetHeight;
 
@@ -32,18 +35,19 @@ public class MenuTooltipPositioner implements ClientTooltipPositioner {
 
     @Override
     public int[] positionTooltip(int screenWidth, int screenHeight, int mouseX, int mouseY, int tooltipWidth, int tooltipHeight) {
-        int x = mouseX + 12;
-        int y = mouseY + 3;
+        int x = mouseX + MOUSE_OFFSET_X;
+        int y = mouseY;
 
         // 水平溢出：靠左显示
-        if (x + tooltipWidth > screenWidth - 5) {
-            x = Math.max(mouseX - 12 - tooltipWidth, 9);
+        if (x + tooltipWidth > screenWidth - MARGIN) {
+            x = Math.max(mouseX - MOUSE_OFFSET_X - tooltipWidth, 9);
         }
 
         // 垂直定位：优先在 widget 下方，否则上方
-        int paddedHeight = tooltipHeight + 6;
-        int lowestPossibleY = widgetY + widgetHeight + 3 + getOffset(0, 0, widgetHeight);
-        int maxY = screenHeight - 5;
+        y += MAX_OVERLAP_WITH_WIDGET;
+        int paddedHeight = tooltipHeight + MAX_OVERLAP_WITH_WIDGET + MAX_OVERLAP_WITH_WIDGET;
+        int lowestPossibleY = widgetY + widgetHeight + MAX_OVERLAP_WITH_WIDGET + getOffset(0, 0, widgetHeight);
+        int maxY = screenHeight - MARGIN;
 
         if (lowestPossibleY + paddedHeight <= maxY) {
             y = y + getOffset(y, widgetY, widgetHeight);
@@ -56,11 +60,16 @@ public class MenuTooltipPositioner implements ClientTooltipPositioner {
 
     /**
      * 计算基于鼠标在 widget 内位置的垂直偏移量。
-     * 鼠标靠近 widget 顶部时偏移大（留足空间），靠近底部时偏移小。
+     * <p>对标 26.1.2 {@code Mth.lerp((float)distance / widgetHeight, widgetHeight - 3, 5.0F)}。</p>
      */
     private static int getOffset(int mouseY, int widgetEdgeY, int widgetHeight) {
         int distance = Math.min(Math.abs(mouseY - widgetEdgeY), widgetHeight);
         float t = (float) distance / widgetHeight;
-        return Math.round(t * (widgetHeight - 3 - 5) + 5);
+        // lerp(t, a, b) = a + t * (b - a)
+        return Math.round(lerp(t, widgetHeight - MAX_OVERLAP_WITH_WIDGET, (float) MAX_DISTANCE_TO_WIDGET));
+    }
+
+    private static float lerp(float t, float a, float b) {
+        return a + t * (b - a);
     }
 }

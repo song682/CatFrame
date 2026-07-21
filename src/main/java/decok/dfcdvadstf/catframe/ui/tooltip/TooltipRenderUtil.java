@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui.tooltip;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.util.ResourceLocation;
 
@@ -34,9 +35,9 @@ public class TooltipRenderUtil {
     private static final int MARGIN = 9;
 
     /** 默认背景填充纹理（中心平铺） */
-    private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation("catframe", "textures/gui/tooltips/background.png");
+    private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/tooltips/background.png");
     /** 默认边框纹理（中心拉伸） */
-    private static final ResourceLocation FRAME_TEXTURE = new ResourceLocation("catframe", "textures/gui/tooltips/frame.png");
+    private static final ResourceLocation FRAME_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/tooltips/frame.png");
 
     /**
      * 渲染 tooltip 背景（无自定义样式）。

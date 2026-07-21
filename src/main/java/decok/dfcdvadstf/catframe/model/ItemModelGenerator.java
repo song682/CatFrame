@@ -1,9 +1,9 @@
 package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.util.IIcon;
 
 import javax.vecmath.Vector3d;

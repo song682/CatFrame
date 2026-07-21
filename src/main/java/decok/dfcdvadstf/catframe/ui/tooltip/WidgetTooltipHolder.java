@@ -2,8 +2,8 @@ package decok.dfcdvadstf.catframe.ui.tooltip;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.ui.render.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
+import decok.dfcdvadstf.catframe.ui.render.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 
 import javax.annotation.Nullable;

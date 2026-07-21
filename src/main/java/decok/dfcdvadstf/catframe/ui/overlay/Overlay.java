@@ -27,6 +27,17 @@ import decok.dfcdvadstf.catframe.ui.components.Component;
 public interface Overlay extends Component {
 
     /**
+     * The render context deciding where {@link OverlayManager} draws this overlay
+     * (screen, HUD, or both). Defaults to {@link OverlayContext#SCREEN} for backward
+     * compatibility.
+     * <p>决定 {@link OverlayManager} 在何处绘制此 Overlay 的渲染上下文（界面 / HUD / 两者）。
+     * 为向后兼容，默认 {@link OverlayContext#SCREEN}。</p>
+     */
+    default OverlayContext getContext() {
+        return OverlayContext.SCREEN;
+    }
+
+    /**
      * The anchor point on screen where this overlay is positioned.
      * <p>此 Overlay 在屏幕上的定位锚点。</p>
      */

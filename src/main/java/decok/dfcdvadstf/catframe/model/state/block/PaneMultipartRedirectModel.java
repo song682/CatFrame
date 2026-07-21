@@ -4,6 +4,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.CatFrameConfig;
+import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
@@ -13,7 +14,6 @@ import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockPane;
-import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 

@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.model.render;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
-import net.minecraft.block.Block;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
@@ -20,10 +19,12 @@ import javax.vecmath.Vector3d;
  *
  * <h3>核心设计</h3>
  * <ul>
- *   <li><b>Block 和 ItemBlock 共用同一个模型</b>——方块物品不创建独立 IItemState，
- *       而是通过 {@link ModelRegistry#getRegisteredItemModel}
- *       的 fallback 逻辑直接从 {@code registeredBlockModels}
- *       取 BlockStateModel，包装为 BlockStateItemState。</li>
+ *   <li><b>物品模型独立于方块模型</b>——物品渲染只通过
+ *       {@link ModelRegistry#getRegisteredItemModel} 查找 {@code registeredItemModels}
+ *       中显式注册的 {@link IItemStateProvider}（items/ItemState）。
+ *       历史上曾对 ItemBlock 自动回退到 {@code registeredBlockModels} 并包装为
+ *       {@code BlockStateItemState}，该机制已移除——未实现 ItemState 的方块物品
+ *       退回原版物品渲染。</li>
  *   <li><b>{@link #shouldUseRenderHelper} 对 EQUIPPED_BLOCK 返回 true
  *       （仅 ItemBlock），对 INVENTORY_BLOCK 始终返回 false</b>——
  *       手持路径让 Forge 做 translate(-0.5) 前置，GUI 路径不依赖 Forge，
@@ -73,11 +74,12 @@ public class RenderJsonItemModel implements IItemRenderer {
     /**
      * 检查 CatFrame 是否接管该物品在指定阶段的渲染。
      *
-     * <p>对于 {@link ItemBlock}：检查方块是否有 CatFrame 模型
-     * （{@link ModelRegistry#hasModel(Block)}）。
-     * 对于非方块物品：先获取注册的 {@link IItemStateProvider}，再将其
+     * <p>所有物品（含 {@link ItemBlock}）统一通过
+     * {@link ModelRegistry#getRegisteredItemModel} 获取注册的
+     * {@link IItemStateProvider}，再将其
      * {@link IItemStateProvider#handles(RenderPhase)} 映射到 Forge 的
-     * {@code handleRenderType} 返回值。</p>
+     * {@code handleRenderType} 返回值。未显式注册物品模型的方块物品
+     * 返回 false，退回原版渲染。</p>
      *
      * <p>这样，实现了 {@code handles()} 的 IItemState 可以精细控制
      * 哪些阶段由 CatFrame 接管、哪些退回原版渲染。
@@ -91,8 +93,8 @@ public class RenderJsonItemModel implements IItemRenderer {
         if (item == null || item.getItem() == null) return false;
         if (type == ItemRenderType.FIRST_PERSON_MAP) return false;
 
-        // 统一路径：通过 getRegisteredItemModel 获取物品模型
-        // （对 ItemBlock 自动 fallback 到 BlockStateModel）
+        // 统一路径：通过 getRegisteredItemModel 获取显式注册的物品模型
+        // （方块物品不再自动 fallback，未注册则退回原版渲染）
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(item.getItem());
         if (model == null) return false;
 
@@ -184,7 +186,7 @@ public class RenderJsonItemModel implements IItemRenderer {
      * {@code display} 变换（translate(-0.5) 中心偏移 → scale → rotate → translate）。</p>
      *
      * <p>模型查找通过 {@link ModelRegistry#getRegisteredItemModel}，
-     * 对方块物品会自动 fallback 到 BlockStateModel（不经独立注册表）。</p>
+     * 只返回显式注册的物品模型；未注册的方块物品退回原版渲染。</p>
      */
     @Override
     public void renderItem(ItemRenderType type, ItemStack stack, Object... data) {
@@ -203,7 +205,7 @@ public class RenderJsonItemModel implements IItemRenderer {
         // 将反抵消变换计算为 Matrix4d 矩阵，由管线在顶点提交时统一变换
         Matrix4d preTransform = computePreTransform(type, entity, stack);
 
-        // getRegisteredItemModel 对方块物品有 BlockStateModel fallback
+        // getRegisteredItemModel 只返回显式注册的物品模型（无方块 fallback）
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
         if (model == null) return;
     

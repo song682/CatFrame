@@ -1,1 +1,6 @@
-{"model":{"type":"minecraft:model","model":"minecraft:item/tripwire_hook"}}
+{
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:item/tripwire_hook"
+    }
+}

@@ -1,0 +1,15 @@
+{
+    "model": {
+        "type": "minecraft:exact_match",
+        "property": "minecraft:damage",
+        "fallback": { "type": "minecraft:model", "model": "minecraft:block/oak_plank" },
+        "cases": {
+            "0": { "type": "minecraft:model", "model": "minecraft:block/oak_plank" },
+            "1": { "type": "minecraft:model", "model": "minecraft:block/spruce_planks" },
+            "2": { "type": "minecraft:model", "model": "minecraft:block/birch_planks" },
+            "3": { "type": "minecraft:model", "model": "minecraft:block/jungle_planks" },
+            "4": { "type": "minecraft:model", "model": "minecraft:block/acacia_planks" },
+            "5": { "type": "minecraft:model", "model": "minecraft:block/dark_oak_planks" }
+        }
+    }
+}

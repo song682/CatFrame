@@ -1,1 +1,6 @@
-{"model":{"type":"minecraft:model","model":"minecraft:item/golden_rail"}}
+{
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:item/golden_rail"
+    }
+}

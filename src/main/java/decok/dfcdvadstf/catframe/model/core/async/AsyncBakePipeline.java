@@ -17,12 +17,7 @@ import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.util.IIcon;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 /**

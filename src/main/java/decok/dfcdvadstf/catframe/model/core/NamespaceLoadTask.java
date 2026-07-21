@@ -8,7 +8,6 @@ import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateRoot;
-
 import net.minecraft.item.Item;
 
 import java.io.InputStream;

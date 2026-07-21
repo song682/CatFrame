@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui.overlay;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
+import org.lwjgl.opengl.GL11;
 
 import java.util.*;
 
@@ -120,14 +121,42 @@ public class OverlayManager {
     // ──── Rendering ────
 
     /**
-     * Render all visible overlays. Call from the screen's drawScreen method.
-     * <p>渲染所有可见 Overlay。从屏幕的 drawScreen 方法中调用。</p>
+     * Render all visible SCREEN-context overlays. Call from the screen's drawScreen method.
+     * <p>渲染所有可见的 SCREEN 上下文 Overlay。从屏幕的 drawScreen 方法中调用。</p>
      *
      * @param mouseX       mouse X / 鼠标 X
      * @param mouseY       mouse Y / 鼠标 Y
      * @param partialTicks partial tick / 部分 tick
      */
     public void renderAll(int mouseX, int mouseY, float partialTicks) {
+        renderTarget(false, mouseX, mouseY, partialTicks);
+    }
+
+    /**
+     * Render all visible HUD-context overlays. Call from the in-game HUD render path,
+     * e.g. Forge's {@code RenderGameOverlayEvent.Post}.
+     * <p>渲染所有可见的 HUD 上下文 Overlay。从游戏内 HUD 渲染路径调用，
+     * 如 Forge 的 {@code RenderGameOverlayEvent.Post}。</p>
+     * <p>HUD 上无有意义的鼠标坐标，传入 {@code (-1, -1)}。</p>
+     *
+     * @param partialTicks partial tick / 部分 tick
+     */
+    public void renderHud(float partialTicks) {
+        renderTarget(true, -1, -1, partialTicks);
+
+        // Restore GL state so overlay rendering never leaks tint/blend onto the vanilla HUD.
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glDisable(GL11.GL_BLEND);
+    }
+
+    /**
+     * Shared rendering routine for a given target (HUD vs screen). Resolves anchor position,
+     * applies auto-stacking, temporarily assigns coordinates, and renders each matching overlay.
+     * <p>针对指定目标（HUD 或屏幕）的共享渲染例程：解析锚点位置、应用自动堆叠、
+     * 临时设置坐标并渲染每个匹配的 Overlay。</p>
+     */
+    private void renderTarget(boolean hud, int mouseX, int mouseY, float partialTicks) {
         Minecraft mc = Minecraft.getMinecraft();
         ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
         int screenWidth = sr.getScaledWidth();
@@ -140,7 +169,7 @@ public class OverlayManager {
 
             int stackOffsetY = 0;
             for (Overlay overlay : list) {
-                if (!overlay.isVisible()) continue;
+                if (!overlay.isVisible() || !matchesTarget(overlay, hud)) continue;
 
                 int resolvedX = anchor.resolveX(screenWidth, overlay.getWidth(), overlay.getOffsetX());
                 int resolvedY = anchor.resolveY(screenHeight, overlay.getHeight(), overlay.getOffsetY());
@@ -168,6 +197,18 @@ public class OverlayManager {
                 stackOffsetY += overlay.getHeight() + STACK_SPACING;
             }
         }
+    }
+
+    /**
+     * Whether the overlay should render for the given target.
+     * <p>Overlay 是否应在给定目标下渲染。</p>
+     */
+    private static boolean matchesTarget(Overlay overlay, boolean hud) {
+        OverlayContext ctx = overlay.getContext();
+        if (hud) {
+            return ctx == OverlayContext.HUD || ctx == OverlayContext.BOTH;
+        }
+        return ctx == OverlayContext.SCREEN || ctx == OverlayContext.BOTH;
     }
 
     // ──── Input forwarding ────

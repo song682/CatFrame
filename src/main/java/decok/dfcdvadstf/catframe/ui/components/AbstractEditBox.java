@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
@@ -24,9 +25,9 @@ public class AbstractEditBox extends AbstractComponent {
 
     /** CatFrame custom text field textures / CatFrame 自定义文本框纹理 */
     protected static final ResourceLocation TEXT_FIELD_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/text_field.png");
+            new ResourceLocation(Tags.MODID, "textures/gui/widgets/text_field.png");
     protected static final ResourceLocation TEXT_FIELD_HIGHLIGHTED_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/text_field_highlighted.png");
+            new ResourceLocation(Tags.MODID, "textures/gui/widgets/text_field_highlighted.png");
 
     /** Text field default size from mcmeta / 文本框默认尺寸 */
     protected static final int TEXT_FIELD_DEFAULT_W = 200;

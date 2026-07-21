@@ -1,11 +1,11 @@
 package decok.dfcdvadstf.catframe.model.state.block;
 
+import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.*;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
-import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.*;

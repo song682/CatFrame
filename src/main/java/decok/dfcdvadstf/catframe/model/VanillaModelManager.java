@@ -3,8 +3,6 @@ package decok.dfcdvadstf.catframe.model;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.core.ModelJson;
-import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.lazy.LazyBlockstateModel;
 import decok.dfcdvadstf.catframe.model.lazy.LazyRedirectModel;
@@ -16,7 +14,6 @@ import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import decok.dfcdvadstf.catframe.model.state.block.PaneMultipartRedirectModel;
 import decok.dfcdvadstf.catframe.model.state.block.SingleBlockModel;
-import decok.dfcdvadstf.catframe.model.state.item.BlockStateItemState;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.block.Block;
@@ -333,22 +330,6 @@ public class VanillaModelManager {
                 CatFrame.logger.debug("[VMM] Registered IItemState: {}", registryName);
             }
 
-            // 4d: blockstate fallback — 为未被 ItemState/model_mappings/IItemState 覆盖的
-            //     ItemBlock 注册 BlockStateItemState（"小方块"兜底）
-            for (Map.Entry<Block, BlockstateJson> entry : collectBlockstateBlocks()) {
-                Block block = entry.getKey();
-                Item item = Item.getItemFromBlock(block);
-                if (item == null) continue;
-                if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
-
-                String modelPath = findFirstModelPath(entry.getValue());
-                if (modelPath == null) continue;
-
-                Map<String, ModelJson.DisplayTransform> display = resolveDisplay(modelPath);
-                ModelRegistry.registeredItemModels.put(item,
-                        new BlockStateItemState(ModelRegistry.registeredBlockModels.get(block), display));
-            }
-
             // Step 5: Forge IItemRenderer 注册
             Set<Item> registered = new HashSet<>();
             int forgeRegistered = 0;
@@ -440,78 +421,9 @@ public class VanillaModelManager {
                 MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
             }
 
-            // blockstate fallback — 为未被上层注册的 ItemBlock 提供 BlockStateItemState 兜底
-            for (Map.Entry<Block, BlockstateJson> entry : collectBlockstateBlocks()) {
-                Block block = entry.getKey();
-                Item item = Item.getItemFromBlock(block);
-                if (item == null) continue;
-                if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
-
-                String modelPath = findFirstModelPath(entry.getValue());
-                if (modelPath == null) continue;
-
-                Map<String, ModelJson.DisplayTransform> display = resolveDisplay(modelPath);
-                ModelRegistry.registeredItemModels.put(item,
-                        new BlockStateItemState(ModelRegistry.registeredBlockModels.get(block), display));
-            }
-
             CatFrame.logger.info("VanillaModelManager: Re-registered {} item models (incremental, lazy)",
                     ModelRegistry.registeredItemModels.size());
         }
 
-        // ==================== 辅助方法 ====================
-
-        /**
-         * 从 ModelJson 解析 display transforms（仅读 JSON，不烘焙 quads）。
-         */
-        @Nullable
-        private static Map<String, ModelJson.DisplayTransform> resolveDisplay(String modelPath) {
-            if (modelPath == null) return null;
-            ModelJson resolved = ModelResolver.resolve(modelPath);
-            return resolved != null ? resolved.display : null;
-        }
-
-        /**
-         * 收集所有有 blockstate 的 block 及其 BlockstateJson（快照迭代）。
-         */
-        private static List<Map.Entry<Block, BlockstateJson>> collectBlockstateBlocks() {
-            List<Map.Entry<Block, BlockstateJson>> result = new ArrayList<>();
-            for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry :
-                    new ArrayList<>(ModelManagerDataLoader.loadedBlockstates.entrySet())) {
-                String namespace = nsEntry.getKey();
-                for (Map.Entry<String, BlockstateJson> bsEntry : nsEntry.getValue().entrySet()) {
-                    Block block = Utilities.findBlock(namespace, bsEntry.getKey());
-                    if (block != null) {
-                        result.add(new AbstractMap.SimpleEntry<>(block, bsEntry.getValue()));
-                    }
-                }
-            }
-            return result;
-        }
-
-        /**
-         * Extract the first model path from a blockstate JSON.
-         */
-        private static String findFirstModelPath(BlockstateJson bs) {
-            if (bs.variants != null) {
-                for (BlockstateJson.VariantEntry ve : bs.variants.values()) {
-                    if (ve.isArray()) {
-                        if (ve.list != null && !ve.list.isEmpty() && ve.list.get(0).model != null) {
-                            return ve.list.get(0).model;
-                        }
-                    } else if (ve.single != null && ve.single.model != null) {
-                        return ve.single.model;
-                    }
-                }
-            }
-            if (bs.multipart != null) {
-                for (BlockstateJson.MultipartCase mpc : bs.multipart) {
-                    if (mpc.apply != null && mpc.apply.model != null) {
-                        return mpc.apply.model;
-                    }
-                }
-            }
-            return null;
-        }
     }
 }

@@ -2,13 +2,13 @@ package decok.dfcdvadstf.catframe.model.render.extension;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import net.minecraft.block.Block;
-import decok.dfcdvadstf.catframe.core.Direction;
 
 /**
  * 内建渲染扩展：根据 JSON 模型中 face 的 {@code "cullface"} 字段执行面剔除。

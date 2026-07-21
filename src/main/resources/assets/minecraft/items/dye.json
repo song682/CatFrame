@@ -1,25 +1,25 @@
 {
-  "model": {
-    "type": "minecraft:exact_match",
-    "property": "minecraft:damage",
-    "fallback": { "type": "minecraft:model", "model": "minecraft:item/dye" },
-    "cases": {
-      "0":  { "type": "minecraft:model", "model": "minecraft:item/dye_black" },
-      "1":  { "type": "minecraft:model", "model": "minecraft:item/dye_red" },
-      "2":  { "type": "minecraft:model", "model": "minecraft:item/dye_green" },
-      "3":  { "type": "minecraft:model", "model": "minecraft:item/dye_brown" },
-      "4":  { "type": "minecraft:model", "model": "minecraft:item/dye_blue" },
-      "5":  { "type": "minecraft:model", "model": "minecraft:item/dye_purple" },
-      "6":  { "type": "minecraft:model", "model": "minecraft:item/dye_cyan" },
-      "7":  { "type": "minecraft:model", "model": "minecraft:item/dye_light_gray" },
-      "8":  { "type": "minecraft:model", "model": "minecraft:item/dye_gray" },
-      "9":  { "type": "minecraft:model", "model": "minecraft:item/dye_pink" },
-      "10": { "type": "minecraft:model", "model": "minecraft:item/dye_lime" },
-      "11": { "type": "minecraft:model", "model": "minecraft:item/dye_yellow" },
-      "12": { "type": "minecraft:model", "model": "minecraft:item/dye_light_blue" },
-      "13": { "type": "minecraft:model", "model": "minecraft:item/dye_magenta" },
-      "14": { "type": "minecraft:model", "model": "minecraft:item/dye_orange" },
-      "15": { "type": "minecraft:model", "model": "minecraft:item/dye_white" }
+    "model": {
+        "type": "minecraft:exact_match",
+        "property": "minecraft:damage",
+        "fallback": { "type": "minecraft:model", "model": "minecraft:item/dye"},
+        "cases": {
+            "0":  { "type": "minecraft:model", "model": "minecraft:item/dye_black" },
+            "1":  { "type": "minecraft:model", "model": "minecraft:item/dye_red" },
+            "2":  { "type": "minecraft:model", "model": "minecraft:item/dye_green" },
+            "3":  { "type": "minecraft:model", "model": "minecraft:item/dye_brown" },
+            "4":  { "type": "minecraft:model", "model": "minecraft:item/dye_blue" },
+            "5":  { "type": "minecraft:model", "model": "minecraft:item/dye_purple" },
+            "6":  { "type": "minecraft:model", "model": "minecraft:item/dye_cyan" },
+            "7":  { "type": "minecraft:model", "model": "minecraft:item/dye_light_gray" },
+            "8":  { "type": "minecraft:model", "model": "minecraft:item/dye_gray" },
+            "9":  { "type": "minecraft:model", "model": "minecraft:item/dye_pink" },
+            "10": { "type": "minecraft:model", "model": "minecraft:item/dye_lime" },
+            "11": { "type": "minecraft:model", "model": "minecraft:item/dye_yellow" },
+            "12": { "type": "minecraft:model", "model": "minecraft:item/dye_light_blue" },
+            "13": { "type": "minecraft:model", "model": "minecraft:item/dye_magenta" },
+            "14": { "type": "minecraft:model", "model": "minecraft:item/dye_orange" },
+            "15": { "type": "minecraft:model", "model": "minecraft:item/dye_white" }
+        }
     }
-  }
 }

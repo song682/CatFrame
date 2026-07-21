@@ -3,6 +3,8 @@ package decok.dfcdvadstf.catframe.tags;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
+import decok.dfcdvadstf.catframe.Tags;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
@@ -44,7 +46,7 @@ public class TagLoader<T> {
     private final String registryType;
     
     /** Default namespace for tags loaded from directory */
-    private String defaultNamespace = "catframe";
+    private String defaultNamespace = Tags.MODID;
     
     /** Tag registry: tag name -> set of objects in the tag */
     private final Map<ResourceLocation, Set<T>> tagRegistry = new HashMap<>();

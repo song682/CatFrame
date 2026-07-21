@@ -1,11 +1,1 @@
-{
-  "model": {
-    "type": "minecraft:exact_match",
-    "property": "minecraft:damage",
-    "fallback": { "type": "minecraft:model", "model": "minecraft:item/coal" },
-    "cases": {
-      "0": { "type": "minecraft:model", "model": "minecraft:item/coal" },
-      "1": { "type": "minecraft:model", "model": "minecraft:item/charcoal" }
-    }
-  }
-}
+{"model":{"type":"minecraft:exact_match","property":"minecraft:damage","fallback":{"type":"minecraft:model","model":"minecraft:item/coal"},"cases":{"0": {"type":"minecraft:model","model":"minecraft:item/coal"},"1": {"type": "minecraft:model", "model":"minecraft:item/charcoal"}}}}

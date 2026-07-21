@@ -5,7 +5,6 @@ import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
-
 import org.lwjgl.opengl.GL11;
 
 import java.util.List;

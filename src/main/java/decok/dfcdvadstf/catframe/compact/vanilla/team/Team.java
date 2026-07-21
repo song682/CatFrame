@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.team;
+package decok.dfcdvadstf.catframe.compact.vanilla.team;
 
 import decok.dfcdvadstf.catframe.ui.Style;
 import decok.dfcdvadstf.catframe.ui.Text;

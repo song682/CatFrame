@@ -1,1 +1,6 @@
-{"model":{"type":"minecraft:model","model":"minecraft:item/cauldron"}}
+{
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:item/cauldron"
+    }
+}

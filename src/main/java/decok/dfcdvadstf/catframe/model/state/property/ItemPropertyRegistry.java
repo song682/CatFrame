@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.model.state.property;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;

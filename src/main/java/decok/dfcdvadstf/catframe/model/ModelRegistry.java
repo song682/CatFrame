@@ -10,11 +10,9 @@ import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
-import decok.dfcdvadstf.catframe.model.state.item.BlockStateItemState;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemBlock;
 import net.minecraftforge.client.MinecraftForgeClient;
 
 import java.util.HashMap;
@@ -128,27 +126,18 @@ public class ModelRegistry {
         /**
          * Get the registered IItemState model for an item, or null if not registered.
          * <p>
-         * <b>GTNHLib-style fallback:</b> If the item is an {@link ItemBlock} and has no
-         * dedicated item model, the block's {@link BlockStateModel} (from
-         * {@link ModelRegistry#registeredBlockModels}) is returned wrapped in a {@link BlockStateItemState}
-         * with the block's display transforms. This means block items don't need a
-         * separate entry in {@link #registeredItemModels} — the block model IS the item model.
+         * If no model is registered for the item, falls through to Tier 3
+         * convention-path auto-discovery ({@code namespace:item/{name}.json}).
+         * <p>
+         * <b>Note:</b> ItemBlocks without a dedicated {@link IItemStateProvider} are no
+         * longer auto-wrapped from their {@link BlockStateModel} — the block→item model
+         * fallback (formerly {@code BlockStateItemState}) has been removed. Such ItemBlocks
+         * fall back to vanilla rendering until an ItemState is registered for them.
          */
         public static IItemStateProvider getRegisteredItemModel(Item item) {
             if (item == null) return null;
             IItemStateProvider itemModel = registeredItemModels.get(item);
             if (itemModel != null) return itemModel;
-
-            // GTNHLib-style: ItemBlock without dedicated item model → use block model
-            if (item instanceof ItemBlock) {
-                Block block = Block.getBlockFromItem(item);
-                if (block != null) {
-                    BlockStateModel blockModel = registeredBlockModels.get(block);
-                    if (blockModel != null) {
-                        return new BlockStateItemState(blockModel);
-                    }
-                }
-            }
 
             // Tier 3: 约定路径懒发现 (namespace:item/{name}.json)
             return autoDiscoverItemModel(item);

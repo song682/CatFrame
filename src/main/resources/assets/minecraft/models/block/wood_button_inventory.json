@@ -1,0 +1,6 @@
+{
+    "parent": "minecraft:block/button_inventory",
+    "textures": {
+        "layer0": "minecraft:blocks/wood_button"
+    }
+}

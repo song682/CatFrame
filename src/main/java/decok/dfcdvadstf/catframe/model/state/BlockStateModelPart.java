@@ -1,8 +1,8 @@
 package decok.dfcdvadstf.catframe.model.state;
 
+import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.util.IIcon;
 
 import javax.annotation.Nullable;

@@ -1,8 +1,8 @@
 package decok.dfcdvadstf.catframe.model.core.baking;
 
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.core.Direction;
+import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import net.minecraft.util.IIcon;
 
 import javax.vecmath.AxisAngle4d;

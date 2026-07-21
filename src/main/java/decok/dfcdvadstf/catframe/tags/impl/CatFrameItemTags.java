@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.tags.impl;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.tags.TagKey;
 import net.minecraft.item.Item;
 
@@ -75,7 +75,7 @@ public final class CatFrameItemTags {
      * Create an item TagKey
      */
     private static TagKey<Item> create(String name) {
-        return TagKey.createItem("catframe", name);
+        return TagKey.createItem(Tags.MODID, name);
     }
     
     /**

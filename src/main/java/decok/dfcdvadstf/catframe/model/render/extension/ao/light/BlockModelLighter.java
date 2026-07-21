@@ -1,9 +1,9 @@
 package decok.dfcdvadstf.catframe.model.render.extension.ao.light;
 
+import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
 import net.minecraft.block.Block;
-import decok.dfcdvadstf.catframe.core.Direction;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.LinkedHashMap;

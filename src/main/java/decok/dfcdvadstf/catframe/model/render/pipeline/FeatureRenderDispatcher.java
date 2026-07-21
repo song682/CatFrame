@@ -49,6 +49,9 @@ public final class FeatureRenderDispatcher {
             // 剔除标志取首个提交项即可代表整组。
             boolean disableCull = group.get(0).disableCull;
             boolean blend = type.blend();
+            // [方案B] GL 光照物品阶段（手持 / 掉落 / 展示框）会发送逐面法线，
+            // 开 GL_NORMALIZE 使法线在 display / 手持变换缩放后仍保持单位长，只依赖方向。
+            boolean itemGlLit = isItemGlLitPhase(group.get(0).phase);
 
             // ==== 每组一次：纹理绑定 + GL 状态 ====
             Minecraft.getMinecraft().getTextureManager().bindTexture(type.atlas());
@@ -58,6 +61,9 @@ public final class FeatureRenderDispatcher {
             if (blend) {
                 GL11.glEnable(GL11.GL_BLEND);
                 GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            }
+            if (itemGlLit) {
+                GL11.glEnable(GL11.GL_NORMALIZE);
             }
 
             try {
@@ -89,6 +95,9 @@ public final class FeatureRenderDispatcher {
                 if (blend) {
                     GL11.glDisable(GL11.GL_BLEND);
                 }
+                if (itemGlLit) {
+                    GL11.glDisable(GL11.GL_NORMALIZE);
+                }
             }
         }
     }
@@ -118,5 +127,13 @@ public final class FeatureRenderDispatcher {
 
     private static boolean isBlockPhase(RenderPhase phase) {
         return phase == RenderPhase.BLOCK_WORLD || phase == RenderPhase.BLOCK_GUI;
+    }
+
+    /**
+     * 是否为使用 GL_LIGHTING + 逐面法线的物品阶段（方案B）。
+     * 即除 GUI 外的所有物品阶段（手持 / 掉落 / 展示框）。
+     */
+    private static boolean isItemGlLitPhase(RenderPhase phase) {
+        return phase != null && !isBlockPhase(phase) && phase != RenderPhase.ITEM_GUI;
     }
 }

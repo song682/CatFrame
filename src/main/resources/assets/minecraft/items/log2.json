@@ -1,0 +1,11 @@
+{
+    "model": {
+        "type": "minecraft:exact_match",
+        "property": "minecraft:damage",
+        "fallback": { "type": "minecraft:model", "model": "minecraft:block/log2" },
+        "cases": {
+            "0": { "type": "minecraft:model", "model": "minecraft:block/acacia_log" },
+            "1": { "type": "minecraft:model", "model": "minecraft:block/dark_oak_log" }
+        }
+    }
+}

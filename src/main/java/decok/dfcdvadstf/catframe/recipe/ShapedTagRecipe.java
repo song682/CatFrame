@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.recipe;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
 import decok.dfcdvadstf.catframe.tags.TagKey;
+import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;
 import net.minecraft.block.Block;
 import net.minecraft.inventory.InventoryCrafting;
 import net.minecraft.item.Item;

@@ -6,7 +6,9 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
-import decok.dfcdvadstf.catframe.compact.forge.event.ODorTag;
+import decok.dfcdvadstf.catframe.compact.forge.language.LanguageRegister;
+import decok.dfcdvadstf.catframe.compact.forge.tags.event.ODorTag;
+import decok.dfcdvadstf.catframe.compact.vanilla.ClientOverlayHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientToastHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.RenderItemInFrameHandler;
@@ -14,7 +16,6 @@ import decok.dfcdvadstf.catframe.compact.vanilla.model.ResourcePackModelDetector
 import decok.dfcdvadstf.catframe.compact.vanilla.model.TexturesStitch;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaMetadataMapper;
 import decok.dfcdvadstf.catframe.core.component.predicates.RegisteredComponents;
-import decok.dfcdvadstf.catframe.language.LanguageRegister;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
@@ -23,7 +24,9 @@ import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesInHandTintPro
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.SpawnEggAndPotionTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;
+import decok.dfcdvadstf.catframe.ui.components.ActionBarOverlay;
+import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
 import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -49,7 +52,7 @@ public class CatFrame {
         if (config.enableBlueyPlushy) {
             blueyPlushy = new BlueyPlushyItem();
             GameRegistry.registerItem(blueyPlushy, "bluey_plushy");
-            CatFrameTags.add("catframe", "plushy", blueyPlushy);
+            CatFrameTags.add(Tags.MODID, "plushy", blueyPlushy);
         }
 
         if (event.getSide() == Side.CLIENT) {
@@ -59,8 +62,13 @@ public class CatFrame {
             // Register client event handler (welcome toast + HUD toast rendering)
             MinecraftForge.EVENT_BUS.register(new ClientToastHandler());
 
+            // Bridge OverlayManager into the HUD render/tick loop (pure Forge), then
+            // register the ActionBar as a HUD-context overlay so it shows in-game.
+            MinecraftForge.EVENT_BUS.register(new ClientOverlayHandler());
+            OverlayManager.INSTANCE.register(ActionBarOverlay.INSTANCE);
+
             VanillaMetadataMapper.registerVanillaMetadataMappings();
-            ModelManagerDataLoader.registerNamespace("catframe");
+            ModelManagerDataLoader.registerNamespace(Tags.MODID);
             ModelManagerDataLoader.init();
 
             if (blueyPlushy != null) {

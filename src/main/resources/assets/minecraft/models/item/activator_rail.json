@@ -1,1 +1,6 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:block/rail_activator"}}
+{
+    "parent": "minecraft:item/generated",
+    "textures": {
+        "layer0": "minecraft:blocks/rail_activator"
+    }
+}

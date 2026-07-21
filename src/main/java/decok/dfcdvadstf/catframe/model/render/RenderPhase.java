@@ -1,5 +1,7 @@
 package decok.dfcdvadstf.catframe.model.render;
 
+import javax.annotation.Nullable;
+
 /**
  * 描述当前 quad 正在哪种渲染场景中被处理。
  * 扩展可以根据阶段决定是否生效（例如仅作用于方块世界渲染）。
@@ -53,12 +55,13 @@ public enum RenderPhase {
      *
      * @return display 键名（如 "gui", "firstperson_righthand"），若无对应返回 null
      */
-    @javax.annotation.Nullable
+    @Nullable
     public String getDisplayKey() {
         switch (this) {
             case ITEM_GUI:
             case BLOCK_GUI:
                 return "gui";
+            case ITEM_HAND:
             case ITEM_HAND_FIRST_PERSON:
                 return "firstperson_righthand";
             case ITEM_HAND_THIRD_PERSON:
@@ -68,8 +71,6 @@ public enum RenderPhase {
                 return "ground";
             case ITEM_FIXED:
                 return "fixed";
-            case ITEM_HAND:
-                return "firstperson_righthand";
             default:
                 return null;
         }

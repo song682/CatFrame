@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.compact.forge.event;
+package decok.dfcdvadstf.catframe.compact.forge.tags.event;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import decok.dfcdvadstf.catframe.CatFrame;

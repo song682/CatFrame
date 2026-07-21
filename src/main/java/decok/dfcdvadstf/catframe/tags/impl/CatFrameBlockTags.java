@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.tags.impl;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.tags.TagKey;
 import net.minecraft.block.Block;
 
@@ -82,7 +82,7 @@ public final class CatFrameBlockTags {
      * 创建一个方块 TagKey
      */
     private static TagKey<Block> create(String name) {
-        return TagKey.createBlock("catframe", name);
+        return TagKey.createBlock(Tags.MODID, name);
     }
     
     /**

@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.tab;
 
+import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
@@ -30,7 +31,7 @@ public interface Tab {
     /**
      * Default tab button texture. / 默认 Tab 按钮纹理。
      */
-    ResourceLocation DEFAULT_TAB_TEXTURE = new ResourceLocation("catframe", "textures/gui/tabs/tab.png");
+    ResourceLocation DEFAULT_TAB_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/tabs/tab.png");
 
     // ──── Original 1.7.10-style API ────
 

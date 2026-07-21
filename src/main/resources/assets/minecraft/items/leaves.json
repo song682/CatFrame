@@ -1,0 +1,13 @@
+{
+    "model": {
+        "type": "minecraft:exact_match",
+        "property": "minecraft:damage",
+        "fallback": { "type": "minecraft:model", "model": "minecraft:block/leave" },
+        "cases": {
+            "0": { "type": "minecraft:model", "model": "minecraft:block/oak_leaves" },
+            "1": { "type": "minecraft:model", "model": "minecraft:block/spruce_leaves" },
+            "2": { "type": "minecraft:model", "model": "minecraft:block/birch_leaves" },
+            "3": { "type": "minecraft:model", "model": "minecraft:block/jungle_leaves" }
+        }
+    }
+}

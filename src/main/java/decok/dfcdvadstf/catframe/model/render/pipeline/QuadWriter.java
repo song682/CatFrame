@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render.pipeline;
 
+import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.RenderContext;
@@ -10,6 +11,7 @@ import net.minecraft.util.IIcon;
 
 import javax.vecmath.Matrix4d;
 import javax.vecmath.Point3d;
+import javax.vecmath.Vector3d;
 import java.util.List;
 
 /**
@@ -129,20 +131,31 @@ public final class QuadWriter {
     public static boolean writeItemQuads(RenderSubmit s, Tessellator t) {
         List<BakedQuad> allQuads = s.part.getAllQuads();
         boolean gui = (s.phase == RenderPhase.ITEM_GUI);
+        // [方案B] 非 GUI 物品阶段（手持 / 掉落 / 展示框）保留 GL_LIGHTING，
+        // 改用逐面法线让 GL 计算方向光照，不再把 CardinalLighting 方向阴影烘焙进顶点色，
+        // 避免“烘焙阴影 + GL 光照”双重着色导致的视角相关 bug。GUI 阶段维持烘焙阴影。
+        boolean glLit = !gui;
         Matrix4d preTransform = s.preTransform;
         Point3d tmpVec = new Point3d();
+        Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
         int baseBrightness = gui ? 255 : 15728880;
         boolean hasVertices = false;
 
         for (BakedQuad q : allQuads) {
-            // 方向阴影：按面方向取 CardinalLighting 系数（顶面 1.0、侧面递减）。
-            float baseShade = CardinalLighting.DEFAULT.byFace(q.face);
+            // 方向阴影：GUI 按面方向烘焙 CardinalLighting 系数；
+            // 非 GUI 交由 GL_LIGHTING 依逐面法线计算，baseShade 取 1.0 以免双重着色。
+            float baseShade = glLit ? 1.0f : CardinalLighting.DEFAULT.byFace(q.face);
             RenderContext ctx = new RenderContext(s.phase, q,
                     s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, baseShade);
             ModelRenderRegistry.apply(ctx);
             if (ctx.skip) continue;
             hasVertices = true;
+
+            // 非 GUI 阶段：发送逐面法线（随 display / preTransform 旋转），供 GL_LIGHTING 使用。
+            if (glLit) {
+                writeQuadNormal(t, q, ctx.displayTransform, preTransform, tmpNormal);
+            }
 
             t.setBrightness(ctx.effectiveBrightness());
             float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
@@ -172,5 +185,36 @@ public final class QuadWriter {
             }
         }
         return hasVertices;
+    }
+
+    /**
+     * [方案B] 计算 quad 的逐面法线并写入 Tessellator。
+     * <p>
+     * 法线取自 {@link BakedQuad#face} 的方向向量，依次经 display / preTransform 的
+     * 旋转部分变换（与软件变换后的顶点保持一致），归一化后调用 {@code t.setNormal}。
+     * 长度由 {@code GL_NORMALIZE} 兜底（见 {@link FeatureRenderDispatcher}），故只需方向正确。
+     */
+    private static void writeQuadNormal(Tessellator t, BakedQuad q,
+                                        Matrix4d displayTransform, Matrix4d preTransform,
+                                        Vector3d tmp) {
+        Direction face = q.face;
+        if (face != null) {
+            tmp.set(face.getStepX(), face.getStepY(), face.getStepZ());
+        } else {
+            tmp.set(0.0, 1.0, 0.0);
+        }
+        if (displayTransform != null) transformDirection(displayTransform, tmp);
+        if (preTransform != null) transformDirection(preTransform, tmp);
+        double len = tmp.length();
+        if (len > 1.0e-6) tmp.scale(1.0 / len);
+        t.setNormal((float) tmp.x, (float) tmp.y, (float) tmp.z);
+    }
+
+    /** 用 4x4 矩阵的 3x3 旋转部分变换方向向量（忽略平移）。 */
+    private static void transformDirection(Matrix4d m, Vector3d v) {
+        double x = m.m00 * v.x + m.m01 * v.y + m.m02 * v.z;
+        double y = m.m10 * v.x + m.m11 * v.y + m.m12 * v.z;
+        double z = m.m20 * v.x + m.m21 * v.y + m.m22 * v.z;
+        v.set(x, y, z);
     }
 }

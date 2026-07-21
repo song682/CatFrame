@@ -1,1 +1,6 @@
-{"model":{"type":"minecraft:model","model":"minecraft:item/wooden_door"}}
+{
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:item/wooden_door"
+    }
+}

@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.compact.forge.tags;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
 import decok.dfcdvadstf.catframe.tags.TagLoader;
+import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;

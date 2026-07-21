@@ -1,6 +1,5 @@
 package decok.dfcdvadstf.catframe.recipe;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -8,6 +7,8 @@ import net.minecraft.item.crafting.FurnaceRecipes;
 import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;
 
 import java.util.Set;
 

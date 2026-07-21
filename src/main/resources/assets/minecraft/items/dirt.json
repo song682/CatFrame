@@ -1,0 +1,11 @@
+{
+    "model": {
+        "type": "minecraft:exact_match",
+        "property": "minecraft:damage",
+        "fallback": { "type": "minecraft:model", "model": "minecraft:block/dirt" },
+        "cases": {
+            "0": { "type": "minecraft:model", "model": "minecraft:block/dirt" },
+            "2": { "type": "minecraft:model", "model": "minecraft:block/podzol" }
+        }
+    }
+}

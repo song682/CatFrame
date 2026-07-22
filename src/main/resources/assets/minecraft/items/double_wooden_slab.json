@@ -1,0 +1,18 @@
+{
+    "model": {
+        "type": "minecraft:exact_match",
+        "property": "minecraft:damage",
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:block/slab_oak"
+        },
+        "cases": {
+            "0": {"type": "minecraft:model", "model": "minecraft:block/double_slab_oak"},
+            "1": {"type": "minecraft:model", "model": "minecraft:block/double_slab_spruce"},
+            "2": {"type": "minecraft:model", "model": "minecraft:block/double_slab_birch"},
+            "3": {"type": "minecraft:model", "model": "minecraft:block/double_slab_jungle"},
+            "4": {"type": "minecraft:model", "model": "minecraft:block/double_slab_acacia"},
+            "5": {"type": "minecraft:model", "model": "minecraft:block/double_slab_dark_oak"}
+        }
+    }
+}

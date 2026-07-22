@@ -103,8 +103,14 @@ public class TextureSlots {
      * 判定 icon 是否属于 blocks 纹理图集（对标 26.1.2
      * {@code sprite.atlasLocation().equals(TextureAtlas.LOCATION_BLOCKS)}）。
      * <p>
-     * 1.7.10 的 {@link TextureAtlasSprite} 不携带图集信息，故用实例同一性判定：
-     * blocks 图集里同名 sprite 是同一个对象 → 来自 blocks 图集。
+     * 1.7.10 的 {@link TextureAtlasSprite} 不携带图集信息，判定分三级：
+     * <ol>
+     *   <li>blocks 图集实例同一性 → blocks；</li>
+     *   <li>items 图集实例同一性 → items；</li>
+     *   <li>两个原版图集都不含该实例时，按路径前缀归类（前瞻兼容：
+     *       {@code items/} / {@code item/} → items，其余含 {@code blocks/} /
+     *       {@code block/} → blocks），为未来自定义缝合系统预留。</li>
+     * </ol>
      * icon 为 null 或非 atlas sprite 时兜底返回 true（与世界路径恒绑 blocks 图集一致）。
      *
      * @param icon 待判定的 icon，可为 null
@@ -113,12 +119,33 @@ public class TextureSlots {
     public static boolean isBlockAtlas(@Nullable IIcon icon) {
         if (!(icon instanceof TextureAtlasSprite)) return true;
         try {
-            TextureAtlasSprite blockSprite = Minecraft.getMinecraft()
-                    .getTextureMapBlocks().getAtlasSprite(icon.getIconName());
-            return blockSprite == icon;
+            String name = icon.getIconName();
+            // 1. blocks 图集实例同一性：同名 sprite 是同一个对象 → 来自 blocks 图集
+            if (Minecraft.getMinecraft().getTextureMapBlocks().getAtlasSprite(name) == icon) {
+                return true;
+            }
+            // 2. items 图集实例同一性
+            TextureMap itemsMap = (TextureMap) Minecraft.getMinecraft().getTextureManager()
+                    .getTexture(TextureMap.locationItemsTexture);
+            if (itemsMap != null && itemsMap.getAtlasSprite(name) == icon) {
+                return false;
+            }
+            // 3. 都不含该实例（未来自定义缝合的 sprite）：按路径前缀归类
+            return !hasItemsPrefix(name);
         } catch (Exception e) {
             return true;
         }
+    }
+
+    /**
+     * 判定纹理名（可含 namespace）是否以 items 图集的文件夹前缀开头
+     * （{@code items/} 与现代单数 {@code item/}）。
+     */
+    private static boolean hasItemsPrefix(@Nullable String name) {
+        if (name == null) return false;
+        int colon = name.indexOf(':');
+        String path = colon >= 0 ? name.substring(colon + 1) : name;
+        return path.startsWith("items/") || path.startsWith("item/");
     }
 
     /**

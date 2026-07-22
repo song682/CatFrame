@@ -5,9 +5,6 @@ import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.*;
-import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
-import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
-import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.world.IBlockAccess;
@@ -42,9 +39,6 @@ public class RenderJsonBlockModel implements ISimpleBlockRenderingHandler {
     /** renderType ID → RenderJsonBlockModel 实例映射 */
     private static final Map<Integer, RenderJsonBlockModel> handlers = new HashMap<>();
 
-    /** renderType ID → 物品栏是否渲染 3D（默认 true） */
-    private static final Map<Integer, Boolean> inventoryRender3D = new HashMap<>();
-
     /** 下一个可用的 renderType ID */
     private static int nextId = 90000;
 
@@ -68,16 +62,6 @@ public class RenderJsonBlockModel implements ISimpleBlockRenderingHandler {
         RenderJsonBlockModel handler = new RenderJsonBlockModel(id);
         registeredBlocks.put(block, id);
         handlers.put(id, handler);
-
-        // 检测 IBlockStateProvider.inventoryFlatModel() → 设置扁平 2D 标记
-        boolean render3D = true;
-        if (block instanceof IBlockStateProvider) {
-            String flatModel = ((IBlockStateProvider) block).inventoryFlatModel();
-            if (flatModel != null) {
-                render3D = false;
-            }
-        }
-        inventoryRender3D.put(id, render3D);
 
         RenderingRegistry.registerBlockHandler(handler);
         return id;
@@ -111,56 +95,25 @@ public class RenderJsonBlockModel implements ISimpleBlockRenderingHandler {
     }
 
     /**
-     * 物品栏 / GUI 中的方块渲染 — 从 VMM 取模型数据，走 BLOCK_GUI 阶段的 UniformRenderPipeline。
+     * 物品栏 / GUI 中的方块渲染 — <b>已停用</b>。
+     * <p>
+     * 方块物品的物品栏 / 手持 / 掉落物渲染统一走物品管线（Forge {@code IItemRenderer}
+     * + {@link RenderJsonItemModel}，由 {@code items/{name}.json} 驱动），不再经由 ISBRH。
+     * 此方法保留仅为满足接口，恒为空操作。
      */
     @Override
     public void renderInventoryBlock(Block block, int metadata, int modelId, RenderBlocks renderer) {
-        // 优先从 VMM 注册表取预烘焙模型
-        BlockStateModel model = ModelRegistry.getBlockModel(block);
-        if (model != null) {
-            BlockStateModelPart part = model.collectParts(null, 0, 0, 0, metadata);
-            if (part != null && !part.isEmpty()) {
-                UniformRenderPipeline.renderBlockQuadsGUI(part, block, metadata);
-            }
-            return;
-        }
-
-        // 兜底：registeredBlockModels 未命中时，尝试从 blockstate 的 "normal" variant 取模型
-        BlockStateModelPart part = collectFromBlockstate(block, metadata);
-        if (part != null && !part.isEmpty()) {
-            UniformRenderPipeline.renderBlockQuadsGUI(part, block, metadata);
-        }
+        // no-op: 物品上下文渲染由物品管线负责，见 ModelRegistry.getRegisteredItemModel。
     }
 
     @Override
     public boolean shouldRender3DInInventory(int modelId) {
-        Boolean flag = inventoryRender3D.get(modelId);
-        return flag == null || flag;
+        // 物品栏方块渲染已停用（统一走物品管线），返回 false 让原版不再尝试 3D 物品栏渲染。
+        return false;
     }
 
     @Override
     public int getRenderId() {
         return this.renderTypeId;
-    }
-
-    // ==================== 内部辅助 ====================
-
-    /**
-     * 从 blockstate JSON 的 "normal" variant 收集默认模型部件（用于物品栏渲染兜底）。
-     */
-    private static BlockStateModelPart collectFromBlockstate(Block block, int metadata) {
-        BlockstateJson bs = ModelManagerDataLoader.getBlockstateData(block);
-        if (bs == null || bs.variants == null) return null;
-
-        BlockstateJson.VariantEntry entry = bs.variants.get("normal");
-        if (entry == null) return null;
-
-        BlockstateJson.Variant variant = entry.getVariant(0);
-        if (variant == null || variant.model == null) return null;
-
-        String cacheKey = BakedModelCache.buildKey(
-                variant.model, variant.x, variant.y);
-        BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
-        return (part != null && !part.isEmpty()) ? part : null;
     }
 }

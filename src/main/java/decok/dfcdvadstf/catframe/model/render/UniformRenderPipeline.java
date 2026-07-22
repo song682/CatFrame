@@ -98,24 +98,6 @@ public final class UniformRenderPipeline {
                 RenderPhase.BLOCK_WORLD, 0);
     }
 
-    /**
-     * 渲染方块的 quads（GUI 模式快捷方法）。
-     */
-    public static void renderBlockQuadsGUI(BlockStateModelPart part, Block block) {
-        renderBlockQuadsGUI(part, block, 0);
-    }
-
-    /**
-     * 渲染方块的 quads（GUI 模式，带 metadata 支持）。
-     *
-     * @param metadata 方块 metadata（用于 Block.getRenderColor(metadata) 染色）
-     */
-    public static void renderBlockQuadsGUI(BlockStateModelPart part, Block block,
-                                           int metadata) {
-        renderBlockQuads(part, null, 0, 0, 0, block, 0,
-                RenderPhase.BLOCK_GUI, metadata);
-    }
-
     // ==================== 物品渲染 ====================
 
     /**

@@ -21,29 +21,18 @@ import java.util.List;
  * <p>
  * Intercepts:
  * <ul>
- *   <li>{@code drawHoveringText} — generic text tooltip</li>
- *   <li>{@code renderToolTip} — item tooltip</li>
- *   <li>{@code drawScreen} HEAD — frame reset; RETURN — flush deferred tooltip</li>
+ *   <li>{@code drawHoveringText} — generic text tooltip → captured for deferred render</li>
+ *   <li>{@code renderToolTip} — item tooltip → captured for deferred render</li>
+ *   <li>{@code handleKeyboardInput} — CatFrame focus/keyboard dispatch</li>
  * </ul>
+ * <p>
+ * <b>帧生命周期（reset/flush）不在此处：</b>{@code GuiContainer} 重写 {@code drawScreen}
+ * 且不调用 {@code super}，注入到 {@code GuiScreen.drawScreen} 的 reset/flush 在容器界面永不触发。
+ * 因此改由 {@link decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler}
+ * 通过 Forge {@code DrawScreenEvent.Pre/Post} 驱动，对所有屏幕生效。
  */
 @Mixin(GuiScreen.class)
 public abstract class MixinGuiScreen extends Gui {
-
-    /**
-     * 帧开始时重置 GuiGraphicsExtractor 状态。
-     */
-    @Inject(method = "drawScreen", at = @At("HEAD"))
-    private void catframe$resetGuiGraphics(int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
-        GuiGraphicsExtractor.getInstance().resetForNewFrame();
-    }
-
-    /**
-     * 帧末 flush 延迟 tooltip — 确保 tooltip 始终渲染在最上层。
-     */
-    @Inject(method = "drawScreen", at = @At("RETURN"))
-    private void catframe$flushTooltip(int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
-        GuiGraphicsExtractor.getInstance().extractDeferredElements();
-    }
 
     /**
      * 接管原版键盘事件——读取 LWJGL2 的当前事件并拆分为

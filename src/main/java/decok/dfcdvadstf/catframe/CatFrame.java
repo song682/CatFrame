@@ -9,6 +9,7 @@ import cpw.mods.fml.relauncher.Side;
 import decok.dfcdvadstf.catframe.compact.forge.language.LanguageRegister;
 import decok.dfcdvadstf.catframe.compact.forge.tags.event.ODorTag;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientOverlayHandler;
+import decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientToastHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.RenderItemInFrameHandler;
@@ -61,6 +62,11 @@ public class CatFrame {
 
             // Register client event handler (welcome toast + HUD toast rendering)
             MinecraftForge.EVENT_BUS.register(new ClientToastHandler());
+
+            // Drive GuiGraphicsExtractor's deferred pipeline (item/PiP/tooltip) via Forge
+            // DrawScreenEvent Pre/Post so it works in GuiContainer screens too
+            // (which override drawScreen and never trigger the GuiScreen mixin injections).
+            MinecraftForge.EVENT_BUS.register(new ClientScreenGraphicsHandler());
 
             // Bridge OverlayManager into the HUD render/tick loop (pure Forge), then
             // register the ActionBar as a HUD-context overlay so it shows in-game.

@@ -3,9 +3,6 @@ package decok.dfcdvadstf.catframe.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.core.ModelJson;
-import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -13,6 +10,7 @@ import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemBlock;
 import net.minecraftforge.client.MinecraftForgeClient;
 
 import java.util.HashMap;
@@ -24,8 +22,12 @@ import java.util.Set;
  * Model registration API extracted from {@link VanillaModelManager}.
  * <p>
  * Responsible for registering BlockStateModels, ItemModels, rotations, and
- * providing the public API for looking up registered models (including
- * GTNHLib-style ItemBlock fallback and Tier 3 auto-discovery).
+ * providing the public API for looking up registered models.
+ * <p>
+ * Item-context rendering (hand / GUI / dropped) is driven exclusively by
+ * registered {@link IItemStateProvider}s loaded from {@code items/{name}.json}.
+ * ItemBlocks whose {@code items/{name}.json} is missing fall back to the
+ * {@code builtin/missing} model (never to vanilla rendering).
  */
 @SideOnly(Side.CLIENT)
 public class ModelRegistry {
@@ -38,7 +40,6 @@ public class ModelRegistry {
     public static final Set<Item> persistentItemModels = new HashSet<>();
     /** items with {@code oversized_in_gui=true} — GUI 中允许模型几何溢出槽位（走 PiP 通道，不裁剪不钳制）。 */
     public static final Set<Item> oversizedItems = new HashSet<>();
-    static final Set<Item> autoDiscoveryMissCache = new HashSet<>();
     static final Set<Block> randomRotationBlocks = new HashSet<>();
     static final Set<Block> autoOverlayBlocks = new HashSet<>();
     static final Map<Block, CatStateDefinition<?>> blockStateDefinitions = new HashMap<>();
@@ -124,68 +125,40 @@ public class ModelRegistry {
         }
 
         /**
-         * Get the registered IItemState model for an item, or null if not registered.
+         * Get the registered IItemState model for an item.
          * <p>
-         * If no model is registered for the item, falls through to Tier 3
-         * convention-path auto-discovery ({@code namespace:item/{name}.json}).
-         * <p>
-         * <b>Note:</b> ItemBlocks without a dedicated {@link IItemStateProvider} are no
-         * longer auto-wrapped from their {@link BlockStateModel} — the block→item model
-         * fallback (formerly {@code BlockStateItemState}) has been removed. Such ItemBlocks
-         * fall back to vanilla rendering until an ItemState is registered for them.
+         * Lookup order:
+         * <ol>
+         *   <li>A model registered from {@code items/{name}.json} (via
+         *       {@link #registerItemModel}) — returned as-is.</li>
+         *   <li>Otherwise, if the item is an {@link ItemBlock}, fall back to the
+         *       {@code builtin/missing} model. Every ItemBlock is required to ship an
+         *       {@code items/{name}.json}; when the author omits it the block item shows
+         *       the missingno model rather than falling back to vanilla rendering. The
+         *       fallback model is cached and its Forge {@code IItemRenderer} registered so
+         *       later lookups are cheap.</li>
+         *   <li>Otherwise (non-block item without a registered model) returns {@code null},
+         *       letting the item fall back to vanilla rendering.</li>
+         * </ol>
          */
         public static IItemStateProvider getRegisteredItemModel(Item item) {
             if (item == null) return null;
             IItemStateProvider itemModel = registeredItemModels.get(item);
             if (itemModel != null) return itemModel;
 
-            // Tier 3: 约定路径懒发现 (namespace:item/{name}.json)
-            return autoDiscoverItemModel(item);
-        }
-
-        /**
-         * Tier 3: 尝试通过约定路径 {@code namespace:item/{name}.json} 懒发现并烘焙 item 模型。
-         * <p>成功则缓存到 {@code registeredItemModels} 并注册 Forge IItemRenderer；
-         * 失败则记入 {@code autoDiscoveryMissCache} 不再重试。
-         * <p><b>已知限制</b>：懒发现发生在 atlas 缝合之后，纹理会显示 missingno，
-         * 日志会警告用户应预先注册纹理。
-         */
-        private static IItemStateProvider autoDiscoverItemModel(Item item) {
-            if (autoDiscoveryMissCache.contains(item)) return null;
-
-            String registryName = Item.itemRegistry.getNameForObject(item);
-            if (registryName == null) {
-                autoDiscoveryMissCache.add(item);
-                return null;
+            // 方块物品缺省回退：每个 ItemBlock 都必须编写 items/{name}.json；
+            // 作者遗漏时回退到 builtin/missing（紫黑 missingno），使方块物品永不落回原版渲染。
+            if (item instanceof ItemBlock) {
+                ItemStateModel missing = new ItemStateModel("builtin/missing");
+                registeredItemModels.put(item, missing);
+                if (ModelManagerDataLoader.initialized) {
+                    MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
+                }
+                return missing;
             }
 
-            // 分离 namespace:name → namespace:item/name
-            int colonIdx = registryName.indexOf(':');
-            String namespace = colonIdx >= 0 ? registryName.substring(0, colonIdx) : "minecraft";
-            String name = colonIdx >= 0 ? registryName.substring(colonIdx + 1) : registryName;
-            String modelPath = namespace + ":item/" + name;
-
-            ModelJson resolved = ModelResolver.resolve(modelPath);
-            if (resolved == null) {
-                autoDiscoveryMissCache.add(item);
-                return null;
-            }
-
-            // 发现成功 — 创建懒模型（烘焙由 BakedModelCache 懒执行）
-            CatFrame.logger.info("[VMM] Tier 3 auto-discovered item model: {} -> {}", registryName, modelPath);
-            // 警告：纹理可能未加入 atlas
-            CatFrame.logger.warn("[VMM] Auto-discovered model '{}' texture may not be in atlas " +
-                    "(discovered after atlas stitching). Register textures earlier to avoid missingno.",
-                    modelPath);
-
-            ItemStateModel wrapper = new ItemStateModel(modelPath);
-
-            registeredItemModels.put(item, wrapper);
-            // 注册 Forge IItemRenderer（已初始化阶段）
-            if (ModelManagerDataLoader.initialized) {
-                MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
-            }
-            return wrapper;
+            // 非方块物品：无注册模型则返回 null，回退原版物品渲染。
+            return null;
         }
 
         /**

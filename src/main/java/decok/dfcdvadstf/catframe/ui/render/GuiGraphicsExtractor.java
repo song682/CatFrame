@@ -5,11 +5,14 @@ import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
+import decok.dfcdvadstf.catframe.ui.render.pip.*;
 import decok.dfcdvadstf.catframe.ui.tooltip.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.BufferUtils;
@@ -18,7 +21,9 @@ import org.lwjgl.opengl.GL11;
 import javax.annotation.Nullable;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -80,9 +85,31 @@ public class GuiGraphicsExtractor {
     @Nullable
     private Runnable deferredTooltip;
 
+    /**
+     * 帧内 PiP 提交队列 — 对标 26.1.2 {@code GuiRenderState} 收集的 PiP 状态。
+     * <p>3D 方块模型 / GUI 实体 / oversized 物品在采集阶段入队，帧末 flush 时按类型分派绘制。</p>
+     */
+    private final List<PictureInPictureRenderState> deferredPip = new ArrayList<>();
+
+    /** PiP 分派表：状态运行时类型 → 对应渲染器 — 对标 26.1.2 {@code PictureInPictureRenderer} 注册表。 */
+    private final Map<Class<? extends PictureInPictureRenderState>, PictureInPictureRenderer<?>> pipDispatchTable =
+            new HashMap<>();
+
+    /** GUI 物品绘制回调实现 — 供 {@link OversizedItemPipRenderer} 复用本类的物品渲染逻辑。 */
+    private final ItemGuiDrawer itemDrawer = new ItemGuiDrawerImpl();
+
     public GuiGraphicsExtractor() {
         this.mc = Minecraft.getMinecraft();
         this.renderState = new GuiRenderState();
+
+        // 注册 PiP 渲染器分派表（构造期常量，帧间不清）
+        registerPip(new OversizedItemPipRenderer(itemDrawer));
+        registerPip(new EntityPipRenderer());
+    }
+
+    /** 注册一个 PiP 渲染器，以其处理的状态类型为分派 key。 */
+    private void registerPip(PictureInPictureRenderer<?> renderer) {
+        pipDispatchTable.put(renderer.getStateClass(), renderer);
     }
 
     /**
@@ -124,7 +151,14 @@ public class GuiGraphicsExtractor {
 
         // 延迟渲染：仅快照调用点的 modelview 矩阵 + 收集状态，不立即绘制。
         float[] pose = captureModelViewMatrix();
-        renderState.addItem(new GuiRenderState.ItemRenderState(stack, x, y, pose));
+
+        // oversized_in_gui=true 的物品走独立 PiP 通道：绕开 GuiRenderState 自动分层、不设 scissor，
+        // 允许模型几何自然溢出 16x16 槽位。
+        if (ModelRegistry.isOversizedInGui(stack.getItem())) {
+            deferredPip.add(new OversizedItemRenderState(stack, pose, new ScreenRectangle(x, y, 16, 16)));
+        } else {
+            renderState.addItem(new GuiRenderState.ItemRenderState(stack, x, y, pose));
+        }
     }
 
     /**
@@ -138,7 +172,23 @@ public class GuiGraphicsExtractor {
      * </ol>
      */
     private void renderDeferredItem(GuiRenderState.ItemRenderState state) {
-        ItemStack stack = state.getStack();
+        drawItemModel(state.getStack(), state.getPoseMatrix(), false);
+    }
+
+    /**
+     * GUI 物品模型的实际绘制核心 — 供延迟物品路径与 PiP oversized 通道复用。
+     * <ol>
+     *   <li>{@code glPushAttrib} 保存 GL 状态 + 设置物品渲染环境</li>
+     *   <li>{@code glLoadMatrix} 恢复收集时的 modelview 矩阵（精确复现调用点的位置/缩放）</li>
+     *   <li>委托 {@link IItemStateProvider#render} 渲染模型 + 叠加附魔光效</li>
+     * </ol>
+     *
+     * @param stack          物品栈
+     * @param pose           采集时的 modelview 矩阵快照，可为 null
+     * @param allowOversized 预留标志：为未来溢出钳制支持保留。当前无实时钳制逻辑，
+     *                       两分支渲染一致（oversized 物品的差异体现在采集侧走独立 PiP 通道）。
+     */
+    private void drawItemModel(ItemStack stack, @Nullable float[] pose, boolean allowOversized) {
         if (stack == null || stack.getItem() == null) return;
 
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
@@ -151,7 +201,6 @@ public class GuiGraphicsExtractor {
         GL11.glPushMatrix();
         try {
             // 恢复收集时的 modelview 矩阵 — 帧末 GL 上下文已切换，需据快照重建调用点变换
-            float[] pose = state.getPoseMatrix();
             if (pose != null) {
                 MATRIX_BUFFER.clear();
                 MATRIX_BUFFER.put(pose);
@@ -173,6 +222,18 @@ public class GuiGraphicsExtractor {
     }
 
     /**
+     * {@link ItemGuiDrawer} 的内部实现 — 委托到 {@link #drawItemModel}，
+     * 供 pip 包的 {@link OversizedItemPipRenderer} 复用物品渲染逻辑，
+     * 避免把 {@code draw()} 泄漏进本类公共 API。
+     */
+    private final class ItemGuiDrawerImpl implements ItemGuiDrawer {
+        @Override
+        public void draw(ItemStack stack, @Nullable float[] pose, boolean allowOversized) {
+            drawItemModel(stack, pose, allowOversized);
+        }
+    }
+
+    /**
      * 快照当前 modelview 矩阵 — 供帧末延迟渲染恢复调用点的 GL 变换。
      */
     private static float[] captureModelViewMatrix() {
@@ -181,6 +242,25 @@ public class GuiGraphicsExtractor {
         float[] m = new float[16];
         MATRIX_BUFFER.get(m);
         return m;
+    }
+
+    // ==================== PiP 提交（GUI 实体） ====================
+
+    /**
+     * 在 GUI 中渲染实体（<b>延迟到帧末</b>，走独立 PiP 通道）。
+     *
+     * @param entity 待渲染实体
+     * @param scale  缩放
+     * @param lookX  实体朝向的水平偏移（对标 {@code GuiInventory.drawEntityOnScreen} 的 mouseX）
+     * @param lookY  实体朝向的垂直偏移
+     * @param x      GUI 槽位 X 坐标（像素）
+     * @param y      GUI 槽位 Y 坐标（像素）
+     */
+    public void entity(EntityLivingBase entity, int scale, float lookX, float lookY, int x, int y) {
+        if (entity == null) return;
+        float[] pose = captureModelViewMatrix();
+        deferredPip.add(new GuiEntityRenderState(
+                entity, scale, lookX, lookY, pose, new ScreenRectangle(x, y, 16, 16), null));
     }
 
     // ==================== GL 状态管理 ====================
@@ -454,7 +534,12 @@ public class GuiGraphicsExtractor {
      * </ol>
      */
     public void extractDeferredElements() {
-        // 路径一：先绘制收集到的物品模型（位于 tooltip 之下的内容层）
+        // 路径二（PiP）：先绘制 3D 内容层（方块模型 / 实体 / oversized 物品），位于扁平物品之下
+        for (PictureInPictureRenderState state : deferredPip) {
+            dispatchPip(state);
+        }
+
+        // 路径一：绘制收集到的普通物品模型（位于 tooltip 之下的内容层）
         renderState.forEachItem(this::renderDeferredItem);
 
         // 路径三：tooltip 始终在最上层
@@ -466,10 +551,23 @@ public class GuiGraphicsExtractor {
     }
 
     /**
+     * 按 PiP 状态的运行时类型查分派表并绘制。
+     */
+    @SuppressWarnings("unchecked")
+    private void dispatchPip(PictureInPictureRenderState state) {
+        PictureInPictureRenderer<PictureInPictureRenderState> renderer =
+                (PictureInPictureRenderer<PictureInPictureRenderState>) pipDispatchTable.get(state.getClass());
+        if (renderer != null) {
+            renderer.prepare(state);
+        }
+    }
+
+    /**
      * 帧开始时重置状态。
      */
     public void resetForNewFrame() {
         this.renderState.reset();
+        this.deferredPip.clear();
         this.deferredTooltip = null;
     }
 }

@@ -221,7 +221,7 @@ public class RenderDispatcher {
         Item item = stack.getItem();
         if (item == null) return;
 
-        // --- Check registered IItemState model (GTNHLib-style: ItemBlock falls back to block model) ---
+        // --- 查询已注册 IItemState 模型（方块物品若缺 items/{name}.json 则回退 builtin/missing）---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             // 开渲染作用域：物品的多个子模型（双模型/composite/多层）在作用域内累积，
@@ -262,7 +262,7 @@ public class RenderDispatcher {
                 ? RenderPhase.ITEM_HAND_FIRST_PERSON
                 : RenderPhase.ITEM_HAND_THIRD_PERSON;
 
-        // --- Check registered IItemState model (GTNHLib-style: ItemBlock falls back to block model) ---
+        // --- 查询已注册 IItemState 模型（方块物品若缺 items/{name}.json 则回退 builtin/missing）---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             RenderCommandBuffers.beginScope();
@@ -390,7 +390,7 @@ public class RenderDispatcher {
         s.m00 = 0.5; s.m11 = 0.5; s.m22 = 0.5;
         framePreTransform.mul(s);
 
-        // --- Check registered IItemState model (GTNHLib-style: ItemBlock falls back to block model) ---
+        // --- 查询已注册 IItemState 模型（方块物品若缺 items/{name}.json 则回退 builtin/missing）---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             RenderCommandBuffers.beginScope();

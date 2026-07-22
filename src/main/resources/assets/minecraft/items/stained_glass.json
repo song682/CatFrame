@@ -3,7 +3,7 @@
         "type": "minecraft:exact_match",
         "property": "minecraft:damage",
         "fallback": {"type": "minecraft:model", "model": "minecraft:block/glass"},
-        "case": {
+        "cases": {
             "0": {"type": "minecraft:model", "model": "minecraft:block/white_stained_glass"},
             "1": {"type": "minecraft:model", "model": "minecraft:block/orange_stained_glass"},
             "2": {"type": "minecraft:model", "model": "minecraft:block/magenta_stained_glass"},

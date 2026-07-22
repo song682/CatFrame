@@ -6,6 +6,7 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
+import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
@@ -122,7 +123,8 @@ public class PaneMultipartRedirectModel implements BlockStateModel {
                         mpc.apply != null ? mpc.apply.model : "null", applies);
             }
             if (applies && mpc.apply != null && mpc.apply.model != null) {
-                BlockStateModelPart part = ModelBaker.bake(mpc.apply.model, mpc.apply.x, mpc.apply.y);
+                BlockStateModelPart part = AtlasGuard.gate(
+                        ModelBaker.bake(mpc.apply.model, mpc.apply.x, mpc.apply.y), mpc.apply.model);
                 if (CatFrameConfig.shouldLogDebug()) {
                     CatFrame.logger.info("[PaneMP]   bake('{}', x={}, y={}) -> part={}", mpc.apply.model, mpc.apply.x, mpc.apply.y, part);
                 }

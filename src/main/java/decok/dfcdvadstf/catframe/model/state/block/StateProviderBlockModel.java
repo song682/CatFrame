@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.model.state.block;
 
 import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
+import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
@@ -67,7 +68,7 @@ public class StateProviderBlockModel implements BlockStateModel {
             if (variant == null || variant.model == null) return BlockStateModelPart.empty();
 
             // 直接烘焙（VanillaModelManager 有缓存）
-            BlockStateModelPart part = ModelBaker.bake(variant.model);
+            BlockStateModelPart part = AtlasGuard.gate(ModelBaker.bake(variant.model), variant.model);
             if (part == null || part.isEmpty()) return BlockStateModelPart.empty();
             return part;
 
@@ -80,7 +81,7 @@ public class StateProviderBlockModel implements BlockStateModel {
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(properties);
                 if (applies && mpc.apply != null && mpc.apply.model != null) {
-                    BlockStateModelPart part = ModelBaker.bake(mpc.apply.model);
+                    BlockStateModelPart part = AtlasGuard.gate(ModelBaker.bake(mpc.apply.model), mpc.apply.model);
                     if (part != null) {
                         for (Direction dir : Direction.values()) {
                             mergedFace.computeIfAbsent(dir, k -> new java.util.ArrayList<>())

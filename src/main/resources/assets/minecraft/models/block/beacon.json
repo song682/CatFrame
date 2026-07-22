@@ -1,9 +1,10 @@
-{   "parent": "block/block",
+{
+    "parent": "block/block",
     "textures": {
-        "particle": "block/glass",
-        "glass": "block/glass",
-        "obsidian": "block/obsidian",
-        "beacon": "block/beacon"
+        "particle": "blocks/glass",
+        "glass": "blocks/glass",
+        "obsidian": "blocks/obsidian",
+        "beacon": "blocks/beacon"
     },
     "elements": [
         {   "__comment": "Glass shell",

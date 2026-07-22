@@ -1,13 +1,12 @@
 package decok.dfcdvadstf.catframe.tags.impl;
 
+import decok.dfcdvadstf.catframe.Tags;
+import decok.dfcdvadstf.catframe.tags.TagKey;
+import decok.dfcdvadstf.catframe.tags.TagLoader;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 
 import java.util.Set;
-
-import decok.dfcdvadstf.catframe.Tags;
-import decok.dfcdvadstf.catframe.tags.TagKey;
-import decok.dfcdvadstf.catframe.tags.TagLoader;
 
 /**
  * CatFrame tag utility class

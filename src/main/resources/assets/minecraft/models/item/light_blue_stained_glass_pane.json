@@ -1,6 +1,6 @@
 {
     "parent": "item/generated",
     "textures": {
-        "layer0": "minecraft:blocks/light_blue_glass"
+        "layer0": "minecraft:blocks/glass_light_blue"
     }
 }

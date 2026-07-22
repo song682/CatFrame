@@ -1,6 +1,6 @@
 {
     "model": {
         "type": "minecraft:model",
-        "model": "minecraft:block/wooden_pressure_plate"
+        "model": "minecraft:block/wood_pressure_plate"
     }
 }

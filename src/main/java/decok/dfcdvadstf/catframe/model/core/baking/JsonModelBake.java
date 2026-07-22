@@ -449,6 +449,14 @@ public class JsonModelBake {
         public Boolean shadeEnabled = null;
 
         /**
+         * 图集归属标记（对标 26.1.2 {@code BakedQuad.MaterialInfo} 按
+         * {@code sprite.atlasLocation()} 定 RenderType）：烘焙期由
+         * {@code ModelJsonUnbakedAdapter} 后置扫描写入，渲染期据此选择绑定图集。
+         * true=blocks 图集（默认，与 missingno/null icon 兜底一致），false=items 图集。
+         */
+        public boolean blockAtlas = true;
+
+        /**
          * 便利方法：获取顶点 i 的 X 坐标。
          * 在向 Tessellator 提交时替代旧的 vx[i] 引用。
          */

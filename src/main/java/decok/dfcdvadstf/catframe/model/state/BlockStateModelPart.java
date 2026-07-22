@@ -165,6 +165,59 @@ public class BlockStateModelPart {
         return true;
     }
 
+    // ==================== 图集拆分（对标 26.1.2 per-quad 图集） ====================
+
+    /** 懒缓存：索引 0 = blocks 图集子部件，索引 1 = items 图集子部件，槽位可为 null。 */
+    private BlockStateModelPart[] atlasSplitCache;
+
+    /**
+     * 按 quad 的烘焙期图集标记拆分部件（对标 26.1.2
+     * {@code BakedQuad.MaterialInfo} 的 per-quad RenderType）。
+     * <p>
+     * 全同质（常态）时对应槽位直接引用 {@code this}、另一槽位为 null，零分配；
+     * 混合图集时各自构建子部件（携带同一 display），与 26.1.2 分层物品
+     * 跨图集能力对齐。结果缓存，仅渲染线程访问。
+     *
+     * @return 长度为 2 的数组：[0]=blocks 图集部件，[1]=items 图集部件，槽位可为 null
+     */
+    public BlockStateModelPart[] atlasSplit() {
+        if (atlasSplitCache == null) {
+            boolean hasBlock = false, hasItem = false;
+            for (BakedQuad q : getAllQuads()) {
+                if (q.blockAtlas) hasBlock = true; else hasItem = true;
+                if (hasBlock && hasItem) break;
+            }
+            if (!hasItem) {
+                // 全 blocks（含空部件）
+                atlasSplitCache = new BlockStateModelPart[]{this, null};
+            } else if (!hasBlock) {
+                atlasSplitCache = new BlockStateModelPart[]{null, this};
+            } else {
+                List<BakedQuad> blockQuads = new ArrayList<>();
+                List<BakedQuad> itemQuads = new ArrayList<>();
+                for (BakedQuad q : getAllQuads()) {
+                    (q.blockAtlas ? blockQuads : itemQuads).add(q);
+                }
+                atlasSplitCache = new BlockStateModelPart[]{
+                        fromQuads(blockQuads, partDisplay),
+                        fromQuads(itemQuads, partDisplay)};
+            }
+        }
+        return atlasSplitCache;
+    }
+
+    /**
+     * 所有 quad 是否均来自 blocks 图集（供方块世界路径门禁
+     * {@code AtlasGuard} 使用，对标 26.1.2 {@code SimpleModelWrapper.bake}
+     * 的 forbiddenSprites 检查）。
+     */
+    public boolean allQuadsInBlockAtlas() {
+        for (BakedQuad q : getAllQuads()) {
+            if (!q.blockAtlas) return false;
+        }
+        return true;
+    }
+
     /**
      * 合并两个 BlockStateModelPart（用于 multipart 组合）。
      */

@@ -4,6 +4,7 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 
@@ -97,6 +98,28 @@ public class TextureSlots {
     public static final TextureSlots EMPTY = new TextureSlots(Collections.emptyMap());
 
     // ==================== 查询 ====================
+
+    /**
+     * 判定 icon 是否属于 blocks 纹理图集（对标 26.1.2
+     * {@code sprite.atlasLocation().equals(TextureAtlas.LOCATION_BLOCKS)}）。
+     * <p>
+     * 1.7.10 的 {@link TextureAtlasSprite} 不携带图集信息，故用实例同一性判定：
+     * blocks 图集里同名 sprite 是同一个对象 → 来自 blocks 图集。
+     * icon 为 null 或非 atlas sprite 时兜底返回 true（与世界路径恒绑 blocks 图集一致）。
+     *
+     * @param icon 待判定的 icon，可为 null
+     * @return true=blocks 图集（含兜底），false=items 图集
+     */
+    public static boolean isBlockAtlas(@Nullable IIcon icon) {
+        if (!(icon instanceof TextureAtlasSprite)) return true;
+        try {
+            TextureAtlasSprite blockSprite = Minecraft.getMinecraft()
+                    .getTextureMapBlocks().getAtlasSprite(icon.getIconName());
+            return blockSprite == icon;
+        } catch (Exception e) {
+            return true;
+        }
+    }
 
     /**
      * 获取指定 slot 的 {@link IIcon}。

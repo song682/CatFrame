@@ -2,33 +2,11 @@ package decok.dfcdvadstf.catframe;
 
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
+import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.registry.GameRegistry;
-import cpw.mods.fml.relauncher.Side;
-import decok.dfcdvadstf.catframe.compact.forge.language.LanguageRegister;
-import decok.dfcdvadstf.catframe.compact.forge.tags.event.ODorTag;
-import decok.dfcdvadstf.catframe.compact.vanilla.ClientOverlayHandler;
-import decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler;
-import decok.dfcdvadstf.catframe.compact.vanilla.ClientToastHandler;
-import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
-import decok.dfcdvadstf.catframe.compact.vanilla.model.RenderItemInFrameHandler;
-import decok.dfcdvadstf.catframe.compact.vanilla.model.ResourcePackModelDetector;
-import decok.dfcdvadstf.catframe.compact.vanilla.model.TexturesStitch;
-import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaMetadataMapper;
-import decok.dfcdvadstf.catframe.core.component.predicates.RegisteredComponents;
-import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
-import decok.dfcdvadstf.catframe.model.ModelRegistry;
-import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
-import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
-import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesInHandTintProvider;
-import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
-import decok.dfcdvadstf.catframe.model.render.extension.tint.SpawnEggAndPotionTintProvider;
-import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
-import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;
-import decok.dfcdvadstf.catframe.ui.components.ActionBarOverlay;
-import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
-import net.minecraftforge.common.MinecraftForge;
+import decok.dfcdvadstf.catframe.proxy.ClientProxy;
+import decok.dfcdvadstf.catframe.proxy.CommonProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,57 +15,20 @@ public class CatFrame {
     public static Logger logger = LogManager.getLogger(Tags.NAME);
     public static CatFrameConfig config;
 
+    @SidedProxy(
+            serverSide = "decok.dfcdvadstf.catframe.proxy.CommonProxy",
+            clientSide = "decok.dfcdvadstf.catframe.proxy.ClientProxy"
+    )
+    public static CommonProxy proxyCommon;
+    public static ClientProxy proxyClient;
+
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         // Pre initialization logic
         logger = event.getModLog();
         config = new CatFrameConfig(event.getSuggestedConfigurationFile());
 
-        // Register data components
-        RegisteredComponents.registerAll();
-        MinecraftForge.EVENT_BUS.register(new TexturesStitch());
-        MinecraftForge.EVENT_BUS.register(new ODorTag());
-        MinecraftForge.EVENT_BUS.register(new RenderItemInFrameHandler());
-
-        BlueyPlushyItem blueyPlushy = null;
-        if (config.enableBlueyPlushy) {
-            blueyPlushy = new BlueyPlushyItem();
-            GameRegistry.registerItem(blueyPlushy, "bluey_plushy");
-            CatFrameTags.add(Tags.MODID, "plushy", blueyPlushy);
-        }
-
-        if (event.getSide() == Side.CLIENT) {
-            LanguageRegister.domain(Tags.MODID, "assets/catframe/lang");
-            // load() is now triggered automatically by LanguageRegister.domain()
-
-            // Register client event handler (welcome toast + HUD toast rendering)
-            MinecraftForge.EVENT_BUS.register(new ClientToastHandler());
-
-            // Drive GuiGraphicsExtractor's deferred pipeline (item/PiP/tooltip) via Forge
-            // DrawScreenEvent Pre/Post so it works in GuiContainer screens too
-            // (which override drawScreen and never trigger the GuiScreen mixin injections).
-            MinecraftForge.EVENT_BUS.register(new ClientScreenGraphicsHandler());
-
-            // Bridge OverlayManager into the HUD render/tick loop (pure Forge), then
-            // register the ActionBar as a HUD-context overlay so it shows in-game.
-            MinecraftForge.EVENT_BUS.register(new ClientOverlayHandler());
-            OverlayManager.INSTANCE.register(ActionBarOverlay.INSTANCE);
-
-            VanillaMetadataMapper.registerVanillaMetadataMappings();
-            ModelManagerDataLoader.registerNamespace(Tags.MODID);
-            ModelManagerDataLoader.init();
-
-            if (blueyPlushy != null) {
-                // 通过 ModernItem 的双模型 API 注册（纹理由 IItemState 扫描自动收集）
-                // ModernItem 自身已实现 IItemState，直接注册为模型实例
-                ModelRegistry.registerItemModel(blueyPlushy, blueyPlushy);
-            }
-
-            TintRegistry.register(new LeavesTintProvider());
-            TintRegistry.register(new LeavesInHandTintProvider());
-            TintRegistry.register(new SpawnEggAndPotionTintProvider());
-            ModelRenderRegistry.register(new LeavesGraphicsExtension());
-        }
+        proxyCommon.preInit(event);
 
         logger.info("Pre initialization logic complete");
 
@@ -95,11 +36,7 @@ public class CatFrame {
 
     @EventHandler
     public void init(FMLInitializationEvent event) {
-        ODorTag.onInit();
-
-        // Register language reload listener for resource pack translation overrides
-        LanguageReloadListener.register();
-        ResourcePackModelDetector.register();
+        proxyCommon.init(event);
 
         logger.info("Initialization logic complete");
     }

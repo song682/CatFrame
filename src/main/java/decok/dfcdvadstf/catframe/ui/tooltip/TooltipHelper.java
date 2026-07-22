@@ -9,6 +9,7 @@ import decok.dfcdvadstf.catframe.ui.render.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ResourceLocation;
 
 import javax.annotation.Nullable;
@@ -25,7 +26,15 @@ public class TooltipHelper {
     /**
      * 从 ItemStack 获取完整的 tooltip 文字行（含物品名称、属性、Lore 等）。
      * <p>
-     * 对应 26.1.2 {@code Screen.getTooltipFromItem()}。
+     * 对应 26.1.2 {@code Screen.getTooltipFromItem()}，并复刻原版 1.7.10
+     * {@code GuiScreen.renderToolTip} 的行着色规则：
+     * <ul>
+     *   <li>第一行（物品名）：使用物品稀有度颜色 {@code stack.getRarity().rarityColor}</li>
+     *   <li>第二行：使用 {@link EnumChatFormatting#GRAY} 浅灰</li>
+     * </ul>
+     * <p><b>仅着色第一、二行</b>——第三行及之后由各自的 {@code addInformation} 自行着色，
+     * 已正确，不再覆盖。因为本模组的 tooltip 重定向绕开了原版 {@code renderToolTip}，
+     * 前两行的着色必须在此处补上。</p>
      *
      * @param mc        Minecraft 实例
      * @param itemStack 目标物品
@@ -33,7 +42,14 @@ public class TooltipHelper {
      */
     @SuppressWarnings("unchecked")
     public static List<String> getTooltipFromItem(Minecraft mc, ItemStack itemStack) {
-        return itemStack.getTooltip(mc.thePlayer, mc.gameSettings.advancedItemTooltips);
+        List<String> lines = itemStack.getTooltip(mc.thePlayer, mc.gameSettings.advancedItemTooltips);
+        if (!lines.isEmpty()) {
+            lines.set(0, itemStack.getRarity().rarityColor + lines.get(0));
+        }
+        if (lines.size() > 1) {
+            lines.set(1, EnumChatFormatting.GRAY + lines.get(1));
+        }
+        return lines;
     }
 
     /**

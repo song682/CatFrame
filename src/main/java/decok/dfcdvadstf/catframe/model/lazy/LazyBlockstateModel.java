@@ -82,7 +82,10 @@ public class LazyBlockstateModel implements BlockStateModel {
         if (modelPath == null) {
             modelPath = variantModelPaths[0]; // fallback to meta 0
         }
-        if (modelPath == null) return BlockStateModelPart.empty();
+        if (modelPath == null) {
+            // blockstate 中未找到任何匹配的 variant → fallback 到 builtin/missing
+            modelPath = "builtin/missing";
+        }
 
         String cacheKey = BakedModelCache.buildKey(modelPath, variantRotX[metadata], variantRotY[metadata]);
         BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);

@@ -1,1 +1,6 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:block/trip_wire_hook"}}
+{
+    "parent": "minecraft:item/generated",
+    "textures": {
+        "layer0": "minecraft:blocks/trip_wire_source"
+    }
+}

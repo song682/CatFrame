@@ -1,0 +1,18 @@
+{
+    "model": {
+        "type": "minecraft:exact_match",
+        "property": "minecraft:damage",
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:block/stone"
+        },
+        "cases": {
+            "0": {"type": "minecraft:model", "model": "minecraft:block/stone"},
+            "1": {"type": "minecraft:model", "model": "minecraft:block/cobblestone"},
+            "2": {"type": "minecraft:model", "model": "minecraft:block/stone_brick"},
+            "3": {"type": "minecraft:model", "model": "minecraft:block/mossy_stone_brick"},
+            "4": {"type": "minecraft:model", "model": "minecraft:block/cracked_stone_brick"},
+            "5": {"type": "minecraft:model", "model": "minecraft:block/chiseled_stone_brick"}
+        }
+    }
+}

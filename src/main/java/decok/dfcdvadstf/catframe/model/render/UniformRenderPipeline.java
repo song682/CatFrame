@@ -5,7 +5,6 @@ import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderType;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.block.Block;
-import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.IBlockAccess;
 
@@ -128,24 +127,23 @@ public final class UniformRenderPipeline {
                 || phase == RenderPhase.DROPPED_BLOCK_GROUND
                 || phase == RenderPhase.ITEM_FIXED);
 
-        // 纹理图集选择：ItemBlock 的模型 quad 引用 blocks atlas，必须绑定 locationBlocksTexture；
-        // 非方块物品绑定 locationItemsTexture。getSpriteNumber()==0 亦视作 blocks atlas。
-        // 注意：getSpriteNumber() 不可靠——许多 ItemBlock 返回 1 导致绑错图集，故优先判 ItemBlock。
-        boolean isBlockItem = (stack != null && stack.getItem() instanceof ItemBlock);
-        int spriteNumber = (stack != null && stack.getItem() != null)
-                ? stack.getItem().getSpriteNumber() : 1;
-        boolean blockAtlas = (isBlockItem || spriteNumber == 0);
-
-        RenderType type = RenderType.of(blockAtlas, blendRequired);
-
+        // 纹理图集选择：以烘焙期写入的 quad 标记为准（ModelJsonUnbakedAdapter →
+        // BakedQuad.blockAtlas），渲染期零猜测。混合图集模型拆分为最多两次提交，
+        // 各自落入正确的 RenderType 分组（对标 26.1.2 per-quad itemRenderType）。
         // 物品路径恒关闭面剔除（对齐改造前 renderItemQuads 的 glDisable(GL_CULL_FACE)）
-        RenderSubmit s = new RenderSubmit(
-                phase, part, type,
-                x, y, z, 0,
-                block, stack, world, 0,
-                preTransform,
-                true, blendRequired);
-        RenderCommandBuffers.submit(s);
+        BlockStateModelPart[] split = part.atlasSplit();
+        for (int i = 0; i < split.length; i++) {
+            BlockStateModelPart sub = split[i];
+            if (sub == null) continue;
+            RenderType type = RenderType.of(i == 0, blendRequired);
+            RenderSubmit s = new RenderSubmit(
+                    phase, sub, type,
+                    x, y, z, 0,
+                    block, stack, world, 0,
+                    preTransform,
+                    true, blendRequired);
+            RenderCommandBuffers.submit(s);
+        }
     }
 
     /**

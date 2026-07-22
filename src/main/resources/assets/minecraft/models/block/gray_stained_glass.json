@@ -1,1 +1,6 @@
-{"parent":"block/cube_all","textures":{"all":"minecraft:blocks/glass_gray"}}
+{
+    "parent": "block/cube_all",
+    "textures": {
+        "all": "minecraft:blocks/glass_gray"
+    }
+}

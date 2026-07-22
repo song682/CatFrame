@@ -1,6 +1,6 @@
 {
     "parent": "minecraft:block/button_inventory",
     "textures": {
-        "layer0": "minecraft:blocks/stone_button"
+        "texture": "minecraft:blocks/stone"
     }
 }

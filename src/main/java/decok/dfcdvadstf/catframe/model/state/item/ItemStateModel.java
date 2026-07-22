@@ -70,7 +70,16 @@ public class ItemStateModel implements IItemStateProvider {
 
         // 2. 递归求值决策树，得到 EvalResult
         EvalResult result = rootNode.evaluate(props);
-        if (result.isEmpty()) return;
+        if (result.isEmpty()) {
+            // 决策树未找到任何模型 → fallback 到 builtin/missing
+            String cacheKey = BakedModelCache.buildKey("builtin/missing", 0, 0);
+            BlockStateModelPart missing = BakedModelCache.INSTANCE.get(cacheKey);
+            if (missing != null && !missing.isEmpty()) {
+                UniformRenderPipeline.renderItemQuads(missing, stack, phase,
+                        null, 0, 0, 0, null, preTransform);
+            }
+            return;
+        }
 
         // 3. 遍历所有选中的模型路径，逐个渲染（composite 时多模型分层）
         for (String path : result.getModels()) {

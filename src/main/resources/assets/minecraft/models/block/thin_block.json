@@ -1,4 +1,5 @@
-{   "parent": "block/block",
+{
+    "parent": "block/block",
     "display": {
         "thirdperson_righthand": {
             "rotation": [ 75, 45, 0 ],

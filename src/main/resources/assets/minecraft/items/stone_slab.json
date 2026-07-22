@@ -1,6 +1,20 @@
 {
     "model": {
-        "type": "minecraft:model",
-        "model": "minecraft:block/stone_slab"
+        "type": "minecraft:exact_match",
+        "property": "minecraft:damage",
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:block/slab_stone"
+        },
+        "cases": {
+            "0": {"type": "minecraft:model", "model": "minecraft:block/slab_stone"},
+            "1": {"type": "minecraft:model", "model": "minecraft:block/slab_sandstone"},
+            "2": {"type": "minecraft:model", "model": "minecraft:block/slab_wood"},
+            "3": {"type": "minecraft:model", "model": "minecraft:block/slab_cobblestone"},
+            "4": {"type": "minecraft:model", "model": "minecraft:block/slab_brick"},
+            "5": {"type": "minecraft:model", "model": "minecraft:block/slab_stone_brick"},
+            "6": {"type": "minecraft:model", "model": "minecraft:block/slab_nether_brick"},
+            "7": {"type": "minecraft:model", "model": "minecraft:block/slab_quartz"}
+        }
     }
 }

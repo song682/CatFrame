@@ -1,1 +1,6 @@
-{"parent":"item/generated","textures":{"layer0":"minecraft:items/record_strad"}}
+{
+    "parent": "item/generated",
+    "textures": {
+        "layer0": "minecraft:items/record_strad"
+    }
+}

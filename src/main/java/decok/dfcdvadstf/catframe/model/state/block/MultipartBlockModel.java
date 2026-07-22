@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.model.state.block;
 
 import decok.dfcdvadstf.catframe.core.Direction;
+import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
@@ -38,7 +39,7 @@ public class MultipartBlockModel implements BlockStateModel {
         for (MultipartEntry entry : entries) {
             boolean applies = (entry.when == null) || entry.when.matches(metadata);
             if (applies) {
-                BlockStateModelPart part = ModelBaker.bake(entry.modelPath);
+                BlockStateModelPart part = AtlasGuard.gate(ModelBaker.bake(entry.modelPath), entry.modelPath);
                 if (part != null) {
                     mergedGeneral.addAll(part.getGeneralQuads());
                     for (Direction dir : Direction.values()) {

@@ -162,6 +162,13 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
             quads = JsonModelBake.applyYRotation(quads, rotationY);
         }
 
+        // 8.5 图集归属后置扫描（对标 26.1.2 BakedQuad.MaterialInfo.of 按
+        //     sprite.atlasLocation() 定 RenderType）：在旋转深拷贝之后执行，
+        //     天然覆盖拷贝产物；elements quad 与侧面 quad 一并覆盖。
+        for (BakedQuad q : quads) {
+            q.blockAtlas = TextureSlots.isBlockAtlas(q.icon);
+        }
+
         CatFrame.logger.debug("[ModelJsonUnbakedAdapter] bake: '{}' | elements={} | quads={} | rotX={} rotY={}",
                 modelPath, json.elements.size(), quads.size(), rotationX, rotationY);
 

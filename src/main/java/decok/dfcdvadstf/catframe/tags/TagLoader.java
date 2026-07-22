@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.tags;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
 import decok.dfcdvadstf.catframe.Tags;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;

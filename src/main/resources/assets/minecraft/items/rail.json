@@ -1,1 +1,6 @@
-{"model":{"type":"minecraft:model","model":"minecraft:item/rail"}}
+{
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:item/rail"
+    }
+}

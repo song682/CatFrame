@@ -3,7 +3,7 @@
         "type": "minecraft:exact_match",
         "property": "minecraft:damage",
         "fallback": {"type": "minecraft:model", "model": "minecraft:block/hardened_clay"},
-        "case": {
+        "cases": {
             "0": {"type": "minecraft:model", "model": "minecraft:block/white_terracotta"},
             "1": {"type": "minecraft:model", "model": "minecraft:block/orange_terracotta"},
             "2": {"type": "minecraft:model", "model": "minecraft:block/magenta_terracotta"},

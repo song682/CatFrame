@@ -1,0 +1,8 @@
+{
+    "parent": "minecraft:block/orientable",
+    "textures": {
+        "front": "minecraft:blocks/pumpkin_face_on",
+        "side": "minecraft:blocks/pumpkin_side",
+        "top": "minecraft:blocks/pumpkin_top"
+    }
+}

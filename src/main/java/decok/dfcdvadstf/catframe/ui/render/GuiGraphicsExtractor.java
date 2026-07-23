@@ -388,18 +388,6 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 设置物品 tooltip（含 component + style）。
-     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, ItemStack, int, int)}。</p>
-     */
-    public void setTooltipForNextFrame(FontRenderer font, ItemStack stack, int xo, int yo) {
-        if (stack == null) return;
-        List<String> lines = TooltipHelper.getTooltipFromItem(mc, stack);
-        Optional<TooltipComponent> image = TooltipHelper.getTooltipImage(stack);
-        ResourceLocation style = TooltipHelper.getTooltipStyle(stack);
-        setTooltipForNextFrame(font, lines, image, DefaultTooltipPositioner.INSTANCE, xo, yo, false, style);
-    }
-
-    /**
      * 设置多行文本 tooltip（指定定位器）。
      */
     public void setTooltipForNextFrame(FontRenderer font, List<String> lines,

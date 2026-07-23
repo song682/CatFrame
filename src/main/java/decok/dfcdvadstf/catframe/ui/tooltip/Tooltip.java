@@ -25,7 +25,7 @@ public class Tooltip {
     /** 可选的 tooltip 图像/结构组件（如 BundleTooltip） */
     private final Optional<TooltipComponent> component;
 
-    /** 可选的 tooltip 样式标识（对应 TOOLTIP_STYLE DataComponent） */
+    /** 可选的 tooltip 样式标识（对标 26.1.2 {@code Tooltip.style()}） */
     @Nullable
     private final ResourceLocation style;
 

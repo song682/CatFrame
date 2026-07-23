@@ -104,13 +104,6 @@ public final class RegisteredComponents {
                     .networkSynchronized(ComponentSerializers.ofInt("Damage"))
                     .build();
 
-    /** 工具提示样式 ID（兼容 ChromaticTooltips —— 按 style 换纹理） */
-    public static final DataComponentType<String> TOOLTIP_STYLE =
-            DataComponentType.<String>builder(new ResourceLocation(Tags.MODID, "tooltip_style"))
-                    .persistent(ComponentSerializers.ofString("TooltipStyle"))
-                    .networkSynchronized(ComponentSerializers.ofString("TooltipStyle"))
-                    .build();
-
     // ========== 注册方法 ==========
 
     /**
@@ -129,7 +122,6 @@ public final class RegisteredComponents {
         DataComponents.register(REPAIR_COST);
         DataComponents.register(MAX_STACK_SIZE);
         DataComponents.register(DAMAGE);
-        DataComponents.register(TOOLTIP_STYLE);
         DataComponents.register(DataComponents.ENCHANTMENT_GLINT);
         DataComponents.register(DataComponents.ITEM_MODEL);
     }

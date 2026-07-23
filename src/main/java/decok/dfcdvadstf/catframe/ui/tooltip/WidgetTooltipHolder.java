@@ -68,7 +68,9 @@ public class WidgetTooltipHolder {
         }
 
         Minecraft mc = Minecraft.getMinecraft();
-        boolean shouldDisplay = isHovered || (isFocused && mc.currentScreen != null);
+        // 26.1.2: isHovered || isFocused && lastInputType.isKeyboard()。1.7.10 无输入类型追踪，
+        // 但本 UI 的焦点仅由键盘 Tab 导航产生，故 isFocused 已隐含键盘驱动。
+        boolean shouldDisplay = isHovered || isFocused;
 
         if (shouldDisplay != wasDisplayed) {
             if (shouldDisplay) {
@@ -78,9 +80,9 @@ public class WidgetTooltipHolder {
         }
 
         if (shouldDisplay && System.currentTimeMillis() - displayStartTime > delayMs) {
-            // 根据焦点/悬停选择定位器
+            // 根据焦点/悬停选择定位器（对标 26.1.2 createTooltipPositioner）
             ClientTooltipPositioner positioner;
-            if (!isHovered && isFocused && mc.currentScreen != null) {
+            if (!isHovered && isFocused) {
                 positioner = new BelowOrAboveWidgetTooltipPositioner(widgetRect);
             } else {
                 positioner = new MenuTooltipPositioner(widgetRect);
@@ -93,7 +95,7 @@ public class WidgetTooltipHolder {
                     tooltip.getComponent(),
                     positioner,
                     mouseX, mouseY,
-                    false,
+                    isFocused,
                     tooltip.getStyle()
             );
         }

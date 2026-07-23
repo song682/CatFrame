@@ -7,7 +7,10 @@ import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import decok.dfcdvadstf.catframe.ui.render.pip.*;
+import decok.dfcdvadstf.catframe.ui.components.tooltip.*;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
@@ -44,7 +47,7 @@ import java.util.*;
  * GuiGraphicsExtractor gui = GuiGraphicsExtractor.getInstance();
  * gui.resetForNewFrame();          // 帧开始（drawScreen HEAD）
  * gui.item(stack, x, y);           // 提取：快照矩阵 + 收集状态（不立即绘制）
- * gui.extractDeferredElements();   // 帧末（drawScreen RETURN）统一 flush 物品
+ * gui.extractDeferredElements();   // 帧末（drawScreen RETURN）统一 flush 物品 + tooltip
  * }</pre>
  */
 public class GuiGraphicsExtractor {
@@ -73,6 +76,10 @@ public class GuiGraphicsExtractor {
 
     /** 完整分层状态收集器（对标 26.1.2 GuiRenderState） */
     private final GuiRenderState renderState;
+
+    /** 延迟 tooltip — 对标 26.1.2 {@code GuiGraphics.deferredTooltip} */
+    @Nullable
+    private Runnable deferredTooltip;
 
     /**
      * 帧内 PiP 提交队列 — 对标 26.1.2 {@code GuiRenderState} 收集的 PiP 状态。
@@ -362,6 +369,155 @@ public class GuiGraphicsExtractor {
         return renderState;
     }
 
+    // ==================== 延迟 Tooltip（对标 26.1.2 GuiGraphics.setTooltipForNextFrame） ====================
+
+    /**
+     * 设置简单文本 tooltip。
+     */
+    public void setTooltipForNextFrame(String text, int x, int y) {
+        List<String> lines = new ArrayList<>();
+        lines.add(text);
+        setTooltipForNextFrame(lines, x, y);
+    }
+
+    /**
+     * 设置多行文本 tooltip（使用默认定位器）。
+     */
+    public void setTooltipForNextFrame(List<String> lines, int x, int y) {
+        setTooltipForNextFrame(mc.fontRenderer, lines, DefaultTooltipPositioner.INSTANCE, x, y, false);
+    }
+
+    /**
+     * 设置物品 tooltip（含 component + style）。
+     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, ItemStack, int, int)}。</p>
+     */
+    public void setTooltipForNextFrame(FontRenderer font, ItemStack stack, int xo, int yo) {
+        if (stack == null) return;
+        List<String> lines = TooltipHelper.getTooltipFromItem(mc, stack);
+        Optional<TooltipComponent> image = TooltipHelper.getTooltipImage(stack);
+        ResourceLocation style = TooltipHelper.getTooltipStyle(stack);
+        setTooltipForNextFrame(font, lines, image, DefaultTooltipPositioner.INSTANCE, xo, yo, false, style);
+    }
+
+    /**
+     * 设置多行文本 tooltip（指定定位器）。
+     */
+    public void setTooltipForNextFrame(FontRenderer font, List<String> lines,
+                                       ClientTooltipPositioner positioner,
+                                       int xo, int yo, boolean replaceExisting) {
+        setTooltipForNextFrame(font, lines, Optional.empty(), positioner, xo, yo, replaceExisting, null);
+    }
+
+    /**
+     * 完整参数版 tooltip 设置。
+     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, ClientTooltipPositioner, int, int, boolean, Identifier)}。</p>
+     */
+    public void setTooltipForNextFrame(
+            FontRenderer font,
+            List<String> lines,
+            Optional<TooltipComponent> component,
+            ClientTooltipPositioner positioner,
+            int xo, int yo,
+            boolean replaceExisting,
+            @Nullable ResourceLocation style
+    ) {
+        List<ClientTooltipComponent> components = new ArrayList<>();
+        for (String line : lines) {
+            components.add(ClientTooltipComponent.create(line));
+        }
+        // TODO: 当 component 非空时，插入到第二行位置（如 BundleTooltip）
+        setTooltipForNextFrameInternal(font, components, xo, yo, positioner, style, replaceExisting);
+    }
+
+    /**
+     * 内部统一入口 — 对标 26.1.2 {@code setTooltipForNextFrameInternal()}。
+     */
+    private void setTooltipForNextFrameInternal(
+            FontRenderer font,
+            List<ClientTooltipComponent> components,
+            int xo, int yo,
+            ClientTooltipPositioner positioner,
+            @Nullable ResourceLocation style,
+            boolean replaceExisting
+    ) {
+        if (!components.isEmpty()) {
+            if (this.deferredTooltip == null || replaceExisting) {
+                this.deferredTooltip = () -> this.tooltip(font, components, xo, yo, positioner, style);
+            }
+        }
+    }
+
+    /**
+     * 实际渲染 tooltip — 对标 26.1.2 {@code GuiGraphics.tooltip()}。
+     * <p>
+     * 计算尺寸 → 定位 → 渲染背景 → 渲染文字 → 渲染图像。
+     */
+    public void tooltip(
+            FontRenderer font,
+            List<ClientTooltipComponent> lines,
+            int xo, int yo,
+            ClientTooltipPositioner positioner,
+            @Nullable ResourceLocation style
+    ) {
+        if (lines.isEmpty()) return;
+
+        // 计算 tooltip 尺寸（对标 26.1.2 同算法）
+        int textWidth = 0;
+        int tempHeight = lines.size() == 1 ? -2 : 0;
+        for (ClientTooltipComponent line : lines) {
+            int lineWidth = line.getWidth(font);
+            if (lineWidth > textWidth) textWidth = lineWidth;
+            tempHeight += line.getHeight(font);
+        }
+
+        int w = textWidth;
+        int h = tempHeight;
+
+        // 获取屏幕尺寸
+        int screenWidth, screenHeight;
+        if (mc.currentScreen != null) {
+            screenWidth = mc.currentScreen.width;
+            screenHeight = mc.currentScreen.height;
+        } else {
+            ScaledResolution res = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+            screenWidth = res.getScaledWidth();
+            screenHeight = res.getScaledHeight();
+        }
+
+        // 定位
+        int[] pos = positioner.positionTooltip(screenWidth, screenHeight, xo, yo, w, h);
+        int x = pos[0];
+        int y = pos[1];
+
+        // 保存 OpenGL 状态并渲染
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_CURRENT_BIT);
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+
+        // 渲染背景（带 style 支持）
+        TooltipRenderUtil.renderTooltipBackground(x, y, textWidth, tempHeight, style);
+
+        // 渲染文字行
+        int localY = y;
+        for (int i = 0; i < lines.size(); i++) {
+            ClientTooltipComponent line = lines.get(i);
+            line.renderText(font, x, localY);
+            localY += line.getHeight(font) + (i == 0 ? 2 : 0);
+        }
+
+        // 渲染图像组件
+        localY = y;
+        for (int i = 0; i < lines.size(); i++) {
+            ClientTooltipComponent line = lines.get(i);
+            line.renderImage(font, x, localY, w, h);
+            localY += line.getHeight(font) + (i == 0 ? 2 : 0);
+        }
+
+        GL11.glPopAttrib();
+    }
+
     // ==================== 延迟元素 Flush ====================
 
     /**
@@ -370,6 +526,7 @@ public class GuiGraphicsExtractor {
      * 在 Screen 渲染末尾调用，统一驱动两条延迟路径：
      * <ol>
      *   <li><b>路径一（物品模型）</b>：按 {@link GuiRenderState} 树的 z-order 绘制所有收集的物品（内容层）。</li>
+     *   <li><b>路径三（tooltip）</b>：新建 stratum 后绘制，确保 tooltip 始终在最上层。</li>
      * </ol>
      */
     public void extractDeferredElements() {
@@ -378,8 +535,15 @@ public class GuiGraphicsExtractor {
             dispatchPip(state);
         }
 
-        // 路径一：绘制收集到的普通物品模型（内容层）
+        // 路径一：绘制收集到的普通物品模型（位于 tooltip 之下的内容层）
         renderState.forEachItem(this::renderDeferredItem);
+
+        // 路径三：tooltip 始终在最上层
+        if (this.deferredTooltip != null) {
+            this.renderState.nextStratum();
+            this.deferredTooltip.run();
+            this.deferredTooltip = null;
+        }
     }
 
     /**
@@ -400,5 +564,6 @@ public class GuiGraphicsExtractor {
     public void resetForNewFrame() {
         this.renderState.reset();
         this.deferredPip.clear();
+        this.deferredTooltip = null;
     }
 }

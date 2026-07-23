@@ -29,7 +29,7 @@ public class ClientProxy extends CommonProxy {
         // Register client event handler (welcome toast + HUD toast rendering)
         MinecraftForge.EVENT_BUS.register(new ClientToastHandler());
 
-        // Drive GuiGraphicsExtractor's deferred pipeline (item/PiP) via Forge
+        // Drive GuiGraphicsExtractor's deferred pipeline (item/PiP/tooltip) via Forge
         // DrawScreenEvent Pre/Post so it works in GuiContainer screens too
         // (which override drawScreen and never trigger the GuiScreen mixin injections).
         MinecraftForge.EVENT_BUS.register(new ClientScreenGraphicsHandler());

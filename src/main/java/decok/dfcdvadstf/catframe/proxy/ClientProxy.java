@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.proxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import decok.dfcdvadstf.catframe.Tags;
-import decok.dfcdvadstf.catframe.compact.forge.language.LanguageRegister;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientOverlayHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientToastHandler;
@@ -11,7 +10,6 @@ import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.ResourcePackModelDetector;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaMetadataMapper;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
-import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesInHandTintProvider;
@@ -31,7 +29,7 @@ public class ClientProxy extends CommonProxy {
         // Register client event handler (welcome toast + HUD toast rendering)
         MinecraftForge.EVENT_BUS.register(new ClientToastHandler());
 
-        // Drive GuiGraphicsExtractor's deferred pipeline (item/PiP/tooltip) via Forge
+        // Drive GuiGraphicsExtractor's deferred pipeline (item/PiP) via Forge
         // DrawScreenEvent Pre/Post so it works in GuiContainer screens too
         // (which override drawScreen and never trigger the GuiScreen mixin injections).
         MinecraftForge.EVENT_BUS.register(new ClientScreenGraphicsHandler());
@@ -44,11 +42,12 @@ public class ClientProxy extends CommonProxy {
         VanillaMetadataMapper.registerVanillaMetadataMappings();
         ModelManagerDataLoader.registerNamespace(Tags.MODID);
         ModelManagerDataLoader.init();
-
-        if (blueyPlushy != null) {
-            // ModernItem 自身已实现 IItemState，直接注册为模型实例
-            ModelRegistry.registerItemModel(blueyPlushy, blueyPlushy);
-        }
+        // 注意：无需在此手动注册 blueyPlushy 的模型。
+        // BlueyPlushyItem extends ModernItem implements IItemStateProvider，
+        // ModelManagerDataLoader.init() 的 Tier-3 扫描会自动发现所有已注册
+        // (GameRegistry.registerItem) 的 IItemStateProvider 物品，并在
+        // Baking.registerAllModels() Step 4c 中以物品自身为模型注册并标记为 persistent。
+        // 模型与物品的对应以注册 ID 为准，与原版一致。
 
         // Register tint providers and graphics extensions
         TintRegistry.register(new LeavesTintProvider());

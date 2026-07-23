@@ -37,6 +37,23 @@ public final class DataComponents {
                     .networkSynchronized(ComponentSerializers.ofBoolean("EnchantmentGlint"))
                     .build();
 
+    /**
+     * 物品模型映射（对标 26.1.2 {@code minecraft:item_model} / {@code DataComponents.ITEM_MODEL}）。
+     * <p>
+     * 值为命名空间 ID 字符串（如 {@code "catframe:bluey_plushy"}），解析为
+     * {@code assets/<命名空间>/items/<路径>.json} 物品模型映射；对应映射不存在或无法解析时
+     * 使用无效模型（{@code builtin/missing}）。
+     * <p>
+     * 缺省语义：未显式设置时按物品注册 ID 取值
+     * （{@code Item.itemRegistry.getNameForObject}），与原版
+     * {@code model = ResourceKey::identifier} 一致。
+     */
+    public static final DataComponentType<String> ITEM_MODEL =
+            DataComponentType.<String>builder(new ResourceLocation("minecraft", "item_model"))
+                    .persistent(ComponentSerializers.ofString("ItemModel"))
+                    .networkSynchronized(ComponentSerializers.ofString("ItemModel"))
+                    .build();
+
     // ========== 类型注册表 ==========
 
     private static final Map<ResourceLocation, DataComponentType<?>> BY_ID = new LinkedHashMap<>();

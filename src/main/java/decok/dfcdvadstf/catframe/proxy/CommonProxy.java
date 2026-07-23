@@ -11,7 +11,7 @@ import decok.dfcdvadstf.catframe.compact.forge.language.LanguageRegister;
 import decok.dfcdvadstf.catframe.compact.forge.tags.event.ODorTag;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.RenderItemInFrameHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.TexturesStitch;
-import decok.dfcdvadstf.catframe.core.component.predicates.RegisteredComponents;
+import decok.dfcdvadstf.catframe.core.RegisteredComponents;
 import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;
 import net.minecraftforge.common.MinecraftForge;
 

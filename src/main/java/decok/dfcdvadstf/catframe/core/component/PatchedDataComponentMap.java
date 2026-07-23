@@ -1,9 +1,6 @@
-package decok.dfcdvadstf.catframe.core.component.predicates;
+package decok.dfcdvadstf.catframe.core.component;
 
-import decok.dfcdvadstf.catframe.core.component.DataComponentHolder;
-import decok.dfcdvadstf.catframe.core.component.DataComponentMap;
-import decok.dfcdvadstf.catframe.core.component.DataComponentPatch;
-import decok.dfcdvadstf.catframe.core.component.DataComponentType;
+import decok.dfcdvadstf.catframe.core.component.predicates.TypedDataComponent;
 
 import javax.annotation.Nullable;
 import java.util.*;

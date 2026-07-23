@@ -1,5 +1,6 @@
-package decok.dfcdvadstf.catframe.core.component;
+package decok.dfcdvadstf.catframe.core.component.predicates;
 
+import decok.dfcdvadstf.catframe.core.component.ComponentSerializer;
 import net.minecraft.nbt.NBTTagCompound;
 
 import javax.annotation.Nullable;

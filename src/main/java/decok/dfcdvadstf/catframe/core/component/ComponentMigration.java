@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.core.component;
 
+import decok.dfcdvadstf.catframe.core.RegisteredComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.*;
 import net.minecraft.nbt.NBTTagCompound;
 

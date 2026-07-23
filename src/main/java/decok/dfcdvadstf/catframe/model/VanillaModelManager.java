@@ -330,6 +330,9 @@ public class VanillaModelManager {
                 CatFrame.logger.debug("[VMM] Registered IItemState: {}", registryName);
             }
 
+            // 4d: ITEM_MODEL 组件覆写（优先级最高 — 对标原版 item_model 组件）
+            applyItemModelOverrides(false);
+
             // Step 5: Forge IItemRenderer 注册
             Set<Item> registered = new HashSet<>();
             int forgeRegistered = 0;
@@ -421,8 +424,36 @@ public class VanillaModelManager {
                 MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
             }
 
+            // ITEM_MODEL 组件覆写（优先级最高 — 增量路径同样重新断言，防止被 items/ 约定匹配覆盖）
+            applyItemModelOverrides(true);
+
             CatFrame.logger.info("VanillaModelManager: Re-registered {} item models (incremental, lazy)",
                     ModelRegistry.registeredItemModels.size());
+        }
+
+        /**
+         * 应用 {@code ITEM_MODEL} 组件覆写（对标原版 item_model 组件，优先级最高）。
+         * <p>
+         * 遍历所有已注册物品，若物品挂了 {@code ITEM_MODEL} 默认组件，则以该值指向的模型
+         * 映射为准，覆盖按注册 ID 约定匹配的 {@code items/{name}.json}，并标记为 persistent。
+         * 值存在但无法解析时使用 {@code builtin/missing}
+         * （见 {@link ModelRegistry#resolveItemModelOverride}）。
+         *
+         * @param registerRenderer 是否同时注册 Forge {@code IItemRenderer}
+         */
+        private static void applyItemModelOverrides(boolean registerRenderer) {
+            for (Object obj : Item.itemRegistry) {
+                Item item = (Item) obj;
+                IItemStateProvider override = ModelRegistry.resolveItemModelOverride(item);
+                if (override == null) continue;
+                ModelRegistry.registeredItemModels.put(item, override);
+                ModelRegistry.persistentItemModels.add(item);
+                if (registerRenderer) {
+                    MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
+                }
+                CatFrame.logger.debug("[VMM] Applied ITEM_MODEL override: {} -> {}",
+                        Item.itemRegistry.getNameForObject(item), ModelRegistry.getItemModelOverride(item));
+            }
         }
 
     }

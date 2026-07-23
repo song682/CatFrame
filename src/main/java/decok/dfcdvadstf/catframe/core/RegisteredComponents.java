@@ -1,10 +1,11 @@
-package decok.dfcdvadstf.catframe.core.component.predicates;
+package decok.dfcdvadstf.catframe.core;
 
 import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.core.component.ComponentSerializers;
-import decok.dfcdvadstf.catframe.core.component.CustomData;
+import decok.dfcdvadstf.catframe.core.component.predicates.CustomData;
 import decok.dfcdvadstf.catframe.core.component.DataComponentType;
 import decok.dfcdvadstf.catframe.core.component.DataComponents;
+import decok.dfcdvadstf.catframe.core.component.predicates.*;
 import net.minecraft.util.ResourceLocation;
 
 /**
@@ -103,13 +104,6 @@ public final class RegisteredComponents {
                     .networkSynchronized(ComponentSerializers.ofInt("Damage"))
                     .build();
 
-    /** 工具提示样式标识（对应 ResourceLocation，如 "catframe:blue_tooltip"） */
-    public static final DataComponentType<String> TOOLTIP_STYLE =
-            DataComponentType.<String>builder(new ResourceLocation(Tags.MODID, "tooltip_style"))
-                    .persistent(ComponentSerializers.ofString("TooltipStyle"))
-                    .networkSynchronized(ComponentSerializers.ofString("TooltipStyle"))
-                    .build();
-
     // ========== 注册方法 ==========
 
     /**
@@ -128,7 +122,7 @@ public final class RegisteredComponents {
         DataComponents.register(REPAIR_COST);
         DataComponents.register(MAX_STACK_SIZE);
         DataComponents.register(DAMAGE);
-        DataComponents.register(TOOLTIP_STYLE);
         DataComponents.register(DataComponents.ENCHANTMENT_GLINT);
+        DataComponents.register(DataComponents.ITEM_MODEL);
     }
 }

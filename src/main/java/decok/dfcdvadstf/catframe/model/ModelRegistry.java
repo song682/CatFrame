@@ -3,11 +3,13 @@ package decok.dfcdvadstf.catframe.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.core.component.DataComponents;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
@@ -159,6 +161,52 @@ public class ModelRegistry {
 
             // 非方块物品：无注册模型则返回 null，回退原版物品渲染。
             return null;
+        }
+
+        /**
+         * 读取物品的 {@code ITEM_MODEL} 组件覆写值（per-item 默认原型）。
+         * <p>
+         * 对标原版 {@code DataComponents.ITEM_MODEL}：该值是一个模型映射 ID
+         * （{@code "命名空间:路径"}），解析为 {@code assets/<命名空间>/items/<路径>.json}。
+         *
+         * @return 模型映射 ID，未设置组件时返回 {@code null}
+         */
+        public static String getItemModelOverride(Item item) {
+            if (item == null) return null;
+            return DataComponents.getDefaults(item).get(DataComponents.ITEM_MODEL);
+        }
+
+        /**
+         * 将物品的 {@code ITEM_MODEL} 组件覆写解析为可渲染的物品模型。
+         * <p>
+         * 查找 {@link ModelManagerDataLoader#loadedItemStates} 中 {@code ns:path} 对应的
+         * ItemState 决策树；值存在但无法解析时返回 {@code builtin/missing}
+         * （对标原版 item_model「无法解析则使用无效模型」的语义）。
+         *
+         * @return 覆写模型；未设置 {@code ITEM_MODEL} 组件时返回 {@code null}
+         */
+        public static IItemStateProvider resolveItemModelOverride(Item item) {
+            String modelId = getItemModelOverride(item);
+            if (modelId == null) return null;
+
+            String namespace;
+            String path;
+            int sep = modelId.indexOf(':');
+            if (sep >= 0) {
+                namespace = modelId.substring(0, sep);
+                path = modelId.substring(sep + 1);
+            } else {
+                namespace = "minecraft";
+                path = modelId;
+            }
+
+            Map<String, ItemStateNode> nsStates = ModelManagerDataLoader.loadedItemStates.get(namespace);
+            ItemStateNode node = nsStates != null ? nsStates.get(path) : null;
+            if (node != null) {
+                return new ItemStateModel(node);
+            }
+            // 值存在但无法解析 → 无效模型（builtin/missing）
+            return new ItemStateModel("builtin/missing");
         }
 
         /**

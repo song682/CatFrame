@@ -393,12 +393,12 @@ public class GuiGraphicsExtractor {
     public void setTooltipForNextFrame(FontRenderer font, List<String> lines,
                                        ClientTooltipPositioner positioner,
                                        int xo, int yo, boolean replaceExisting) {
-        setTooltipForNextFrame(font, lines, Optional.empty(), positioner, xo, yo, replaceExisting, null);
+        setTooltipForNextFrame(font, lines, Optional.empty(), positioner, xo, yo, replaceExisting);
     }
 
     /**
      * 完整参数版 tooltip 设置。
-     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, ClientTooltipPositioner, int, int, boolean, Identifier)}。</p>
+     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, ClientTooltipPositioner, int, int, boolean)}。</p>
      */
     public void setTooltipForNextFrame(
             FontRenderer font,
@@ -406,15 +406,14 @@ public class GuiGraphicsExtractor {
             Optional<TooltipComponent> component,
             ClientTooltipPositioner positioner,
             int xo, int yo,
-            boolean replaceExisting,
-            @Nullable ResourceLocation style
+            boolean replaceExisting
     ) {
         List<ClientTooltipComponent> components = new ArrayList<>();
         for (String line : lines) {
             components.add(ClientTooltipComponent.create(line));
         }
         // TODO: 当 component 非空时，插入到第二行位置（如 BundleTooltip）
-        setTooltipForNextFrameInternal(font, components, xo, yo, positioner, style, replaceExisting);
+        setTooltipForNextFrameInternal(font, components, xo, yo, positioner, replaceExisting);
     }
 
     /**
@@ -425,12 +424,11 @@ public class GuiGraphicsExtractor {
             List<ClientTooltipComponent> components,
             int xo, int yo,
             ClientTooltipPositioner positioner,
-            @Nullable ResourceLocation style,
             boolean replaceExisting
     ) {
         if (!components.isEmpty()) {
             if (this.deferredTooltip == null || replaceExisting) {
-                this.deferredTooltip = () -> this.tooltip(font, components, xo, yo, positioner, style);
+                this.deferredTooltip = () -> this.tooltip(font, components, xo, yo, positioner);
             }
         }
     }
@@ -444,8 +442,7 @@ public class GuiGraphicsExtractor {
             FontRenderer font,
             List<ClientTooltipComponent> lines,
             int xo, int yo,
-            ClientTooltipPositioner positioner,
-            @Nullable ResourceLocation style
+            ClientTooltipPositioner positioner
     ) {
         if (lines.isEmpty()) return;
 
@@ -484,8 +481,8 @@ public class GuiGraphicsExtractor {
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        // 渲染背景（带 style 支持）
-        TooltipRenderUtil.renderTooltipBackground(x, y, textWidth, tempHeight, style);
+        // 渲染背景（原版渐变）
+        TooltipRenderUtil.renderTooltipBackground(x, y, textWidth, tempHeight);
 
         // 渲染文字行
         int localY = y;

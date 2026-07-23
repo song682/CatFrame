@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.ui.tooltip;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.ResourceLocation;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -25,10 +24,6 @@ public class Tooltip {
     /** 可选的 tooltip 图像/结构组件（如 BundleTooltip） */
     private final Optional<TooltipComponent> component;
 
-    /** 可选的 tooltip 样式标识（对标 26.1.2 {@code Tooltip.style()}） */
-    @Nullable
-    private final ResourceLocation style;
-
     /** 缓存：按当前语言拆分后的文字行 */
     @Nullable
     private List<String> cachedTooltip;
@@ -37,31 +32,25 @@ public class Tooltip {
     @Nullable
     private String cachedLanguage;
 
-    private Tooltip(String message, Optional<TooltipComponent> component, @Nullable ResourceLocation style) {
+    private Tooltip(String message, Optional<TooltipComponent> component) {
         this.message = message;
         this.component = component;
-        this.style = style;
     }
 
     // ========== 工厂方法 ==========
 
     public static Tooltip create(String message) {
-        return new Tooltip(message, Optional.empty(), null);
+        return new Tooltip(message, Optional.empty());
     }
 
-    public static Tooltip create(String message, Optional<TooltipComponent> component, @Nullable ResourceLocation style) {
-        return new Tooltip(message, component, style);
+    public static Tooltip create(String message, Optional<TooltipComponent> component) {
+        return new Tooltip(message, component);
     }
 
     // ========== 访问器 ==========
 
     public Optional<TooltipComponent> getComponent() {
         return component;
-    }
-
-    @Nullable
-    public ResourceLocation getStyle() {
-        return style;
     }
 
     // ========== 工具提示文字 ==========

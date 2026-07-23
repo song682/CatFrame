@@ -21,7 +21,7 @@ import net.minecraft.util.ResourceLocation;
  * or forced vertical bar cursor.
  * </p>
  */
-public class AbstractEditBox extends AbstractComponent {
+public abstract class AbstractEditBox extends AbstractComponent {
 
     /** CatFrame custom text field textures / CatFrame 自定义文本框纹理 */
     protected static final ResourceLocation TEXT_FIELD_TEXTURE =

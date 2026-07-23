@@ -7,7 +7,7 @@ import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import decok.dfcdvadstf.catframe.ui.render.pip.*;
-import decok.dfcdvadstf.catframe.ui.components.tooltip.*;
+import decok.dfcdvadstf.catframe.ui.tooltip.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.ScaledResolution;

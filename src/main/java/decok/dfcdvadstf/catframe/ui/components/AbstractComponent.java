@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
-import decok.dfcdvadstf.catframe.ui.components.tooltip.Tooltip;
-import decok.dfcdvadstf.catframe.ui.components.tooltip.WidgetTooltipHolder;
+import decok.dfcdvadstf.catframe.ui.tooltip.Tooltip;
+import decok.dfcdvadstf.catframe.ui.tooltip.WidgetTooltipHolder;
 
 import javax.annotation.Nullable;
 

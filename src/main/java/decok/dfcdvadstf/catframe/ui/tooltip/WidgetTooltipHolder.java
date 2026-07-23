@@ -95,7 +95,8 @@ public class WidgetTooltipHolder {
                     tooltip.getComponent(),
                     positioner,
                     mouseX, mouseY,
-                    isFocused
+                    isFocused,
+                    tooltip.getStyle()
             );
         }
     }

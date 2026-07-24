@@ -1,9 +1,12 @@
-package decok.dfcdvadstf.catframe.ui.tooltip;
+package decok.dfcdvadstf.catframe.ui.components;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import decok.dfcdvadstf.catframe.ui.render.GuiGraphicsExtractor;
+import decok.dfcdvadstf.catframe.ui.tooltip.BelowOrAboveWidgetTooltipPositioner;
+import decok.dfcdvadstf.catframe.ui.tooltip.ClientTooltipPositioner;
+import decok.dfcdvadstf.catframe.ui.tooltip.MenuTooltipPositioner;
 import net.minecraft.client.Minecraft;
 
 import javax.annotation.Nullable;

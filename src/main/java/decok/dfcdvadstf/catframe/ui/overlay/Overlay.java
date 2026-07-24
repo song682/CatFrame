@@ -72,6 +72,27 @@ public interface Overlay extends Component {
     }
 
     /**
+     * Whether this overlay requests the single-player world to pause while it is shown,
+     * analogous to {@link net.minecraft.client.gui.GuiScreen#doesGuiPauseGame()}.
+     * <p>
+     * Only meaningful for {@link OverlayContext#SCREEN} overlays, which live on top of an open
+     * GUI where pausing is the vanilla behaviour. A HUD overlay is by definition drawn while the
+     * world keeps ticking; halting the world for a transient, hint-style HUD notification makes no
+     * sense, so {@link OverlayManager} treats any HUD (or {@link OverlayContext#BOTH}) overlay that
+     * returns {@code true} here as a programming error and throws.
+     * </p>
+     * <p>此 Overlay 是否请求在显示期间暂停单人世界，语义对齐
+     * {@link net.minecraft.client.gui.GuiScreen#doesGuiPauseGame()}。</p>
+     * <p>仅对 {@link OverlayContext#SCREEN} 上下文有意义——它绘制在已打开的界面之上，暂停本就是原版行为。
+     * HUD 上下文的 Overlay 在世界持续运行时绘制，为一条提示性质的信息而暂停世界毫无意义，因此
+     * {@link OverlayManager} 会把在 HUD（或 {@link OverlayContext#BOTH}）下返回 {@code true} 的
+     * Overlay 视为编码错误并抛出异常。</p>
+     */
+    default boolean isPausingGame() {
+        return false;
+    }
+
+    /**
      * Called each tick to update overlay state.
      * <p>每 tick 调用一次以更新状态。</p>
      */

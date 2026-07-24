@@ -46,6 +46,7 @@ public class OverlayManager {
      */
     public void register(Overlay overlay) {
         if (overlay == null) return;
+        requirePauseContextValid(overlay);
         List<Overlay> list = overlays.get(overlay.getAnchor());
         if (!list.contains(overlay)) {
             list.add(overlay);
@@ -100,6 +101,25 @@ public class OverlayManager {
             count += list.size();
         }
         return count;
+    }
+
+    /**
+     * Whether any registered, visible SCREEN-context overlay currently requests a game pause.
+     * Host screens can OR this into their {@code doesGuiPauseGame()} so an overlay can pause the
+     * single-player world just like the vanilla screen mechanism.
+     * <p>是否存在任一已注册且可见的 SCREEN 上下文 Overlay 正在请求暂停游戏。宿主界面可将其
+     * 并入自身的 {@code doesGuiPauseGame()}，使 Overlay 能像原版界面机制那样暂停单人世界。</p>
+     */
+    public boolean isPausingGame() {
+        for (List<Overlay> list : overlays.values()) {
+            for (Overlay overlay : list) {
+                if (overlay.isVisible() && overlay.isPausingGame()
+                        && overlay.getContext() != OverlayContext.HUD) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     // ──── Update ────
@@ -170,6 +190,15 @@ public class OverlayManager {
             int stackOffsetY = 0;
             for (Overlay overlay : list) {
                 if (!overlay.isVisible() || !matchesTarget(overlay, hud)) continue;
+
+                // A HUD overlay must never pause the world; pausing only makes sense on an open
+                // GUI (SCREEN). Fail fast so this design contract can't be violated at runtime.
+                if (hud && overlay.isPausingGame()) {
+                    throw new IllegalStateException(
+                            "Overlay " + overlay.getClass().getName()
+                                    + " requests a game pause but is being rendered in the HUD context; "
+                                    + "isPausingGame() is only valid for SCREEN overlays.");
+                }
 
                 int resolvedX = anchor.resolveX(screenWidth, overlay.getWidth(), overlay.getOffsetX());
                 int resolvedY = anchor.resolveY(screenHeight, overlay.getHeight(), overlay.getOffsetY());
@@ -247,6 +276,21 @@ public class OverlayManager {
     }
 
     // ──── Internal ────
+
+    /**
+     * Enforce that only SCREEN-context overlays may request a game pause. A HUD (or BOTH) overlay
+     * that returns {@code true} from {@link Overlay#isPausingGame()} is a programming error.
+     * <p>强制只有 SCREEN 上下文的 Overlay 才可请求暂停游戏。HUD（或 BOTH）上下文的 Overlay
+     * 若从 {@link Overlay#isPausingGame()} 返回 {@code true} 即为编码错误。</p>
+     */
+    private static void requirePauseContextValid(Overlay overlay) {
+        if (overlay.isPausingGame() && overlay.getContext() != OverlayContext.SCREEN) {
+            throw new IllegalStateException(
+                    "Overlay " + overlay.getClass().getName()
+                            + " requests a game pause but its context is " + overlay.getContext()
+                            + "; isPausingGame() is only valid for SCREEN overlays.");
+        }
+    }
 
     private void sortAnchorList(List<Overlay> list) {
         Collections.sort(list, new Comparator<Overlay>() {

@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
-import decok.dfcdvadstf.catframe.ui.tooltip.Tooltip;
-import decok.dfcdvadstf.catframe.ui.tooltip.WidgetTooltipHolder;
+import decok.dfcdvadstf.catframe.ui.Style;
+import decok.dfcdvadstf.catframe.ui.Text;
 
 import javax.annotation.Nullable;
 
@@ -186,5 +186,38 @@ public abstract class AbstractComponent implements Component, TabOrderedElement 
         result = 31 * result + width;
         result = 31 * result + height;
         return result;
+    }
+
+    public abstract static class WithInactiveMessage extends AbstractComponent {
+
+        private Text message;
+        private Text inactiveMessage;
+
+        /**
+         * Creates the default grayed-out inactive message.
+         * <p>创建默认的灰化失效消息。对标 26.1.2
+         * {@code AbstractWidget.WithInactiveMessage#defaultInactiveMessage(Component)}。</p>
+         */
+        public static Text defaultInactiveMessage(final Text activeMessage) {
+            return activeMessage.withStyleApplied(Style.EMPTY.withColor(-6250336));
+        }
+
+        public WithInactiveMessage() {
+        }
+
+        public WithInactiveMessage(int x, int y, int width, int height, Text message) {
+            super(x, y, width, height);
+            this.message = message;
+            this.inactiveMessage = defaultInactiveMessage(message);
+        }
+
+        public Text getMessage() {
+            return this.active ? this.message : this.inactiveMessage;
+        }
+
+        public void setMessage(final Text message) {
+            this.message = message;
+            this.inactiveMessage = defaultInactiveMessage(message);
+        }
     }
 }

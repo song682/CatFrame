@@ -1,0 +1,588 @@
+package decok.dfcdvadstf.catframe.ui.components.tab;
+
+import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
+import decok.dfcdvadstf.catframe.ui.components.TabButton;
+import decok.dfcdvadstf.catframe.ui.components.events.KeyTypedEvent;
+import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.util.ResourceLocation;
+
+import java.util.*;
+
+/**
+ * <p>
+ * Tab 容器条 —— 抽象基类。<br>
+ * 子类必须提供 {@code barId}，并可自定义背景（纯色填充 + 可选贴图平铺，
+ * 默认纯黑填充）。<br>
+ * 外部模组在 {@code preInit} 中通过 {@link TabRegistry#registerTab} 注册
+ * Tab 后，在 GUI 初始化时将注册的 Tab 装载到此 Bar 中。
+ * </p>
+ * <p>
+ * Tab container bar — abstract base class.<br>
+ * Subclasses must supply a {@code barId} and may customise the background
+ * (solid colour fill + optional tiled texture; defaults to solid black).<br>
+ * External mods register their tabs via {@link TabRegistry#registerTab} during
+ * {@code preInit}, then the tabs are loaded into this Bar at GUI initialisation.
+ * </p>
+ *
+ * <p>
+ * 此类还提供导航栏功能（按钮布局、绘制、输入处理），可直接在 GUI 屏幕中使用。<br>
+ * This class also provides navigation bar features (button layout, rendering, input handling)
+ * that can be used directly in GUI screens.
+ * </p>
+ */
+public abstract class TabBar implements ILayout {
+
+    // ──── Constants ────
+
+    /**
+     * Default tab button texture path. / 默认 Tab 按钮纹理路径。
+     * @deprecated Use {@link Tab#DEFAULT_TAB_TEXTURE} instead.
+     */
+    @Deprecated
+    public static final ResourceLocation DEFAULT_TAB_TEXTURE = Tab.DEFAULT_TAB_TEXTURE;
+
+    /**
+     * Default tile size for background texture. / 背景贴图默认平铺块大小。
+     */
+    protected static final int DEFAULT_TILE_SIZE = 16;
+
+    /** Navigation bar height / 导航栏高度 */
+    public static final int NAV_HEIGHT = 24;
+
+    /** Maximum total width of all tab buttons / Tab 按钮最大总宽度 */
+    public static final int MAX_TABS_WIDTH = 400;
+
+    /** Margin on each side of the tab button row / Tab 按钮行两侧边距 */
+    public static final int MARGIN = 14;
+
+    private static final int NO_TAB = -1;
+
+    // ──── Tab entry/instance management ────
+
+    /**
+     * Entries registered to this bar (from TabRegistry), keyed by tab ID. / 注册到此 Bar 的 TabEntry（来自 TabRegistry），以 tab ID 为键。
+     */
+    protected final Map<Integer, TabRegistry.TabEntry> entries = new LinkedHashMap<>();
+    /**
+     * Tabs instantiated from entries, keyed by tab ID. / 从 entries 实例化出的 Tab，以 tab ID 为键。
+     */
+    protected final Map<Integer, Tab> tabs = new LinkedHashMap<>();
+    private final String barId;
+
+    // ──── Background configuration ────
+
+    /**
+     * Solid background colour (ARGB).  Default: opaque black. / 纯色背景（ARGB）。默认：不透明黑色。
+     */
+    protected int backgroundColor = 0xFF000000;
+    /**
+     * Optional tiled background texture.  {@code null} = no texture. / 可选平铺背景贴图。{@code null} = 无贴图。
+     */
+    protected ResourceLocation backgroundTexture;
+    /**
+     * Texture used for tab buttons in this bar. / 此 Bar 的 Tab 按钮使用的纹理。
+     */
+    protected ResourceLocation tabTexture = Tab.DEFAULT_TAB_TEXTURE;
+
+    // ──── Navigation layout cache ────
+
+    private int navWidth;
+    private int navX;
+    private int[] buttonX = new int[0];
+    private int buttonWidth;
+
+    /**
+     * TabButton instances managed by this bar, created in {@link #arrangeNavElements()}.
+     * <p>由此 Bar 托管的 TabButton 实例，在 {@link #arrangeNavElements()} 中创建。</p>
+     */
+    private List<TabButton> tabButtons = new ArrayList<>();
+
+    // ──── ILayout position (managed by parent layout, e.g. HeaderFooterLayout) ────
+    private int layoutX;
+    private int layoutY;
+
+    // ==================== Constructor ====================
+
+    /**
+     * @param barId Unique identifier for this bar. / 此 Bar 的唯一标识符。
+     */
+    public TabBar(String barId) {
+        if (barId == null || barId.isEmpty()) {
+            throw new IllegalArgumentException("barId must not be null or empty");
+        }
+        this.barId = barId;
+    }
+
+    // ==================== ID ====================
+
+    /**
+     * @return The unique bar identifier. / 此 Bar 的唯一标识符。
+     */
+    public String getBarId() {
+        return barId;
+    }
+
+    // ==================== ILayout implementation ====================
+
+    @Override
+    public int getX() {
+        return layoutX;
+    }
+
+    @Override
+    public void setX(int x) {
+        int dx = x - this.layoutX;
+        this.layoutX = x;
+        // Translate tab buttons to follow the bar position
+        // 平移 Tab 按钮以跟随 Bar 的位置
+        for (TabButton btn : tabButtons) {
+            btn.setX(btn.getX() + dx);
+        }
+    }
+
+    @Override
+    public int getY() {
+        return layoutY;
+    }
+
+    @Override
+    public void setY(int y) {
+        this.layoutY = y;
+    }
+
+    @Override
+    public int getWidth() {
+        return navWidth;
+    }
+
+    @Override
+    public int getHeight() {
+        return NAV_HEIGHT;
+    }
+
+    // ==================== Background configuration ====================
+
+    /**
+     * @return Current solid background colour. / 当前纯色背景色。
+     */
+    public int getBackgroundColor() {
+        return backgroundColor;
+    }
+
+    /**
+     * @param color Solid background colour in ARGB format. / ARGB 格式的纯色背景。
+     */
+    public void setBackgroundColor(int color) {
+        this.backgroundColor = color;
+    }
+
+    /**
+     * @return The background texture, or {@code null} if none. / 背景贴图，无则为 {@code null}。
+     */
+    public ResourceLocation getBackgroundTexture() {
+        return backgroundTexture;
+    }
+
+    /**
+     * Set an optional tiled background texture.  Pass {@code null} to remove it.
+     * <p>设置可选的平铺背景贴图。传入 {@code null} 移除贴图。</p>
+     */
+    public void setBackgroundTexture(ResourceLocation texture) {
+        this.backgroundTexture = texture;
+    }
+
+    // ==================== Tab texture ====================
+
+    /**
+     * @return Texture used when rendering tab buttons.
+     */
+    public ResourceLocation getTabTexture() {
+        return tabTexture;
+    }
+
+    /**
+     * @param texture Texture used when rendering tab buttons for this bar.
+     *                Pass {@code null} to reset to default.
+     *                <p>传入 {@code null} 恢复默认纹理。</p>
+     */
+    public void setTabTexture(ResourceLocation texture) {
+        this.tabTexture = texture != null ? texture : Tab.DEFAULT_TAB_TEXTURE;
+    }
+
+    // ==================== Tab entry management (from TabRegistry) ====================
+
+    /**
+     * Register a {@link TabRegistry.TabEntry} into this bar.
+     * <p>向此 Bar 注册一个 {@link TabRegistry.TabEntry}。</p>
+     */
+    public void registerEntry(TabRegistry.TabEntry entry) {
+        if (entry == null) return;
+        entries.put(entry.tabId, entry);
+    }
+
+    /**
+     * @return All registered entries in this bar. / 此 Bar 中所有已注册的条目。
+     */
+    public Collection<TabRegistry.TabEntry> getAllEntries() {
+        return entries.values();
+    }
+
+    /**
+     * @return The entry for the given tab ID, or {@code null}.
+     */
+    public TabRegistry.TabEntry getEntry(int tabId) {
+        return entries.get(tabId);
+    }
+
+    // ==================== Tab instance management ====================
+
+    /**
+     * Register a tab instance directly into this bar.
+     * <p>直接向此 Bar 注册一个 Tab 实例。</p>
+     */
+    public void registerTab(Tab tab) {
+        if (tab == null) return;
+        tabs.put(tab.getTabId(), tab);
+    }
+
+    /**
+     * @return A tab by its ID, or {@code null} if not found / not yet created.
+     */
+    public Tab getTab(int tabId) {
+        return tabs.get(tabId);
+    }
+
+    /**
+     * @return All tab instances in this bar (ordered by insertion).
+     */
+    public Collection<Tab> getAllTabs() {
+        return tabs.values();
+    }
+
+    /**
+     * @return Number of tab instances in this bar.
+     */
+    public int getTabCount() {
+        return tabs.size();
+    }
+
+    /**
+     * @return Whether this bar contains a tab with the given ID.
+     */
+    public boolean containsTab(int tabId) {
+        return tabs.containsKey(tabId);
+    }
+
+    /**
+     * <p>
+     * 获取指定 tabId 对应的 TabButton。<br>
+     * Get the TabButton for the given tab ID.
+     * </p>
+     *
+     * @return The TabButton, or {@code null} if no button was created for this ID.
+     */
+    public TabButton getTabButton(int tabId) {
+        for (TabButton btn : tabButtons) {
+            if (btn.getTab().getTabId() == tabId) {
+                return btn;
+            }
+        }
+        return null;
+    }
+
+    // ==================== Background rendering ====================
+
+    /**
+     * Draw the bar's background — solid colour fill first, then optional tiled texture on top.
+     * <p>绘制 Bar 的背景：先绘制纯色填充，再在其上绘制可选平铺贴图。</p>
+     *
+     * @param x      Left edge X / 左边缘 X
+     * @param y      Top edge Y / 上边缘 Y
+     * @param width  Width in GUI pixels / 宽度（GUI 像素）
+     * @param height Height in GUI pixels / 高度（GUI 像素）
+     */
+    public void drawBackground(int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0) return;
+
+        // 1. Solid colour fill / 纯色填充
+        Gui.drawRect(x, y, x + width, y + height, backgroundColor);
+
+        // 2. Optional tiled texture / 可选平铺贴图
+        if (backgroundTexture != null) {
+            drawTiledBackground(x, y, width, height);
+        }
+    }
+
+    /**
+     * Subclasses may override this to customise how the tiled texture is rendered.
+     * <p>子类可重写此方法以自定义平铺贴图的渲染方式。</p>
+     * <p>Delegates to {@link TextureStretching#drawTiled}.</p>
+     */
+    protected void drawTiledBackground(int x, int y, int width, int height) {
+        TextureStretching.drawTiled(backgroundTexture, x, y, width, height,
+                DEFAULT_TILE_SIZE, DEFAULT_TILE_SIZE);
+    }
+
+    // ==================== Navigation — Layout ====================
+
+    /**
+     * <p>
+     * 更新导航栏宽度并重新排列元素。<br>
+     * Update the nav bar width and re-arrange elements.
+     * </p>
+     */
+    public void setNavWidth(int width) {
+        this.navWidth = width;
+        arrangeNavElements();
+    }
+
+    /**
+     * <p>
+     * 排列所有 Tab 按钮的位置和大小。<br>
+     * Arrange all tab button positions and sizes.
+     * </p>
+     */
+    public void arrangeNavElements() {
+        List<Tab> tabList = getOrderedTabList();
+        int tabCount = Math.max(1, tabList.size());
+        int tabsWidth = Math.min(MAX_TABS_WIDTH, this.navWidth) - 2 * MARGIN;
+        int tabWidth = (tabsWidth / tabCount + 1) & ~1; // Round up to nearest even
+        this.buttonWidth = Math.max(2, tabWidth);
+
+        int barX = (this.navWidth - tabsWidth) / 2;
+        this.navX = (barX + 1) & ~1; // Round to nearest even
+
+        this.buttonX = new int[tabList.size()];
+        this.tabButtons = new ArrayList<>(tabList.size());
+        int currentX = this.navX;
+        for (int i = 0; i < tabList.size(); i++) {
+            this.buttonX[i] = currentX;
+
+            Tab tab = tabList.get(i);
+            TabButton btn = new TabButton(tab);
+            btn.setPosition(currentX, 0);
+            btn.setSize(this.buttonWidth, NAV_HEIGHT);
+            // Push bar-level texture to the button (only when customised)
+            if (this.tabTexture != Tab.DEFAULT_TAB_TEXTURE) {
+                btn.setStateTexture(this.tabTexture, this.tabTexture,
+                                    this.tabTexture, this.tabTexture);
+            }
+            this.tabButtons.add(btn);
+
+            currentX += this.buttonWidth;
+        }
+    }
+
+    /**
+     * <p>
+     * 从 {@link #tabs} map 获取有序的 Tab 列表（基于 LinkedHashMap 的插入顺序）。<br>
+     * Get an ordered Tab list from {@link #tabs} map (based on LinkedHashMap insertion order).
+     * </p>
+     */
+    private List<Tab> getOrderedTabList() {
+        return new ArrayList<>(tabs.values());
+    }
+
+    // ==================== Navigation — Rendering ====================
+
+    /**
+     * <p>
+     * 绘制导航栏 —— 分隔线和所有 Tab 按钮。<br>
+     * Draw the navigation bar — separators and all tab buttons.
+     * </p>
+     *
+     * @param mouseX       鼠标 X / mouse X
+     * @param mouseY       鼠标 Y / mouse Y
+     * @param partialTicks 部分 tick / partial tick
+     * @param tabManager   标签页管理器（用于判断当前选中 Tab）/ tab manager (to determine the selected tab)
+     */
+    public void drawNavButtons(int mouseX, int mouseY, float partialTicks, TabManager tabManager) {
+        List<Tab> tabList = getOrderedTabList();
+        if (tabList.isEmpty()) return;
+
+        // Draw the nav bar background (solid fill + optional tiled texture)
+        // 绘制导航栏背景（纯色填充 + 可选平铺纹理）
+        drawBackground(0, 0, navWidth, NAV_HEIGHT);
+
+        // Draw each tab button via TabButton component
+        // 通过 TabButton 组件绘制每个 Tab 按钮
+        Tab currentTab = tabManager != null ? tabManager.getCurrentTab() : null;
+        for (TabButton btn : tabButtons) {
+            btn.setSelected(currentTab == btn.getTab());
+            btn.render(mouseX, mouseY, partialTicks);
+        }
+
+        // Draw header separator across the full width, indented 2px from edges
+        // 在导航栏底部绘制贯穿的分隔线，左右各缩进 2px
+        int barBottom = NAV_HEIGHT - 2;
+        ContentPanelRenderer.drawHeaderSeparator(2, barBottom, navWidth - 4);
+    }
+
+    /**
+     * <p>
+     * 绘制单个 Tab 按钮。<br>
+     * @deprecated 由 {@link TabButton} 组件替代，保留此方法仅为向后兼容。<br>
+     * Replaced by the {@link TabButton} component; kept for backward compatibility.
+     * </p>
+     */
+    @Deprecated
+    private void drawSingleTabButton(int index, Tab tab, int mouseX, int mouseY, TabManager tabManager) {
+        if (index >= 0 && index < tabButtons.size()) {
+            TabButton btn = tabButtons.get(index);
+            btn.setSelected(tabManager != null && tabManager.getCurrentTab() == tab);
+            btn.render(mouseX, mouseY, 0);
+        }
+    }
+
+    // ==================== Navigation — Input handling ====================
+
+    /**
+     * <p>
+     * 处理鼠标点击事件。<br>
+     * Handle mouse click events.
+     * </p>
+     *
+     * @return true 如果点击到了某个 Tab 按钮 / true if a tab button was clicked
+     */
+    public boolean mouseClickedNav(int mouseX, int mouseY, int mouseButton, TabManager tabManager) {
+        if (mouseButton != 0) return false;
+        if (mouseY < 0 || mouseY >= NAV_HEIGHT) return false;
+        if (tabManager == null) return false;
+
+        for (TabButton btn : tabButtons) {
+            if (btn.isMouseOver(mouseX, mouseY)) {
+                tabManager.setCurrentTab(btn.getTab(), true);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * <p>
+     * 处理键盘事件 —— Ctrl+Tab/Ctrl+Shift+Tab 循环切换，Ctrl+数字直接跳转。<br>
+     * Handle keyboard events — Ctrl+Tab/Ctrl+Shift+Tab cycling, Ctrl+digit direct jump.
+     * </p>
+     *
+     * @return true 如果按键被处理 / true if the key was handled
+     */
+    public boolean keyPressedNav(int keyCode, boolean ctrlDown, boolean shiftDown, TabManager tabManager) {
+        if (!ctrlDown || tabManager == null) return false;
+
+        List<Tab> tabList = getOrderedTabList();
+        if (tabList.isEmpty()) return false;
+
+        Tab current = tabManager.getCurrentTab();
+        int currentIndex = current != null ? tabList.indexOf(current) : NO_TAB;
+
+        if (KeyTypedEvent.isTabKeyPressed()) { // Tab key
+            int step = shiftDown ? -1 : 1;
+            int nextIndex = currentIndex != NO_TAB
+                    ? Math.floorMod(currentIndex + step, tabList.size())
+                    : 0;
+            tabManager.setCurrentTab(tabList.get(nextIndex), true);
+            return true;
+        }
+
+        // Ctrl+1 through Ctrl+9, Ctrl+0
+        if (keyCode >= 2 && keyCode <= 11) {
+            int digitIndex = (keyCode == 2) ? 0 : keyCode - 3;
+            if (digitIndex >= 0 && digitIndex < tabList.size()) {
+                tabManager.setCurrentTab(tabList.get(digitIndex), true);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // ==================== Navigation — Getters ====================
+
+    /**
+     * @return The Y position of the nav bar bottom. / 导航栏底部 Y 坐标。
+     */
+    public int getNavBottom() {
+        return NAV_HEIGHT;
+    }
+
+    /**
+     * @return The button width currently in use. / 当前使用的按钮宽度。
+     */
+    public int getNavButtonWidth() {
+        return buttonWidth;
+    }
+
+    // ==================== Builder ====================
+
+    /**
+     * <p>
+     * 使用 TabManager 和屏幕宽度创建 Builder，用于快速配置导航栏。<br>
+     * Create a Builder with the given TabManager and screen width for quick nav setup.
+     * </p>
+     *
+     * <p>Usage / 用法:</p>
+     * <pre>{@code
+     * TabBar.builder(tabManager, width)
+     *     .addAllFromManager()
+     *     .build(tabBar);
+     *
+     * // Then in drawScreen:
+     * tabBar.drawNavButtons(mouseX, mouseY, partialTicks, tabManager);
+     *
+     * // In mouseClicked:
+     * tabBar.mouseClickedNav(mouseX, mouseY, mouseButton, tabManager);
+     * }</pre>
+     */
+    public static Builder builder(TabManager tabManager, int width) {
+        return new Builder(tabManager, width);
+    }
+
+    /**
+     * <p>
+     * TabBar 构建器 —— 用于选择要显示的 Tab 并初始化导航布局。<br>
+     * TabBar Builder — selects which tabs to show and initialises the navigation layout.
+     * </p>
+     */
+    public static final class Builder {
+        private final TabManager tabManager;
+        private final int width;
+        private final List<Tab> tabList = new ArrayList<>();
+
+        private Builder(TabManager tabManager, int width) {
+            this.tabManager = tabManager;
+            this.width = width;
+        }
+
+        /**
+         * Add one or more tabs to the navigation bar.
+         * <p>向导航栏添加一个或多个 Tab。</p>
+         */
+        public Builder addTabs(Tab... tabs) {
+            Collections.addAll(this.tabList, tabs);
+            return this;
+        }
+
+        /**
+         * Add all tabs from the TabManager to the navigation bar.
+         * <p>从 TabManager 添加所有 Tab 到导航栏。</p>
+         */
+        public Builder addAllFromManager() {
+            this.tabList.addAll(this.tabManager.getAllTabs().values());
+            return this;
+        }
+
+        /**
+         * Apply the builder configuration to the given TabBar.
+         * <p>将构建器配置应用到指定的 TabBar。</p>
+         */
+        public void build(TabBar tabBar) {
+            for (Tab tab : tabList) {
+                tabBar.registerTab(tab);
+            }
+            tabBar.setNavWidth(width);
+        }
+    }
+}

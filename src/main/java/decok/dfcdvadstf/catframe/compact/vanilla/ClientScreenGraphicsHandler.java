@@ -4,7 +4,7 @@ import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.ui.render.GuiGraphicsExtractor;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent;
 
 /**

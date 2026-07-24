@@ -1,6 +1,5 @@
 package decok.dfcdvadstf.catframe.model.state;
 
-import decok.dfcdvadstf.catframe.model.state.block.StateBlockModel;
 import decok.dfcdvadstf.catframe.model.state.block.StateProviderBlockModel;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 
@@ -15,9 +14,8 @@ import java.util.*;
  * <p>
  * 结果被缓存（以属性映射为键），在属性不变的情况下 O(1) 返回。
  *
- * <p>当前三处独立的 multipart 合并逻辑
- * （{@link StateBlockModel}、
- *  {@link StateProviderBlockModel}、
+ * <p>当前多处独立的 multipart 合并逻辑
+ * （{@link StateProviderBlockModel}、
  *  VMM PublicRenderAPI）将统一委托于此。
  */
 public class MultipartSelector {

@@ -32,6 +32,31 @@ public final class CatStateDefinition<O> {
     private final Map<Property<?>, Integer> propertyIndex;
     private final CatBlockState defaultState;
 
+    // 由 Builder.create() 回填的 meta 编解码相关字段
+    // dynamicFlags[i]：属性 i 是否为动态属性（运行时从世界计算，不参与 meta 解码）
+    private boolean[] dynamicFlags;
+    // 静态属性（参与 meta 解码），保持声明顺序
+    private Property<?>[] staticProperties;
+    // meta 编解码器；为 null 时使用静态属性的笛卡尔积自然编码
+    private MetaCodec metaCodec;
+    // 常驻表：resolvedByMeta[meta] 直接给出 meta 对应的 CatBlockState（长度 16）
+    private CatBlockState[] resolvedByMeta;
+
+    /**
+     * meta 编解码器。仅负责把 metadata 解码为「静态属性」的值数组
+     * （按静态属性声明顺序），动态属性不参与。
+     */
+    @FunctionalInterface
+    public interface MetaCodec {
+        /**
+         * 从 metadata 解出静态属性值。
+         *
+         * @param meta 方块 metadata（0-15）
+         * @return 按静态属性声明顺序排列的值数组
+         */
+        Comparable<?>[] decode(int meta);
+    }
+
     // 由 Builder.create() 调用
     CatStateDefinition(O owner, Property<?>[] properties,
                        CatBlockState[] allStates,
@@ -143,6 +168,72 @@ public final class CatStateDefinition<O> {
         return idx;
     }
 
+    // ==================== meta 编解码 / 常驻表 ====================
+
+    /**
+     * 返回指定属性是否为动态属性（运行时从世界计算，不参与 meta 解码）。
+     */
+    public boolean isDynamic(Property<?> prop) {
+        Integer idx = propertyIndex.get(prop);
+        return idx != null && dynamicFlags != null && dynamicFlags[idx];
+    }
+
+    /**
+     * 返回参与 meta 解码的静态属性数组（声明顺序）。
+     */
+    public Property<?>[] getStaticProperties() {
+        return staticProperties;
+    }
+
+    /**
+     * 根据 metadata 查表得到对应的常驻 CatBlockState。
+     * <p>动态属性取默认值（第一个值），运行时可再通过 {@link CatBlockState#setValue} O(1) 跳转。
+     *
+     * @param meta 方块 metadata（0-15）
+     * @return 该 meta 对应的常驻状态
+     */
+    public CatBlockState getStateFromMeta(int meta) {
+        if (resolvedByMeta != null) {
+            return resolvedByMeta[meta & 15];
+        }
+        return computeStateFromMeta(meta);
+    }
+
+    private CatBlockState computeStateFromMeta(int meta) {
+        Comparable<?>[] staticValues = metaCodec != null
+                ? metaCodec.decode(meta)
+                : defaultDecode(meta);
+
+        // 拼出完整属性值数组：静态属性取解码值，动态属性取默认值
+        Comparable<?>[] full = new Comparable<?>[properties.length];
+        int si = 0;
+        for (int i = 0; i < properties.length; i++) {
+            if (dynamicFlags != null && dynamicFlags[i]) {
+                full[i] = properties[i].getValues().get(0);
+            } else {
+                full[i] = staticValues[si++];
+            }
+        }
+        return findState(full);
+    }
+
+    /**
+     * 缺省 meta 解码：把 meta 当作静态属性的笛卡尔积自然索引（最后一个属性变化最快）。
+     */
+    private Comparable<?>[] defaultDecode(int meta) {
+        Property<?>[] statics = staticProperties;
+        Comparable<?>[] result = new Comparable<?>[statics.length];
+        int remaining = meta;
+        for (int i = statics.length - 1; i >= 0; i--) {
+            Property<?> prop = statics[i];
+            int count = prop.getValueCount();
+            int valIdx = remaining % count;
+            remaining /= count;
+            result[i] = prop.getValues().get(valIdx);
+        }
+        return result;
+    }
+
     // ==================== Builder ====================
 
     /**
@@ -160,6 +251,8 @@ public final class CatStateDefinition<O> {
         private final O owner;
         private final List<Property<?>> props = new ArrayList<>();
         private final Set<String> usedNames = new HashSet<>();
+        private final Set<Property<?>> dynamicProps = new HashSet<>();
+        private MetaCodec metaCodec;
 
         /**
          * @param owner 状态定义的所属者（如 Block 实例）
@@ -185,6 +278,31 @@ public final class CatStateDefinition<O> {
                 }
                 props.add(prop);
             }
+            return this;
+        }
+
+        /**
+         * 标记一个或多个属性为「动态属性」（运行时从世界计算，不参与 meta 解码）。
+         * <p>动态属性仍需先通过 {@link #add(Property[])} 添加，以保证参与笛卡尔积与跳表。
+         * 典型用例：stairs 的 {@code shape}、pane 的 {@code north/east/south/west}。
+         *
+         * @param properties 要标记为动态的属性
+         * @return 此 Builder 实例（链式调用）
+         */
+        public Builder<O> dynamic(Property<?>... properties) {
+            Collections.addAll(dynamicProps, properties);
+            return this;
+        }
+
+        /**
+         * 设置非规则 meta 编码的解码器（如 log 的 wood+axis、slab 的 half+variant）。
+         * 不设置时默认用静态属性的笛卡尔积自然编码。
+         *
+         * @param codec meta 解码器
+         * @return 此 Builder 实例（链式调用）
+         */
+        public Builder<O> metaCodec(MetaCodec codec) {
+            this.metaCodec = codec;
             return this;
         }
 
@@ -252,6 +370,19 @@ public final class CatStateDefinition<O> {
             // 构建邻居跳表
             CatStateDefinition<O> definition = new CatStateDefinition<>(owner, properties, states, propIndexMap, states[0]);
 
+            // 回填 meta 编解码相关字段
+            definition.metaCodec = this.metaCodec;
+            definition.dynamicFlags = new boolean[propCount];
+            List<Property<?>> staticList = new ArrayList<>(propCount);
+            for (int i = 0; i < propCount; i++) {
+                if (dynamicProps.contains(properties[i])) {
+                    definition.dynamicFlags[i] = true;
+                } else {
+                    staticList.add(properties[i]);
+                }
+            }
+            definition.staticProperties = staticList.toArray(new Property<?>[0]);
+
             // [C2 修复] 回填 definition 到所有 CatBlockState 实例
             // （创建 CatBlockState 时 definition 为 null，因为 definition 尚未构建）
             for (CatBlockState s : states) {
@@ -281,6 +412,12 @@ public final class CatStateDefinition<O> {
                         state.neighbors[p][v] = states[stateIdx + delta];
                     }
                 }
+            }
+
+            // 预填常驻表 resolvedByMeta[0..15]
+            definition.resolvedByMeta = new CatBlockState[16];
+            for (int meta = 0; meta < 16; meta++) {
+                definition.resolvedByMeta[meta] = definition.computeStateFromMeta(meta);
             }
 
             return definition;

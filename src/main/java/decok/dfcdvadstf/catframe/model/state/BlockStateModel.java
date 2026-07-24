@@ -16,10 +16,8 @@ import java.util.function.Consumer;
  *
  * <p>实现类：
  * <ul>
- *   <li>{@link SingleBlockModel} — 单一静态模型（metadata 不影响形状）</li>
- *   <li>{@link MetadataBlockModel} — metadata → variant 调度</li>
+ *   <li>{@link ResidentStateModel} — 常驻 State 表统一实现（variants / multipart / 动态属性合一）</li>
  *   <li>{@link StateProviderBlockModel} — 委托 IBlockStateProvider（字符串属性映射）</li>
- *   <li>{@link StateBlockModel} — 基于 CatBlockState 的类型安全属性调度</li>
  *   <li>{@link MultipartBlockModel} — multipart 条件组合</li>
  * </ul>
  */

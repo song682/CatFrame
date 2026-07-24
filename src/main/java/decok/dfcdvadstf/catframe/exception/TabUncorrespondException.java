@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.exception;
 
-import decok.dfcdvadstf.catframe.ui.tab.TabRegistry;
+import decok.dfcdvadstf.catframe.ui.components.tab.TabRegistry;
 
 /**
  * <p>

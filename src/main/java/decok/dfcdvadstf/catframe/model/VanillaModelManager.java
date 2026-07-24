@@ -3,17 +3,14 @@ package decok.dfcdvadstf.catframe.model;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaBlockResolvers;
 import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
-import decok.dfcdvadstf.catframe.model.lazy.LazyBlockstateModel;
-import decok.dfcdvadstf.catframe.model.lazy.LazyRedirectModel;
 import decok.dfcdvadstf.catframe.model.lazy.LazySingleBlockModel;
-import decok.dfcdvadstf.catframe.model.lazy.StairsBlockModel;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
-import decok.dfcdvadstf.catframe.model.state.block.PaneMultipartRedirectModel;
-import decok.dfcdvadstf.catframe.model.state.block.SingleBlockModel;
+import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.block.Block;
@@ -144,8 +141,8 @@ public class VanillaModelManager {
      * 本类职责：
      * <ul>
      *   <li>注册 metadata mapper（从 metadata_map.json）</li>
-     *   <li>为 blockstate 创建懒模型（{@link LazyBlockstateModel}、{@link LazyRedirectModel}）</li>
-     *   <li>为 model_mappings 创建懒模型（{@link SingleBlockModel}、{@link ItemStateModel}）</li>
+     *   <li>为 blockstate 创建常驻模型（{@link ResidentStateModel}）</li>
+     *   <li>为 model_mappings 创建懒模型（{@link LazySingleBlockModel}、{@link ItemStateModel}）</li>
      *   <li>处理 BlockPane 特殊注册</li>
      *   <li>注册 Forge IItemRenderer</li>
      * </ul>
@@ -168,6 +165,9 @@ public class VanillaModelManager {
             ModelRegistry.registeredBlockRotations.clear();
             ModelRegistry.registeredItemModels.keySet()
                     .removeIf(item -> !ModelRegistry.persistentItemModels.contains(item));
+
+            // Step 0: 物化 CatModels 声明式 spec（typed 常驻表 + itemFromBlockstate）
+            CatModels.materialize();
 
             // Step 1: 自动注册 metadata mapper（从 metadata_map.json）
             for (Map.Entry<String, Map<String, Map<Integer, Map<String, String>>>> nsEntry :
@@ -198,43 +198,51 @@ public class VanillaModelManager {
                     BlockstateJson bs = bsEntry.getValue();
                     Block block = Utilities.findBlock(namespace, blockName);
                     if (block == null) continue;
+                    // 已被 CatModels 物化或先前步骤处理的方块跳过
+                    if (ModelRegistry.registeredBlockModels.containsKey(block)) continue;
 
-                    // BlockPane: 使用运行时连接模型
-                    if (block instanceof BlockPane) {
-                        IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
-                        String blockId = Block.blockRegistry.getNameForObject(block);
-                        String ns = blockId.contains(":") ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
-                        if (redirect != null) {
-                            ModelRegistry.registerBlockModel(block,
-                                    new PaneMultipartRedirectModel(block, redirect, ns, false));
-                        } else {
-                            ModelRegistry.registerBlockModel(block,
-                                    new PaneMultipartRedirectModel(block, bs, false));
-                        }
-                        continue;
-                    }
-
-                    // BlockStairs: 运行时转角检测
-                    if (block instanceof BlockStairs) {
-                        IMetadataMapper stairsMapper = ModelManagerDataLoader.metadataMappers.get(block);
-                        ModelRegistry.registerBlockModel(block, new StairsBlockModel(bs, stairsMapper));
-                        continue;
-                    }
-
-                    // Blockstate redirect: 使用懒重定向模型
-                    IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
-                    if (redirect != null) {
-                        String blockId = Block.blockRegistry.getNameForObject(block);
-                        String ns = blockId.contains(":") ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
-                        IMetadataMapper mapper = ModelManagerDataLoader.metadataMappers.get(block);
-                        ModelRegistry.registerBlockModel(block,
-                                new LazyRedirectModel(redirect, mapper, ns));
-                        continue;
-                    }
-
-                    // 常规 variants/multipart: 使用懒 blockstate 模型
+                    String blockId = Block.blockRegistry.getNameForObject(block);
+                    String ns = (blockId != null && blockId.contains(":"))
+                            ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
                     IMetadataMapper mapper = ModelManagerDataLoader.metadataMappers.get(block);
-                    ModelRegistry.registerBlockModel(block, new LazyBlockstateModel(bs, mapper));
+                    IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
+
+                    // BlockPane: 运行时连接 multipart（per-face 合并 + AtlasGuard）
+                    if (block instanceof BlockPane) {
+                        ResidentStateModel.Builder pb = ResidentStateModel.builder(block)
+                                .connectionMultipart()
+                                .dynamic(VanillaBlockResolvers.PANE);
+                        if (redirect != null) {
+                            pb.redirect(redirect, ns);
+                        } else {
+                            pb.blockstate(bs);
+                        }
+                        ModelRegistry.registerBlockModel(block, pb.build());
+                        continue;
+                    }
+
+                    // BlockStairs: 运行时转角检测（facing/half/shape 由 resolver 自建）
+                    if (block instanceof BlockStairs) {
+                        ModelRegistry.registerBlockModel(block, ResidentStateModel.builder(block)
+                                .blockstate(bs)
+                                .dynamic(VanillaBlockResolvers.STAIRS)
+                                .build());
+                        continue;
+                    }
+
+                    // Blockstate redirect: per-meta 重定向到另一个 blockstate
+                    if (redirect != null) {
+                        ResidentStateModel.Builder rb = ResidentStateModel.builder(block)
+                                .redirect(redirect, ns);
+                        if (mapper != null) rb.mapper(mapper);
+                        ModelRegistry.registerBlockModel(block, rb.build());
+                        continue;
+                    }
+
+                    // 常规 variants/multipart
+                    ResidentStateModel.Builder nb = ResidentStateModel.builder(block).blockstate(bs);
+                    if (mapper != null) nb.mapper(mapper);
+                    ModelRegistry.registerBlockModel(block, nb.build());
                 }
             }
 

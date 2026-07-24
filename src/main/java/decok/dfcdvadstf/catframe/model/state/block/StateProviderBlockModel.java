@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.model.state.block;
 
 import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
+import decok.dfcdvadstf.catframe.model.RenderDispatcher;
 import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
@@ -38,18 +39,6 @@ public class StateProviderBlockModel implements BlockStateModel {
         this.fallbackModelPath = fallbackModelPath;
     }
 
-    private static String buildVariantKey(Map<String, String> properties) {
-        if (properties.isEmpty()) return "normal";
-        java.util.List<String> keys = new java.util.ArrayList<>(properties.keySet());
-        java.util.Collections.sort(keys);
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < keys.size(); i++) {
-            if (i > 0) sb.append(',');
-            sb.append(keys.get(i)).append('=').append(properties.get(keys.get(i)));
-        }
-        return sb.toString();
-    }
-
     @Override
     public BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z, int metadata) {
         if (blockstate == null) return BlockStateModelPart.empty();
@@ -58,7 +47,7 @@ public class StateProviderBlockModel implements BlockStateModel {
         if (properties == null) properties = java.util.Collections.emptyMap();
 
         if (blockstate.variants != null) {
-            String variantKey = buildVariantKey(properties);
+            String variantKey = RenderDispatcher.buildVariantKey(properties);
             BlockstateJson.VariantEntry entry = blockstate.variants.get(variantKey);
             if (entry == null) entry = blockstate.variants.get("normal");
             if (entry == null) return BlockStateModelPart.empty();

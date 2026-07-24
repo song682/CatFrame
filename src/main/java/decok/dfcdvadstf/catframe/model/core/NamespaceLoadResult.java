@@ -26,9 +26,6 @@ public class NamespaceLoadResult {
     /** model_mappings 数据（可能为 null，如果该 namespace 没有 model_mappings.json） */
     public final VanillaModelManager.ModelMappings mappings;
 
-    /** metadata_map 数据: blockName → (meta → (propKey → propValue)) */
-    public final Map<String, Map<Integer, Map<String, String>>> metadataMaps;
-
     /** 该 namespace 收集到的方块纹理路径 */
     public final Set<String> blockTextures;
 
@@ -44,7 +41,6 @@ public class NamespaceLoadResult {
     public NamespaceLoadResult(String namespace,
                                Map<String, BlockstateJson> blockstates,
                                VanillaModelManager.ModelMappings mappings,
-                               Map<String, Map<Integer, Map<String, String>>> metadataMaps,
                                Set<String> blockTextures,
                                Set<String> itemTextures,
                                Map<String, ItemStateNode> itemStates,
@@ -52,7 +48,6 @@ public class NamespaceLoadResult {
         this.namespace = namespace;
         this.blockstates = blockstates;
         this.mappings = mappings;
-        this.metadataMaps = metadataMaps;
         this.blockTextures = blockTextures;
         this.itemTextures = itemTextures;
         this.itemStates = itemStates;

@@ -6,7 +6,6 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
-import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
@@ -20,7 +19,7 @@ import java.util.Map;
  * 统一方块/物品模型登记 facade（链式 API）。
  * <p>
  * 把「typed 状态定义 → 常驻方块模型 + 物品决策树」的登记收口到一处，替代散落各处的
- * {@code registerMetadataMapping} / {@code registerBlockstateRedirect} / 手写 model 类实例化。
+ * {@code registerBlockstateRedirect} / 手写 model 类实例化。
  *
  * <h3>用法</h3>
  * <pre>{@code
@@ -30,7 +29,7 @@ import java.util.Map;
  *     .register();
  *
  * CatModels.register(stairsBlock)
- *     .mapper(meta -> ...)                 // facing/half
+ *     .states(stairsDef)                   // facing/half + dynamic shape
  *     .dynamic(stairsShapeResolver)        // 运行时转角 shape
  *     .register();
  * }</pre>
@@ -70,12 +69,6 @@ public final class CatModels {
         /** 设置 typed 常驻状态表（属性驱动 variant 匹配）。 */
         public Spec states(CatStateDefinition<?> def) {
             spec.def = def;
-            return this;
-        }
-
-        /** 设置字符串 metadata 映射（用于变量键 property 数量随 meta 变化的非规则块）。 */
-        public Spec mapper(IMetadataMapper mapper) {
-            spec.mapper = mapper;
             return this;
         }
 

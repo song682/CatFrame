@@ -9,7 +9,6 @@ import decok.dfcdvadstf.catframe.model.lazy.LazySingleBlockModel;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
-import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
@@ -88,25 +87,6 @@ public class VanillaModelManager {
             item = (Item) Item.itemRegistry.getObject(name);
             return item;
         }
-
-        @Nullable
-        public static IMetadataMapper findMetadataMapEntry(String namespace, String blockName) {
-            Map<Integer, Map<String, String>> metaMap = null;
-            Map<String, Map<Integer, Map<String, String>>> nsData = ModelManagerDataLoader.loadedMetadataMaps.get(namespace);
-            if (nsData != null) {
-                metaMap = nsData.get(blockName);
-            }
-            if (metaMap == null) {
-                for (Map.Entry<String, Map<String, Map<Integer, Map<String, String>>>> e : ModelManagerDataLoader.loadedMetadataMaps.entrySet()) {
-                    metaMap = e.getValue().get(blockName);
-                    if (metaMap != null) break;
-                }
-            }
-            if (metaMap == null) return null;
-
-            final Map<Integer, Map<String, String>> finalMap = metaMap;
-            return metadata -> finalMap.getOrDefault(metadata, Collections.emptyMap());
-        }
     }
 
     // ==================== 向后兼容内层类 (模块拆分 E3 后作为委托) ====================
@@ -123,10 +103,6 @@ public class VanillaModelManager {
             ModelManagerDataLoader.registerNamespace(namespace);
         }
 
-        public static void registerMetadataMapping(Block block, IMetadataMapper mapper) {
-            ModelManagerDataLoader.registerMetadataMapping(block, mapper);
-        }
-
         public static void registerBlockstateRedirect(Block block, IMetadataBlockstateRedirect redirect) {
             ModelManagerDataLoader.registerBlockstateRedirect(block, redirect);
         }
@@ -140,7 +116,7 @@ public class VanillaModelManager {
      * <p>
      * 本类职责：
      * <ul>
-     *   <li>注册 metadata mapper（从 metadata_map.json）</li>
+     *   <li>物化 CatModels 声明式 spec（typed {@link decok.dfcdvadstf.catframe.model.state.CatStateDefinition} 常驻表）</li>
      *   <li>为 blockstate 创建常驻模型（{@link ResidentStateModel}）</li>
      *   <li>为 model_mappings 创建懒模型（{@link LazySingleBlockModel}、{@link ItemStateModel}）</li>
      *   <li>处理 BlockPane 特殊注册</li>
@@ -169,25 +145,6 @@ public class VanillaModelManager {
             // Step 0: 物化 CatModels 声明式 spec（typed 常驻表 + itemFromBlockstate）
             CatModels.materialize();
 
-            // Step 1: 自动注册 metadata mapper（从 metadata_map.json）
-            for (Map.Entry<String, Map<String, Map<Integer, Map<String, String>>>> nsEntry :
-                    ModelManagerDataLoader.loadedMetadataMaps.entrySet()) {
-                String namespace = nsEntry.getKey();
-                for (Map.Entry<String, Map<Integer, Map<String, String>>> blockEntry :
-                        nsEntry.getValue().entrySet()) {
-                    String blockName = blockEntry.getKey();
-                    Block block = Utilities.findBlock(namespace, blockName);
-                    if (block != null && !ModelManagerDataLoader.metadataMappers.containsKey(block)) {
-                        IMetadataMapper jsonMapper = Utilities.findMetadataMapEntry(namespace, blockName);
-                        if (jsonMapper != null) {
-                            ModelManagerDataLoader.metadataMappers.put(block, jsonMapper);
-                            CatFrame.logger.debug("Auto-registered metadata mapper from metadata_map.json for {}:{}",
-                                    namespace, blockName);
-                        }
-                    }
-                }
-            }
-
             // Step 2: 处理 blockstates — 注册懒 BlockStateModel
             for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry :
                     new ArrayList<>(ModelManagerDataLoader.loadedBlockstates.entrySet())) {
@@ -204,7 +161,6 @@ public class VanillaModelManager {
                     String blockId = Block.blockRegistry.getNameForObject(block);
                     String ns = (blockId != null && blockId.contains(":"))
                             ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
-                    IMetadataMapper mapper = ModelManagerDataLoader.metadataMappers.get(block);
                     IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
 
                     // BlockPane: 运行时连接 multipart（per-face 合并 + AtlasGuard）
@@ -234,14 +190,12 @@ public class VanillaModelManager {
                     if (redirect != null) {
                         ResidentStateModel.Builder rb = ResidentStateModel.builder(block)
                                 .redirect(redirect, ns);
-                        if (mapper != null) rb.mapper(mapper);
                         ModelRegistry.registerBlockModel(block, rb.build());
                         continue;
                     }
 
                     // 常规 variants/multipart
                     ResidentStateModel.Builder nb = ResidentStateModel.builder(block).blockstate(bs);
-                    if (mapper != null) nb.mapper(mapper);
                     ModelRegistry.registerBlockModel(block, nb.build());
                 }
             }

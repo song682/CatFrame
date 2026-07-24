@@ -85,7 +85,6 @@ public class NamespaceLoadTask {
         // 本地集合 — 不触碰 VanillaModelManager 的共享字段
         Map<String, BlockstateJson> localBlockstates = new HashMap<>();
         VanillaModelManager.ModelMappings localMappings = null;
-        Map<String, Map<Integer, Map<String, String>>> localMetadataMaps = new HashMap<>();
         Set<String> localBlockTextures = new LinkedHashSet<>();
         Set<String> localItemTextures = new LinkedHashSet<>();
         Map<String, ItemStateNode> localItemStates = new HashMap<>();
@@ -98,17 +97,14 @@ public class NamespaceLoadTask {
         loadBlockstatesFromMappings(namespace, localMappings, localBlockstates,
                 localBlockTextures, localItemTextures);
 
-        // 3. 加载 metadata_map.json
-        loadMetadataMaps(namespace, localMetadataMaps);
-
-        // 4. 加载 items/ ItemState 决策树
+        // 3. 加载 items/ ItemState 决策树
         loadItemStates(namespace, localItemStates, localBlockTextures, localItemTextures, localMappings, localOversizedItems);
 
         CatFrame.logger.debug("[NamespaceLoadTask] namespace '{}' loaded: {} blockstates, {} item states, {} block textures, {} item textures",
                 namespace, localBlockstates.size(), localItemStates.size(), localBlockTextures.size(), localItemTextures.size());
 
         return new NamespaceLoadResult(namespace, localBlockstates, localMappings,
-                localMetadataMaps, localBlockTextures, localItemTextures, localItemStates, localOversizedItems);
+                localBlockTextures, localItemTextures, localItemStates, localOversizedItems);
     }
 
     // ==================== 内部加载方法（从 VMMDataLoader 提取，改为写本地集合） ====================
@@ -177,43 +173,6 @@ public class NamespaceLoadTask {
                 BlockstateJson bs = loadSingleBlockstate(namespace, name, blockTextures);
                 if (bs != null) localBlockstates.put(name, bs);
             }
-        }
-    }
-
-    private static void loadMetadataMaps(String namespace,
-                                          Map<String, Map<Integer, Map<String, String>>> localMetadataMaps) {
-        String path = "/assets/" + namespace + "/metadata_map.json";
-        try (InputStream stream = NamespaceLoadTask.class.getResourceAsStream(path)) {
-            if (stream == null) return;
-            InputStreamReader reader = new InputStreamReader(stream);
-
-            @SuppressWarnings("unchecked")
-            Map<String, Map<String, Map<String, String>>> data = GSON.fromJson(reader, Map.class);
-            if (data == null) return;
-
-            for (Map.Entry<String, Map<String, Map<String, String>>> blockEntry : data.entrySet()) {
-                String blockName = blockEntry.getKey();
-                Map<Integer, Map<String, String>> metaMap = new HashMap<>();
-                for (Map.Entry<String, Map<String, String>> metaEntry : blockEntry.getValue().entrySet()) {
-                    try {
-                        int meta = Integer.parseInt(metaEntry.getKey());
-                        metaMap.put(meta, metaEntry.getValue());
-                    } catch (NumberFormatException e) {
-                        CatFrame.logger.warn("metadata_map.json [{}] invalid metadata key '{}'",
-                                blockName, metaEntry.getKey());
-                    }
-                }
-                if (!metaMap.isEmpty()) {
-                    localMetadataMaps.put(blockName, metaMap);
-                }
-            }
-
-            if (!localMetadataMaps.isEmpty()) {
-                CatFrame.logger.info("Loaded metadata_map.json for namespace: {} ({} blocks)",
-                        namespace, localMetadataMaps.size());
-            }
-        } catch (Exception e) {
-            CatFrame.logger.debug("No metadata_map.json for namespace {}: {}", namespace, e.getMessage());
         }
     }
 

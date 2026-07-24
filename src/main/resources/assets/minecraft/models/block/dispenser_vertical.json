@@ -1,0 +1,7 @@
+{
+    "parent": "minecraft:block/orientable_vertical",
+    "textures": {
+        "front": "minecraft:blocks/dispenser_front",
+        "side": "minecraft:blocks/furnace_top"
+    }
+}

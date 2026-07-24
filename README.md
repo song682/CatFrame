@@ -198,7 +198,6 @@ assets/<namespace>/
 │   ├── block/
 │   ├── item/
 │   └── builtin/
-├── metadata_mappings.json
 └── model_mappings.json
 ```
 

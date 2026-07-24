@@ -8,7 +8,7 @@ import decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientToastHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.ResourcePackModelDetector;
-import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaMetadataMapper;
+import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaStateDefinitions;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
@@ -39,7 +39,7 @@ public class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(new ClientOverlayHandler());
         OverlayManager.INSTANCE.register(ActionBarOverlay.INSTANCE);
 
-        VanillaMetadataMapper.registerVanillaMetadataMappings();
+        VanillaStateDefinitions.registerVanillaStateDefinitions();
         ModelManagerDataLoader.registerNamespace(Tags.MODID);
         ModelManagerDataLoader.init();
         // 注意：无需在此手动注册 blueyPlushy 的模型。

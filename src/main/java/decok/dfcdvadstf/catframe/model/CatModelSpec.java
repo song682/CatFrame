@@ -6,7 +6,6 @@ import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.CatBlockState;
 import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
-import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import decok.dfcdvadstf.catframe.model.state.property.ItemProperties;
@@ -35,8 +34,6 @@ public final class CatModelSpec {
     @Nullable
     public CatStateDefinition<?> def;
     @Nullable
-    public IMetadataMapper mapper;
-    @Nullable
     public IMetadataBlockstateRedirect redirect;
     @Nullable
     public String redirectNamespace;
@@ -63,7 +60,6 @@ public final class CatModelSpec {
         ResidentStateModel.Builder b = ResidentStateModel.builder(block);
         if (bs != null) b.blockstate(bs);
         if (def != null) b.stateDefinition(def);
-        if (mapper != null) b.mapper(mapper);
         if (redirect != null) b.redirect(redirect, redirectNamespace);
         if (dynamic != null) b.dynamic(dynamic);
         if (connectionMultipart) {
@@ -77,7 +73,7 @@ public final class CatModelSpec {
     /**
      * 从 blockstate 的静态状态导出物品决策树：{@code damage} → 模型路径。
      * <p>
-     * 遍历 meta 0-15，用 {@link #def} / {@link #mapper}（及 {@link #redirect}）解析出该
+     * 遍历 meta 0-15，用 {@link #def}（及 {@link #redirect}）解析出该
      * meta 对应的 blockstate variant 模型路径，构建 {@link ItemStateNode.ExactMatchNode}
      * （key = {@link ItemProperties#DAMAGE} 的名称 {@code "damage"}）。未命中的 meta 走
      * fallback（{@code builtin/missing}）。
@@ -153,9 +149,6 @@ public final class CatModelSpec {
                 props.put(properties[i].getName(), valueNames.get(i));
             }
             return props;
-        }
-        if (mapper != null) {
-            return mapper.map(meta);
         }
         return null;
     }

@@ -17,7 +17,6 @@ import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.CatBlockState;
 import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
-import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.block.Block;
 import net.minecraft.world.IBlockAccess;
@@ -30,7 +29,7 @@ import java.util.*;
  * <p>
  * 本类以 {@link Builder} 配置的方式统一了原先四套并行的数据驱动世界方块模型：
  * <ul>
- *   <li>{@code LazyBlockstateModel} — 常规 variants / multipart（{@link IMetadataMapper} 或 typed
+ *   <li>{@code LazyBlockstateModel} — 常规 variants / multipart（typed
  *       {@link CatStateDefinition} 驱动属性）</li>
  *   <li>{@code LazyRedirectModel} — per-meta 重定向到另一个 blockstate（{@link IMetadataBlockstateRedirect}）</li>
  *   <li>{@code StairsBlockModel} — 运行时转角形状（dynamic 属性 + resolver）</li>
@@ -41,7 +40,6 @@ import java.util.*;
  * <ol>
  *   <li>typed {@link CatStateDefinition}：{@code def.getStateFromMeta(meta)} 解出常驻状态，
  *       再由 {@link DynamicPropertyResolver} 覆盖动态属性</li>
- *   <li>{@link IMetadataMapper}：{@code mapper.map(meta)} 得到字符串属性表</li>
  *   <li>都没有：走 blockstate 的 {@code meta=} / 数字键 / {@code normal} 回退</li>
  * </ol>
  *
@@ -67,8 +65,6 @@ public final class ResidentStateModel implements BlockStateModel {
     @Nullable
     private final CatStateDefinition<?> def;
     @Nullable
-    private final IMetadataMapper mapper;
-    @Nullable
     private final IMetadataBlockstateRedirect redirect;
     @Nullable
     private final String namespace;
@@ -85,7 +81,6 @@ public final class ResidentStateModel implements BlockStateModel {
         this.block = b.block;
         this.bs = b.bs;
         this.def = b.def;
-        this.mapper = b.mapper;
         this.redirect = b.redirect;
         this.namespace = b.namespace;
         this.dynamic = b.dynamic;
@@ -163,9 +158,6 @@ public final class ResidentStateModel implements BlockStateModel {
             CatBlockState state = def.getStateFromMeta(metadata);
             return propsFromState(state);
         }
-        if (mapper != null) {
-            return mapper.map(metadata);
-        }
         return null;
     }
 
@@ -215,7 +207,6 @@ public final class ResidentStateModel implements BlockStateModel {
     @Nullable
     private Map<String, String> propsForMeta(int metadata) {
         if (def != null) return propsFromState(def.getStateFromMeta(metadata));
-        if (mapper != null) return mapper.map(metadata);
         return null;
     }
 
@@ -330,7 +321,6 @@ public final class ResidentStateModel implements BlockStateModel {
         private final Block block;
         private BlockstateJson bs;
         private CatStateDefinition<?> def;
-        private IMetadataMapper mapper;
         private IMetadataBlockstateRedirect redirect;
         private String namespace;
         private DynamicPropertyResolver dynamic;
@@ -348,11 +338,6 @@ public final class ResidentStateModel implements BlockStateModel {
 
         public Builder stateDefinition(CatStateDefinition<?> def) {
             this.def = def;
-            return this;
-        }
-
-        public Builder mapper(IMetadataMapper mapper) {
-            this.mapper = mapper;
             return this;
         }
 

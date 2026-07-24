@@ -12,7 +12,6 @@ import decok.dfcdvadstf.catframe.model.impl.ModernItem;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonBlockModel;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
-import decok.dfcdvadstf.catframe.model.state.IMetadataMapper;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
@@ -41,10 +40,8 @@ public class ModelManagerDataLoader {
     public static final List<String> namespaces = new ArrayList<>();
     public static final Map<String, Map<String, BlockstateJson>> loadedBlockstates = new HashMap<>();
     public static final Map<String, VanillaModelManager.ModelMappings> loadedMappings = new HashMap<>();
-    static final Map<String, Map<String, Map<Integer, Map<String, String>>>> loadedMetadataMaps = new HashMap<>();
     static final List<Block> registeredStateBlocks = new ArrayList<>();
     public static final Map<Block, BlockstateJson> stateBlockData = new HashMap<>();
-    static final Map<Block, IMetadataMapper> metadataMappers = new HashMap<>();
     static final Map<Block, IMetadataBlockstateRedirect> blockstateRedirects = new HashMap<>();
     public static final Map<Item, IItemStateProvider> interfaceItemStates = new LinkedHashMap<>();
     public static final Map<String, Map<String, ItemStateNode>> loadedItemStates = new HashMap<>();
@@ -77,9 +74,6 @@ public class ModelManagerDataLoader {
                 loadedMappings.put(result.namespace, result.mappings);
             }
             loadedBlockstates.put(result.namespace, result.blockstates);
-            if (!result.metadataMaps.isEmpty()) {
-                loadedMetadataMaps.put(result.namespace, result.metadataMaps);
-            }
             if (!result.itemStates.isEmpty()) {
                 loadedItemStates.put(result.namespace, result.itemStates);
             }
@@ -178,20 +172,6 @@ public class ModelManagerDataLoader {
             if (initialized) {
                 loadStateProviderBlock(block);
             }
-        }
-    }
-
-    /**
-     * Register a metadata-to-properties mapper for a vanilla block.
-     */
-    public static void registerMetadataMapping(Block block, IMetadataMapper mapper) {
-        if (mapper == null) {
-            CatFrame.logger.warn("VanillaModelManager: registerMetadataMapping called with null mapper for {}", block);
-            return;
-        }
-        if (!metadataMappers.containsKey(block)) {
-            metadataMappers.put(block, mapper);
-            CatFrame.logger.debug("VanillaModelManager: registered metadata mapper for {}", block);
         }
     }
 

@@ -130,7 +130,9 @@ public final class UniformRenderPipeline {
         // 纹理图集选择：以烘焙期写入的 quad 标记为准（ModelJsonUnbakedAdapter →
         // BakedQuad.blockAtlas），渲染期零猜测。混合图集模型拆分为最多两次提交，
         // 各自落入正确的 RenderType 分组（对标 26.1.2 per-quad itemRenderType）。
-        // 物品路径恒关闭面剔除（对齐改造前 renderItemQuads 的 glDisable(GL_CULL_FACE)）
+        // 对标 26.1.2：ITEM_CUTOUT / ITEM_TRANSLUCENT 管线默认启用背面剔除，
+        // builtin/generated 模型已带 north+south 双面（winding 对称），侧面 quad
+        // 绕序对标 emitFaceFromCorners——启用 cull 后所有场景正确。
         BlockStateModelPart[] split = part.atlasSplit();
         for (int i = 0; i < split.length; i++) {
             BlockStateModelPart sub = split[i];
@@ -141,7 +143,7 @@ public final class UniformRenderPipeline {
                     x, y, z, 0,
                     block, stack, world, 0,
                     preTransform,
-                    true, blendRequired);
+                    false, blendRequired);
             RenderCommandBuffers.submit(s);
         }
     }

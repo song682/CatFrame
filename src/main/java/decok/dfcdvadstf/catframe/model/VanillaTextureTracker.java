@@ -129,7 +129,10 @@ public class VanillaTextureTracker {
             return;
         }
         textureIcons.clear();
+        AtlasPixelCache.clear(); // 资源重载时清空上一轮回读缓存
+
         int blockCollected = 0, blockMissed = 0;
+        java.util.List<IIcon> blockIcons = new java.util.ArrayList<>();
         // Block atlas icons
         for (String texturePath : pendingTextures) {
             String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
@@ -137,6 +140,7 @@ public class VanillaTextureTracker {
                 IIcon icon = map.getAtlasSprite(iconName);
                 if (icon != null) {
                     textureIcons.put(texturePath, icon);
+                    blockIcons.add(icon);
                     blockCollected++;
                 } else {
                     blockMissed++;
@@ -146,6 +150,7 @@ public class VanillaTextureTracker {
         }
         // Item atlas icons
         int itemCollected = 0, itemMissed = 0;
+        java.util.List<IIcon> itemIcons = new java.util.ArrayList<>();
         net.minecraft.client.renderer.texture.TextureMap itemMap =
                 (net.minecraft.client.renderer.texture.TextureMap) Minecraft.getMinecraft().getTextureManager()
                         .getTexture(TextureMap.locationItemsTexture);
@@ -156,6 +161,7 @@ public class VanillaTextureTracker {
                     IIcon icon = itemMap.getAtlasSprite(iconName);
                     if (icon != null) {
                         textureIcons.put(texturePath, icon);
+                        itemIcons.add(icon);
                         itemCollected++;
                     } else {
                         itemMissed++;
@@ -167,6 +173,13 @@ public class VanillaTextureTracker {
                 pendingTextures.size(), pendingItemTextures.size(),
                 blockCollected, blockMissed, itemCollected, itemMissed,
                 textureIcons.size());
+
+        // GPU 回读：在主线程一次性读取图集像素，供异步烘焙线程纯 CPU 读取
+        AtlasPixelCache.readAtlas(map, blockIcons);
+        if (itemMap != null && !itemIcons.isEmpty()) {
+            AtlasPixelCache.readAtlas(itemMap, itemIcons);
+        }
+
         // 不清理 pendingTextures —— 保留数据供 Forge refreshResources 后的第二次 stitch 重新收集
         // 对标高版本 MaterialBaker 实例化闭包模式：iconMap 作为参数传入缓存和烘焙管线
         BakedModelCache.INSTANCE.clear(textureIcons);
@@ -197,15 +210,19 @@ public class VanillaTextureTracker {
             return;
         }
         // 更新 item 纹理的 IIcon 引用（item atlas 此时已缝合完成）
+        java.util.List<IIcon> itemIcons = new java.util.ArrayList<>();
         for (String texturePath : pendingItemTextures) {
             String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
             if (iconName != null) {
                 IIcon icon = itemMap.getAtlasSprite(iconName);
                 if (icon != null) {
                     textureIcons.put(texturePath, icon);
+                    itemIcons.add(icon);
                 }
             }
         }
+        // GPU 回读 item atlas（此时 UV 是最终态，覆盖 onTextureStitchPost 时的早期数据）
+        AtlasPixelCache.readAtlas(itemMap, itemIcons);
         // 不清理 pendingItemTextures —— 保留数据供多次 stitch 重新收集
         // item iconMap 更新到缓存（懒烘焙时使用）
         BakedModelCache.INSTANCE.clear(textureIcons);

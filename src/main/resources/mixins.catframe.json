@@ -6,7 +6,6 @@
   "refmap": "mixins.catframe.refmap.json",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "middle.MixinTextureMap",
     "middle.MixinGuiScreen"
   ],
   "client": [

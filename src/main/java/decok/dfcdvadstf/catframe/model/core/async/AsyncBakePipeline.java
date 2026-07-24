@@ -19,6 +19,9 @@ import net.minecraft.util.IIcon;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * 异步预烘焙管线，使用 Guava {@link ListenableFuture} 编排。
@@ -73,21 +76,116 @@ public class AsyncBakePipeline {
     // ==================== 公共 API ====================
 
     /**
-     * 触发异步预烘焙。由 {@link VanillaTextureTracker#onTextureStitchPost} 调用。
+     * 屏障等待超时（秒）。并行烘焙数千个模型通常远快于此；
+     * 超时仅作为防止永久挂起的安全阀，超时后退化到 {@link BakedModelCache} 懒烘焙。
+     */
+    private static final long BAKE_BARRIER_TIMEOUT_SECONDS = 60L;
+
+    /**
+     * 提交结果：汇聚 future + 起始时间 + 任务数。dispatch 返回 null 表示无模型可烘焙。
+     */
+    private static final class Dispatch {
+        final ListenableFuture<List<BakeResult>> all;
+        final long startTime;
+        final int totalTasks;
+
+        Dispatch(ListenableFuture<List<BakeResult>> all, long startTime, int totalTasks) {
+            this.all = all;
+            this.startTime = startTime;
+            this.totalTasks = totalTasks;
+        }
+    }
+
+    /**
+     * 触发异步预烘焙（非阻塞）。由旧调用方保留。
      * <p>
-     * 非阻塞：提交所有烘焙任务到共享线程池后立即返回，烘焙在后台并行执行。
+     * 提交所有烘焙任务到共享线程池后立即返回，烘焙在后台并行执行，
      * 全部完成后结果自动灌入 {@link BakedModelCache}。
-     * <p>
-     * iconMap 作为参数传入（而非读取全局静态字段），避免多 stitch 周期之间的竞态覆盖。
      *
      * @param iconMap 当前 stitch 周期的 IIcon 映射
      */
     public static void triggerAsyncBake(@Nullable final Map<String, IIcon> iconMap) {
+        final Dispatch d = dispatch(iconMap);
+        if (d == null) return;
+
+        // 汇聚所有结果 → 灌入缓存（回调在池线程执行）
+        Futures.addCallback(d.all, new FutureCallback<List<BakeResult>>() {
+            @Override
+            public void onSuccess(List<BakeResult> results) {
+                applyResults(results, d.startTime);
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                CatFrame.logger.error("[AsyncBake] pipeline failed: {}", t.getMessage(), t);
+            }
+        });
+
+        CatFrame.logger.info("[AsyncBake] pipeline triggered (non-blocking) | iconMap.size={}",
+                iconMap != null ? iconMap.size() : 0);
+    }
+
+    /**
+     * 触发预烘焙并阻塞至全部完成（"异步准备，同步切换"）。
+     * <p>
+     * 对标高版本 {@code ModelManager.reload()} 的 {@code preparationBarrier::wait} + {@code apply()}：
+     * 烘焙仍在后台线程池<b>并行</b>执行（异步准备），但本方法阻塞调用线程（stitch 主线程）
+     * 直到所有模型烤完，并<b>同步</b>将结果灌入 {@link BakedModelCache}（同步切换），
+     * 保证返回后渲染系统永远读到已烤好的 {@link BlockStateModelPart}，运行时零现场烘焙。
+     * <p>
+     * {@link BakedModelCache} 的首帧懒烘焙由此降级为极少触发的安全网（仅覆盖
+     * 预烤集合未包含的模型/旋转组合，或屏障超时的兜底）。
+     * <p>
+     * 注意：{@link BakingCore#bake} 为纯函数、不依赖 GL 上下文，可在后台线程安全执行，
+     * 因此主线程阻塞等待不会造成死锁。
+     *
+     * @param iconMap 当前 stitch 周期的 IIcon 映射
+     */
+    public static void triggerBakeBlocking(@Nullable final Map<String, IIcon> iconMap) {
+        final Dispatch d = dispatch(iconMap);
+        if (d == null) return;
+
+        try {
+            // 屏障：阻塞至所有并行烘焙任务完成（后台线程池并行执行）
+            List<BakeResult> results = d.all.get(BAKE_BARRIER_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            // 同步切换：在本线程灌入缓存，返回后缓存即就绪（不依赖异步回调的时序）
+            applyResults(results, d.startTime);
+            CatFrame.logger.info("[AsyncBake] barrier complete (blocking) | iconMap.size={}",
+                    iconMap != null ? iconMap.size() : 0);
+        } catch (TimeoutException te) {
+            CatFrame.logger.warn("[AsyncBake] barrier timed out after {}s ({} tasks); "
+                    + "falling back to lazy baking", BAKE_BARRIER_TIMEOUT_SECONDS, d.totalTasks);
+            // 不取消：后台任务继续跑，完成后由异步回调灌入缓存；同时懒烘焙兜底
+            Futures.addCallback(d.all, new FutureCallback<List<BakeResult>>() {
+                @Override
+                public void onSuccess(List<BakeResult> results) {
+                    applyResults(results, d.startTime);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    CatFrame.logger.error("[AsyncBake] deferred pipeline failed: {}", t.getMessage(), t);
+                }
+            });
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            CatFrame.logger.warn("[AsyncBake] barrier interrupted; falling back to lazy baking");
+        } catch (ExecutionException ee) {
+            CatFrame.logger.error("[AsyncBake] barrier failed: {}", ee.getMessage(), ee);
+        }
+    }
+
+    /**
+     * 收集模型路径、生成任务并提交到线程池，返回汇聚 future。
+     * 无模型可烘焙时返回 {@code null}。
+     */
+    @Nullable
+    private static Dispatch dispatch(@Nullable final Map<String, IIcon> iconMap) {
         // 1. 收集所有待烘焙的模型路径
         Set<String> modelPaths = collectModelPaths();
         if (modelPaths.isEmpty()) {
             CatFrame.logger.info("[AsyncBake] no models to bake, skip");
-            return;
+            return null;
         }
 
         // 2. 拓扑排序
@@ -115,31 +213,23 @@ public class AsyncBakePipeline {
             futures.add(f);
         }
 
-        // 5. 汇聚所有结果 → 灌入缓存（回调在池线程执行）
-        ListenableFuture<List<BakeResult>> all = Futures.allAsList(futures);
-        Futures.addCallback(all, new FutureCallback<List<BakeResult>>() {
-            @Override
-            public void onSuccess(List<BakeResult> results) {
-                long elapsed = (System.nanoTime() - startTime) / 1_000_000;
-                Map<String, BlockStateModelPart> resultMap = new HashMap<>();
-                for (BakeResult r : results) {
-                    if (r != null && r.part != null) {
-                        resultMap.put(r.cacheKey, r.part);
-                    }
-                }
-                BakedModelCache.INSTANCE.bulkPut(resultMap);
-                CatFrame.logger.info("[AsyncBake] complete: {} models baked in {}ms (cache size: {})",
-                        resultMap.size(), elapsed, BakedModelCache.INSTANCE.size());
-            }
+        return new Dispatch(Futures.allAsList(futures), startTime, totalTasks);
+    }
 
-            @Override
-            public void onFailure(Throwable t) {
-                CatFrame.logger.error("[AsyncBake] pipeline failed: {}", t.getMessage(), t);
+    /**
+     * 将烘焙结果批量灌入 {@link BakedModelCache}。异步回调与阻塞屏障共用。
+     */
+    private static void applyResults(List<BakeResult> results, long startTime) {
+        long elapsed = (System.nanoTime() - startTime) / 1_000_000;
+        Map<String, BlockStateModelPart> resultMap = new HashMap<>();
+        for (BakeResult r : results) {
+            if (r != null && r.part != null) {
+                resultMap.put(r.cacheKey, r.part);
             }
-        });
-
-        CatFrame.logger.info("[AsyncBake] pipeline triggered | iconMap.size={}",
-                iconMap != null ? iconMap.size() : 0);
+        }
+        BakedModelCache.INSTANCE.bulkPut(resultMap);
+        CatFrame.logger.info("[AsyncBake] complete: {} models baked in {}ms (cache size: {})",
+                resultMap.size(), elapsed, BakedModelCache.INSTANCE.size());
     }
 
     /**

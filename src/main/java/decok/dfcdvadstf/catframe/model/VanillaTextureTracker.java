@@ -174,10 +174,10 @@ public class VanillaTextureTracker {
 
         CatFrame.logger.info("[VTT-diag] BakedModelCache.clear(iconMap) called | textureIcons.size={}",
                 textureIcons.size());
-        // 注册懒模型（不执行同步烘焙，烘焙由 BakedModelCache 懒烘焙 + AsyncBakePipeline 异步预烘焙承担）
+        // 注册懒模型（不执行同步烘焙，烘焙由 AsyncBakePipeline 屏障式预烘焙承担，懒烘焙仅作安全网）
         VanillaModelManager.Baking.registerAllModels();
-        // 异步预烘焙管线：将常用模型预烘焙到 BakedModelCache（传入 iconMap）
-        AsyncBakePipeline.triggerAsyncBake(textureIcons);
+        // 异步准备，同步切换：并行预烤所有常用模型并阻塞至完成，返回后缓存即就绪（对标 vanilla reload 屏障）
+        AsyncBakePipeline.triggerBakeBlocking(textureIcons);
     }
 
     /**
@@ -211,7 +211,7 @@ public class VanillaTextureTracker {
         BakedModelCache.INSTANCE.clear(textureIcons);
         // [W2 修复] 仅增量更新 item 模型注册（懒模型，无需实际烘焙）
         VanillaModelManager.Baking.registerItemModels();
-        // item atlas 就绪后再次触发异步预烘焙（确保 item 模型也被预烘焙）
-        AsyncBakePipeline.triggerAsyncBake(textureIcons);
+        // item atlas 就绪后再次并行预烤并阻塞至完成（确保 item 模型也在返回前就绪，零现场烘焙）
+        AsyncBakePipeline.triggerBakeBlocking(textureIcons);
     }
 }

@@ -67,7 +67,7 @@ public class NamespaceLoadTask {
             "quartz_stairs", "acacia_stairs", "dark_oak_stairs",
             "fence", "fence_gate", "nether_brick_fence",
             "web", "snow_layer", "carpet", "farmland", "ladder",
-            "enchanting_table", "ender_chest", "end_portal_frame",
+            "enchanting_table", "end_portal_frame",
             "dragon_egg", "iron_bars", "trapped_chest", "chest",
             "bedrock"
     };

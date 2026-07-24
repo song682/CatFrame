@@ -5,11 +5,12 @@
   "package": "decok.dfcdvadstf.catframe.mixin",
   "refmap": "mixins.catframe.refmap.json",
   "compatibilityLevel": "JAVA_8",
-  "mixins": [],
-  "client": [
-    "middle.MixinGuiScreen",
-    "middle.MixinRenderBlocks",
+  "mixins": [
     "middle.MixinTextureMap",
+    "middle.MixinGuiScreen"
+  ],
+  "client": [
+    "middle.MixinRenderBlocks",
     "middle.MixinWorldRenderer"
   ],
   "server": []

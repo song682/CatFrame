@@ -22,7 +22,6 @@ public class Button extends AbstractButton {
     public static final int BIG_WIDTH = 200;
     public static final int DEFAULT_HEIGHT = 20;
 
-    private Text message;
     private final OnPress onPress;
 
     protected Button(int x, int y, int width, int height, Text message, OnPress onPress) {
@@ -30,8 +29,7 @@ public class Button extends AbstractButton {
     }
 
     protected Button(int x, int y, int width, int height, Text message, OnPress onPress, boolean useVanillaTexture) {
-        super(x, y, width, height);
-        this.message = message;
+        super(x, y, width, height, message);
         this.onPress = onPress;
         this.useVanillaTexture = useVanillaTexture;
     }
@@ -42,14 +40,6 @@ public class Button extends AbstractButton {
      */
     public static Builder builder(Text message, OnPress onPress) {
         return new Builder(message, onPress);
-    }
-
-    public void setMessage(Text message) {
-        this.message = message;
-    }
-
-    public Text getMessage() {
-        return message;
     }
 
     @Override
@@ -68,6 +58,7 @@ public class Button extends AbstractButton {
 
         // Draw the button text
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;
+        Text message = getMessage();
         String text = message != null ? message.getString() : "";
         int textColor;
         if (!active) {

@@ -36,4 +36,31 @@ public interface CatFrameInputScreen {
      */
     @Nullable
     Component getEventRoot();
+
+    /**
+     * Whether this screen dispatches CatFrame split keyboard events on its own — e.g. by
+     * overriding {@code GuiScreen.handleKeyboardInput()} and calling {@code ScreenKeyboardInput}
+     * directly. When {@code true}, {@link decok.dfcdvadstf.catframe.mixin.middle.MixinGuiScreen}
+     * <strong>must not</strong> dispatch for this screen, otherwise every key would be delivered
+     * twice (once by the screen, once by the mixin).
+     * <p>
+     * Defaults to {@code false}: a foreign host {@code GuiScreen} (vanilla / another mod) that
+     * merely implements this interface cannot self-dispatch, so the mixin drives it. The built-in
+     * {@link decok.dfcdvadstf.catframe.ui.screens.Screen} base overrides this to {@code true}.
+     * </p>
+     * <p>
+     * 本屏幕是否自行派发 CatFrame 拆分键盘事件——例如覆写 {@code GuiScreen.handleKeyboardInput()}
+     * 并直接调用 {@code ScreenKeyboardInput}。返回 {@code true} 时，
+     * {@link decok.dfcdvadstf.catframe.mixin.middle.MixinGuiScreen} <strong>不得</strong>再为本屏幕派发，
+     * 否则每个按键会被投递两次（屏幕一次、mixin 一次）。<br>
+     * 默认 {@code false}：仅实现本接口的外部宿主 {@code GuiScreen}（原版 / 他模组）无法自派发，
+     * 由 mixin 代为驱动；内建 {@link decok.dfcdvadstf.catframe.ui.screens.Screen} 基类覆写为 {@code true}。
+     * </p>
+     *
+     * @return {@code true} to opt out of mixin dispatch (self-dispatching screen)
+     *         / 返回 {@code true} 表示自派发、放弃 mixin 派发
+     */
+    default boolean handlesKeyboardDispatchInternally() {
+        return false;
+    }
 }

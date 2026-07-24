@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
@@ -17,8 +18,14 @@ import org.lwjgl.opengl.GL11;
  * Abstract button base — provides hover detection, press state, and sound playback.<br>
  * Counterpart of the high-version Minecraft {@code AbstractButton}.
  * </p>
+ * <p>
+ * 继承 {@link AbstractComponent.WithInactiveMessage}，故按钮文本（message）及其失效灰化
+ * 由基类统一托管，对标 26.1.2 {@code AbstractButton extends AbstractWidget.WithInactiveMessage}。<br>
+ * Extends {@link AbstractComponent.WithInactiveMessage}, so the button's message and its
+ * inactive graying are managed by the base class.
+ * </p>
  */
-public abstract class AbstractButton extends AbstractComponent {
+public abstract class AbstractButton extends AbstractComponent.WithInactiveMessage {
 
     protected boolean wasHovered;
     protected long lastClickTime;
@@ -56,7 +63,14 @@ public abstract class AbstractButton extends AbstractComponent {
     }
 
     public AbstractButton(int x, int y, int width, int height) {
-        super(x, y, width, height);
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+
+    public AbstractButton(int x, int y, int width, int height, Text message) {
+        super(x, y, width, height, message);
     }
 
     /**

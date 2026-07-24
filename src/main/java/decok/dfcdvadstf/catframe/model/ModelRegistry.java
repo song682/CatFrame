@@ -12,7 +12,6 @@ import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemBlock;
 import net.minecraftforge.client.MinecraftForgeClient;
 
 import java.util.HashMap;
@@ -28,8 +27,11 @@ import java.util.Set;
  * <p>
  * Item-context rendering (hand / GUI / dropped) is driven exclusively by
  * registered {@link IItemStateProvider}s loaded from {@code items/{name}.json}.
- * ItemBlocks whose {@code items/{name}.json} is missing fall back to the
- * {@code builtin/missing} model (never to vanilla rendering).
+ * Items (block items included) without a registered model are NOT force-converted
+ * to {@code builtin/missing}; {@link #getRegisteredItemModel} returns {@code null}
+ * for them and they fall back to vanilla item rendering — aligning with
+ * {@link RenderJsonItemModel}'s documented contract and the "strategy B" policy
+ * (only explicitly registered models are driven by the CatFrame pipeline).
  */
 @SideOnly(Side.CLIENT)
 public class ModelRegistry {
@@ -127,40 +129,24 @@ public class ModelRegistry {
         }
 
         /**
-         * Get the registered IItemState model for an item.
+         * Get the registered IItemState model for an item, or {@code null} if none.
          * <p>
-         * Lookup order:
-         * <ol>
-         *   <li>A model registered from {@code items/{name}.json} (via
-         *       {@link #registerItemModel}) — returned as-is.</li>
-         *   <li>Otherwise, if the item is an {@link ItemBlock}, fall back to the
-         *       {@code builtin/missing} model. Every ItemBlock is required to ship an
-         *       {@code items/{name}.json}; when the author omits it the block item shows
-         *       the missingno model rather than falling back to vanilla rendering. The
-         *       fallback model is cached and its Forge {@code IItemRenderer} registered so
-         *       later lookups are cheap.</li>
-         *   <li>Otherwise (non-block item without a registered model) returns {@code null},
-         *       letting the item fall back to vanilla rendering.</li>
-         * </ol>
+         * Only models explicitly registered (from {@code items/{name}.json} via
+         * {@link #registerItemModel}, from {@code model_mappings.json}, or via an
+         * {@code ITEM_MODEL} component override) are returned. Any item — block item
+         * or not — without such a registration returns {@code null} and falls back to
+         * vanilla item rendering.
+         * <p>
+         * This method intentionally does NOT force block items to {@code builtin/missing}:
+         * doing so would (a) contradict {@link RenderJsonItemModel}'s contract, and
+         * (b) permanently hijack any block item merely queried here into showing the
+         * missingno sprite instead of its vanilla appearance. Block items that want
+         * CatFrame rendering must ship an {@code items/{name}.json}.
          */
         public static IItemStateProvider getRegisteredItemModel(Item item) {
             if (item == null) return null;
-            IItemStateProvider itemModel = registeredItemModels.get(item);
-            if (itemModel != null) return itemModel;
-
-            // 方块物品缺省回退：每个 ItemBlock 都必须编写 items/{name}.json；
-            // 作者遗漏时回退到 builtin/missing（紫黑 missingno），使方块物品永不落回原版渲染。
-            if (item instanceof ItemBlock) {
-                ItemStateModel missing = new ItemStateModel("builtin/missing");
-                registeredItemModels.put(item, missing);
-                if (ModelManagerDataLoader.initialized) {
-                    MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
-                }
-                return missing;
-            }
-
-            // 非方块物品：无注册模型则返回 null，回退原版物品渲染。
-            return null;
+            // 只返回显式注册的物品模型；未注册的物品（含 ItemBlock）返回 null，退回原版渲染。
+            return registeredItemModels.get(item);
         }
 
         /**

@@ -193,7 +193,7 @@ public class ItemModelGenerator {
         q.face = face;
         q.tintIndex = tintIndex;
         q.guiLight = "front";
-        q.solidColor = pixelARGB;
+        q.solidColor = pixelARGB | 0xFF000000; // 侧面强制不透明，避免半透明纹素被 blend 冲淡
 
         // 顶点绕序：对标 BlockJsonModelBake.emitFaceFromCorners
         //   UP:  v0(idx=010)=MIN_X,MIN_Z  v1(idx=011)=MIN_X,MAX_Z  v2(idx=111)=MAX_X,MAX_Z  v3(idx=110)=MAX_X,MIN_Z
@@ -260,7 +260,7 @@ public class ItemModelGenerator {
         q.face = face;
         q.tintIndex = tintIndex;
         q.guiLight = "front";
-        q.solidColor = pixelARGB;
+        q.solidColor = pixelARGB | 0xFF000000; // 侧面强制不透明，避免半透明纹素被 blend 冲淡
 
         // 顶点绕序：对标 BlockJsonModelBake.emitFaceFromCorners
         //   EAST: v0(idx=111)=MAX_Y,MAX_Z  v1(idx=101)=MIN_Y,MAX_Z  v2(idx=100)=MIN_Y,MIN_Z  v3(idx=110)=MAX_Y,MIN_Z

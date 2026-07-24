@@ -73,14 +73,26 @@ public final class FeatureRenderDispatcher {
                     ModelRenderRegistry.applyBeforePart(s.part.getAllQuads(), s.phase, s.part);
                     try {
                         t.startDrawingQuads();
+                        boolean hasSolidColor;
                         if (isBlockPhase(s.phase)) {
                             QuadWriter.writeBlockQuads(s, t);
+                            hasSolidColor = false;
                         } else {
-                            QuadWriter.writeItemQuads(s, t);
+                            hasSolidColor = QuadWriter.writeItemQuads(s, t);
                         }
                         // 恒 draw：即使无顶点，draw() 也会安全复位 Tessellator 的 isDrawing 状态，
                         // 避免下一提交项 startDrawingQuads() 抛 "Already tesselating"。
                         t.draw();
+
+                        // 第二遍：solidColor quad（侧面纯色）无纹理渲染
+                        // 禁用纹理 → GL_MODULATE 不再把半透明纹素 alpha 乘入 → 侧面恒不透明
+                        if (hasSolidColor) {
+                            GL11.glDisable(GL11.GL_TEXTURE_2D);
+                            t.startDrawingQuads();
+                            QuadWriter.writeSolidColorQuads(s, t);
+                            t.draw();
+                            GL11.glEnable(GL11.GL_TEXTURE_2D);
+                        }
                     } finally {
                         // 生命周期：quad 处理后（GuiLightExtension 恢复 GL_LIGHTING、
                         // DisplayTransformExtension 清矩阵）

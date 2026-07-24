@@ -10,7 +10,14 @@ import decok.dfcdvadstf.catframe.proxy.CommonProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-@Mod(modid = Tags.MODID, name = Tags.NAME, version = Tags.VERSION, useMetadata = true)
+@Mod(
+        modid = Tags.MODID,
+        name = Tags.NAME,
+        version = Tags.VERSION,
+        acceptedMinecraftVersions = "[1.7.10]",
+        acceptableRemoteVersions = "[1.7.10]",
+        useMetadata = true
+)
 public class CatFrame {
     public static Logger logger = LogManager.getLogger(Tags.NAME);
     public static CatFrameConfig config;

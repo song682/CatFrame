@@ -82,15 +82,23 @@ public class AsyncBakePipeline {
     private static final long BAKE_BARRIER_TIMEOUT_SECONDS = 60L;
 
     /**
-     * 提交结果：汇聚 future + 起始时间 + 任务数。dispatch 返回 null 表示无模型可烘焙。
+     * 提交结果：汇聚 future + 起始时间 + 任务数 + 个体 future 列表（进度上报用）。
+     * dispatch 返回 null 表示无模型可烘焙。
      */
     private static final class Dispatch {
         final ListenableFuture<List<BakeResult>> all;
+        final List<ListenableFuture<BakeResult>> futures;
+        final List<BakeTask> tasks;
         final long startTime;
         final int totalTasks;
 
-        Dispatch(ListenableFuture<List<BakeResult>> all, long startTime, int totalTasks) {
+        Dispatch(ListenableFuture<List<BakeResult>> all,
+                 List<ListenableFuture<BakeResult>> futures,
+                 List<BakeTask> tasks,
+                 long startTime, int totalTasks) {
             this.all = all;
+            this.futures = futures;
+            this.tasks = tasks;
             this.startTime = startTime;
             this.totalTasks = totalTasks;
         }
@@ -142,24 +150,91 @@ public class AsyncBakePipeline {
      * @param iconMap 当前 stitch 周期的 IIcon 映射
      */
     public static void triggerBakeBlocking(@Nullable final Map<String, IIcon> iconMap) {
-        final Dispatch d = dispatch(iconMap);
-        if (d == null) return;
+        // ===== 1. 分阶段收集模型路径 =====
+        Set<String> blockPaths = collectBlockModelPaths();
+        Set<String> itemPaths = collectItemModelPaths();
+        Set<String> allPaths = new LinkedHashSet<>(blockPaths);
+        allPaths.addAll(itemPaths);
 
+        if (allPaths.isEmpty()) {
+            CatFrame.logger.info("[AsyncBake] no models to bake, skip");
+            return;
+        }
+
+        // ===== 2. 拓扑排序 + 生成任务 =====
+        List<String> sorted = ModelResolver.topologicalSort(allPaths);
+        List<BakeTask> tasks = generateTasks(sorted, iconMap);
+        final int totalTasks = tasks.size();
+        final long startTime = System.nanoTime();
+
+        CatFrame.logger.info("[AsyncBake] dispatching {} bake tasks for {} models",
+                totalTasks, allPaths.size());
+
+        // ===== 3. 双层进度报告器 =====
+        final BakeProgressReporter progress = new BakeProgressReporter();
+        progress.begin(3); // 3 phases: search blocks, search items, baking
+        progress.stepPhase("Searching BlockState Models");
+        progress.stepPhase("Searching Item Models");
+        progress.beginBaking(totalTasks);
+
+        // ===== 4. 提交所有烘焙任务到线程池 =====
+        List<ListenableFuture<BakeResult>> futures = new ArrayList<>(totalTasks);
+        for (final BakeTask task : tasks) {
+            ListenableFuture<BakeResult> f = RenderExecutors.get().submit(new Callable<BakeResult>() {
+                @Override
+                public BakeResult call() {
+                    String cacheKey = BakedModelCache.buildKey(task.modelPath, task.rotX, task.rotY);
+                    BlockStateModelPart part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.iconMap);
+                    return new BakeResult(cacheKey, part);
+                }
+            });
+            // 完成回调 → 推入 reporter 队列
+            Futures.addCallback(f, new FutureCallback<BakeResult>() {
+                @Override
+                public void onSuccess(BakeResult r) {
+                    progress.reportBakeComplete(task.modelPath);
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    progress.reportBakeComplete(task.modelPath);
+                }
+            });
+            futures.add(f);
+        }
+
+        // ===== 5. 主线程轮询进度 =====
+        long deadline = System.nanoTime() + BAKE_BARRIER_TIMEOUT_SECONDS * 1_000_000_000L;
+        while (!progress.pollAndStep()) {
+            if (System.nanoTime() > deadline) {
+                CatFrame.logger.warn("[AsyncBake] progress timed out after {}s ({}/{} done)",
+                        BAKE_BARRIER_TIMEOUT_SECONDS, progress.getDetailStepped(), progress.getDetailTotal());
+                progress.finishForcefully("timeout");
+                break;
+            }
+            try { Thread.sleep(5); } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                progress.finishForcefully("interrupted");
+                break;
+            }
+        }
+        if (progress.isActive()) {
+            progress.finish();
+        }
+
+        // ===== 6. 收集结果并灌入缓存 =====
+        ListenableFuture<List<BakeResult>> allFuture = Futures.allAsList(futures);
         try {
-            // 屏障：阻塞至所有并行烘焙任务完成（后台线程池并行执行）
-            List<BakeResult> results = d.all.get(BAKE_BARRIER_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            // 同步切换：在本线程灌入缓存，返回后缓存即就绪（不依赖异步回调的时序）
-            applyResults(results, d.startTime);
+            List<BakeResult> results = allFuture.get(5, TimeUnit.SECONDS);
+            applyResults(results, startTime);
             CatFrame.logger.info("[AsyncBake] barrier complete (blocking) | iconMap.size={}",
                     iconMap != null ? iconMap.size() : 0);
         } catch (TimeoutException te) {
-            CatFrame.logger.warn("[AsyncBake] barrier timed out after {}s ({} tasks); "
-                    + "falling back to lazy baking", BAKE_BARRIER_TIMEOUT_SECONDS, d.totalTasks);
-            // 不取消：后台任务继续跑，完成后由异步回调灌入缓存；同时懒烘焙兜底
-            Futures.addCallback(d.all, new FutureCallback<List<BakeResult>>() {
+            CatFrame.logger.warn("[AsyncBake] result collection timed out; falling back to lazy baking");
+            Futures.addCallback(allFuture, new FutureCallback<List<BakeResult>>() {
                 @Override
                 public void onSuccess(List<BakeResult> results) {
-                    applyResults(results, d.startTime);
+                    applyResults(results, startTime);
                 }
 
                 @Override
@@ -182,7 +257,8 @@ public class AsyncBakePipeline {
     @Nullable
     private static Dispatch dispatch(@Nullable final Map<String, IIcon> iconMap) {
         // 1. 收集所有待烘焙的模型路径
-        Set<String> modelPaths = collectModelPaths();
+        Set<String> modelPaths = new LinkedHashSet<>(collectBlockModelPaths());
+        modelPaths.addAll(collectItemModelPaths());
         if (modelPaths.isEmpty()) {
             CatFrame.logger.info("[AsyncBake] no models to bake, skip");
             return null;
@@ -213,7 +289,7 @@ public class AsyncBakePipeline {
             futures.add(f);
         }
 
-        return new Dispatch(Futures.allAsList(futures), startTime, totalTasks);
+        return new Dispatch(Futures.allAsList(futures), futures, tasks, startTime, totalTasks);
     }
 
     /**
@@ -242,33 +318,61 @@ public class AsyncBakePipeline {
     // ==================== 内部：任务收集与生成 ====================
 
     /**
-     * 收集所有需要烘焙的模型路径。
-     * 从 loadedBlockstates / loadedMappings / loadedItemStates / interfaceItemStates 中提取。
+     * 收集方块模型路径（从 blockstates + model_mappings.blocks）。
+     * 路径均带 namespace 前缀（如 "minecraft:block/stone"）。
      */
-    private static Set<String> collectModelPaths() {
+    private static Set<String> collectBlockModelPaths() {
         Set<String> paths = new LinkedHashSet<>();
 
-        // 从 blockstates 收集
-        for (Map<String, BlockstateJson> nsMap : ModelManagerDataLoader.loadedBlockstates.values()) {
-            for (BlockstateJson bs : nsMap.values()) {
-                collectPathsFromBlockstate(bs, paths);
+        // 从 blockstates 收集（namespace 为外层 key）
+        for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry : ModelManagerDataLoader.loadedBlockstates.entrySet()) {
+            String namespace = nsEntry.getKey();
+            for (BlockstateJson bs : nsEntry.getValue().values()) {
+                collectPathsFromBlockstate(bs, paths, namespace);
             }
         }
 
-        // 从 model_mappings 收集
-        for (VanillaModelManager.ModelMappings mappings : ModelManagerDataLoader.loadedMappings.values()) {
+        // 从 model_mappings.blocks 收集
+        for (Map.Entry<String, VanillaModelManager.ModelMappings> entry : ModelManagerDataLoader.loadedMappings.entrySet()) {
+            String namespace = entry.getKey();
+            VanillaModelManager.ModelMappings mappings = entry.getValue();
             if (mappings.blocks != null) {
-                paths.addAll(mappings.blocks.values());
+                for (String path : mappings.blocks.values()) {
+                    paths.add(ensureNamespace(path, namespace));
+                }
             }
+        }
+
+        return paths;
+    }
+
+    /**
+     * 收集物品模型路径（从 loadedItemStates + interfaceItemStates + model_mappings.items）。
+     * 路径均带 namespace 前缀。
+     */
+    private static Set<String> collectItemModelPaths() {
+        Set<String> paths = new LinkedHashSet<>();
+
+        // 从 model_mappings.items 收集
+        for (Map.Entry<String, VanillaModelManager.ModelMappings> entry : ModelManagerDataLoader.loadedMappings.entrySet()) {
+            String namespace = entry.getKey();
+            VanillaModelManager.ModelMappings mappings = entry.getValue();
             if (mappings.items != null) {
-                paths.addAll(mappings.items.values());
+                for (String path : mappings.items.values()) {
+                    paths.add(ensureNamespace(path, namespace));
+                }
             }
         }
 
         // 从 ItemState 决策树收集所有引用的模型路径
-        for (Map<String, ItemStateNode> nsItemStates : ModelManagerDataLoader.loadedItemStates.values()) {
-            for (ItemStateNode root : nsItemStates.values()) {
-                root.collectModelPaths(paths);
+        for (Map.Entry<String, Map<String, ItemStateNode>> nsEntry : ModelManagerDataLoader.loadedItemStates.entrySet()) {
+            String namespace = nsEntry.getKey();
+            for (ItemStateNode root : nsEntry.getValue().values()) {
+                Set<String> raw = new LinkedHashSet<>();
+                root.collectModelPaths(raw);
+                for (String path : raw) {
+                    paths.add(ensureNamespace(path, namespace));
+                }
             }
         }
 
@@ -278,6 +382,7 @@ public class AsyncBakePipeline {
                 ModernItem mi = (ModernItem) obj;
                 String modelPath = mi.getModelPath();
                 if (modelPath != null) {
+                    // ModernItem 通常已带 namespace
                     paths.add(modelPath);
                 }
                 if (mi.hasDualModels()) {
@@ -289,22 +394,31 @@ public class AsyncBakePipeline {
         return paths;
     }
 
-    private static void collectPathsFromBlockstate(BlockstateJson bs, Set<String> paths) {
+    /**
+     * 确保模型路径带有 namespace 前缀。
+     * 已含 ":" 的路径原样返回，否则补上所属 namespace。
+     */
+    private static String ensureNamespace(String path, String namespace) {
+        if (path == null) return namespace + ":";
+        return path.contains(":") ? path : namespace + ":" + path;
+    }
+
+    private static void collectPathsFromBlockstate(BlockstateJson bs, Set<String> paths, String namespace) {
         if (bs.variants != null) {
             for (BlockstateJson.VariantEntry entry : bs.variants.values()) {
                 if (entry.isArray()) {
                     for (BlockstateJson.Variant v : entry.list) {
-                        if (v.model != null) paths.add(v.model);
+                        if (v.model != null) paths.add(ensureNamespace(v.model, namespace));
                     }
                 } else if (entry.single != null && entry.single.model != null) {
-                    paths.add(entry.single.model);
+                    paths.add(ensureNamespace(entry.single.model, namespace));
                 }
             }
         }
         if (bs.multipart != null) {
             for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                 if (mpc.apply != null && mpc.apply.model != null) {
-                    paths.add(mpc.apply.model);
+                    paths.add(ensureNamespace(mpc.apply.model, namespace));
                 }
             }
         }

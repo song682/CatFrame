@@ -86,6 +86,12 @@ public class RenderDispatcher {
                                                          BlockstateJson bs) {
         if (bs == null) return false;
 
+        // One-shot variant key validation (identity-deduped inside): invalid
+        // property=value keys fall back to builtin/missing (MissingNo).
+        // 一次性校验 variant 键（内部按引用去重）：无效的 属性=属性值 键回退 builtin/missing（MissingNo）。
+        BlockstateKeyValidator.validate(bs, catState.getDefinition(),
+                "blockstate of " + Block.blockRegistry.getNameForObject(block));
+
         if (bs.variants != null) {
             String variantKey = catState.toVariantKey();
             BlockstateJson.VariantEntry entry = bs.variants.get(variantKey);

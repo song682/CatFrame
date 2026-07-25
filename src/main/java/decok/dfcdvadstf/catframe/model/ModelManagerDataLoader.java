@@ -11,6 +11,7 @@ import decok.dfcdvadstf.catframe.model.core.async.RenderExecutors;
 import decok.dfcdvadstf.catframe.model.impl.ModernItem;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonBlockModel;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.model.state.BlockstateKeyValidator;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.block.Block;
@@ -270,6 +271,11 @@ public class ModelManagerDataLoader {
         BlockstateJson bs = loadSingleBlockstate(namespace, name);
         if (bs != null) {
             stateBlockData.put(block, bs);
+            // Providers exposing a typed state definition get their variant keys
+            // validated right at load time; invalid keys → builtin/missing.
+            // 提供 typed 状态定义的 provider 在加载时即校验 variant 键；无效键 → builtin/missing。
+            BlockstateKeyValidator.validate(bs, provider.getStateDefinition(),
+                    "blockstate " + namespace + ":" + name);
             CatFrame.logger.info("Loaded blockstate for state-block: {}:{}", namespace, name);
         } else {
             CatFrame.logger.warn("Failed to load blockstate for state-block: {}:{}", namespace, name);

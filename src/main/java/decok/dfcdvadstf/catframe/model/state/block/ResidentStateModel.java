@@ -14,6 +14,7 @@ import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.model.state.BlockstateKeyValidator;
 import decok.dfcdvadstf.catframe.model.state.CatBlockState;
 import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
@@ -86,6 +87,16 @@ public final class ResidentStateModel implements BlockStateModel {
         this.dynamic = b.dynamic;
         this.fullModel = b.fullModel;
         this.connectionMultipart = b.connectionMultipart;
+        // Validate variant keys against the typed state definition once at build time;
+        // invalid property=value keys are invalidated → builtin/missing (MissingNo).
+        // 构建时用 typed 状态定义一次性校验 variant 键；无效的 属性=属性值 键作废 → builtin/missing（MissingNo）。
+        BlockstateKeyValidator.validate(this.bs, this.def, describeOwner());
+    }
+
+    /** Human-readable owner for validator logs. 校验日志用的归属描述。 */
+    private String describeOwner() {
+        String id = Block.blockRegistry.getNameForObject(block);
+        return "blockstate of " + (id != null ? id : String.valueOf(block));
     }
 
     // ==================== 渲染入口 ====================
@@ -146,7 +157,12 @@ public final class ResidentStateModel implements BlockStateModel {
                 nsMap.put(targetName, target);
             }
         }
-        if (target != null) redirectCache.put(metadata, target);
+        if (target != null) {
+            // Redirect targets are resolved lazily → validate their variant keys here as well
+            // 重定向目标为懒解析 → 同样在此校验其 variant 键
+            BlockstateKeyValidator.validate(target, def, describeOwner());
+            redirectCache.put(metadata, target);
+        }
         return target;
     }
 

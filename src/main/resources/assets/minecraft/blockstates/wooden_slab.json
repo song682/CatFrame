@@ -1,16 +1,16 @@
 {
-  "variants": {
-    "half=bottom,variant=oak": { "model": "minecraft:block/slab_oak" },
-    "half=bottom,variant=spruce": { "model": "minecraft:block/slab_spruce" },
-    "half=bottom,variant=birch": { "model": "minecraft:block/slab_birch" },
-    "half=bottom,variant=jungle": { "model": "minecraft:block/slab_jungle" },
-    "half=bottom,variant=acacia": { "model": "minecraft:block/slab_acacia" },
-    "half=bottom,variant=big_oak": { "model": "minecraft:block/slab_dark_oak" },
-    "half=top,variant=oak": { "model": "minecraft:block/slab_oak_top" },
-    "half=top,variant=spruce": { "model": "minecraft:block/slab_spruce_top" },
-    "half=top,variant=birch": { "model": "minecraft:block/slab_birch_top" },
-    "half=top,variant=jungle": { "model": "minecraft:block/slab_jungle_top" },
-    "half=top,variant=acacia": { "model": "minecraft:block/slab_acacia_top" },
-    "half=top,variant=big_oak": { "model": "minecraft:block/slab_dark_oak_top" }
-  }
+	"variants": {
+		"half=bottom, variant=oak": {"model": "minecraft:block/slab_oak"},
+		"half=bottom,variant=spruce": {"model": "minecraft:block/slab_spruce"},
+		"half=bottom,variant=birch": {"model": "minecraft:block/slab_birch" },
+		"half=bottom,variant=jungle": { "model": "minecraft:block/slab_jungle" },
+		"half=bottom,variant=acacia": { "model": "minecraft:block/slab_acacia" },
+		"half=bottom,variant=big_oak": { "model": "minecraft:block/slab_dark_oak" },
+		"half=top,variant=oak": { "model": "minecraft:block/slab_oak_top" },
+		"half=top,variant=spruce": { "model": "minecraft:block/slab_spruce_top" },
+		"half=top,variant=birch": { "model": "minecraft:block/slab_birch_top" },
+		"half=top,variant=jungle": { "model": "minecraft:block/slab_jungle_top" },
+		"half=top,variant=acacia": { "model": "minecraft:block/slab_acacia_top" },
+		"half=top,variant=big_oak": { "model": "minecraft:block/slab_dark_oak_top" }
+	}
 }

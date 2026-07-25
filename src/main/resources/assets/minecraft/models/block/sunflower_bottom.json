@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/cross",
   "textures": {
-    "cross": "minecraft:blocks/double_plant_sunflower_bottom"
+    "cross": "minecraft:blocks/sunflower_bottom"
   }
 }

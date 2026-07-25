@@ -92,9 +92,74 @@ public class ItemStateModel implements IItemStateProvider {
             // preTransform 传递到管线，使反抵消矩阵正确作用于顶点。
             // Tints are applied via the TintRegistry bridge + TintRenderExtension by
             // each quad's tintindex; no direct color computation is needed here.
+            // transformation：命中 ModelLeaf 声明的物品模型渲染变换（可选，默认单位变换），
+            // 由管线在 display 变换之后逐顶点应用。
+            // The matched ModelLeaf's optional per-model transformation is applied by the
+            // pipeline after the display transform (identity when absent).
+            Matrix4d transformation = findTransformationForModel(rootNode, path);
             UniformRenderPipeline.renderItemQuads(part, stack, phase,
-                    null, 0, 0, 0, null, preTransform);
+                    null, 0, 0, 0, null, preTransform, transformation);
         }
+    }
+
+    /**
+     * 在决策树中查找指定模型路径的 ModelLeaf，提取其 transformation 矩阵。
+     * <p>
+     * 遍历策略与 {@link #findTintsForModel} 一致：命中路径且声明了非空变换的
+     * 第一个叶子胜出；未声明时返回 {@code null}（单位变换）。
+     */
+    @Nullable
+    private static Matrix4d findTransformationForModel(ItemStateNode node, String path) {
+        if (node == null) return null;
+        if (node instanceof ItemStateNode.ModelLeaf) {
+            ItemStateNode.ModelLeaf leaf = (ItemStateNode.ModelLeaf) node;
+            return path.equals(leaf.model) ? leaf.transformation : null;
+        }
+        if (node instanceof ItemStateNode.ConditionNode) {
+            ItemStateNode.ConditionNode cn = (ItemStateNode.ConditionNode) node;
+            Matrix4d r = findTransformationForModel(cn.onTrue, path);
+            if (r != null) return r;
+            return findTransformationForModel(cn.onFalse, path);
+        }
+        if (node instanceof ItemStateNode.RangeDispatchNode) {
+            ItemStateNode.RangeDispatchNode rn = (ItemStateNode.RangeDispatchNode) node;
+            Matrix4d r = findTransformationForModel(rn.fallback, path);
+            if (r != null) return r;
+            for (ItemStateNode.ThresholdEntry e : rn.entries) {
+                r = findTransformationForModel(e.node, path);
+                if (r != null) return r;
+            }
+            return null;
+        }
+        if (node instanceof ItemStateNode.ExactMatchNode) {
+            ItemStateNode.ExactMatchNode en = (ItemStateNode.ExactMatchNode) node;
+            Matrix4d r = findTransformationForModel(en.fallback, path);
+            if (r != null) return r;
+            for (ItemStateNode child : en.cases.values()) {
+                r = findTransformationForModel(child, path);
+                if (r != null) return r;
+            }
+            return null;
+        }
+        if (node instanceof ItemStateNode.SelectNode) {
+            ItemStateNode.SelectNode sn = (ItemStateNode.SelectNode) node;
+            Matrix4d r = findTransformationForModel(sn.fallback, path);
+            if (r != null) return r;
+            for (ItemStateNode.SelectCase sc : sn.cases) {
+                r = findTransformationForModel(sc.node, path);
+                if (r != null) return r;
+            }
+            return null;
+        }
+        if (node instanceof ItemStateNode.CompositeNode) {
+            ItemStateNode.CompositeNode cn = (ItemStateNode.CompositeNode) node;
+            for (ItemStateNode child : cn.models) {
+                Matrix4d r = findTransformationForModel(child, path);
+                if (r != null) return r;
+            }
+            return null;
+        }
+        return null;
     }
 
     /**

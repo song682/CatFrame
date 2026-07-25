@@ -49,6 +49,15 @@ public final class RenderSubmit {
     @Nullable
     public final Matrix4d preTransform;
 
+    /**
+     * 物品模型渲染变换（items JSON {@code minecraft:model} 节点的 {@code transformation} 标签），
+     * 在 display transform 之后、preTransform 之前逐顶点应用，可为 null（单位变换）。
+     * <p>Per-model item transformation (the {@code transformation} tag), applied after
+     * the display transform and before preTransform; null means identity.
+     */
+    @Nullable
+    public final Matrix4d transformation;
+
     /** flush 时是否需要关闭面剔除（物品路径 true，方块路径 false）。 */
     public final boolean disableCull;
     /** flush 时是否需要开启混合（与 {@link RenderType#blend()} 一致）。 */
@@ -59,6 +68,7 @@ public final class RenderSubmit {
                         @Nullable Block block, @Nullable ItemStack stack,
                         @Nullable IBlockAccess world, int metadata,
                         @Nullable Matrix4d preTransform,
+                        @Nullable Matrix4d transformation,
                         boolean disableCull, boolean blend) {
         this.phase = phase;
         this.part = part;
@@ -72,6 +82,7 @@ public final class RenderSubmit {
         this.world = world;
         this.metadata = metadata;
         this.preTransform = preTransform;
+        this.transformation = transformation;
         this.disableCull = disableCull;
         this.blend = blend;
     }

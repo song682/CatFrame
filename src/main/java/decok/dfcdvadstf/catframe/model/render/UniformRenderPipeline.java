@@ -82,7 +82,7 @@ public final class UniformRenderPipeline {
                 phase, part, type,
                 x, y, z, rotationDeg,
                 block, null, world, metadata,
-                null,
+                null, null,
                 false, isGui);
         RenderCommandBuffers.submit(s);
     }
@@ -114,11 +114,14 @@ public final class UniformRenderPipeline {
      * @param z            方块 Z 坐标
      * @param block        方块实例（无时传 null）
      * @param preTransform 可选的预变换矩阵（反抵消），在 display transform 之后作用于顶点，可为 null
+     * @param transformation 可选的物品模型渲染变换（items JSON {@code transformation} 标签），
+     *                       在 display transform 之后、preTransform 之前作用于顶点，可为 null（单位变换）
      */
     public static void renderItemQuads(BlockStateModelPart part,
                                        ItemStack stack, RenderPhase phase,
                                        IBlockAccess world, int x, int y, int z, Block block,
-                                       @Nullable Matrix4d preTransform) {
+                                       @Nullable Matrix4d preTransform,
+                                       @Nullable Matrix4d transformation) {
         if (part == null) return;
 
         boolean gui = (phase == RenderPhase.ITEM_GUI);
@@ -143,9 +146,20 @@ public final class UniformRenderPipeline {
                     x, y, z, 0,
                     block, stack, world, 0,
                     preTransform,
+                    transformation,
                     false, blendRequired);
             RenderCommandBuffers.submit(s);
         }
+    }
+
+    /**
+     * 无 transformation 时的兼容重载 — 委托给带 transformation 的完整版（传 null 即单位变换）。
+     */
+    public static void renderItemQuads(BlockStateModelPart part,
+                                       ItemStack stack, RenderPhase phase,
+                                       IBlockAccess world, int x, int y, int z, Block block,
+                                       @Nullable Matrix4d preTransform) {
+        renderItemQuads(part, stack, phase, world, x, y, z, block, preTransform, null);
     }
 
     /**
@@ -153,6 +167,6 @@ public final class UniformRenderPipeline {
      */
     public static void renderItemQuads(BlockStateModelPart part,
                                        ItemStack stack, RenderPhase phase) {
-        renderItemQuads(part, stack, phase, null, 0, 0, 0, null, (Matrix4d) null);
+        renderItemQuads(part, stack, phase, null, 0, 0, 0, null, null, null);
     }
 }

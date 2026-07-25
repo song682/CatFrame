@@ -136,6 +136,9 @@ public final class QuadWriter {
         // 避免“烘焙阴影 + GL 光照”双重着色导致的视角相关 bug。GUI 阶段维持烘焙阴影。
         boolean glLit = !gui;
         Matrix4d preTransform = s.preTransform;
+        // 物品模型渲染变换（items JSON transformation 标签）：永远在 display 变换之后应用
+        // Per-model item transformation: always applied after the display transform
+        Matrix4d transformation = s.transformation;
         Point3d tmpVec = new Point3d();
         Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
@@ -152,9 +155,9 @@ public final class QuadWriter {
             if (ctx.skip) continue;
             hasVertices = true;
 
-            // 非 GUI 阶段：发送逐面法线（随 display / preTransform 旋转），供 GL_LIGHTING 使用。
+            // 非 GUI 阶段：发送逐面法线（随 display / transformation / preTransform 旋转），供 GL_LIGHTING 使用。
             if (glLit) {
-                writeQuadNormal(t, q, ctx.displayTransform, preTransform, tmpNormal);
+                writeQuadNormal(t, q, ctx.displayTransform, transformation, preTransform, tmpNormal);
             }
 
             t.setBrightness(ctx.effectiveBrightness());
@@ -172,11 +175,15 @@ public final class QuadWriter {
                 double U = icon.getInterpolatedU(q.up[i]);
                 double V = icon.getInterpolatedV(q.vp[i]);
 
-                // 向量空间变换：先应用 display transform，再应用 preTransform
-                // 顶点变换顺序：v' = M_pre × M_display × v
+                // 向量空间变换：先应用 display transform，再应用 transformation（items JSON
+                // 的物品模型渲染变换，永远在 display 之后），最后应用 preTransform
+                // 顶点变换顺序：v' = M_pre × M_transformation × M_display × v
                 tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
                 if (ctx.displayTransform != null) {
                     ctx.displayTransform.transform(tmpVec);
+                }
+                if (transformation != null) {
+                    transformation.transform(tmpVec);
                 }
                 if (preTransform != null) {
                     preTransform.transform(tmpVec);
@@ -190,13 +197,13 @@ public final class QuadWriter {
     /**
      * [方案B] 计算 quad 的逐面法线并写入 Tessellator。
      * <p>
-     * 法线取自 {@link BakedQuad#face} 的方向向量，依次经 display / preTransform 的
-     * 旋转部分变换（与软件变换后的顶点保持一致），归一化后调用 {@code t.setNormal}。
+     * 法线取自 {@link BakedQuad#face} 的方向向量，依次经 display / transformation / preTransform
+     * 的旋转部分变换（与软件变换后的顶点保持一致），归一化后调用 {@code t.setNormal}。
      * 长度由 {@code GL_NORMALIZE} 兜底（见 {@link FeatureRenderDispatcher}），故只需方向正确。
      */
     private static void writeQuadNormal(Tessellator t, BakedQuad q,
-                                        Matrix4d displayTransform, Matrix4d preTransform,
-                                        Vector3d tmp) {
+                                        Matrix4d displayTransform, Matrix4d transformation,
+                                        Matrix4d preTransform, Vector3d tmp) {
         Direction face = q.face;
         if (face != null) {
             tmp.set(face.getStepX(), face.getStepY(), face.getStepZ());
@@ -204,6 +211,7 @@ public final class QuadWriter {
             tmp.set(0.0, 1.0, 0.0);
         }
         if (displayTransform != null) transformDirection(displayTransform, tmp);
+        if (transformation != null) transformDirection(transformation, tmp);
         if (preTransform != null) transformDirection(preTransform, tmp);
         double len = tmp.length();
         if (len > 1.0e-6) tmp.scale(1.0 / len);

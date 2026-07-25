@@ -3,6 +3,8 @@ package decok.dfcdvadstf.catframe.model.state.item;
 import com.google.gson.*;
 import decok.dfcdvadstf.catframe.model.state.item.tint.*;
 
+import javax.annotation.Nullable;
+import javax.vecmath.Matrix4d;
 import java.lang.reflect.Type;
 import java.util.*;
 
@@ -59,18 +61,28 @@ public abstract class ItemStateNode {
     /**
      * 叶子节点：指向具体模型路径，可附带 tints。
      * <p>JSON: {@code {"type": "minecraft:model", "model": "item/apple", "tints": [...]}}
+     * <p>可选 {@code transformation} 标签（默认为单位变换）：物品模型渲染变换，
+     * 在 display 变换之后逐顶点应用，解析规则见 {@link ItemTransformation}。
      */
     public static class ModelLeaf extends ItemStateNode {
         public final String model;
         public final List<ItemTint> tints;
+        /** 可选的物品模型渲染变换矩阵（display 之后应用），无变换时为 null / optional post-display transform */
+        @Nullable
+        public final Matrix4d transformation;
 
         public ModelLeaf(String model) {
             this(model, Collections.<ItemTint>emptyList());
         }
 
         public ModelLeaf(String model, List<ItemTint> tints) {
+            this(model, tints, null);
+        }
+
+        public ModelLeaf(String model, List<ItemTint> tints, @Nullable Matrix4d transformation) {
             this.model = model;
             this.tints = tints != null ? tints : Collections.<ItemTint>emptyList();
+            this.transformation = transformation;
         }
 
         @Override
@@ -488,7 +500,10 @@ public abstract class ItemStateNode {
         private ModelLeaf deserializeModel(JsonObject obj) {
             String model = obj.has("model") ? obj.get("model").getAsString() : null;
             List<ItemTint> tints = deserializeTints(obj);
-            return new ModelLeaf(model, tints);
+            // 可选 transformation：16-float 行主序矩阵数组，或分解形式对象
+            // Optional transformation: 16-float row-major matrix array or decomposed object
+            Matrix4d transformation = ItemTransformation.parse(obj.get("transformation"));
+            return new ModelLeaf(model, tints, transformation);
         }
 
         /**

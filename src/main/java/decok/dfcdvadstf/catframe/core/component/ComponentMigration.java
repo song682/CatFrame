@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.core.component;
 
+import decok.dfcdvadstf.catframe.compact.forge.tags.OreDict2Tag;
 import decok.dfcdvadstf.catframe.core.RegisteredComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.*;
 import net.minecraft.nbt.NBTTagCompound;
@@ -7,16 +8,16 @@ import net.minecraft.nbt.NBTTagCompound;
 import javax.annotation.Nullable;
 
 /**
- * NBT 与 DataComponent 系统的双向桥接器——类似 {@code OreDict2Tag} 对 OreDictionary/Tag 的角色。
+ * Two-way bridge between the NBT and DataComponent systems — analogous to the role {@link OreDict2Tag} plays for OreDictionary and Tag.
  * <p>
- * 职责：
+ * Responsibilities:
  * <ul>
- *   <li><b>NBT → Component</b>：从旧版 NBT (stackTagCompound) 解析出组件值</li>
- *   <li><b>Component → NBT</b>：将组件值写回 NBT，保证旧版兼容</li>
+ *   <li><b>NBT → Component</b>: Parse component values from legacy NBT (stackTagCompound)</li>
+ *   <li><b>Component → NBT</b>: Write component values back to NBT to maintain legacy compatibility</li>
  * </ul>
  * <p>
- * 本类不依赖 ItemStack，仅操作 {@link NBTTagCompound} 和 {@link DataComponentMap}。
- * per-ItemStack 的实例桥接由 {@link ItemStackComponents} 负责。
+ * This class does not depend on ItemStack; it only operates on {@link NBTTagCompound} and {@link DataComponentMap}.
+ * Per-ItemStack instance bridging is handled by {@link ItemStackComponents}.
  */
 public final class ComponentMigration {
 
@@ -70,16 +71,16 @@ public final class ComponentMigration {
         writeCustomData(tag, components);
     }
 
-    ///
-    /// 同步模式：先清除旧字段，再写入组件值。
-    /// 适用于"组件为唯一真相源"的场景。
-    ///
+    /**
+     * Synchronization Mode: First clear the old field, then write the component value.<br>
+     * Suitable for scenarios where "the component is the single source of truth."
+     */
     public static void syncToNBT(NBTTagCompound tag, DataComponentMap components) {
         if (tag == null) return;
         writeToNBT(tag, components);
     }
 
-    // ==================== 单字段读取（NBT → Component） ====================
+    // Single String（NBT → Component）
 
     private static void readEnchantments(NBTTagCompound tag, DataComponentMap.Builder builder) {
         if (tag.hasKey("ench", 9)) {
@@ -150,7 +151,7 @@ public final class ComponentMigration {
         }
     }
 
-    // ==================== 单字段写入（Component → NBT） ====================
+    // 单字段写入（Component → NBT）
 
     private static void writeEnchantments(NBTTagCompound tag, DataComponentMap components) {
         ItemEnchantments ench = components.get(RegisteredComponents.ENCHANTMENTS);
@@ -236,8 +237,7 @@ public final class ComponentMigration {
         }
     }
 
-    // ==================== 内部辅助 ====================
-
+    // Inner Filed
     private static NBTTagCompound getOrCreateCompound(NBTTagCompound parent, String key) {
         if (parent.hasKey(key, 10)) {
             return parent.getCompoundTag(key);

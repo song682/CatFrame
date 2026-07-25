@@ -14,7 +14,6 @@ import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesInHandTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
-import decok.dfcdvadstf.catframe.model.render.extension.tint.SpawnEggAndPotionTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
 import decok.dfcdvadstf.catframe.ui.components.ActionBarOverlay;
 import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
@@ -42,17 +41,17 @@ public class ClientProxy extends CommonProxy {
         VanillaStateDefinitions.registerVanillaStateDefinitions();
         ModelManagerDataLoader.registerNamespace(Tags.MODID);
         ModelManagerDataLoader.init();
-        // 注意：无需在此手动注册 blueyPlushy 的模型。
-        // BlueyPlushyItem extends ModernItem implements IItemStateProvider，
-        // ModelManagerDataLoader.init() 的 Tier-3 扫描会自动发现所有已注册
-        // (GameRegistry.registerItem) 的 IItemStateProvider 物品，并在
-        // Baking.registerAllModels() Step 4c 中以物品自身为模型注册并标记为 persistent。
-        // 模型与物品的对应以注册 ID 为准，与原版一致。
+
+        /// Note: There is no need to manually register blueyPlushy models here.
+        /// BlueyPlushyItem extends ModernItem and implements IItemStateProvider;
+        /// the Tier-3 scan performed by ModelManagerDataLoader.init() automatically discovers all registered
+        /// (GameRegistry.registerItem) and registers them as models using the items themselves, marking them as persistent,
+        /// in Step 4c of Baking.registerAllModels().
+        /// The mapping between models and items is based on the registration ID, consistent with the vanilla version.
 
         // Register tint providers and graphics extensions
         TintRegistry.register(new LeavesTintProvider());
         TintRegistry.register(new LeavesInHandTintProvider());
-        TintRegistry.register(new SpawnEggAndPotionTintProvider());
         ModelRenderRegistry.register(new LeavesGraphicsExtension());
     }
 

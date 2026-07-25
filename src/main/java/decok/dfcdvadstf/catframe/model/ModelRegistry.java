@@ -27,16 +27,21 @@ import java.util.Set;
  * <p>
  * Item-context rendering (hand / GUI / dropped) is driven exclusively by
  * registered {@link IItemStateProvider}s loaded from {@code items/{name}.json}.
- * Items (block items included) without a registered model are NOT force-converted
- * to {@code builtin/missing}; {@link #getRegisteredItemModel} returns {@code null}
- * for them and they fall back to vanilla item rendering — aligning with
- * {@link RenderJsonItemModel}'s documented contract and the "strategy B" policy
- * (only explicitly registered models are driven by the CatFrame pipeline).
+ * {@link #getRegisteredItemModel} never returns {@code null}: items without an
+ * explicit model receive the {@code builtin/missing} model (purple-black MissingNo),
+ * aligning with the modern design where the model system has no "fall back to vanilla"
+ * path (see {@link decok.dfcdvadstf.catframe.model.core.BuiltinMissingModel}).
+ * <p>
+ * Use {@link #hasItemModel} to determine whether an item is explicitly in the
+ * CatFrame pipeline before deciding to intercept vanilla rendering.
  */
 @SideOnly(Side.CLIENT)
 public class ModelRegistry {
 
     // ==================== 注册表 ====================
+
+    /** builtin/missing 单例 — 对标高版本 BuiltinMissingModel，任何物品无模型时的最终回退。 */
+    private static final IItemStateProvider MISSING_MODEL = new ItemStateModel("builtin/missing");
 
     public static final Map<Block, BlockStateModel> registeredBlockModels = new HashMap<>();
     public static final Map<Block, Map<Integer, Integer>> registeredBlockRotations = new HashMap<>();
@@ -128,25 +133,22 @@ public class ModelRegistry {
             }
         }
 
-        /**
-         * Get the registered IItemState model for an item, or {@code null} if none.
+       /**
+         * Get the item model for rendering — never returns {@code null}.
          * <p>
-         * Only models explicitly registered (from {@code items/{name}.json} via
-         * {@link #registerItemModel}, from {@code model_mappings.json}, or via an
-         * {@code ITEM_MODEL} component override) are returned. Any item — block item
-         * or not — without such a registration returns {@code null} and falls back to
-         * vanilla item rendering.
+         * Returns the explicitly registered model (from {@code items/{name}.json},
+         * {@code model_mappings.json}, {@code IItemStateProvider} scan, or
+         * {@code ITEM_MODEL} component override). If no model is registered,
+         * returns the {@code builtin/missing} model (purple-black MissingNo).
          * <p>
-         * This method intentionally does NOT force block items to {@code builtin/missing}:
-         * doing so would (a) contradict {@link RenderJsonItemModel}'s contract, and
-         * (b) permanently hijack any block item merely queried here into showing the
-         * missingno sprite instead of its vanilla appearance. Block items that want
-         * CatFrame rendering must ship an {@code items/{name}.json}.
+         * 对标高版本设计（{@link decok.dfcdvadstf.catframe.model.core.BuiltinMissingModel}）：
+         * 物品模型系统内部不存在"退回原版渲染"这一路径；物品要么有显式模型，要么显示
+         * 无效模型（missingno）。判断物品是否在 CatFrame 管线内请使用 {@link #hasItemModel}。
          */
         public static IItemStateProvider getRegisteredItemModel(Item item) {
-            if (item == null) return null;
-            // 只返回显式注册的物品模型；未注册的物品（含 ItemBlock）返回 null，退回原版渲染。
-            return registeredItemModels.get(item);
+            if (item == null) return MISSING_MODEL;
+            IItemStateProvider model = registeredItemModels.get(item);
+            return model != null ? model : MISSING_MODEL;
         }
 
         /**

@@ -15,7 +15,6 @@ import org.apache.logging.log4j.Logger;
         name = Tags.NAME,
         version = Tags.VERSION,
         acceptedMinecraftVersions = "[1.7.10]",
-        acceptableRemoteVersions = "[1.7.10]",
         useMetadata = true
 )
 public class CatFrame {
@@ -27,7 +26,6 @@ public class CatFrame {
             clientSide = "decok.dfcdvadstf.catframe.proxy.ClientProxy"
     )
     public static CommonProxy proxyCommon;
-    public static ClientProxy proxyClient;
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {

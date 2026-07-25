@@ -60,6 +60,22 @@ public final class VanillaStateDefinitions {
     private static final Property<String> WALL_VARIANT =
             StateDefinitions.stringProp("variant", "cobblestone", "mossy_cobblestone");
 
+    // 花
+    private static final Property<String> RED_FLOWER_VARIANT =
+            StateDefinitions.stringProp("variant", "poppy", "blue_orchid", "allium", "houstonia",
+                    "tulip_red", "tulip_orange", "tulip_white", "tulip_pink", "oxeye_daisy");
+    private static final Property<String> YELLOW_FLOWER_VARIANT =
+            StateDefinitions.stringProp("variant", "dandelion");
+
+    // 高草丛（单格）
+    private static final Property<String> TALLGRASS_VARIANT =
+            StateDefinitions.stringProp("variant", "grass", "fern");
+
+    // 双草丛（2 格高）
+    private static final Property<String> DOUBLE_PLANT_VARIANT =
+            StateDefinitions.stringProp("variant", "sunflower", "lilac",
+                    "double_grass", "double_fern", "rose_bush", "peony");
+
     // 石台阶
     private static final Property<String> SLAB_VARIANT =
             StateDefinitions.stringProp("variant", "stone", "sandstone", "wood", "cobblestone",
@@ -97,6 +113,67 @@ public final class VanillaStateDefinitions {
     private static final Property<String> PANE_SOUTH = StateDefinitions.stringProp("south", "false", "true");
     private static final Property<String> PANE_WEST = StateDefinitions.stringProp("west", "false", "true");
 
+    // 木台阶变种（double_wooden_slab / wooden_slab：BlockWoodSlab.field_150005_b 共 6 种）
+    private static final Property<String> WOOD_SLAB_VARIANT =
+            StateDefinitions.stringProp("variant", "oak", "spruce", "birch", "jungle", "acacia", "big_oak");
+
+    // 火把 facing（east/west/south/north 壁挂, standing 地面）
+    private static final Property<String> TORCH_FACING =
+            StateDefinitions.stringProp("facing", "east", "west", "south", "north", "standing");
+
+    // 活板门
+    private static final Property<String> TRAPDOOR_FACING =
+            StateDefinitions.stringProp("facing", "north", "south", "east", "west");
+    private static final Property<String> OPEN =
+            StateDefinitions.stringProp("open", "false", "true");
+
+    // 炼药锅水位
+    private static final Property<String> LEVEL =
+            StateDefinitions.stringProp("level", "0", "1", "2", "3");
+
+    // 红石线信号强度
+    private static final Property<String> POWER =
+            StateDefinitions.stringProp("power", "0", "1", "2", "3", "4", "5", "6", "7",
+                    "8", "9", "10", "11", "12", "13", "14", "15");
+
+    // 中继器 / 比较器的 facing（输出方向）
+    private static final Property<String> DIODE_FACING =
+            StateDefinitions.stringProp("facing", "north", "east", "south", "west");
+    private static final Property<String> DELAY =
+            StateDefinitions.stringProp("delay", "1", "2", "3", "4");
+    private static final Property<String> COMPARATOR_MODE =
+            StateDefinitions.stringProp("mode", "compare", "subtract");
+
+    // ==================== 第四组：梯子/拉杆/栅栏门等 ====================
+
+    // 梯子 facing（north/south/west/east）
+    private static final Property<String> LADDER_FACING =
+            StateDefinitions.stringProp("facing", "north", "south", "west", "east");
+
+    // 拉杆 facing（east/west/south/north/up/down）
+    private static final Property<String> LEVER_FACING =
+            StateDefinitions.stringProp("facing", "east", "west", "south", "north", "up", "down");
+
+    // 栅栏门 facing（south/west/north/east——BlockDirectional 顺序）
+    private static final Property<String> FENCE_GATE_FACING =
+            StateDefinitions.stringProp("facing", "south", "west", "north", "east");
+
+    // 南瓜 facing（south/east/north/west——特殊顺序）
+    private static final Property<String> PUMPKIN_FACING =
+            StateDefinitions.stringProp("facing", "south", "east", "north", "west");
+
+    // 发射器/投掷器 facing（down/up/north/south/west/east——EnumFacing 顺序）
+    private static final Property<String> DISPENSER_FACING =
+            StateDefinitions.stringProp("facing", "down", "up", "north", "south", "west", "east");
+
+    // 按钮 facing（east/west/south/north——仅壁挂）
+    private static final Property<String> BUTTON_FACING =
+            StateDefinitions.stringProp("facing", "east", "west", "south", "north");
+
+    // 熔炉 facing（north/south/west/east）
+    private static final Property<String> FURNACE_FACING =
+            StateDefinitions.stringProp("facing", "north", "south", "west", "east");
+
     // ==================== 登记入口 ====================
 
     /**
@@ -114,6 +191,22 @@ public final class VanillaStateDefinitions {
         registerQuartzBlock();
         registerStairs();
         registerPanes();
+        registerFlowersAndGrass();
+        registerDoubleSlabs();
+        registerWoodenSlab();
+        registerTorches();
+        registerTrapdoor();
+        registerCauldron();
+        registerRedstoneWire();
+        registerRepeaters();
+        registerComparators();
+        registerLadder();
+        registerLever();
+        registerFenceGate();
+        registerPumpkins();
+        registerDispenserAndDropper();
+        registerButtons();
+        registerFurnaces();
     }
 
     // ==================== 纯 16 色（单 COLOR，默认笛卡尔解码 meta&15） ====================
@@ -341,5 +434,291 @@ public final class VanillaStateDefinitions {
                 .connectionMultipart()
                 .redirect(meta -> StateDefinitions.COLORS[meta & 15] + "_stained_glass_pane", "minecraft")
                 .register();
+    }
+
+    // ==================== 花/高草丛/双草丛 ====================
+
+    private static void registerFlowersAndGrass() {
+        // red_flower: meta%9（9 种花）
+        singleVariant(Blocks.red_flower, RED_FLOWER_VARIANT, clampCodec(RED_FLOWER_VARIANT, 0));
+        // yellow_flower: 仅 dandelion（meta 恒 0）
+        singleVariant(Blocks.yellow_flower, YELLOW_FLOWER_VARIANT, meta -> new Comparable<?>[]{"dandelion"});
+        // tallgrass: meta==1→grass, meta==2→fern
+        singleVariant(Blocks.tallgrass, TALLGRASS_VARIANT,
+                meta -> new Comparable<?>[]{TALLGRASS_VARIANT.getValues().get(meta == 1 ? 0 : 1)});
+
+        // double_plant: variant[meta&7] + half[(meta&8)==0?lower:upper]
+        CatStateDefinition<Block> doublePlantDef = new CatStateDefinition.Builder<Block>(Blocks.double_plant)
+                .add(DOUBLE_PLANT_VARIANT, StateDefinitions.SLAB_HALF)
+                .metaCodec(meta -> new Comparable<?>[]{
+                        DOUBLE_PLANT_VARIANT.getValues().get(meta & 7),
+                        (meta & 8) == 0 ? "lower" : "upper"})
+                .create();
+        CatModels.register(Blocks.double_plant).states(doublePlantDef).register();
+    }
+
+    // ==================== 双台阶（double_stone_slab / double_wooden_slab） ====================
+
+    private static void registerDoubleSlabs() {
+        // double_stone_slab: variant[meta&7]
+        singleVariant(Blocks.double_stone_slab, SLAB_VARIANT,
+                meta -> new Comparable<?>[]{SLAB_VARIANT.getValues().get(meta & 7)});
+
+        // double_wooden_slab: variant[meta&7 再 clamp 到 5]（BlockWoodSlab 支持 6 种）
+        CatStateDefinition<Block> woodDef = new CatStateDefinition.Builder<Block>(Blocks.double_wooden_slab)
+                .add(WOOD_SLAB_VARIANT)
+                .metaCodec(meta -> new Comparable<?>[]{WOOD_SLAB_VARIANT.getValues().get(Math.min(meta & 7, 5))})
+                .create();
+        CatModels.register(Blocks.double_wooden_slab).states(woodDef).register();
+    }
+
+    // ==================== 木台阶（wooden_slab，half+variant） ====================
+
+    private static void registerWoodenSlab() {
+        // wooden_slab: variant[meta&7→clamp 5] + half[(meta&8)==0?bottom:top]
+        // BlockWoodSlab 支持 6 种木板（oak/spruce/birch/jungle/acacia/big_oak）
+        CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.wooden_slab)
+                .add(WOOD_SLAB_VARIANT, StateDefinitions.SLAB_HALF)
+                .metaCodec(meta -> new Comparable<?>[]{
+                        WOOD_SLAB_VARIANT.getValues().get(Math.min(meta & 7, 5)),
+                        StateDefinitions.SLAB_HALF.getValues().get((meta & 8) == 0 ? 0 : 1)})
+                .create();
+        CatModels.register(Blocks.wooden_slab).states(def).register();
+    }
+
+    // ==================== 火把（torch / redstone_torch / unlit_redstone_torch） ====================
+
+    private static void registerTorches() {
+        // torch: facing[meta&7] 1=east,2=west,3=south,4=north,5=standing
+        CatStateDefinition.MetaCodec torchCodec = meta -> {
+            switch (meta & 7) {
+                case 1: return new Comparable<?>[]{"east"};
+                case 2: return new Comparable<?>[]{"west"};
+                case 3: return new Comparable<?>[]{"south"};
+                case 4: return new Comparable<?>[]{"north"};
+                case 5:
+                default: return new Comparable<?>[]{"standing"};
+            }
+        };
+        singleVariant(Blocks.torch, TORCH_FACING, torchCodec);
+        singleVariant(Blocks.redstone_torch, TORCH_FACING, torchCodec);
+        singleVariant(Blocks.unlit_redstone_torch, TORCH_FACING, torchCodec);
+    }
+
+    // ==================== 活板门（facing+half+open） ====================
+
+    private static void registerTrapdoor() {
+        // trapdoor: facing[meta&3: 0=north,1=south,2=east,3=west]
+        //           open[(meta&4)!=0], half[(meta&8)!=0?top:bottom]
+        CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.trapdoor)
+                .add(TRAPDOOR_FACING, StateDefinitions.SLAB_HALF, OPEN)
+                .metaCodec(meta -> new Comparable<?>[]{
+                        TRAPDOOR_FACING.getValues().get(meta & 3),
+                        StateDefinitions.SLAB_HALF.getValues().get((meta & 8) == 0 ? 0 : 1),
+                        (meta & 4) != 0 ? "true" : "false"})
+                .create();
+        CatModels.register(Blocks.trapdoor).states(def).register();
+    }
+
+    // ==================== 炼药锅（level） ====================
+
+    private static void registerCauldron() {
+        // cauldron: level[meta&3] 0-3
+        singleVariant(Blocks.cauldron, LEVEL,
+                meta -> new Comparable<?>[]{LEVEL.getValues().get(meta & 3)});
+    }
+
+    // ==================== 红石线（power） ====================
+
+    private static void registerRedstoneWire() {
+        // redstone_wire: power[meta] 0-15（默认解码 meta%16 == meta&15）
+        CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.redstone_wire)
+                .add(POWER)
+                .create();
+        CatModels.register(Blocks.redstone_wire).states(def).register();
+    }
+
+    // ==================== 中继器（facing+delay） ====================
+
+    private static void registerRepeaters() {
+        // repeater: facing={north,east,south,west}+delay={1,2,3,4}
+        // meta&3=facing, (meta>>2)&3=delay
+        CatStateDefinition.MetaCodec repeaterCodec = meta -> new Comparable<?>[]{
+                DIODE_FACING.getValues().get(meta & 3),
+                DELAY.getValues().get((meta >> 2) & 3)};
+
+        CatStateDefinition<Block> poweredDef = new CatStateDefinition.Builder<Block>(Blocks.powered_repeater)
+                .add(DIODE_FACING, DELAY)
+                .metaCodec(repeaterCodec)
+                .create();
+        CatModels.register(Blocks.powered_repeater).states(poweredDef).register();
+
+        CatStateDefinition<Block> unpoweredDef = new CatStateDefinition.Builder<Block>(Blocks.unpowered_repeater)
+                .add(DIODE_FACING, DELAY)
+                .metaCodec(repeaterCodec)
+                .create();
+        CatModels.register(Blocks.unpowered_repeater).states(unpoweredDef).register();
+    }
+
+    // ==================== 比较器（facing+mode） ====================
+
+    private static void registerComparators() {
+        // comparator: facing={north,east,south,west}+mode={compare,subtract}
+        // meta&3=facing, (meta&4)!=0→subtract
+        CatStateDefinition.MetaCodec comparatorCodec = meta -> new Comparable<?>[]{
+                DIODE_FACING.getValues().get(meta & 3),
+                (meta & 4) != 0 ? "subtract" : "compare"};
+
+        CatStateDefinition<Block> poweredDef = new CatStateDefinition.Builder<Block>(Blocks.powered_comparator)
+                .add(DIODE_FACING, COMPARATOR_MODE)
+                .metaCodec(comparatorCodec)
+                .create();
+        CatModels.register(Blocks.powered_comparator).states(poweredDef).register();
+
+        CatStateDefinition<Block> unpoweredDef = new CatStateDefinition.Builder<Block>(Blocks.unpowered_comparator)
+                .add(DIODE_FACING, COMPARATOR_MODE)
+                .metaCodec(comparatorCodec)
+                .create();
+        CatModels.register(Blocks.unpowered_comparator).states(unpoweredDef).register();
+    }
+
+    // ==================== 梯子（单 facing，自定义解码） ====================
+
+    private static void registerLadder() {
+        // ladder: facing={north,south,west,east}  meta 2=north,3=south,4=west,5=east
+        CatStateDefinition.MetaCodec codec = meta -> {
+            switch (meta & 7) {
+                case 2: return new Comparable<?>[]{"north"};
+                case 3: return new Comparable<?>[]{"south"};
+                case 4: return new Comparable<?>[]{"west"};
+                case 5: return new Comparable<?>[]{"east"};
+                default: return new Comparable<?>[]{"north"};
+            }
+        };
+        singleVariant(Blocks.ladder, LADDER_FACING, codec);
+    }
+
+    // ==================== 拉杆（facing+powered） ====================
+
+    private static void registerLever() {
+        // lever: facing={east,west,south,north,up,down} + powered
+        // meta[0:2]: 1=east,2=west,3=south,4=north,5/6=up,0/7=down
+        // bit3: powered
+        CatStateDefinition.MetaCodec codec = meta -> {
+            String facing;
+            switch (meta & 7) {
+                case 1: facing = "east"; break;
+                case 2: facing = "west"; break;
+                case 3: facing = "south"; break;
+                case 4: facing = "north"; break;
+                case 5:
+                case 6: facing = "up"; break;
+                case 0:
+                case 7:
+                default: facing = "down"; break;
+            }
+            return new Comparable<?>[]{facing, (meta & 8) != 0 ? "true" : "false"};
+        };
+        CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.lever)
+                .add(LEVER_FACING, POWERED)
+                .metaCodec(codec)
+                .create();
+        CatModels.register(Blocks.lever).states(def).register();
+    }
+
+    // ==================== 栅栏门（facing+open） ====================
+
+    private static void registerFenceGate() {
+        // fence_gate: facing={south,west,north,east} + open
+        // meta[0:1] BlockDirectional: 0=south,1=west,2=north,3=east
+        // bit2: open
+        CatStateDefinition.MetaCodec codec = meta -> new Comparable<?>[]{
+                FENCE_GATE_FACING.getValues().get(meta & 3),
+                (meta & 4) != 0 ? "true" : "false"};
+        CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.fence_gate)
+                .add(FENCE_GATE_FACING, OPEN)
+                .metaCodec(codec)
+                .create();
+        CatModels.register(Blocks.fence_gate).states(def).register();
+    }
+
+    // ==================== 南瓜 / 南瓜灯（单 facing，特殊解码） ====================
+
+    private static void registerPumpkins() {
+        // pumpkin/lit_pumpkin: facing={south,east,north,west}
+        // meta 0=south,1=east,2=north,3=west
+        CatStateDefinition.MetaCodec codec = meta ->
+                new Comparable<?>[]{PUMPKIN_FACING.getValues().get(meta & 3)};
+        singleVariant(Blocks.pumpkin, PUMPKIN_FACING, codec);
+        singleVariant(Blocks.lit_pumpkin, PUMPKIN_FACING, codec);
+    }
+
+    // ==================== 发射器 / 投掷器（单 facing，EnumFacing 解码） ====================
+
+    private static void registerDispenserAndDropper() {
+        // dispenser/dropper: facing={down,up,north,south,west,east}
+        // meta[0:2] EnumFacing: 0=down,1=up,2=north,3=south,4=west,5=east
+        CatStateDefinition.MetaCodec codec = meta -> {
+            switch (meta & 7) {
+                case 0: return new Comparable<?>[]{"down"};
+                case 1: return new Comparable<?>[]{"up"};
+                case 2: return new Comparable<?>[]{"north"};
+                case 3: return new Comparable<?>[]{"south"};
+                case 4: return new Comparable<?>[]{"west"};
+                case 5: return new Comparable<?>[]{"east"};
+                default: return new Comparable<?>[]{"north"};
+            }
+        };
+        singleVariant(Blocks.dispenser, DISPENSER_FACING, codec);
+        singleVariant(Blocks.dropper, DISPENSER_FACING, codec);
+    }
+
+    // ==================== 按钮（facing+powered，仅壁挂） ====================
+
+    private static void registerButtons() {
+        // stone_button/wooden_button: facing={east,west,south,north} + powered
+        // meta[0:2]: 1=east,2=west,3=south,4=north
+        // bit3: powered
+        CatStateDefinition.MetaCodec codec = meta -> {
+            String facing;
+            switch (meta & 7) {
+                case 1: facing = "east"; break;
+                case 2: facing = "west"; break;
+                case 3: facing = "south"; break;
+                case 4: facing = "north"; break;
+                default: facing = "east"; break;
+            }
+            return new Comparable<?>[]{facing, (meta & 8) != 0 ? "true" : "false"};
+        };
+
+        CatStateDefinition<Block> stoneDef = new CatStateDefinition.Builder<Block>(Blocks.stone_button)
+                .add(BUTTON_FACING, POWERED)
+                .metaCodec(codec)
+                .create();
+        CatModels.register(Blocks.stone_button).states(stoneDef).register();
+
+        CatStateDefinition<Block> woodDef = new CatStateDefinition.Builder<Block>(Blocks.wooden_button)
+                .add(BUTTON_FACING, POWERED)
+                .metaCodec(codec)
+                .create();
+        CatModels.register(Blocks.wooden_button).states(woodDef).register();
+    }
+
+    // ==================== 熔炉 / 燃烧熔炉（单 facing，自定义解码） ====================
+
+    private static void registerFurnaces() {
+        // furnace/lit_furnace: facing={north,south,west,east}
+        // meta 2=north,3=south,4=west,5=east
+        CatStateDefinition.MetaCodec codec = meta -> {
+            switch (meta & 7) {
+                case 2: return new Comparable<?>[]{"north"};
+                case 3: return new Comparable<?>[]{"south"};
+                case 4: return new Comparable<?>[]{"west"};
+                case 5: return new Comparable<?>[]{"east"};
+                default: return new Comparable<?>[]{"north"};
+            }
+        };
+        singleVariant(Blocks.furnace, FURNACE_FACING, codec);
+        singleVariant(Blocks.lit_furnace, FURNACE_FACING, codec);
     }
 }

@@ -1,6 +1,10 @@
 {
     "model": {
         "type": "minecraft:model",
-        "model": "minecraft:item/leather_chestplate"
+        "model": "minecraft:item/leather_chestplate",
+        "tints": [
+            { "type": "minecraft:dye", "default": 10511680 },
+            { "type": "minecraft:constant", "value": 16777215 }
+        ]
     }
 }

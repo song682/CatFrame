@@ -37,6 +37,5 @@ public class CommonProxy {
     public void init(FMLInitializationEvent event) {
         ODorTag.onInit();
     }
-    public void postInit(FMLPostInitializationEvent event) {
-    }
+    public void postInit(FMLPostInitializationEvent event) {}
 }

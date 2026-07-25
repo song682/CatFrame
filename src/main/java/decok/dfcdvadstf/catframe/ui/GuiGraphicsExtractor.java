@@ -144,8 +144,8 @@ public class GuiGraphicsExtractor {
     public void item(ItemStack stack, int x, int y) {
         if (stack == null || stack.getItem() == null) return;
 
-        IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
-        if (model == null) return;
+        // 仅对显式注册了 CatFrame 模型的物品走延迟渲染路径，其余物品由原版管线处理。
+        if (!ModelRegistry.hasItemModel(stack.getItem())) return;
 
         // 延迟渲染：仅快照调用点的 modelview 矩阵 + 收集状态，不立即绘制。
         float[] pose = captureModelViewMatrix();
@@ -190,7 +190,6 @@ public class GuiGraphicsExtractor {
         if (stack == null || stack.getItem() == null) return;
 
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
-        if (model == null) return;
 
         // 保存完整 GL 状态 — 不依赖手动逐条恢复
         GL11.glPushAttrib(GL_SAVE_MASK);

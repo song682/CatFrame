@@ -7,11 +7,13 @@ import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaBlockResolvers;
 import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.lazy.LazySingleBlockModel;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
+import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
+import decok.dfcdvadstf.catframe.model.state.item.tint.ItemStateTintBridge;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockPane;
 import net.minecraft.block.BlockStairs;
@@ -242,8 +244,13 @@ public class VanillaModelManager {
                     if (item == null) continue;
                     if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
 
-                    ModelRegistry.registeredItemModels.put(item,
-                            new ItemStateModel(itemEntry.getValue()));
+                    ItemStateModel ism = new ItemStateModel(itemEntry.getValue());
+                    ModelRegistry.registeredItemModels.put(item, ism);
+                    // 桥接：若决策树声明了 tints，注册到渲染侧 TintRegistry（由 TintRenderExtension 消费）
+                    // Bridge: if the tree declares tints, register into the render-side TintRegistry
+                    if (ism.hasAnyTint()) {
+                        TintRegistry.registerItemTint(item, new ItemStateTintBridge(ism));
+                    }
                     Set<String> nsOversized = ModelManagerDataLoader.loadedOversizedItems.get(namespace);
                     if (nsOversized != null && nsOversized.contains(itemName)) {
                         ModelRegistry.oversizedItems.add(item);
@@ -336,8 +343,13 @@ public class VanillaModelManager {
                 for (Map.Entry<String, ItemStateNode> itemEntry : nsEntry.getValue().entrySet()) {
                     Item item = Utilities.findItem(namespace, itemEntry.getKey());
                     if (item == null) continue;
-                    ModelRegistry.registeredItemModels.put(item,
-                            new ItemStateModel(itemEntry.getValue()));
+                    ItemStateModel ism = new ItemStateModel(itemEntry.getValue());
+                    ModelRegistry.registeredItemModels.put(item, ism);
+                    // 桥接：增量重建时同步重新注册 tints 桥接（指向新 ItemStateModel 实例）
+                    // Bridge: re-register the tint bridge on incremental rebuild (points to the new instance)
+                    if (ism.hasAnyTint()) {
+                        TintRegistry.registerItemTint(item, new ItemStateTintBridge(ism));
+                    }
                     Set<String> nsOversized = ModelManagerDataLoader.loadedOversizedItems.get(namespace);
                     if (nsOversized != null && nsOversized.contains(itemEntry.getKey())) {
                         ModelRegistry.oversizedItems.add(item);

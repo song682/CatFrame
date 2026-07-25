@@ -9,16 +9,16 @@ import net.minecraft.creativetab.CreativeTabs;
  */
 public class BlueyPlushyItem extends ModernItem {
 
+    /**
+     * Note: TextureMap's basePath is "items", and the path prefix is automatically appended.
+     * Therefore, the registered name is “catframe:bluey_pixelized_inventory,”
+     * and the actual texture file is located at assets/.../textures/items/bluey_pixelized_inventory.png
+     */
     public BlueyPlushyItem() {
         super(1);
         this.maxStackSize = 1;
         this.setUnlocalizedName("bluey_plushy");
-        // 注意：TextureMap 的 basePath 为 "items"，会自动拼接路径前缀。
-        // 所以注册名为 "catframe:bluey_pixelized_inventory"，
-        // 实际纹理文件位于 assets/.../textures/items/bluey_pixelized_inventory.png
         this.setLayerTextureNames("catframe:bluey_pixelized_inventory");
         this.setCreativeTab(CreativeTabs.tabMisc);
-        // 双模型配置：GUI/掉落物走 2D inventory，手持走 3D 模型
-        this.setModels("item/bluey_inventory", "item/bluey");
     }
 }

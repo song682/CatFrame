@@ -522,7 +522,9 @@ public abstract class ItemStateNode {
                         tints.add(new FireworkTint());
                         break;
                     case "minecraft:dye":
-                        tints.add(new DyeTint());
+                        tints.add(new DyeTint(
+                                tintObj.has("default") ? tintObj.get("default").getAsInt()
+                                                       : DyeTint.DEFAULT_LEATHER_COLOR));
                         break;
                     case "minecraft:potion":
                         tints.add(new PotionTint());
@@ -530,6 +532,12 @@ public abstract class ItemStateNode {
                     case "minecraft:map":
                         tints.add(new MapColorTint());
                         break;
+                    case "minecraft:spawn_egg": {
+                        // CatFrame 扩展类型：index 0=主色(layer0)，非 0=副色(layer1)。
+                        int idx = tintObj.has("index") ? tintObj.get("index").getAsInt() : 0;
+                        tints.add(new SpawnEggTint(idx));
+                        break;
+                    }
                     default:
                         // 未知 tint 类型，跳过（可记录警告）
                         break;

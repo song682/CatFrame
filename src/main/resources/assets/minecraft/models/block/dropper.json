@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:block/orientable",
   "textures": {
-    "front": "minecraft:blocks/dropper_front",
+    "front": "minecraft:blocks/dropper_front_horizontal",
     "side": "minecraft:blocks/furnace_side",
     "top": "minecraft:blocks/furnace_top"
   }

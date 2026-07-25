@@ -87,12 +87,11 @@ public class ItemStateModel implements IItemStateProvider {
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) continue;
 
-            // 查找对应 ModelLeaf 的 tints
-            List<ItemTint> tints = findTintsForModel(rootNode, path, props);
-            int tintOverride = computeTint(tints, stack, phase);
-
-            // TODO: 将 tintOverride 传递给渲染管线（当前仅计算，未应用）
-            // preTransform 传递到管线，使反抵消矩阵正确作用于顶点
+            // tint 已通过 TintRegistry 桥接（ItemStateTintBridge）+ TintRenderExtension
+            // 按 quad 的 tintindex 应用，此处不再直接计算颜色。
+            // preTransform 传递到管线，使反抵消矩阵正确作用于顶点。
+            // Tints are applied via the TintRegistry bridge + TintRenderExtension by
+            // each quad's tintindex; no direct color computation is needed here.
             UniformRenderPipeline.renderItemQuads(part, stack, phase,
                     null, 0, 0, 0, null, preTransform);
         }
@@ -159,20 +158,77 @@ public class ItemStateModel implements IItemStateProvider {
     }
 
     /**
-     * 计算 tint 覆盖颜色。多个 tint 按顺序混合（相乘）。
+     * 渲染桥接：解析当前 {@link ItemStack} 命中的 {@link ItemStateNode.ModelLeaf} 的 tints，
+     * 返回指定 {@code tintIndex} 的颜色。数组位置即 tintIndex（per-layer 语义）。
+     * <p>由 {@code ItemStateTintBridge} 转交给渲染侧 {@code TintRegistry} 调用。
      *
-     * @return 混合后的 RGB 颜色，无 tint 时返回 -1（表示不覆盖）
+     * <p>Render bridge: resolves the tint color for a given {@code tintIndex} from the
+     * {@link ItemStateNode.ModelLeaf} matched by the current {@link ItemStack}; the array
+     * position itself is the tintIndex (per-layer semantics). Invoked by
+     * {@code ItemStateTintBridge} through the render-side {@code TintRegistry}.
+     *
+     * @return 0xRRGGBB 颜色；无对应 tint 时返回 {@code 0xFFFFFF}（不染色）
      */
-    private static int computeTint(List<ItemTint> tints, ItemStack stack, RenderPhase phase) {
-        if (tints == null || tints.isEmpty()) return -1;
-        int r = 255, g = 255, b = 255;
-        for (ItemTint tint : tints) {
-            int c = tint.compute(stack, phase);
-            r = r * ((c >> 16) & 0xFF) / 255;
-            g = g * ((c >> 8) & 0xFF) / 255;
-            b = b * (c & 0xFF) / 255;
+    public int resolveTint(ItemStack stack, RenderPhase phase, int tintIndex) {
+        if (tintIndex < 0) return 0xFFFFFF;
+        Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
+        EvalResult result = rootNode.evaluate(props);
+        if (result.isEmpty()) return 0xFFFFFF;
+        for (String path : result.getModels()) {
+            List<ItemTint> tints = findTintsForModel(rootNode, path, props);
+            if (tintIndex < tints.size()) {
+                return tints.get(tintIndex).compute(stack, phase) & 0xFFFFFF;
+            }
         }
-        return (r << 16) | (g << 8) | b;
+        return 0xFFFFFF;
+    }
+
+    /**
+     * 决策树是否声明了任何 tints，用于决定是否需要注册渲染桥接（避免为无 tints 的
+     * ItemBlock 注册空 provider，从而遮蔽 {@code TintRegistry} 的默认染色回退）。
+     *
+     * <p>Whether the decision tree declares any tints; gates bridge registration so we
+     * never shadow {@code TintRegistry}'s default ItemBlock color fallback with an
+     * empty provider.
+     */
+    public boolean hasAnyTint() {
+        return nodeHasTint(rootNode);
+    }
+
+    private static boolean nodeHasTint(ItemStateNode node) {
+        if (node == null) return false;
+        if (node instanceof ItemStateNode.ModelLeaf) {
+            List<ItemTint> t = ((ItemStateNode.ModelLeaf) node).tints;
+            return t != null && !t.isEmpty();
+        }
+        if (node instanceof ItemStateNode.ConditionNode) {
+            ItemStateNode.ConditionNode cn = (ItemStateNode.ConditionNode) node;
+            return nodeHasTint(cn.onTrue) || nodeHasTint(cn.onFalse);
+        }
+        if (node instanceof ItemStateNode.RangeDispatchNode) {
+            ItemStateNode.RangeDispatchNode rn = (ItemStateNode.RangeDispatchNode) node;
+            if (nodeHasTint(rn.fallback)) return true;
+            for (ItemStateNode.ThresholdEntry e : rn.entries) if (nodeHasTint(e.node)) return true;
+            return false;
+        }
+        if (node instanceof ItemStateNode.ExactMatchNode) {
+            ItemStateNode.ExactMatchNode en = (ItemStateNode.ExactMatchNode) node;
+            if (nodeHasTint(en.fallback)) return true;
+            for (ItemStateNode child : en.cases.values()) if (nodeHasTint(child)) return true;
+            return false;
+        }
+        if (node instanceof ItemStateNode.SelectNode) {
+            ItemStateNode.SelectNode sn = (ItemStateNode.SelectNode) node;
+            if (nodeHasTint(sn.fallback)) return true;
+            for (ItemStateNode.SelectCase sc : sn.cases) if (nodeHasTint(sc.node)) return true;
+            return false;
+        }
+        if (node instanceof ItemStateNode.CompositeNode) {
+            ItemStateNode.CompositeNode cn = (ItemStateNode.CompositeNode) node;
+            for (ItemStateNode child : cn.models) if (nodeHasTint(child)) return true;
+            return false;
+        }
+        return false;
     }
 
     /**

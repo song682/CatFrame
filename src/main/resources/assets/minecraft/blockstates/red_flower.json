@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "variant=poppy":        { "model": "minecraft:block/poppy" },
+    "variant=blue_orchid":  { "model": "minecraft:block/blue_orchid" },
+    "variant=allium":       { "model": "minecraft:block/allium" },
+    "variant=houstonia":    { "model": "minecraft:block/houstonia" },
+    "variant=tulip_red":    { "model": "minecraft:block/tulip_red" },
+    "variant=tulip_orange": { "model": "minecraft:block/tulip_orange" },
+    "variant=tulip_white":  { "model": "minecraft:block/tulip_white" },
+    "variant=tulip_pink":   { "model": "minecraft:block/tulip_pink" },
+    "variant=oxeye_daisy":  { "model": "minecraft:block/oxeye_daisy" }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=east,powered=false":  { "model": "minecraft:block/lever_wall" },
+    "facing=east,powered=true":   { "model": "minecraft:block/lever_wall_on" },
+    "facing=west,powered=false":  { "model": "minecraft:block/lever_wall", "y": 180 },
+    "facing=west,powered=true":   { "model": "minecraft:block/lever_wall_on", "y": 180 },
+    "facing=south,powered=false": { "model": "minecraft:block/lever_wall", "y": 90 },
+    "facing=south,powered=true":  { "model": "minecraft:block/lever_wall_on", "y": 90 },
+    "facing=north,powered=false": { "model": "minecraft:block/lever_wall", "y": 270 },
+    "facing=north,powered=true":  { "model": "minecraft:block/lever_wall_on", "y": 270 },
+    "facing=up,powered=false":    { "model": "minecraft:block/lever" },
+    "facing=up,powered=true":     { "model": "minecraft:block/lever_on" },
+    "facing=down,powered=false":  { "model": "minecraft:block/lever", "x": 180 },
+    "facing=down,powered=true":   { "model": "minecraft:block/lever_on", "x": 180 }
+  }
+}

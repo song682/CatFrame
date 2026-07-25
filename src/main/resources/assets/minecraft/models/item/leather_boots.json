@@ -3,12 +3,5 @@
     "textures": {
         "layer0": "minecraft:items/leather_boots",
         "layer1": "minecraft:items/leather_boots_overlay"
-    },
-    "display": {
-        "thirdperson_righthand": {
-            "rotation": [-90, 0, 0],
-            "translation": [-2, 2, 0],
-            "scale": [0.625, 0.625, 0.625]
-        }
     }
 }

@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "half=lower,variant=sunflower":  { "model": "minecraft:block/sunflower_bottom" },
+    "half=upper,variant=sunflower":  { "model": "minecraft:block/sunflower_top" },
+    "half=lower,variant=lilac":      { "model": "minecraft:block/lilac_bottom" },
+    "half=upper,variant=lilac":      { "model": "minecraft:block/lilac_top" },
+    "half=lower,variant=double_grass":  { "model": "minecraft:block/double_grass_bottom" },
+    "half=upper,variant=double_grass":  { "model": "minecraft:block/double_grass_top" },
+    "half=lower,variant=double_fern":   { "model": "minecraft:block/double_fern_bottom" },
+    "half=upper,variant=double_fern":   { "model": "minecraft:block/double_fern_top" },
+    "half=lower,variant=rose_bush":     { "model": "minecraft:block/rose_bush_bottom" },
+    "half=upper,variant=rose_bush":     { "model": "minecraft:block/rose_bush_top" },
+    "half=lower,variant=peony":         { "model": "minecraft:block/peony_bottom" },
+    "half=upper,variant=peony":         { "model": "minecraft:block/peony_top" }
+  }
+}

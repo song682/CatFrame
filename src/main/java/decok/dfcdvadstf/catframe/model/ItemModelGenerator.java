@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.core.Direction;
+import decok.dfcdvadstf.catframe.model.core.AtlasPixelCache;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.IIcon;

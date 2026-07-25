@@ -5,7 +5,7 @@ import decok.dfcdvadstf.catframe.model.state.property.Property;
 import java.util.*;
 
 /**
- * 块状态定义管理器。类似于 1.21.5 的 {@code StateDefinition<Block, BlockState>}。
+ * 块状态定义管理器。类似于 26.1 的 {@code StateDefinition<Block, BlockState>}。
  *
  * <p>管理一个所属者（通常是 Block）的所有属性和状态组合。
  * 通过 {@link Builder} 模式构建：

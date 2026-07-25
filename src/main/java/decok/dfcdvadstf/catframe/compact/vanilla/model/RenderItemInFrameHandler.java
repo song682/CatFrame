@@ -27,7 +27,7 @@ public class RenderItemInFrameHandler {
         if (stack.getItem() == Items.filled_map) return;
 
         // 仅接管已注册 CatFrame 模型的物品
-        if (ModelRegistry.getRegisteredItemModel(stack.getItem()) == null) return;
+        if (!ModelRegistry.hasItemModel(stack.getItem())) return;
 
         event.setCanceled(true);
         RenderDispatcher.renderItemInFrame(stack);

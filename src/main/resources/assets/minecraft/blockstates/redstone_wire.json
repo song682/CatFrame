@@ -1,20 +1,20 @@
 {
   "variants": {
-    "0":  { "model": "minecraft:block/redstone_dust" },
-    "1":  { "model": "minecraft:block/redstone_dust" },
-    "2":  { "model": "minecraft:block/redstone_dust" },
-    "3":  { "model": "minecraft:block/redstone_dust" },
-    "4":  { "model": "minecraft:block/redstone_dust" },
-    "5":  { "model": "minecraft:block/redstone_dust" },
-    "6":  { "model": "minecraft:block/redstone_dust" },
-    "7":  { "model": "minecraft:block/redstone_dust" },
-    "8":  { "model": "minecraft:block/redstone_dust" },
-    "9":  { "model": "minecraft:block/redstone_dust" },
-    "10": { "model": "minecraft:block/redstone_dust" },
-    "11": { "model": "minecraft:block/redstone_dust" },
-    "12": { "model": "minecraft:block/redstone_dust" },
-    "13": { "model": "minecraft:block/redstone_dust" },
-    "14": { "model": "minecraft:block/redstone_dust" },
-    "15": { "model": "minecraft:block/redstone_dust" }
+    "power=0":  { "model": "minecraft:block/redstone_dust" },
+    "power=1":  { "model": "minecraft:block/redstone_dust" },
+    "power=2":  { "model": "minecraft:block/redstone_dust" },
+    "power=3":  { "model": "minecraft:block/redstone_dust" },
+    "power=4":  { "model": "minecraft:block/redstone_dust" },
+    "power=5":  { "model": "minecraft:block/redstone_dust" },
+    "power=6":  { "model": "minecraft:block/redstone_dust" },
+    "power=7":  { "model": "minecraft:block/redstone_dust" },
+    "power=8":  { "model": "minecraft:block/redstone_dust" },
+    "power=9":  { "model": "minecraft:block/redstone_dust" },
+    "power=10": { "model": "minecraft:block/redstone_dust" },
+    "power=11": { "model": "minecraft:block/redstone_dust" },
+    "power=12": { "model": "minecraft:block/redstone_dust" },
+    "power=13": { "model": "minecraft:block/redstone_dust" },
+    "power=14": { "model": "minecraft:block/redstone_dust" },
+    "power=15": { "model": "minecraft:block/redstone_dust" }
   }
 }

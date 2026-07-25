@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "facing=east,powered=false":  { "model": "minecraft:block/wood_button" },
+    "facing=east,powered=true":   { "model": "minecraft:block/wood_button_pressed" },
+    "facing=west,powered=false":  { "model": "minecraft:block/wood_button", "y": 180 },
+    "facing=west,powered=true":   { "model": "minecraft:block/wood_button_pressed", "y": 180 },
+    "facing=south,powered=false": { "model": "minecraft:block/wood_button", "y": 90 },
+    "facing=south,powered=true":  { "model": "minecraft:block/wood_button_pressed", "y": 90 },
+    "facing=north,powered=false": { "model": "minecraft:block/wood_button", "y": 270 },
+    "facing=north,powered=true":  { "model": "minecraft:block/wood_button_pressed", "y": 270 }
+  }
+}

@@ -75,6 +75,10 @@ public final class VanillaStateDefinitions {
     private static final Property<String> DOUBLE_PLANT_VARIANT =
             StateDefinitions.stringProp("variant", "sunflower", "lilac",
                     "double_grass", "double_fern", "rose_bush", "peony");
+    // Vanilla double_plant half uses lower/upper — NOT the slab's bottom/top vocabulary
+    // 原版 double_plant 的 half 是 lower/upper —— 不是台阶的 bottom/top 词汇，不可复用 SLAB_HALF
+    private static final Property<String> PLANT_HALF =
+            StateDefinitions.stringProp("half", "lower", "upper");
 
     // 石台阶
     private static final Property<String> SLAB_VARIANT =
@@ -126,6 +130,14 @@ public final class VanillaStateDefinitions {
             StateDefinitions.stringProp("facing", "north", "south", "east", "west");
     private static final Property<String> OPEN =
             StateDefinitions.stringProp("open", "false", "true");
+
+    // 门（铁门+木门）：facing 取值对齐 DOOR 解析器的 1.8 映射表（east/south/west/north）
+    private static final Property<String> DOOR_FACING =
+            StateDefinitions.stringProp("facing", "east", "south", "west", "north");
+    private static final Property<String> DOOR_HALF =
+            StateDefinitions.stringProp("half", "lower", "upper");
+    private static final Property<String> DOOR_HINGE =
+            StateDefinitions.stringProp("hinge", "left", "right");
 
     // 炼药锅水位
     private static final Property<String> LEVEL =
@@ -196,6 +208,7 @@ public final class VanillaStateDefinitions {
         registerWoodenSlab();
         registerTorches();
         registerTrapdoor();
+        registerDoors();
         registerCauldron();
         registerRedstoneWire();
         registerRepeaters();
@@ -449,10 +462,10 @@ public final class VanillaStateDefinitions {
 
         // double_plant: variant[meta&7] + half[(meta&8)==0?lower:upper]
         CatStateDefinition<Block> doublePlantDef = new CatStateDefinition.Builder<Block>(Blocks.double_plant)
-                .add(DOUBLE_PLANT_VARIANT, StateDefinitions.SLAB_HALF)
+                .add(DOUBLE_PLANT_VARIANT, PLANT_HALF)
                 .metaCodec(meta -> new Comparable<?>[]{
                         DOUBLE_PLANT_VARIANT.getValues().get(meta & 7),
-                        (meta & 8) == 0 ? "lower" : "upper"})
+                        PLANT_HALF.getValues().get((meta & 8) == 0 ? 0 : 1)})
                 .create();
         CatModels.register(Blocks.double_plant).states(doublePlantDef).register();
     }
@@ -518,6 +531,27 @@ public final class VanillaStateDefinitions {
                         (meta & 4) != 0 ? "true" : "false"})
                 .create();
         CatModels.register(Blocks.trapdoor).states(def).register();
+    }
+
+    // ==================== 门（facing+hinge+open 动态，half 静态） ====================
+
+    private static void registerDoors() {
+        // door: half[(meta&8)!=0?upper:lower] 由自身 meta 静态解码；
+        //       facing/open 存在下半 meta、hinge 存在上半 meta，
+        //       需跨方块读取另一半 → 交给 VanillaBlockResolvers.DOOR 运行时解析
+        Block[] doors = {Blocks.wooden_door, Blocks.iron_door};
+        for (Block door : doors) {
+            CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(door)
+                    .add(DOOR_FACING, DOOR_HALF, DOOR_HINGE, OPEN)
+                    .dynamic(DOOR_FACING, DOOR_HINGE, OPEN)
+                    .metaCodec(meta -> new Comparable<?>[]{
+                            DOOR_HALF.getValues().get((meta & 8) == 0 ? 0 : 1)})
+                    .create();
+            CatModels.register(door)
+                    .states(def)
+                    .dynamic(VanillaBlockResolvers.DOOR)
+                    .register();
+        }
     }
 
     // ==================== 炼药锅（level） ====================

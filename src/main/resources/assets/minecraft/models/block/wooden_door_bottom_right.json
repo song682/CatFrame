@@ -1,0 +1,8 @@
+{
+    "parent": "minecraft:block/door_bottom_right",
+    "textures": {
+        "particle": "minecraft:blocks/door_wood_lower",
+        "bottom": "minecraft:blocks/door_wood_lower",
+        "top": "minecraft:blocks/door_wood_upper"
+    }
+}

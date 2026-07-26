@@ -41,6 +41,16 @@ import javax.annotation.Nullable;
  * <p>Must be called on the client thread. The title renders on the HUD via
  * {@code ClientOverlayHandler}.
  * <br>须在客户端线程调用。标题经 {@code ClientOverlayHandler} 在 HUD 上渲染。</p>
+ *
+ * <p>
+ * 时间语义：经 {@link #times(int, int, int)} 设置的 淡入 / 停留 / 淡出 值是客户端会话状态，
+ * 跨存档、跨服务器持续生效，仅客户端重启或 {@link #reset()} 恢复默认的
+ * 10 / 70 / 20 ticks（即 0.5 / 3.5 / 1 秒）—— 详见 {@link TitleOverlay} 的“时间语义”一节。
+ * <br>Timing semantics: values set via {@link #times(int, int, int)} are client-session
+ * state persisting across saves and servers; only a client restart or {@link #reset()}
+ * restores the defaults of 10 / 70 / 20 ticks (0.5 / 3.5 / 1 s) — see the "Timing semantics"
+ * section of {@link TitleOverlay}.
+ * </p>
  */
 public final class Title {
 
@@ -81,6 +91,23 @@ public final class Title {
      */
     public static void show(String title, @Nullable String subtitle) {
         show(Text.literal(title), subtitle != null ? Text.literal(subtitle) : null);
+    }
+
+    /**
+     * Show a title + subtitle with explicit timing in one call — equivalent to issuing
+     * {@code /title times} followed by {@code /title title}. Note the times <b>persist</b>
+     * for subsequent titles (client-session state), exactly like the vanilla command pair.
+     * <p>一次调用同时指定计时并显示标题 + 副标题 —— 等价于先发 {@code /title times}
+     * 再发 {@code /title title}。注意时间值会<b>持续</b>影响后续标题（客户端会话状态），
+     * 与原版命令组合的行为完全一致。</p>
+     *
+     * @param fadeIn  fade-in ticks / 淡入 ticks
+     * @param stay    stay ticks / 停留 ticks
+     * @param fadeOut fade-out ticks / 淡出 ticks
+     */
+    public static void show(Text title, @Nullable Text subtitle, int fadeIn, int stay, int fadeOut) {
+        TitleOverlay.INSTANCE.setTimes(fadeIn, stay, fadeOut);
+        show(title, subtitle);
     }
 
     /**

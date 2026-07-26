@@ -39,6 +39,21 @@ import javax.annotation.Nullable;
  * and draws both scaled lines, matching the vanilla GuiIngame approach.
  * </p>
  *
+ * <h3>时间语义 / Timing semantics</h3>
+ * <p>
+ * 淡入 / 停留 / 淡出 时间是<b>纯客户端会话状态</b>：作为单例实例字段保存，不随世界
+ * 卸载或服务器切换而重置，因此对客户端而言跨存档、跨服务器持续生效；仅客户端重启
+ * （JVM 结束）或显式调用 {@link #reset()} 才会恢复默认值 10 / 70 / 20 ticks。
+ * 这一行为对齐原版 {@code /title times}：时间值只下发到客户端而不存储在服务端。
+ * <b>维护约定：不得在世界卸载、断开连接等时机重置这些字段。</b>
+ * <br>The fadeIn / stay / fadeOut times are <b>client-session state</b>: stored as singleton
+ * instance fields, never reset on world unload or server switch, hence persisting across
+ * saves and servers from the client's point of view; only a client restart (JVM exit) or an
+ * explicit {@link #reset()} restores the defaults of 10 / 70 / 20 ticks. This mirrors vanilla
+ * {@code /title times}: the values are sent to the client only and never stored server-side.
+ * <b>Maintenance contract: never reset these fields on world unload / disconnect.</b>
+ * </p>
+ *
  * <h3>对照高版本 / Mapping to modern Minecraft</h3>
  * <ul>
  *   <li>{@code /title <目标> title <文本>} → {@link #showTitle(Text)}</li>
@@ -146,6 +161,13 @@ public class TitleOverlay extends AbstractComponent implements Overlay {
      * Configure the three-phase timing for subsequent titles. Non-positive totals are
      * ignored per-field by clamping to 0. Mirrors {@code /title <target> times}.
      * <p>配置后续标题的三段计时。各字段负值收敛为 0。对标 {@code /title <目标> times}。</p>
+     * <p>
+     * 新值对<b>之后的</b> {@link #showTitle(Text)} 生效；对正在显示中的标题，剩余总时长
+     * 不变，但透明度曲线的阶段划分从下一帧起按新值解释（与原版一致）。
+     * <br>New values apply to <b>subsequent</b> {@link #showTitle(Text)} calls; for a title
+     * currently on screen the total remaining time is unchanged, but the alpha-curve phase
+     * boundaries are reinterpreted with the new values from the next frame on (matches vanilla).
+     * </p>
      *
      * @param fadeIn  fade-in ticks / 淡入 ticks
      * @param stay    stay ticks / 停留 ticks
@@ -155,6 +177,21 @@ public class TitleOverlay extends AbstractComponent implements Overlay {
         this.fadeInTicks = Math.max(0, fadeIn);
         this.stayTicks = Math.max(0, stay);
         this.fadeOutTicks = Math.max(0, fadeOut);
+    }
+
+    /** @return configured fade-in ticks / 当前配置的淡入 ticks */
+    public int getFadeInTicks() {
+        return fadeInTicks;
+    }
+
+    /** @return configured stay ticks / 当前配置的停留 ticks */
+    public int getStayTicks() {
+        return stayTicks;
+    }
+
+    /** @return configured fade-out ticks / 当前配置的淡出 ticks */
+    public int getFadeOutTicks() {
+        return fadeOutTicks;
     }
 
     /**
@@ -261,6 +298,15 @@ public class TitleOverlay extends AbstractComponent implements Overlay {
      * ramp up over fadeIn, hold at 255 during stay, ramp down over fadeOut.
      * <p>以管理器指定的中心点（{@link #getX()}、{@link #getY()}）为原点渲染标题（4 倍）与
      * 可选副标题（2 倍）。透明度遵循原版三段曲线：淡入期爬升、停留期保持 255、淡出期回落。</p>
+     * <p>
+     * 绘制坐标系是 {@code ScaledResolution} 解析后的 GUI 缩放空间，因此标题实际像素尺寸
+     * 随“界面尺寸”设置变化；文本按单行绘制、不自动换行，过长时从中心向两侧对称
+     * 溢出屏幕之外（均对齐原版行为）。
+     * <br>Drawing happens in the {@code ScaledResolution}-resolved GUI-scale space, so the
+     * on-screen title size follows the GUI Scale setting; text is drawn as a single line with
+     * no wrapping — over-long titles overflow symmetrically off both screen edges (both
+     * matching vanilla behaviour).
+     * </p>
      */
     @Override
     public void render(int mouseX, int mouseY, float partialTicks) {

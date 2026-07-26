@@ -332,10 +332,14 @@ public class AsyncBakePipeline {
             }
         }
 
-        // 从 model_mappings.blocks 收集
+        // 从 model_mappings.blocks 收集（state_mapping 模式下值是 blockstate 名而非模型路径，
+        // 其模型已由上方 loadedBlockstates 分支覆盖，跳过）
+        // Collect from model_mappings.blocks (skip state_mapping mode: values are blockstate
+        // names, their models are already covered by the loadedBlockstates branch above)
         for (Map.Entry<String, VanillaModelManager.ModelMappings> entry : ModelManagerDataLoader.loadedMappings.entrySet()) {
             String namespace = entry.getKey();
             VanillaModelManager.ModelMappings mappings = entry.getValue();
+            if (mappings.state_mapping) continue;
             if (mappings.blocks != null) {
                 for (String path : mappings.blocks.values()) {
                     paths.add(ensureNamespace(path, namespace));
@@ -353,10 +357,14 @@ public class AsyncBakePipeline {
     private static Set<String> collectItemModelPaths() {
         Set<String> paths = new LinkedHashSet<>();
 
-        // 从 model_mappings.items 收集
+        // 从 model_mappings.items 收集（state_mapping 模式下值是 ItemState 名而非模型路径，
+        // 其模型已由下方 loadedItemStates 分支覆盖，跳过）
+        // Collect from model_mappings.items (skip state_mapping mode: values are ItemState
+        // names, their models are already covered by the loadedItemStates branch below)
         for (Map.Entry<String, VanillaModelManager.ModelMappings> entry : ModelManagerDataLoader.loadedMappings.entrySet()) {
             String namespace = entry.getKey();
             VanillaModelManager.ModelMappings mappings = entry.getValue();
+            if (mappings.state_mapping) continue;
             if (mappings.items != null) {
                 for (String path : mappings.items.values()) {
                     paths.add(ensureNamespace(path, namespace));

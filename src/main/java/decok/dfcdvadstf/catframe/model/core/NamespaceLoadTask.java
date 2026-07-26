@@ -76,16 +76,23 @@ public class NamespaceLoadTask {
             InputStreamReader reader = new InputStreamReader(stream);
             VanillaModelManager.ModelMappings mappings = GSON.fromJson(reader, VanillaModelManager.ModelMappings.class);
             if (mappings != null) {
-                CatFrame.logger.info("Loaded model_mappings.json for namespace: {}", namespace);
+                CatFrame.logger.info("Loaded model_mappings.json for namespace: {} (state_mapping={})",
+                        namespace, mappings.state_mapping);
 
-                if (mappings.blocks != null) {
-                    for (String modelPath : mappings.blocks.values()) {
-                        collectTexturesFromModel(modelPath, false, blockTextures);
+                // state_mapping 模式下值是 state 名而非模型路径，纹理由被引用的
+                // blockstate/ItemState 加载途径收集，此处跳过
+                // In state_mapping mode values are state names, not model paths —
+                // textures are collected via the referenced blockstate/ItemState loading instead
+                if (!mappings.state_mapping) {
+                    if (mappings.blocks != null) {
+                        for (String modelPath : mappings.blocks.values()) {
+                            collectTexturesFromModel(modelPath, false, blockTextures);
+                        }
                     }
-                }
-                if (mappings.items != null) {
-                    for (String modelPath : mappings.items.values()) {
-                        collectTexturesFromModel(modelPath, true, itemTextures);
+                    if (mappings.items != null) {
+                        for (String modelPath : mappings.items.values()) {
+                            collectTexturesFromModel(modelPath, true, itemTextures);
+                        }
                     }
                 }
             }
@@ -121,6 +128,21 @@ public class NamespaceLoadTask {
                 if (!localBlockstates.containsKey(blockName)) {
                     BlockstateJson bs = loadSingleBlockstate(namespace, blockName, blockTextures);
                     if (bs != null) localBlockstates.put(blockName, bs);
+                }
+            }
+            // state_mapping 模式：值引用的 blockstate 可能不对应任何已注册方块
+            //（纯供引用的 state 定义），需额外按值加载保证引用可解析
+            // state_mapping mode: referenced blockstates may not match any registered block
+            // (pure reference-only state definitions), load them by value as well
+            if (mappings.state_mapping) {
+                for (String ref : mappings.blocks.values()) {
+                    String refName = ref.contains(":") ? ref.substring(ref.indexOf(':') + 1) : ref;
+                    String refNs = ref.contains(":") ? ref.substring(0, ref.indexOf(':')) : namespace;
+                    // 跨 namespace 引用由目标 namespace 自己的加载任务负责
+                    // Cross-namespace refs are handled by the target namespace's own load task
+                    if (!refNs.equals(namespace) || localBlockstates.containsKey(refName)) continue;
+                    BlockstateJson bs = loadSingleBlockstate(namespace, refName, blockTextures);
+                    if (bs != null) localBlockstates.put(refName, bs);
                 }
             }
         }
@@ -203,6 +225,17 @@ public class NamespaceLoadTask {
             for (String key : mappings.items.keySet()) {
                 String itemName = key.contains(":") ? key.split(":")[0] : key;
                 itemNames.add(itemName);
+            }
+            // state_mapping 模式：值引用的 ItemState 决策树也加入候选，
+            // 保证纯供引用的 items/{name}.json 被加载（跨 namespace 引用由目标 namespace 负责）
+            // state_mapping mode: also add referenced ItemState tree names as candidates so
+            // reference-only items/{name}.json get loaded (cross-ns refs handled by that namespace)
+            if (mappings.state_mapping) {
+                for (String ref : mappings.items.values()) {
+                    String refNs = ref.contains(":") ? ref.substring(0, ref.indexOf(':')) : namespace;
+                    if (!refNs.equals(namespace)) continue;
+                    itemNames.add(ref.contains(":") ? ref.substring(ref.indexOf(':') + 1) : ref);
+                }
             }
         }
 

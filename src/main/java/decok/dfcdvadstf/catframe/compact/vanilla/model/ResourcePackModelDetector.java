@@ -160,8 +160,10 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         scanItemStates(manager, ns);
 
         // 扫描已知模型路径（仅诊断用途 —— 模型加载本身已经由 ModelResolver 走 IResourceManager）
+        // state_mapping 模式下 mappings 值是 state 名而非模型路径，跳过
+        // Skip state_mapping mode: values are state names, not model paths
         VanillaModelManager.ModelMappings mappings = ModelManagerDataLoader.loadedMappings.get(ns);
-        if (mappings != null) {
+        if (mappings != null && !mappings.state_mapping) {
             if (mappings.blocks != null) {
                 for (String modelPath : mappings.blocks.values()) {
                     scanModel(manager, modelPath);

@@ -42,6 +42,21 @@ public class VanillaModelManager {
     // ==================== Model Mappings Data Class ====================
 
     public static class ModelMappings {
+        /**
+         * State-mapping mode switch (new-era format). Defaults to {@code false},
+         * preserving the legacy key → model-path semantics for backward compatibility.
+         * <p>
+         * 新时代 state mapping 开关，默认 {@code false}（向后兼容：保留旧版
+         * key → JSON 模型路径 的映射语义）。为 {@code true} 时，blocks/items 的值
+         * 不再是模型路径，而是 (Block/Item)State 名称：
+         * <ul>
+         *   <li>blocks 值 → {@code blockstates/{value}.json}（可带 "ns:" 前缀）</li>
+         *   <li>items 值 → {@code items/{value}.json} 决策树（可带 "ns:" 前缀）</li>
+         * </ul>
+         * 之后走常规 state → 模型 的数据驱动管线。面向未实现 JSON 加载的旧模组：
+         * 把旧 ID 直接接入现有 state 定义，无需为每个旧 ID 单独铺模型文件。
+         */
+        public boolean state_mapping = false;
         public Map<String, String> blocks;
         public Map<String, String> items;
     }
@@ -143,6 +158,11 @@ public class VanillaModelManager {
             ModelRegistry.registeredBlockRotations.clear();
             ModelRegistry.registeredItemModels.keySet()
                     .removeIf(item -> !ModelRegistry.persistentItemModels.contains(item));
+            // oversized 标记完全源自 loadedOversizedItems，下方循环会全量重建 ——
+            // 清空以避免重注册后残留过期项（如资源包移除后旧的 oversized 标记）
+            // oversized flags are fully derived from loadedOversizedItems and rebuilt below —
+            // clear to avoid stale entries surviving re-registration (e.g. after pack removal)
+            ModelRegistry.oversizedItems.clear();
 
             // Step 0: 物化 CatModels 声明式 spec（typed 常驻表 + itemFromBlockstate）
             CatModels.materialize();
@@ -160,45 +180,7 @@ public class VanillaModelManager {
                     // 已被 CatModels 物化或先前步骤处理的方块跳过
                     if (ModelRegistry.registeredBlockModels.containsKey(block)) continue;
 
-                    String blockId = Block.blockRegistry.getNameForObject(block);
-                    String ns = (blockId != null && blockId.contains(":"))
-                            ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
-                    IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
-
-                    // BlockPane: 运行时连接 multipart（per-face 合并 + AtlasGuard）
-                    if (block instanceof BlockPane) {
-                        ResidentStateModel.Builder pb = ResidentStateModel.builder(block)
-                                .connectionMultipart()
-                                .dynamic(VanillaBlockResolvers.PANE);
-                        if (redirect != null) {
-                            pb.redirect(redirect, ns);
-                        } else {
-                            pb.blockstate(bs);
-                        }
-                        ModelRegistry.registerBlockModel(block, pb.build());
-                        continue;
-                    }
-
-                    // BlockStairs: 运行时转角检测（facing/half/shape 由 resolver 自建）
-                    if (block instanceof BlockStairs) {
-                        ModelRegistry.registerBlockModel(block, ResidentStateModel.builder(block)
-                                .blockstate(bs)
-                                .dynamic(VanillaBlockResolvers.STAIRS)
-                                .build());
-                        continue;
-                    }
-
-                    // Blockstate redirect: per-meta 重定向到另一个 blockstate
-                    if (redirect != null) {
-                        ResidentStateModel.Builder rb = ResidentStateModel.builder(block)
-                                .redirect(redirect, ns);
-                        ModelRegistry.registerBlockModel(block, rb.build());
-                        continue;
-                    }
-
-                    // 常规 variants/multipart
-                    ResidentStateModel.Builder nb = ResidentStateModel.builder(block).blockstate(bs);
-                    ModelRegistry.registerBlockModel(block, nb.build());
+                    registerResidentBlockModel(block, bs);
                 }
             }
 
@@ -225,9 +207,24 @@ public class VanillaModelManager {
                         // 已被 blockstate 处理的方块跳过
                         if (ModelRegistry.registeredBlockModels.containsKey(block)) continue;
 
-                        // 使用懒单模型：持有 modelPath，渲染时从 BakedModelCache 获取
-                        ModelRegistry.registerBlockModel(block,
-                                new LazySingleBlockModel(blockEntry.getValue()));
+                        if (mappings.state_mapping) {
+                            // 新时代 state mapping：ID → blockstate 名，复用已加载的 state 定义
+                            // New-era state mapping: ID → blockstate name, reuse the loaded state definition
+                            String[] ref = parseStateRef(namespace, blockEntry.getValue());
+                            Map<String, BlockstateJson> nsStates =
+                                    ModelManagerDataLoader.loadedBlockstates.get(ref[0]);
+                            BlockstateJson bs = nsStates != null ? nsStates.get(ref[1]) : null;
+                            if (bs == null) {
+                                CatFrame.logger.warn("[VMM] state_mapping block '{}' -> unknown blockstate '{}:{}'",
+                                        key, ref[0], ref[1]);
+                                continue;
+                            }
+                            registerResidentBlockModel(block, bs);
+                        } else {
+                            // legacy：使用懒单模型 —— 持有 modelPath，渲染时从 BakedModelCache 获取
+                            ModelRegistry.registerBlockModel(block,
+                                    new LazySingleBlockModel(blockEntry.getValue()));
+                        }
                     }
                 }
             }
@@ -259,31 +256,10 @@ public class VanillaModelManager {
                 }
             }
 
-            // 4b: model_mappings 中的 items（跳过已被 ItemState 注册的）
+            // 4b: model_mappings 中的 items（跳过已被 ItemState 注册的；legacy / state mapping 双语义）
             for (Map.Entry<String, ModelMappings> entry :
                     ModelManagerDataLoader.loadedMappings.entrySet()) {
-                ModelMappings mappings = entry.getValue();
-                if (mappings.items == null) continue;
-
-                for (Map.Entry<String, String> itemEntry : mappings.items.entrySet()) {
-                    String key = itemEntry.getKey();
-                    String itemName;
-
-                    if (key.contains(":")) {
-                        String[] parts = key.split(":", 2);
-                        itemName = parts[0];
-                    } else {
-                        itemName = key;
-                    }
-
-                    Item item = Utilities.findItem(entry.getKey(), itemName);
-                    if (item == null) continue;
-                    // 跳过已被 ItemState 注册的
-                    if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
-
-                    ModelRegistry.registeredItemModels.put(item,
-                            new ItemStateModel(itemEntry.getValue()));
-                }
+                registerMappingItems(entry.getKey(), entry.getValue());
             }
 
             // 4c: IItemState (Tier 3 接口发现)
@@ -335,6 +311,9 @@ public class VanillaModelManager {
             // 移除非 persistent item models
             ModelRegistry.registeredItemModels.keySet()
                     .removeIf(item -> !ModelRegistry.persistentItemModels.contains(item));
+            // oversized 标记全量重建（与 registerAllModels 同理，清除过期项）
+            // Rebuild oversized flags from scratch (same as registerAllModels, drops stale entries)
+            ModelRegistry.oversizedItems.clear();
 
             // 重新注册 ItemState 决策树（最高优先）
             for (Map.Entry<String, Map<String, ItemStateNode>> nsEntry :
@@ -357,32 +336,10 @@ public class VanillaModelManager {
                 }
             }
 
-            // 重新注册 model_mappings items（跳过已被 ItemState 注册的）
+            // 重新注册 model_mappings items（跳过已被 ItemState 注册的；legacy / state mapping 双语义）
             for (Map.Entry<String, ModelMappings> entry :
                     ModelManagerDataLoader.loadedMappings.entrySet()) {
-                String namespace = entry.getKey();
-                ModelMappings mappings = entry.getValue();
-                if (mappings.items == null) continue;
-
-                for (Map.Entry<String, String> itemEntry : mappings.items.entrySet()) {
-                    String key = itemEntry.getKey();
-                    String itemName;
-
-                    if (key.contains(":")) {
-                        String[] parts = key.split(":", 2);
-                        itemName = parts[0];
-                    } else {
-                        itemName = key;
-                    }
-
-                    Item item = Utilities.findItem(namespace, itemName);
-                    if (item == null) continue;
-                    // 跳过已被 ItemState 注册的
-                    if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
-
-                    ModelRegistry.registeredItemModels.put(item,
-                            new ItemStateModel(itemEntry.getValue()));
-                }
+                registerMappingItems(entry.getKey(), entry.getValue());
             }
 
             // 重新注册 IItemState items（跳过已有手动注册模型的 persistent 项）
@@ -403,6 +360,129 @@ public class VanillaModelManager {
 
             CatFrame.logger.info("VanillaModelManager: Re-registered {} item models (incremental, lazy)",
                     ModelRegistry.registeredItemModels.size());
+        }
+
+        /**
+         * 注册单个方块的常驻 state 模型（Pane / Stairs / redirect / 常规 variants-multipart 分支）。
+         * <p>
+         * Register a resident state model for one block (Pane / Stairs / redirect / plain branches).
+         * 从 {@link #registerAllModels} Step 2 提取，供 blockstate 遍历与
+         * {@code state_mapping} 模式的 model_mappings 共用同一套注册逻辑。
+         */
+        private static void registerResidentBlockModel(Block block, BlockstateJson bs) {
+            String blockId = Block.blockRegistry.getNameForObject(block);
+            String ns = (blockId != null && blockId.contains(":"))
+                    ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
+            IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
+
+            // BlockPane: 运行时连接 multipart（per-face 合并 + AtlasGuard）
+            if (block instanceof BlockPane) {
+                ResidentStateModel.Builder pb = ResidentStateModel.builder(block)
+                        .connectionMultipart()
+                        .dynamic(VanillaBlockResolvers.PANE);
+                if (redirect != null) {
+                    pb.redirect(redirect, ns);
+                } else {
+                    pb.blockstate(bs);
+                }
+                ModelRegistry.registerBlockModel(block, pb.build());
+                return;
+            }
+
+            // BlockStairs: 运行时转角检测（facing/half/shape 由 resolver 自建）
+            if (block instanceof BlockStairs) {
+                ModelRegistry.registerBlockModel(block, ResidentStateModel.builder(block)
+                        .blockstate(bs)
+                        .dynamic(VanillaBlockResolvers.STAIRS)
+                        .build());
+                return;
+            }
+
+            // Blockstate redirect: per-meta 重定向到另一个 blockstate
+            if (redirect != null) {
+                ResidentStateModel.Builder rb = ResidentStateModel.builder(block)
+                        .redirect(redirect, ns);
+                ModelRegistry.registerBlockModel(block, rb.build());
+                return;
+            }
+
+            // 常规 variants/multipart
+            ResidentStateModel.Builder nb = ResidentStateModel.builder(block).blockstate(bs);
+            ModelRegistry.registerBlockModel(block, nb.build());
+        }
+
+        /**
+         * 解析 state 引用字符串 {@code "ns:name"} 或 {@code "name"}（无前缀时默认当前 namespace）。
+         * <p>
+         * Parse a state reference {@code "ns:name"} / {@code "name"} (defaults to the current namespace).
+         *
+         * @return {@code [namespace, name]}
+         */
+        private static String[] parseStateRef(String defaultNs, String ref) {
+            int sep = ref.indexOf(':');
+            return sep >= 0
+                    ? new String[]{ref.substring(0, sep), ref.substring(sep + 1)}
+                    : new String[]{defaultNs, ref};
+        }
+
+        /**
+         * 注册 model_mappings.items（legacy / state mapping 双语义，全量与增量入口共用）。
+         * <p>
+         * Register model_mappings.items with dual semantics, shared by the full and incremental paths:
+         * <ul>
+         *   <li>{@code state_mapping=false}（legacy）：值为模型路径 → 包装为单模型 {@link ItemStateModel}</li>
+         *   <li>{@code state_mapping=true}：值为 ItemState 决策树名 → 复用已加载的决策树，
+         *       tint 桥接与 {@code oversized_in_gui} 标记随被引用的 state 一并生效</li>
+         * </ul>
+         * 已被 items/ 约定匹配注册的物品不会被覆盖（ItemState 优先级更高）。
+         */
+        private static void registerMappingItems(String namespace, ModelMappings mappings) {
+            if (mappings.items == null) return;
+
+            for (Map.Entry<String, String> itemEntry : mappings.items.entrySet()) {
+                String key = itemEntry.getKey();
+                String itemName;
+
+                if (key.contains(":")) {
+                    String[] parts = key.split(":", 2);
+                    itemName = parts[0];
+                } else {
+                    itemName = key;
+                }
+
+                Item item = Utilities.findItem(namespace, itemName);
+                if (item == null) continue;
+                // 跳过已被 ItemState 注册的
+                if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
+
+                if (mappings.state_mapping) {
+                    // 新时代 state mapping：ID → ItemState 决策树名，复用已加载的 state 定义
+                    // New-era state mapping: ID → ItemState tree name, reuse the loaded definition
+                    String[] ref = parseStateRef(namespace, itemEntry.getValue());
+                    Map<String, ItemStateNode> nsStates = ModelManagerDataLoader.loadedItemStates.get(ref[0]);
+                    ItemStateNode node = nsStates != null ? nsStates.get(ref[1]) : null;
+                    if (node == null) {
+                        CatFrame.logger.warn("[VMM] state_mapping item '{}' -> unknown item state '{}:{}'",
+                                key, ref[0], ref[1]);
+                        continue;
+                    }
+                    ItemStateModel ism = new ItemStateModel(node);
+                    ModelRegistry.registeredItemModels.put(item, ism);
+                    // tint 桥接与 oversized 标记随被引用的 state 同步生效
+                    // Tint bridge and oversized flag follow the referenced state
+                    if (ism.hasAnyTint()) {
+                        TintRegistry.registerItemTint(item, new ItemStateTintBridge(ism));
+                    }
+                    Set<String> nsOversized = ModelManagerDataLoader.loadedOversizedItems.get(ref[0]);
+                    if (nsOversized != null && nsOversized.contains(ref[1])) {
+                        ModelRegistry.oversizedItems.add(item);
+                    }
+                } else {
+                    // legacy：值为模型路径，包装为单模型 wrapper
+                    ModelRegistry.registeredItemModels.put(item,
+                            new ItemStateModel(itemEntry.getValue()));
+                }
+            }
         }
 
         /**

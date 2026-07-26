@@ -1,5 +1,15 @@
 {
   "item.bluey_plushy.name": "布鲁伊玩偶",
   "ui.searching": "搜索一些什么呢？",
-  "menu.paused": "暂停"
+  "menu.paused": "暂停",
+  "commands.catframe.title.usage": "/title <目标> (clear|reset) 或 /title <目标> (title|subtitle|actionbar) <标题> 或 /title <目标> times <淡入> <停留> <淡出>",
+  "commands.catframe.title.noPlayer": "客户端玩家尚未就绪",
+  "commands.catframe.title.playersOnly": "/title 的目标只能是玩家",
+  "commands.catframe.title.notLocal": "该命令仅在客户端本地执行，目标必须包含本地玩家 %s",
+  "commands.catframe.title.cleared": "已清除 %s 的标题",
+  "commands.catframe.title.reset": "已重置 %s 的标题选项",
+  "commands.catframe.title.times": "已更改 %s 的标题显示时间",
+  "commands.catframe.title.title": "正在为 %s 显示新标题",
+  "commands.catframe.title.subtitle": "正在为 %s 显示新副标题",
+  "commands.catframe.title.actionbar": "正在为 %s 显示新动作栏标题"
 }

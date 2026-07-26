@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.proxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import decok.dfcdvadstf.catframe.Tags;
+import decok.dfcdvadstf.catframe.command.CommandTitle;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientOverlayHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
@@ -18,6 +19,7 @@ import decok.dfcdvadstf.catframe.ui.components.ActionBarOverlay;
 import decok.dfcdvadstf.catframe.ui.components.TitleOverlay;
 import decok.dfcdvadstf.catframe.ui.components.toast.ToastOverlay;
 import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
+import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
 
 public class ClientProxy extends CommonProxy {
@@ -64,5 +66,12 @@ public class ClientProxy extends CommonProxy {
         // Register language reload listener for resource pack translation overrides
         LanguageReloadListener.register();
         ResourcePackModelDetector.register();
+
+        // Client-side /title command — all Title/ActionBar state lives in client
+        // singletons and CatFrame has no network channel, so the command executes
+        // locally and <targets> narrows to the local player (see CommandTitle docs).
+        // 客户端 /title 命令 —— Title/ActionBar 状态全在客户端单例、无网络通道，
+        // 故本地执行，<targets> 收敛为本地玩家（详见 CommandTitle 类注释）。
+        ClientCommandHandler.instance.registerCommand(new CommandTitle());
     }
 }

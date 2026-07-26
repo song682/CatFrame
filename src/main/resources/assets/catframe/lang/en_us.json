@@ -1,5 +1,15 @@
 {
   "item.bluey_plushy.name": "Bluey Plushy",
   "ui.searching": "Search...",
-  "menu.paused": "Paused"
+  "menu.paused": "Paused",
+  "commands.catframe.title.usage": "/title <targets> (clear|reset) OR /title <targets> (title|subtitle|actionbar) <title> OR /title <targets> times <fadeIn> <stay> <fadeOut>",
+  "commands.catframe.title.noPlayer": "The client player is not ready yet",
+  "commands.catframe.title.playersOnly": "Only players may be targeted by /title",
+  "commands.catframe.title.notLocal": "This command runs client-side only; the target must include the local player %s",
+  "commands.catframe.title.cleared": "Cleared the title for %s",
+  "commands.catframe.title.reset": "Reset the title options for %s",
+  "commands.catframe.title.times": "Changed the title display times for %s",
+  "commands.catframe.title.title": "Showing new title for %s",
+  "commands.catframe.title.subtitle": "Showing new subtitle for %s",
+  "commands.catframe.title.actionbar": "Showing new actionbar title for %s"
 }

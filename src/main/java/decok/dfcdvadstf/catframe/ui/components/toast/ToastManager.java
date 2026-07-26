@@ -1,8 +1,10 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
 import java.util.*;
@@ -48,9 +50,13 @@ public class ToastManager {
             Toast.Visibility previousVisibility = instance.visibility;
             instance.update();
 
-            // Sound effect on visibility change (if needed)
+            // Play slide-in/out sound on visibility change. Routed through the
+            // SoundHandler (GUI master channel), which needs no world or player —
+            // safe on the HUD, inside GUIs, and on the main menu alike.
+            // 可见性切换时播放滑入/滑出音效。走 SoundHandler（GUI 主通道），
+            // 不依赖世界或玩家实体 —— HUD、GUI 内和主菜单均安全。
             if (instance.visibility != previousVisibility) {
-                // TODO: add sound effect
+                playVisibilitySound(instance.toast, instance.visibility);
             }
 
             if (instance.hasFinishedRendering) {
@@ -85,7 +91,9 @@ public class ToastManager {
      * <p>渲染所有可见的 Toast。</p>
      */
     public void render() {
-        if (mc.gameSettings.hideGUI) {
+        // Match vanilla: F1 hides toasts only when no screen is open on top.
+        // 对齐原版：仅在 F1 隐藏 HUD 且没有打开任何界面时才跳过 Toast 绘制。
+        if (mc.gameSettings.hideGUI && mc.currentScreen == null) {
             return;
         }
 
@@ -171,6 +179,23 @@ public class ToastManager {
      */
     private int getFreeSlotCount() {
         return MAX_SLOT_COUNT - occupiedSlots.cardinality();
+    }
+
+    /**
+     * Play the Toast's slide-in/out sound for the given visibility state.
+     * Uses {@code SoundHandler} + {@link PositionedSoundRecord} (same path as GUI button
+     * clicks), so it never touches {@code thePlayer} and cannot NPE outside a world.
+     * <p>播放 Toast 在给定可见性状态下的滑入/滑出音效。
+     * 使用 {@code SoundHandler} + {@link PositionedSoundRecord}（与 GUI 按钮点击同一路径），
+     * 完全不接触 {@code thePlayer}，在无世界环境（如主菜单）下不会 NPE。</p>
+     */
+    private void playVisibilitySound(Toast toast, Toast.Visibility visibility) {
+        ResourceLocation sound = visibility == Toast.Visibility.SHOW
+                ? toast.getShowSound()
+                : toast.getHideSound();
+        if (sound != null && mc.getSoundHandler() != null) {
+            mc.getSoundHandler().playSound(PositionedSoundRecord.func_147674_a(sound, 1.0F));
+        }
     }
 
     /**

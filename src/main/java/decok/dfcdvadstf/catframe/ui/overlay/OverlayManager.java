@@ -181,6 +181,7 @@ public class OverlayManager {
         ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
         int screenWidth = sr.getScaledWidth();
         int screenHeight = sr.getScaledHeight();
+        boolean screenOpen = mc.currentScreen != null;
 
         for (Map.Entry<ScreenAnchor, List<Overlay>> entry : overlays.entrySet()) {
             ScreenAnchor anchor = entry.getKey();
@@ -189,7 +190,7 @@ public class OverlayManager {
 
             int stackOffsetY = 0;
             for (Overlay overlay : list) {
-                if (!overlay.isVisible() || !matchesTarget(overlay, hud)) continue;
+                if (!overlay.isVisible() || !matchesTarget(overlay, hud, screenOpen)) continue;
 
                 // A HUD overlay must never pause the world; pausing only makes sense on an open
                 // GUI (SCREEN). Fail fast so this design contract can't be violated at runtime.
@@ -231,11 +232,18 @@ public class OverlayManager {
     /**
      * Whether the overlay should render for the given target.
      * <p>Overlay 是否应在给定目标下渲染。</p>
+     * <p>
+     * A {@link OverlayContext#BOTH} overlay is rendered by exactly one pass per frame:
+     * while a screen is open, the screen pass ({@code renderAll}) owns it and the HUD pass
+     * skips it, so it is never drawn twice in the same frame.
+     * </p>
+     * <p>{@link OverlayContext#BOTH} 的 Overlay 每帧只由一条路径渲染：界面打开时
+     * 由屏幕路径（{@code renderAll}）接管，HUD 路径跳过，避免同帧双重绘制。</p>
      */
-    private static boolean matchesTarget(Overlay overlay, boolean hud) {
+    private static boolean matchesTarget(Overlay overlay, boolean hud, boolean screenOpen) {
         OverlayContext ctx = overlay.getContext();
         if (hud) {
-            return ctx == OverlayContext.HUD || ctx == OverlayContext.BOTH;
+            return ctx == OverlayContext.HUD || (ctx == OverlayContext.BOTH && !screenOpen);
         }
         return ctx == OverlayContext.SCREEN || ctx == OverlayContext.BOTH;
     }

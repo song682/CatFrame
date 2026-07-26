@@ -45,6 +45,12 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
     /** Current wanted visibility / 当前期望的可见性 */
     protected Visibility wantedVisibility = Visibility.HIDE;
 
+    /** Slide-in sound, null = silent / 滑入音效，null = 静音 */
+    protected ResourceLocation showSound;
+
+    /** Slide-out sound, null = silent / 滑出音效，null = 静音 */
+    protected ResourceLocation hideSound;
+
     /** Last fully-visible duration from update() / 最近一次 update() 的完全可见时长 */
     private long lastFullyVisibleForMs;
 
@@ -69,6 +75,42 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
      */
     public ResourceLocation getBackgroundTexture() {
         return backgroundTexture;
+    }
+
+    // ──── Sound API ────
+
+    /**
+     * Set the sound played when this Toast slides in.
+     * <p>设置此 Toast 滑入时播放的音效。</p>
+     *
+     * @param sound sound ResourceLocation, or null for silence / 音效资源位置，null 表示静音
+     * @return this instance for chaining / 返回自身以支持链式调用
+     */
+    public BaseToast setShowSound(ResourceLocation sound) {
+        this.showSound = sound;
+        return this;
+    }
+
+    /**
+     * Set the sound played when this Toast slides out.
+     * <p>设置此 Toast 滑出时播放的音效。</p>
+     *
+     * @param sound sound ResourceLocation, or null for silence / 音效资源位置，null 表示静音
+     * @return this instance for chaining / 返回自身以支持链式调用
+     */
+    public BaseToast setHideSound(ResourceLocation sound) {
+        this.hideSound = sound;
+        return this;
+    }
+
+    @Override
+    public ResourceLocation getShowSound() {
+        return showSound;
+    }
+
+    @Override
+    public ResourceLocation getHideSound() {
+        return hideSound;
     }
 
     // ──── Constructors ────

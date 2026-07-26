@@ -5,34 +5,42 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.ui.components.toast.SimpleToast;
 import decok.dfcdvadstf.catframe.ui.components.toast.ToastManager;
+import decok.dfcdvadstf.catframe.ui.components.toast.ToastOverlay;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
 /**
  * <p>
  * 客户端事件处理器<br>
- * 监听世界加载事件以显示欢迎 Toast，并在 HUD 上渲染 Toast 队列。
+ * 监听世界加载事件以显示欢迎 Toast。
  * </p>
  * <p>
- * Client-side event handler — listens for world load to show the welcome Toast,
- * and renders the Toast queue on the HUD overlay.
+ * Client-side event handler — listens for world load to show the welcome Toast.
+ * </p>
+ * <p>
+ * Toast 渲染已迁移至 Overlay 体系：{@link ToastOverlay} 作为 {@code BOTH} 上下文的
+ * Overlay 注册进 {@code OverlayManager}，由 {@code ClientOverlayHandler} 在 HUD 与
+ * 任意打开的界面（含主菜单）上驱动绘制；本类不再直接挂接渲染事件。
+ * </p>
+ * <p>
+ * Toast rendering has migrated to the Overlay system: {@link ToastOverlay} is registered
+ * with {@code OverlayManager} as a {@code BOTH}-context overlay and driven by
+ * {@code ClientOverlayHandler} on both the HUD and any open screen (main menu included);
+ * this class no longer hooks render events directly.
  * </p>
  */
 @SideOnly(Side.CLIENT)
 public class ClientToastHandler {
 
-    /** Global ToastManager instance / 全局 Toast 管理器实例 */
-    private static final ToastManager TOAST_MANAGER = new ToastManager(Minecraft.getMinecraft());
-
     /** Whether the welcome toast has been shown this session / 本次会话是否已显示欢迎 Toast */
     private static boolean welcomeShown = false;
 
     /**
-     * @return The global ToastManager / 全局 Toast 管理器
+     * @return The global ToastManager (owned by {@link ToastOverlay}) / 全局 Toast 管理器（由 {@link ToastOverlay} 持有）
      */
     public static ToastManager getToastManager() {
-        return TOAST_MANAGER;
+        return ToastOverlay.INSTANCE.getToastManager();
     }
 
     /**
@@ -43,21 +51,9 @@ public class ClientToastHandler {
     public void onEntityJoinWorld(EntityJoinWorldEvent event) {
         if (event.entity == Minecraft.getMinecraft().thePlayer && !welcomeShown) {
             welcomeShown = true;
-            TOAST_MANAGER.addToast(new SimpleToast(
+            getToastManager().addToast(new SimpleToast(
                     "\u00a7bCatFrame", "Welcome!"
-            ));
-        }
-    }
-
-    /**
-     * Render Toasts on the HUD after the vanilla overlay is drawn.
-     * <p>在原版 HUD 覆盖层绘制完成后渲染 Toast 队列。</p>
-     */
-    @SubscribeEvent
-    public void onRenderGameOverlay(RenderGameOverlayEvent.Post event) {
-        if (event.type == RenderGameOverlayEvent.ElementType.ALL) {
-            TOAST_MANAGER.update();
-            TOAST_MANAGER.render();
+            ).setShowSound(new ResourceLocation("random.orb")));
         }
     }
 }

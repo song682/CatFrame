@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
 import decok.dfcdvadstf.catframe.ui.components.Component;
+import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
@@ -54,6 +55,30 @@ public interface Toast extends Component {
      */
     default Object getToken() {
         return this;
+    }
+
+    /**
+     * Sound played when this Toast slides in (visibility changes to {@link Visibility#SHOW}).
+     * Played through the {@code SoundHandler} directly, so it is safe in any render context
+     * (GUI, HUD, or the main menu) where {@code thePlayer} may be {@code null}.
+     * <p>Toast 滑入时播放的音效（可见性切换为 {@link Visibility#SHOW}）。
+     * 通过 {@code SoundHandler} 直接播放，不依赖 {@code thePlayer}，
+     * 因此在任意渲染上下文（GUI / HUD / 主菜单）中都安全。</p>
+     *
+     * @return sound ResourceLocation, or {@code null} for silence / 音效资源位置，{@code null} 表示静音
+     */
+    default ResourceLocation getShowSound() {
+        return null;
+    }
+
+    /**
+     * Sound played when this Toast slides out (visibility changes to {@link Visibility#HIDE}).
+     * <p>Toast 滑出时播放的音效（可见性切换为 {@link Visibility#HIDE}）。</p>
+     *
+     * @return sound ResourceLocation, or {@code null} for silence / 音效资源位置，{@code null} 表示静音
+     */
+    default ResourceLocation getHideSound() {
+        return null;
     }
 
     /**

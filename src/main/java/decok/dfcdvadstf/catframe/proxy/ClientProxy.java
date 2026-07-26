@@ -5,7 +5,6 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientOverlayHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler;
-import decok.dfcdvadstf.catframe.compact.vanilla.ClientToastHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.ResourcePackModelDetector;
 import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaStateDefinitions;
@@ -26,17 +25,15 @@ public class ClientProxy extends CommonProxy {
     public void preInit(FMLPreInitializationEvent event) {
         super.preInit(event);
 
-        // Register client event handler (welcome toast)
-        MinecraftForge.EVENT_BUS.register(new ClientToastHandler());
-
         // Drive GuiGraphicsExtractor's deferred pipeline (item/PiP/tooltip) via Forge
         // DrawScreenEvent Pre/Post so it works in GuiContainer screens too
         // (which override drawScreen and never trigger the GuiScreen mixin injections).
         MinecraftForge.EVENT_BUS.register(new ClientScreenGraphicsHandler());
 
         // Bridge OverlayManager into the HUD render/tick loop and the screen draw pass
-        // (pure Forge), then register the ActionBar as a HUD-context overlay and the
-        // Toast system as a BOTH-context overlay (HUD + any open screen, main menu included).
+        // (pure Forge; also hosts the welcome-toast trigger), then register the ActionBar
+        // as a HUD-context overlay and the Toast system as a BOTH-context overlay
+        // (HUD + any open screen, main menu included).
         MinecraftForge.EVENT_BUS.register(new ClientOverlayHandler());
         OverlayManager.INSTANCE.register(ActionBarOverlay.INSTANCE);
         OverlayManager.INSTANCE.register(ToastOverlay.INSTANCE);

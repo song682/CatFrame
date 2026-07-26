@@ -5,21 +5,24 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.ui.components.toast.SimpleToast;
+import decok.dfcdvadstf.catframe.ui.components.toast.ToastOverlay;
 import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
 /**
  * <p>
  * Overlay HUD 驱动器（纯 Forge 实现）<br>
  * 将 {@link OverlayManager} 接入游戏内 HUD 渲染与客户端 tick 循环，使 HUD 上下文的
- * Overlay 无需打开界面即可显示——与 {@code ClientToastHandler} 同属 {@code RenderGameOverlayEvent} 路径。
+ * Overlay 无需打开界面即可显示。
  * </p>
  * <p>
  * Overlay HUD driver (pure Forge). Bridges {@link OverlayManager} into the in-game HUD render
- * pass and the client tick loop, so HUD-context overlays render without any open screen —
- * the same {@code RenderGameOverlayEvent} path used by {@code ClientToastHandler}.
+ * pass and the client tick loop, so HUD-context overlays render without any open screen.
  * </p>
  * <p>
  * 屏幕上下文（{@code SCREEN} / {@code BOTH}）的 Overlay 由 Forge 的
@@ -34,9 +37,37 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
  * <b>every</b> {@code GuiScreen} (including the vanilla main menu and {@code GuiContainer}
  * subclasses), so no world or player entity is required.
  * </p>
+ * <p>
+ * 本类同时承接了原 {@code ClientToastHandler}（已删除）的欢迎 Toast 触发——Toast 已并入
+ * Overlay 体系（{@link ToastOverlay}），相关的 Forge 事件触发统一收敛到这座事件桥上。
+ * </p>
+ * <p>
+ * This class also absorbed the welcome-toast trigger from the removed
+ * {@code ClientToastHandler} — Toasts now live inside the Overlay system
+ * ({@link ToastOverlay}), so their Forge event triggers converge on this single bridge.
+ * </p>
  */
 @SideOnly(Side.CLIENT)
 public class ClientOverlayHandler {
+
+    /** Whether the welcome toast has been shown this session / 本次会话是否已显示欢迎 Toast */
+    private static boolean welcomeShown = false;
+
+    /**
+     * Triggered when any entity joins a world. We filter for the local player only and
+     * show the one-shot welcome Toast (migrated from the removed {@code ClientToastHandler}).
+     * <p>任意实体加入世界时触发，仅在本地玩家加入时显示一次性欢迎 Toast
+     * （自已删除的 {@code ClientToastHandler} 迁入）。</p>
+     */
+    @SubscribeEvent
+    public void onEntityJoinWorld(EntityJoinWorldEvent event) {
+        if (event.entity == Minecraft.getMinecraft().thePlayer && !welcomeShown) {
+            welcomeShown = true;
+            ToastOverlay.INSTANCE.getToastManager().addToast(new SimpleToast(
+                    "\u00a7bCatFrame", "Welcome!"
+            ).setShowSound(new ResourceLocation("random.orb")));
+        }
+    }
 
     /**
      * Advance every registered overlay once per client tick while the game is not paused.

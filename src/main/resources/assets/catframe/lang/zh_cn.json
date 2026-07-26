@@ -2,6 +2,8 @@
   "item.bluey_plushy.name": "布鲁伊玩偶",
   "ui.searching": "搜索一些什么呢？",
   "menu.paused": "暂停",
+  "toast.title": "\u00a7bCatFrame",
+  "toast.description": "欢迎使用 CatFrame",
   "commands.catframe.title.usage": "/title <目标> (clear|reset) 或 /title <目标> (title|subtitle|actionbar) <标题> 或 /title <目标> times <淡入> <停留> <淡出>",
   "commands.catframe.title.noPlayer": "客户端玩家尚未就绪",
   "commands.catframe.title.playersOnly": "/title 的目标只能是玩家",

@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render.extension;
 
+import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
@@ -76,31 +77,34 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
         }
 
         // ====== 状态驱动诊断：仅 phase/key/dt 签名变更时触发 ======
-        String dtSig = dt != null ? String.format("rot=%s t=%s s=%s",
-                dt.rotation != null ? java.util.Arrays.toString(dt.rotation) : "null",
-                dt.translation != null ? java.util.Arrays.toString(dt.translation) : "null",
-                dt.scale != null ? java.util.Arrays.toString(dt.scale) : "null") : "NULL";
-        boolean phaseChanged = (phase != lastDisplayPhase);
-        boolean keyChanged = (displayKey != null && !displayKey.equals(lastDisplayKey));
-        boolean dtChanged = !dtSig.equals(lastDtSig);
-        boolean shouldLog = (phaseChanged || keyChanged || dtChanged);
-        if (shouldLog) {
-            lastDisplayPhase = phase;
-            lastDisplayKey = displayKey;
-            lastDtSig = dtSig;
-            LOGGER.info(String.format("[DFXDBG] DisplayExt phase=%s key=%s dt=%s",
-                    phase.name(), displayKey, dtSig));
-        }
-        // ====== 诊断结束 ======
+        if (CatFrameConfig.shouldLogDebug()) {
+            String dtSig = dt != null ? String.format("rot=%s t=%s s=%s",
+                    dt.rotation != null ? java.util.Arrays.toString(dt.rotation) : "null",
+                    dt.translation != null ? java.util.Arrays.toString(dt.translation) : "null",
+                    dt.scale != null ? java.util.Arrays.toString(dt.scale) : "null") : "NULL";
+            boolean phaseChanged = (phase != lastDisplayPhase);
+            boolean keyChanged = (displayKey != null && !displayKey.equals(lastDisplayKey));
+            boolean dtChanged = !dtSig.equals(lastDtSig);
+            boolean shouldLog = (phaseChanged || keyChanged || dtChanged);
+            if (shouldLog) {
+                lastDisplayPhase = phase;
+                lastDisplayKey = displayKey;
+                lastDtSig = dtSig;
+                LOGGER.info(String.format("[DFXDBG] DisplayExt phase=%s key=%s dt=%s",
+                        phase.name(), displayKey, dtSig));
+            }
 
-        // 当 dt == null 时，使用基于 display key 的默认变换
-        if (dt == null) {
-            dt = getDefaultTransform(displayKey);
-            if (shouldLog) LOGGER.info(String.format("[DFXDBG] DisplayExt DEFAULT: key=%s dt=rot=%s t=%s s=%s",
-                    displayKey,
-                    java.util.Arrays.toString(dt.rotation),
-                    java.util.Arrays.toString(dt.translation),
-                    java.util.Arrays.toString(dt.scale)));
+            // ====== 诊断结束 ======
+
+            // 当 dt == null 时，使用基于 display key 的默认变换
+            if (dt == null) {
+                dt = getDefaultTransform(displayKey);
+                if (shouldLog) LOGGER.info(String.format("[DFXDBG] DisplayExt DEFAULT: key=%s dt=rot=%s t=%s s=%s",
+                        displayKey,
+                        java.util.Arrays.toString(dt.rotation),
+                        java.util.Arrays.toString(dt.translation),
+                        java.util.Arrays.toString(dt.scale)));
+            }
         }
 
         // 计算 display transform 矩阵（向量空间）

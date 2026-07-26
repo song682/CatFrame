@@ -82,6 +82,17 @@ public interface Toast extends Component {
     }
 
     /**
+     * The screen corner this Toast slides in from and stacks at.
+     * <p>此 Toast 滑入并堆叠所在的屏幕角落。</p>
+     *
+     * @return the corner, never null; defaults to {@link ToastCorner#TOP_RIGHT}
+     *         / 角落，不为 null；默认 {@link ToastCorner#TOP_RIGHT}
+     */
+    default ToastCorner getCorner() {
+        return ToastCorner.TOP_RIGHT;
+    }
+
+    /**
      * Get the Toast width.
      * <p>获取 Toast 宽度。</p>
      */
@@ -107,23 +118,35 @@ public interface Toast extends Component {
 
     /**
      * Calculate the X position (with slide-in animation).
-     * <p>计算 X 坐标(考虑滑入动画)。</p>
+     * Right corners slide in from the right edge, left corners from the left edge,
+     * as decided by {@link #getCorner()}.
+     * <p>计算 X 坐标(考虑滑入动画)。右侧角落从右缘滑入，左侧角落从左缘滑入，
+     * 由 {@link #getCorner()} 决定。</p>
      *
      * @param screenWidth   screen width / 屏幕宽度
      * @param visiblePortion visible portion (0.0-1.0) / 可见比例(0.0-1.0)
      */
     default float xPos(int screenWidth, float visiblePortion) {
-        return screenWidth - width() * visiblePortion;
+        return getCorner().isRight()
+                ? screenWidth - width() * visiblePortion
+                : width() * (visiblePortion - 1.0F);
     }
 
     /**
      * Calculate the Y position.
-     * <p>计算 Y 坐标。</p>
+     * Top corners stack slots downward from the top edge, bottom corners upward from
+     * the bottom edge, as decided by {@link #getCorner()}.
+     * <p>计算 Y 坐标。顶部角落的槽位从上缘向下堆叠，底部角落从下缘向上堆叠，
+     * 由 {@link #getCorner()} 决定。</p>
      *
+     * @param screenHeight   screen height / 屏幕高度
      * @param firstSlotIndex starting slot index / 起始槽位索引
      */
-    default float yPos(int firstSlotIndex) {
-        return firstSlotIndex * height();
+    default float yPos(int screenHeight, int firstSlotIndex) {
+        float slotOffset = firstSlotIndex * height();
+        return getCorner().isBottom()
+                ? screenHeight - height() - slotOffset
+                : slotOffset;
     }
 
     /**

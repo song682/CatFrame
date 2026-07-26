@@ -20,7 +20,7 @@ import java.util.*;
  * </p>
  */
 public class ToastManager {
-    /** Max simultaneous slot count / 最大同时显示的槽位数 */
+    /** Max simultaneous slot count per corner / 每个角落最大同时显示的槽位数 */
     private static final int MAX_SLOT_COUNT = 5;
 
     /** Slide-in/out animation duration (ms) / 滑入/滑出动画持续时间(毫秒) */
@@ -34,11 +34,17 @@ public class ToastManager {
     /** Queued Toast instances / 等待队列中的 Toast */
     private final Deque<Toast> queuedToasts = new ArrayDeque<>();
 
-    /** Occupied slot tracker / 已占用的槽位标记 */
-    private final BitSet occupiedSlots = new BitSet(MAX_SLOT_COUNT);
+    /**
+     * Occupied slot tracker, one independent pool per corner.
+     * <p>已占用的槽位标记 —— 每个角落一个独立槽位池。</p>
+     */
+    private final Map<ToastCorner, BitSet> occupiedSlots = new EnumMap<>(ToastCorner.class);
 
     public ToastManager(Minecraft mc) {
         this.mc = mc;
+        for (ToastCorner corner : ToastCorner.values()) {
+            occupiedSlots.put(corner, new BitSet(MAX_SLOT_COUNT));
+        }
     }
 
     /**
@@ -60,18 +66,20 @@ public class ToastManager {
             }
 
             if (instance.hasFinishedRendering) {
-                occupiedSlots.clear(instance.firstSlotIndex,
+                occupiedSlots.get(instance.toast.getCorner()).clear(instance.firstSlotIndex,
                     Math.min(instance.firstSlotIndex + instance.occupiedSlotCount, MAX_SLOT_COUNT));
                 return true;
             }
             return false;
         });
 
-        // Move from queue to visible list when slots free up
-        if (!queuedToasts.isEmpty() && getFreeSlotCount() > 0) {
+        // Move from queue to visible list when slots free up (per the toast's own corner)
+        // 槽位空出时从队列移入可见列表（按 Toast 自身角落的槽位池）
+        if (!queuedToasts.isEmpty()) {
             queuedToasts.removeIf(toast -> {
+                BitSet slots = occupiedSlots.get(toast.getCorner());
                 int occupiedSlotCount = toast.occupiedSlotCount();
-                int firstSlotIndex = findFreeSlotsIndex(occupiedSlotCount);
+                int firstSlotIndex = findFreeSlotsIndex(slots, occupiedSlotCount);
 
                 if (firstSlotIndex == -1) {
                     return false;
@@ -79,7 +87,7 @@ public class ToastManager {
 
                 ToastInstance instance = new ToastInstance(toast, firstSlotIndex, occupiedSlotCount);
                 visibleToasts.add(instance);
-                occupiedSlots.set(firstSlotIndex,
+                slots.set(firstSlotIndex,
                     Math.min(firstSlotIndex + occupiedSlotCount, MAX_SLOT_COUNT));
                 return true;
             });
@@ -99,14 +107,15 @@ public class ToastManager {
 
         ScaledResolution resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
         int screenWidth = resolution.getScaledWidth();
+        int screenHeight = resolution.getScaledHeight();
         FontRenderer fontRenderer = mc.fontRenderer;
 
         // Store mouse coordinates for Component render calls
         int mouseX = org.lwjgl.input.Mouse.getX() * screenWidth / mc.displayWidth;
-        int mouseY = resolution.getScaledHeight() - org.lwjgl.input.Mouse.getY() * resolution.getScaledHeight() / mc.displayHeight - 1;
+        int mouseY = screenHeight - org.lwjgl.input.Mouse.getY() * screenHeight / mc.displayHeight - 1;
 
         for (ToastInstance instance : visibleToasts) {
-            instance.render(screenWidth, fontRenderer, mouseX, mouseY);
+            instance.render(screenWidth, screenHeight, fontRenderer, mouseX, mouseY);
         }
     }
 
@@ -148,22 +157,24 @@ public class ToastManager {
      * <p>清空所有 Toast。</p>
      */
     public void clear() {
-        occupiedSlots.clear();
+        for (BitSet slots : occupiedSlots.values()) {
+            slots.clear();
+        }
         visibleToasts.clear();
         queuedToasts.clear();
     }
 
     /**
-     * Find consecutive free slots.
-     * <p>查找连续的空闲槽位。</p>
+     * Find consecutive free slots in the given corner's slot pool.
+     * <p>在给定角落的槽位池中查找连续的空闲槽位。</p>
      *
      * @return starting slot index, or -1 if none found
      */
-    private int findFreeSlotsIndex(int requiredCount) {
-        if (getFreeSlotCount() >= requiredCount) {
+    private static int findFreeSlotsIndex(BitSet slots, int requiredCount) {
+        if (MAX_SLOT_COUNT - slots.cardinality() >= requiredCount) {
             int consecutiveFreeSlotCount = 0;
             for (int i = 0; i < MAX_SLOT_COUNT; i++) {
-                if (occupiedSlots.get(i)) {
+                if (slots.get(i)) {
                     consecutiveFreeSlotCount = 0;
                 } else if (++consecutiveFreeSlotCount == requiredCount) {
                     return i + 1 - consecutiveFreeSlotCount;
@@ -171,14 +182,6 @@ public class ToastManager {
             }
         }
         return -1;
-    }
-
-    /**
-     * Get the number of free slots.
-     * <p>获取空闲槽位数量。</p>
-     */
-    private int getFreeSlotCount() {
-        return MAX_SLOT_COUNT - occupiedSlots.cardinality();
     }
 
     /**
@@ -265,7 +268,7 @@ public class ToastManager {
             }
         }
 
-        public void render(int screenWidth, FontRenderer fontRenderer, int mouseX, int mouseY) {
+        public void render(int screenWidth, int screenHeight, FontRenderer fontRenderer, int mouseX, int mouseY) {
             if (hasFinishedRendering) {
                 return;
             }
@@ -273,7 +276,7 @@ public class ToastManager {
             GL11.glPushMatrix();
             GL11.glTranslatef(
                 toast.xPos(screenWidth, visiblePortion),
-                toast.yPos(firstSlotIndex),
+                toast.yPos(screenHeight, firstSlotIndex),
                 0.0F
             );
 

@@ -36,14 +36,16 @@ import net.minecraft.client.Minecraft;
  *
  * <h3>布局说明 / Layout note</h3>
  * <p>
- * {@link ToastManager} 自带右上角槽位布局（滑入动画 X 坐标依赖屏幕宽度），因此本覆盖层
- * 向 {@link OverlayManager} 报告 0×0 尺寸——锚点解析结果被有意忽略，实际定位完全由
- * {@link ToastManager} 负责。
+ * {@link ToastManager} 自带四角槽位布局（每个 Toast 按 {@link ToastCorner} 选择滑出角落，
+ * 默认右上；滑入动画坐标依赖屏幕尺寸），因此本覆盖层向 {@link OverlayManager} 报告
+ * 0×0 尺寸——锚点解析结果被有意忽略，实际定位完全由 {@link ToastManager} 负责。
  * </p>
  * <p>
- * {@link ToastManager} performs its own top-right slot layout (the slide-in X depends on
- * screen width), so this overlay reports a 0×0 size — the resolved anchor position is
- * intentionally ignored and positioning stays fully owned by {@link ToastManager}.
+ * {@link ToastManager} performs its own four-corner slot layout (each Toast picks its
+ * slide-in corner via {@link ToastCorner}, defaulting to top-right; the slide animation
+ * depends on screen size), so this overlay reports a 0×0 size — the resolved anchor
+ * position is intentionally ignored and positioning stays fully owned by
+ * {@link ToastManager}.
  * </p>
  */
 public class ToastOverlay extends AbstractComponent implements Overlay {

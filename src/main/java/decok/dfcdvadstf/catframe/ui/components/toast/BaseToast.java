@@ -51,6 +51,9 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
     /** Slide-out sound, null = silent / 滑出音效，null = 静音 */
     protected ResourceLocation hideSound;
 
+    /** Slide-in corner / 滑入角落 */
+    protected ToastCorner corner = ToastCorner.TOP_RIGHT;
+
     /** Last fully-visible duration from update() / 最近一次 update() 的完全可见时长 */
     private long lastFullyVisibleForMs;
 
@@ -111,6 +114,26 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
     @Override
     public ResourceLocation getHideSound() {
         return hideSound;
+    }
+
+    // ──── Corner API ────
+
+    /**
+     * Set the screen corner this Toast slides in from and stacks at.
+     * <p>设置此 Toast 滑入并堆叠所在的屏幕角落。</p>
+     *
+     * @param corner the corner; null falls back to {@link ToastCorner#TOP_RIGHT}
+     *               / 角落；null 则回退到 {@link ToastCorner#TOP_RIGHT}
+     * @return this instance for chaining / 返回自身以支持链式调用
+     */
+    public BaseToast setCorner(ToastCorner corner) {
+        this.corner = corner != null ? corner : ToastCorner.TOP_RIGHT;
+        return this;
+    }
+
+    @Override
+    public ToastCorner getCorner() {
+        return corner;
     }
 
     // ──── Constructors ────

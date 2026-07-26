@@ -8,6 +8,7 @@ import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateRoot;
+import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 
 import java.io.InputStream;
@@ -28,49 +29,6 @@ public class NamespaceLoadTask {
     private static final Gson BLOCKSTATE_GSON = BlockstateJson.createGson();
     private static final Gson GSON = new Gson();
     private static final Gson ITEM_STATE_GSON = ItemStateNode.createGson();
-
-    /** minecraft namespace 的常见方块列表（从 VMMDataLoader 提取） */
-    private static final String[] COMMON_MINECRAFT_BLOCKS = {
-            "stone", "dirt", "grass", "cobblestone", "planks", "sand", "gravel",
-            "gold_ore", "iron_ore", "coal_ore", "log", "log2", "leaves", "leaves2", "glass",
-            "lapis_ore", "lapis_block", "sandstone", "wool", "gold_block",
-            "iron_block", "brick_block", "tnt", "bookshelf", "mossy_cobblestone",
-            "obsidian", "diamond_ore", "diamond_block", "crafting_table",
-            "furnace", "redstone_ore", "ice", "snow", "clay", "netherrack",
-            "soul_sand", "glowstone", "stonebrick", "melon_block", "nether_brick",
-            "end_stone", "emerald_ore", "emerald_block", "quartz_block",
-            "hardened_clay", "stained_hardened_clay", "hay_block", "coal_block",
-            "cobblestone_wall", "stained_glass", "trapdoor",
-            "torch", "redstone_torch", "unlit_redstone_torch", "redstone_wire",
-            "unpowered_repeater", "powered_repeater",
-            "unpowered_comparator", "powered_comparator",
-            "redstone_lamp", "lit_redstone_lamp", "redstone_block",
-            "cauldron", "double_stone_slab", "stone_slab",
-            "double_wooden_slab", "wooden_slab", "cactus", "anvil",
-            "sponge", "noteblock", "jukebox", "mycelium", "packed_ice",
-            "quartz_ore", "command_block", "beacon",
-            "monster_egg", "mob_spawner", "cake", "glass_pane", "stained_glass_pane",
-            "dispenser", "dropper", "piston", "sticky_piston",
-            "lit_furnace", "pumpkin", "lit_pumpkin",
-            "sapling", "tallgrass", "deadbush", "yellow_flower", "red_flower",
-            "brown_mushroom", "red_mushroom",
-            "carrots", "potatoes", "cocoa", "double_plant", "waterlily", "vine",
-            "brown_mushroom_block", "red_mushroom_block",
-            "lever", "stone_button", "wooden_button",
-            "stone_pressure_plate", "wooden_pressure_plate",
-            "light_weighted_pressure_plate", "heavy_weighted_pressure_plate",
-            "daylight_detector", "tripwire_hook", "hopper",
-            "rail", "golden_rail", "detector_rail", "activator_rail",
-            "oak_stairs", "stone_stairs", "brick_stairs", "stone_brick_stairs",
-            "sandstone_stairs", "nether_brick_stairs",
-            "spruce_stairs", "birch_stairs", "jungle_stairs",
-            "quartz_stairs", "acacia_stairs", "dark_oak_stairs",
-            "fence", "fence_gate", "nether_brick_fence",
-            "web", "snow_layer", "carpet", "farmland", "ladder",
-            "enchanting_table", "ender_chest", "end_portal_frame",
-            "dragon_egg", "iron_bars", "trapped_chest", "chest",
-            "bedrock"
-    };
 
     /**
      * 执行单个 namespace 的数据加载。
@@ -167,12 +125,24 @@ public class NamespaceLoadTask {
             }
         }
 
-        // Try common vanilla block names if minecraft namespace
-        if (namespace.equals("minecraft") && localBlockstates.isEmpty()) {
-            for (String name : COMMON_MINECRAFT_BLOCKS) {
-                BlockstateJson bs = loadSingleBlockstate(namespace, name, blockTextures);
-                if (bs != null) localBlockstates.put(name, bs);
-            }
+        // Block registry traversal auto-discovery (mirrors the items/ discovery path):
+        // try loading blockstates/{name}.json for every registered block in this namespace.
+        // Replaces the former hardcoded COMMON_MINECRAFT_BLOCKS list and also fixes
+        // discovery for non-minecraft namespaces that ship no model_mappings.json.
+        // Block 注册表遍历自动发现（与 items/ 的发现方式一致）：
+        // 对该 namespace 下每个已注册方块尝试加载 blockstates/{name}.json。
+        // 取代原先硬编码的 COMMON_MINECRAFT_BLOCKS 列表，并同时修复无 model_mappings.json
+        // 的第三方 namespace 的 blockstate 发现缺口。
+        for (Object obj : Block.blockRegistry) {
+            if (obj == null) continue;
+            String registryName = Block.blockRegistry.getNameForObject(obj);
+            if (registryName == null) continue;
+            String ns = registryName.contains(":") ? registryName.substring(0, registryName.indexOf(':')) : "minecraft";
+            if (!ns.equals(namespace)) continue;
+            String name = registryName.contains(":") ? registryName.substring(registryName.indexOf(':') + 1) : registryName;
+            if (localBlockstates.containsKey(name)) continue;
+            BlockstateJson bs = loadSingleBlockstate(namespace, name, blockTextures);
+            if (bs != null) localBlockstates.put(name, bs);
         }
     }
 
@@ -197,11 +167,11 @@ public class NamespaceLoadTask {
     /**
      * 加载 items/ 目录下的 ItemState 决策树 JSON。
      * <p>
-     * 支持三种发现方式（按优先级）：
+     * 支持两种发现方式（按优先级）：
      * <ol>
-     *   <li>对于 minecraft namespace，从 model_mappings.json 的 items 字段推断</li>
      *   <li>遍历 Item 注册表，对每个属于该 namespace 的物品尝试加载 {@code items/{name}.json}<br>
      *       （与高版本 Minecraft 行为一致：有则用，无则跳过）</li>
+     *   <li>补充：从 model_mappings.json 的 items 字段推断（覆盖未注册到 Item 注册表的特殊情况）</li>
      * </ol>
      *
      * @param namespace    命名空间

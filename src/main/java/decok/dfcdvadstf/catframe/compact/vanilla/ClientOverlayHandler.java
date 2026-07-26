@@ -5,6 +5,7 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.ui.components.toast.SimpleToast;
 import decok.dfcdvadstf.catframe.ui.components.toast.ToastOverlay;
 import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
@@ -56,11 +57,16 @@ public class ClientOverlayHandler {
     /**
      * Triggered when any entity joins a world. We filter for the local player only and
      * show the one-shot welcome Toast (migrated from the removed {@code ClientToastHandler}).
+     * Gated by the {@code welcomeToast} config option — skipped entirely when disabled.
      * <p>任意实体加入世界时触发，仅在本地玩家加入时显示一次性欢迎 Toast
-     * （自已删除的 {@code ClientToastHandler} 迁入）。</p>
+     * （自已删除的 {@code ClientToastHandler} 迁入）。
+     * 受 {@code welcomeToast} 配置项控制，禁用时完全跳过。</p>
      */
     @SubscribeEvent
     public void onEntityJoinWorld(EntityJoinWorldEvent event) {
+        if (!CatFrame.config.welcomeToast) {
+            return;
+        }
         if (event.entity == Minecraft.getMinecraft().thePlayer && !welcomeShown) {
             welcomeShown = true;
             ToastOverlay.INSTANCE.getToastManager().addToast(new SimpleToast(

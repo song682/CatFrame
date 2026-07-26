@@ -15,6 +15,7 @@ import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesInHandTintPro
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
 import decok.dfcdvadstf.catframe.ui.components.ActionBarOverlay;
+import decok.dfcdvadstf.catframe.ui.components.TitleOverlay;
 import decok.dfcdvadstf.catframe.ui.components.toast.ToastOverlay;
 import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
 import net.minecraftforge.common.MinecraftForge;
@@ -32,10 +33,11 @@ public class ClientProxy extends CommonProxy {
 
         // Bridge OverlayManager into the HUD render/tick loop and the screen draw pass
         // (pure Forge; also hosts the welcome-toast trigger), then register the ActionBar
-        // as a HUD-context overlay and the Toast system as a BOTH-context overlay
-        // (HUD + any open screen, main menu included).
+        // and the centred Title as HUD-context overlays and the Toast system as a
+        // BOTH-context overlay (HUD + any open screen, main menu included).
         MinecraftForge.EVENT_BUS.register(new ClientOverlayHandler());
         OverlayManager.INSTANCE.register(ActionBarOverlay.INSTANCE);
+        OverlayManager.INSTANCE.register(TitleOverlay.INSTANCE);
         OverlayManager.INSTANCE.register(ToastOverlay.INSTANCE);
 
         VanillaStateDefinitions.registerVanillaStateDefinitions();

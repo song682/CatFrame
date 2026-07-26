@@ -495,6 +495,65 @@ public final class Style {
             return new TextColor(LEGACY_COLORS[idx], format.getFriendlyName());
         }
 
+        /**
+         * Parse a colour string — either a named legacy colour (e.g. {@code "red"},
+         * {@code "dark_purple"}) or a hex value (e.g. {@code "#FF00FF"}), matching the
+         * raw JSON text format's {@code color} field. Returns {@code null} if unparseable.
+         * <p>解析颜色字符串 —— 支持旧版颜色名（如 {@code "red"}、{@code "dark_purple"}）
+         * 或十六进制（如 {@code "#FF00FF"}），对应原始 JSON 文本格式的 {@code color} 字段。
+         * 无法解析时返回 {@code null}。</p>
+         */
+        @Nullable
+        public static TextColor parseColor(@Nullable String value) {
+            if (value == null || value.isEmpty()) {
+                return null;
+            }
+            if (value.charAt(0) == '#') {
+                try {
+                    return fromRgb(Integer.parseInt(value.substring(1), 16) & 0xFFFFFF);
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+            }
+            try {
+                TextFormat format = TextFormat.valueOf(value.toUpperCase(java.util.Locale.ROOT));
+                if (format.getColorCode() >= 0) {
+                    return fromLegacyFormat(format);
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Unknown colour name — fall through to null. / 未知颜色名——返回 null。
+            }
+            return null;
+        }
+
+        /**
+         * Nearest legacy colour index (0-15) for this colour — exact match preferred,
+         * otherwise the smallest squared RGB distance wins. Used to degrade arbitrary
+         * RGB colours to {@code §}-code colours the 1.7.10 FontRenderer understands.
+         * <p>此颜色最接近的旧版颜色索引（0-15）—— 优先精确匹配，否则取 RGB 平方距离最小者。
+         * 用于把任意 RGB 颜色降级为 1.7.10 FontRenderer 能识别的 {@code §} 颜色码。</p>
+         */
+        public int toLegacyIndex() {
+            int target = rgb & 0xFFFFFF;
+            int best = 15; // default white / 默认白色
+            long bestDist = Long.MAX_VALUE;
+            for (int i = 0; i < LEGACY_COLORS.length; i++) {
+                int c = LEGACY_COLORS[i];
+                if (c == target) {
+                    return i;
+                }
+                long dr = ((c >> 16) & 0xFF) - ((target >> 16) & 0xFF);
+                long dg = ((c >> 8) & 0xFF) - ((target >> 8) & 0xFF);
+                long db = (c & 0xFF) - (target & 0xFF);
+                long dist = dr * dr + dg * dg + db * db;
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = i;
+                }
+            }
+            return best;
+        }
+
         public int getRgb() {
             return rgb;
         }

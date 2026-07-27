@@ -460,11 +460,13 @@ public final class VanillaStateDefinitions {
         singleVariant(Blocks.tallgrass, TALLGRASS_VARIANT,
                 meta -> new Comparable<?>[]{TALLGRASS_VARIANT.getValues().get(meta == 1 ? 0 : 1)});
 
-        // double_plant: variant[meta&7] + half[(meta&8)==0?lower:upper]
+        // double_plant: variant[min(meta&7, 5)] + half[(meta&8)==0?lower:upper]
+        // Clamp to 5: only 6 variants exist but meta&7 ranges 0~7 (vanilla BlockDoublePlant clamps too)
+        // 钳制到 5：变体只有 6 种，但 meta&7 范围是 0~7（原版 BlockDoublePlant 同样做了钳制）
         CatStateDefinition<Block> doublePlantDef = new CatStateDefinition.Builder<Block>(Blocks.double_plant)
                 .add(DOUBLE_PLANT_VARIANT, PLANT_HALF)
                 .metaCodec(meta -> new Comparable<?>[]{
-                        DOUBLE_PLANT_VARIANT.getValues().get(meta & 7),
+                        DOUBLE_PLANT_VARIANT.getValues().get(Math.min(meta & 7, 5)),
                         PLANT_HALF.getValues().get((meta & 8) == 0 ? 0 : 1)})
                 .create();
         CatModels.register(Blocks.double_plant).states(doublePlantDef).register();

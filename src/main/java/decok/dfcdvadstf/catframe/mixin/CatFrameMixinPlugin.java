@@ -31,7 +31,8 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
         return Arrays.asList(
             "middle.MixinRenderBlocks",
             "middle.MixinWorldRenderer",
-            "middle.MixinGuiScreen"
+            "middle.MixinGuiScreen",
+            "middle.MixinGuiScreenEventBridge"
         );
     }
 

@@ -9,6 +9,7 @@
     "middle.MixinGuiScreen"
   ],
   "client": [
+    "middle.MixinGuiScreenEventBridge",
     "middle.MixinRenderBlocks",
     "middle.MixinWorldRenderer"
   ],

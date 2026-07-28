@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.model.state.property;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemPotion;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -146,6 +147,19 @@ public class ItemPropertyRegistry {
             EntityPlayer player = getPlayerSafe();
             return player != null && mc.renderViewEntity == player;
         });
+
+        // catframe:potion_splash — CatFrame 扩展属性：1.7.10 的喷溅药水不是独立物品，
+        // 而是同一 ItemPotion 上 damage 值的 16384 位（ItemPotion.isSplash）。
+        // 高版本用独立的 splash_potion 物品区分，这里以布尔属性形式暴露给
+        // items/ 决策树做喝的瓶 / 喷溅瓶模型分支。
+        // CatFrame extension: 1.7.10 splash potions are the 16384 damage bit on the
+        // same ItemPotion (ItemPotion.isSplash) rather than a separate item like in
+        // modern versions; exposed as a boolean so the items/ decision tree can
+        // branch between the drinkable and splash bottle models.
+        register("catframe:potion_splash", (stack, phase) ->
+                stack != null && stack.getItem() instanceof ItemPotion
+                        && ItemPotion.isSplash(stack.getItemDamage())
+                        ? Boolean.TRUE : Boolean.FALSE);
 
         // ==================== 数值属性 (10) ====================
 

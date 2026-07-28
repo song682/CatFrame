@@ -1,10 +1,20 @@
 {
     "model": {
-        "type": "minecraft:model",
-        "model": "minecraft:item/potion",
-        "tints": [
-            { "type": "minecraft:constant", "value": 16777215 },
-            { "type": "minecraft:potion" }
-        ]
+        "type": "minecraft:condition",
+        "property": "catframe:potion_splash",
+        "on_true": {
+            "type": "minecraft:model",
+            "model": "minecraft:item/splash_potion",
+            "tints": [
+                { "type": "minecraft:potion" }
+            ]
+        },
+        "on_false": {
+            "type": "minecraft:model",
+            "model": "minecraft:item/potion",
+            "tints": [
+                { "type": "minecraft:potion" }
+            ]
+        }
     }
 }

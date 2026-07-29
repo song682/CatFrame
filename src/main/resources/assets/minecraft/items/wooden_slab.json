@@ -1,18 +1,18 @@
 {
     "model": {
-        "type": "minecraft:exact_match",
-        "property": "minecraft:damage",
+        "type": "minecraft:select",
+        "property": "catframe:meta",
         "fallback": {
             "type": "minecraft:model",
             "model": "minecraft:block/slab_oak"
         },
-        "cases": {
-            "0": {"type": "minecraft:model", "model": "minecraft:block/slab_oak"},
-            "1": {"type": "minecraft:model", "model": "minecraft:block/slab_spruce"},
-            "2": {"type": "minecraft:model", "model": "minecraft:block/slab_birch"},
-            "3": {"type": "minecraft:model", "model": "minecraft:block/slab_jungle"},
-            "4": {"type": "minecraft:model", "model": "minecraft:block/slab_acacia"},
-            "5": {"type": "minecraft:model", "model": "minecraft:block/slab_dark_oak"}
-        }
+        "cases": [
+            {"when": "0", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_oak"}},
+            {"when": "1", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_spruce"}},
+            {"when": "2", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_birch"}},
+            {"when": "3", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_jungle"}},
+            {"when": "4", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_acacia"}},
+            {"when": "5", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_dark_oak"}}
+        ]
     }
 }

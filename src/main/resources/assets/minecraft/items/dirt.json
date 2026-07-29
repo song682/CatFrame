@@ -1,11 +1,11 @@
 {
     "model": {
-        "type": "minecraft:exact_match",
-        "property": "minecraft:damage",
+        "type": "minecraft:select",
+        "property": "catframe:meta",
         "fallback": { "type": "minecraft:model", "model": "minecraft:block/dirt" },
-        "cases": {
-            "0": { "type": "minecraft:model", "model": "minecraft:block/dirt" },
-            "2": { "type": "minecraft:model", "model": "minecraft:block/podzol" }
-        }
+        "cases": [
+            {"when": "0", "model": { "type": "minecraft:model", "model": "minecraft:block/dirt" }},
+            {"when": "2", "model": { "type": "minecraft:model", "model": "minecraft:block/podzol" }}
+        ]
     }
 }

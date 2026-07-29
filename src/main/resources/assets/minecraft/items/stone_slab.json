@@ -1,20 +1,20 @@
 {
     "model": {
-        "type": "minecraft:exact_match",
-        "property": "minecraft:damage",
+        "type": "minecraft:select",
+        "property": "catframe:meta",
         "fallback": {
             "type": "minecraft:model",
             "model": "minecraft:block/slab_stone"
         },
-        "cases": {
-            "0": {"type": "minecraft:model", "model": "minecraft:block/slab_stone"},
-            "1": {"type": "minecraft:model", "model": "minecraft:block/slab_sandstone"},
-            "2": {"type": "minecraft:model", "model": "minecraft:block/slab_wood"},
-            "3": {"type": "minecraft:model", "model": "minecraft:block/slab_cobblestone"},
-            "4": {"type": "minecraft:model", "model": "minecraft:block/slab_brick"},
-            "5": {"type": "minecraft:model", "model": "minecraft:block/slab_stone_brick"},
-            "6": {"type": "minecraft:model", "model": "minecraft:block/slab_nether_brick"},
-            "7": {"type": "minecraft:model", "model": "minecraft:block/slab_quartz"}
-        }
+        "cases": [
+            {"when": "0", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_stone"}},
+            {"when": "1", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_sandstone"}},
+            {"when": "2", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_wood"}},
+            {"when": "3", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_cobblestone"}},
+            {"when": "4", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_brick"}},
+            {"when": "5", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_stone_brick"}},
+            {"when": "6", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_nether_brick"}},
+            {"when": "7", "model": {"type": "minecraft:model", "model": "minecraft:block/slab_quartz"}}
+        ]
     }
 }

@@ -166,6 +166,17 @@ public class ItemPropertyRegistry {
         register("damage", (stack, phase) ->
                 stack != null ? stack.getItemDamage() : 0);
 
+        // catframe:meta — CatFrame 扩展属性：1.7.10 的 metadata（子类型 ID）。
+        // 与 minecraft:damage 数值相同，但语义上专用于 meta 子类型精确匹配
+        // （wool/log/dye 等未扁平化物品），让 minecraft:damage 回归 wiki
+        // 正统的耐久语义（range_dispatch）。
+        // CatFrame extension: the 1.7.10 metadata (subtype id). Same value as
+        // minecraft:damage, but semantically dedicated to exact meta subtype
+        // matching (unflattened items like wool/log/dye) so minecraft:damage
+        // keeps its wiki durability semantics (range_dispatch).
+        register("catframe:meta", (stack, phase) ->
+                stack != null ? stack.getItemDamage() : 0);
+
         register("count", (stack, phase) ->
                 stack != null ? stack.stackSize : 0);
 

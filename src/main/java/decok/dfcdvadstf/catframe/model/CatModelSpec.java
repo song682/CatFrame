@@ -8,11 +8,12 @@ import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
-import decok.dfcdvadstf.catframe.model.state.property.ItemProperties;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.block.Block;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,7 @@ public final class CatModelSpec {
     public ResidentStateModel.DynamicPropertyResolver dynamic;
     public boolean connectionMultipart = false;
     public boolean fullModel = true;
-    /** 是否从 blockstate 的 16 个静态状态导出物品 {@code damage} 决策树。 */
+    /** 是否从 blockstate 的 16 个静态状态导出物品 {@code catframe:meta} 决策树。 */
     public boolean itemFromBlockstate = false;
 
     public CatModelSpec(Block block) {
@@ -71,28 +72,30 @@ public final class CatModelSpec {
     }
 
     /**
-     * 从 blockstate 的静态状态导出物品决策树：{@code damage} → 模型路径。
+     * 从 blockstate 的静态状态导出物品决策树：{@code catframe:meta} → 模型路径。
      * <p>
      * 遍历 meta 0-15，用 {@link #def}（及 {@link #redirect}）解析出该
-     * meta 对应的 blockstate variant 模型路径，构建 {@link ItemStateNode.ExactMatchNode}
-     * （key = {@link ItemProperties#DAMAGE} 的名称 {@code "damage"}）。未命中的 meta 走
-     * fallback（{@code builtin/missing}）。
+     * meta 对应的 blockstate variant 模型路径，构建 {@link ItemStateNode.SelectNode}
+     * （property = CatFrame 扩展属性 {@code "catframe:meta"}，即 1.7.10 metadata）。
+     * 未命中的 meta 走 fallback（{@code builtin/missing}）。
      *
      * @param bs 该方块的 blockstate JSON
      * @return 物品决策树根节点；无法导出任何模型时返回 {@code null}
      */
     @Nullable
     public ItemStateNode buildItemNode(@Nullable BlockstateJson bs) {
-        Map<String, ItemStateNode> cases = new LinkedHashMap<>();
+        List<ItemStateNode.SelectCase> cases = new ArrayList<>();
         for (int meta = 0; meta < 16; meta++) {
             String model = resolveModelPath(meta, bs);
             if (model != null) {
-                cases.put(String.valueOf(meta), new ItemStateNode.ModelLeaf(model));
+                cases.add(new ItemStateNode.SelectCase(
+                        Collections.singleton(String.valueOf(meta)),
+                        new ItemStateNode.ModelLeaf(model)));
             }
         }
         if (cases.isEmpty()) return null;
         ItemStateNode fallback = new ItemStateNode.ModelLeaf("builtin/missing");
-        return new ItemStateNode.ExactMatchNode(ItemProperties.DAMAGE.getName(), cases, fallback);
+        return new ItemStateNode.SelectNode("catframe:meta", cases, fallback);
     }
 
     // ==================== 内部：静态属性 → variant 模型路径 ====================

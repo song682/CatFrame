@@ -1,28 +1,28 @@
 {
     "model": {
-        "type": "minecraft:exact_match",
-        "property": "minecraft:damage",
+        "type": "minecraft:select",
+        "property": "catframe:meta",
         "fallback": {
             "type": "minecraft:model",
             "model": "minecraft:block/white_carpet"
         },
-        "cases": {
-            "0": {"type": "minecraft:model", "model": "minecraft:block/white_carpet"},
-            "1": {"type": "minecraft:model", "model": "minecraft:block/orange_carpet"},
-            "2": {"type": "minecraft:model", "model": "minecraft:block/magenta_carpet"},
-            "3": {"type": "minecraft:model", "model": "minecraft:block/light_blue_carpet"},
-            "4": {"type": "minecraft:model", "model": "minecraft:block/yellow_carpet"},
-            "5": {"type": "minecraft:model", "model": "minecraft:block/lime_carpet"},
-            "6": {"type": "minecraft:model", "model": "minecraft:block/pink_carpet"},
-            "7": {"type": "minecraft:model", "model": "minecraft:block/gray_carpet"},
-            "8": {"type": "minecraft:model", "model": "minecraft:block/light_gray_carpet"},
-            "9": {"type": "minecraft:model", "model": "minecraft:block/cyan_carpet"},
-            "10": {"type": "minecraft:model", "model": "minecraft:block/purple_carpet"},
-            "11": {"type": "minecraft:model", "model": "minecraft:block/blue_carpet"},
-            "12": {"type": "minecraft:model", "model": "minecraft:block/brown_carpet"},
-            "13": {"type": "minecraft:model", "model": "minecraft:block/green_carpet"},
-            "14": {"type": "minecraft:model", "model": "minecraft:block/red_carpet"},
-            "15": {"type": "minecraft:model", "model": "minecraft:block/black_carpet"}
-        }
+        "cases": [
+            {"when": "0", "model": {"type": "minecraft:model", "model": "minecraft:block/white_carpet"}},
+            {"when": "1", "model": {"type": "minecraft:model", "model": "minecraft:block/orange_carpet"}},
+            {"when": "2", "model": {"type": "minecraft:model", "model": "minecraft:block/magenta_carpet"}},
+            {"when": "3", "model": {"type": "minecraft:model", "model": "minecraft:block/light_blue_carpet"}},
+            {"when": "4", "model": {"type": "minecraft:model", "model": "minecraft:block/yellow_carpet"}},
+            {"when": "5", "model": {"type": "minecraft:model", "model": "minecraft:block/lime_carpet"}},
+            {"when": "6", "model": {"type": "minecraft:model", "model": "minecraft:block/pink_carpet"}},
+            {"when": "7", "model": {"type": "minecraft:model", "model": "minecraft:block/gray_carpet"}},
+            {"when": "8", "model": {"type": "minecraft:model", "model": "minecraft:block/light_gray_carpet"}},
+            {"when": "9", "model": {"type": "minecraft:model", "model": "minecraft:block/cyan_carpet"}},
+            {"when": "10", "model": {"type": "minecraft:model", "model": "minecraft:block/purple_carpet"}},
+            {"when": "11", "model": {"type": "minecraft:model", "model": "minecraft:block/blue_carpet"}},
+            {"when": "12", "model": {"type": "minecraft:model", "model": "minecraft:block/brown_carpet"}},
+            {"when": "13", "model": {"type": "minecraft:model", "model": "minecraft:block/green_carpet"}},
+            {"when": "14", "model": {"type": "minecraft:model", "model": "minecraft:block/red_carpet"}},
+            {"when": "15", "model": {"type": "minecraft:model", "model": "minecraft:block/black_carpet"}}
+        ]
     }
 }

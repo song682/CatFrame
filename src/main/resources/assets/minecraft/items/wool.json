@@ -1,25 +1,25 @@
 {
     "model": {
-        "type": "minecraft:exact_match",
-        "property": "minecraft:damage",
+        "type": "minecraft:select",
+        "property": "catframe:meta",
         "fallback": { "type": "minecraft:model", "model": "minecraft:block/white_wool" },
-        "cases": {
-            "0": { "type": "minecraft:model", "model": "minecraft:block/white_wool" },
-            "1": { "type": "minecraft:model", "model": "minecraft:block/orange_wool" },
-            "2": { "type": "minecraft:model", "model": "minecraft:block/magenta_wool" },
-            "3": { "type": "minecraft:model", "model": "minecraft:block/light_blue_wool" },
-            "4": { "type": "minecraft:model", "model": "minecraft:block/yellow_wool" },
-            "5": { "type": "minecraft:model", "model": "minecraft:block/lime_wool" },
-            "6": { "type": "minecraft:model", "model": "minecraft:block/pink_wool" },
-            "7": { "type": "minecraft:model", "model": "minecraft:block/gray_wool" },
-            "8": { "type": "minecraft:model", "model": "minecraft:block/light_gray_wool" },
-            "9": { "type": "minecraft:model", "model": "minecraft:block/cyan_wool" },
-            "10": { "type": "minecraft:model", "model": "minecraft:block/purple_wool" },
-            "11": { "type": "minecraft:model", "model": "minecraft:block/blue_wool" },
-            "12": { "type": "minecraft:model", "model": "minecraft:block/brown_wool" },
-            "13": { "type": "minecraft:model", "model": "minecraft:block/green_wool" },
-            "14": { "type": "minecraft:model", "model": "minecraft:block/red_wool" },
-            "15": { "type": "minecraft:model", "model": "minecraft:block/black_wool" }
-        }
+        "cases": [
+            {"when": "0", "model": { "type": "minecraft:model", "model": "minecraft:block/white_wool" }},
+            {"when": "1", "model": { "type": "minecraft:model", "model": "minecraft:block/orange_wool" }},
+            {"when": "2", "model": { "type": "minecraft:model", "model": "minecraft:block/magenta_wool" }},
+            {"when": "3", "model": { "type": "minecraft:model", "model": "minecraft:block/light_blue_wool" }},
+            {"when": "4", "model": { "type": "minecraft:model", "model": "minecraft:block/yellow_wool" }},
+            {"when": "5", "model": { "type": "minecraft:model", "model": "minecraft:block/lime_wool" }},
+            {"when": "6", "model": { "type": "minecraft:model", "model": "minecraft:block/pink_wool" }},
+            {"when": "7", "model": { "type": "minecraft:model", "model": "minecraft:block/gray_wool" }},
+            {"when": "8", "model": { "type": "minecraft:model", "model": "minecraft:block/light_gray_wool" }},
+            {"when": "9", "model": { "type": "minecraft:model", "model": "minecraft:block/cyan_wool" }},
+            {"when": "10", "model": { "type": "minecraft:model", "model": "minecraft:block/purple_wool" }},
+            {"when": "11", "model": { "type": "minecraft:model", "model": "minecraft:block/blue_wool" }},
+            {"when": "12", "model": { "type": "minecraft:model", "model": "minecraft:block/brown_wool" }},
+            {"when": "13", "model": { "type": "minecraft:model", "model": "minecraft:block/green_wool" }},
+            {"when": "14", "model": { "type": "minecraft:model", "model": "minecraft:block/red_wool" }},
+            {"when": "15", "model": { "type": "minecraft:model", "model": "minecraft:block/black_wool" }}
+        ]
     }
 }

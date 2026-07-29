@@ -133,8 +133,12 @@ public class ItemPropertyRegistry {
             if (stack == null) return Boolean.FALSE;
             EntityPlayer player = getPlayerSafe();
             if (player == null) return Boolean.FALSE;
-            // 1.7.10: 检查玩家是否有鱼钩实体
-            return player.fishEntity != null;
+            // 1.7.10: 检查玩家是否有鱼钩实体；同时校验 isDead，
+            // 防止鱼钩自灭路径（超距/切换手持）未清空字段导致的"幽灵抛竿"状态
+            // 1.7.10: check the player's hook entity; also guard isDead because some
+            // hook self-removal paths (out of range / item switch) kill the entity
+            // without clearing the field, leaving a stale "ghost cast" state
+            return player.fishEntity != null && !player.fishEntity.isDead;
         });
 
         // keybind_down — 需要指定键位，占位返回 false

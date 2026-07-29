@@ -60,6 +60,12 @@ public final class ComponentMigration {
     public static void writeToNBT(NBTTagCompound tag, DataComponentMap components) {
         if (tag == null) return;
 
+        // Custom data first: it now spans the WHOLE vanilla NBT, so merge it as the
+        // base layer, then let typed components overwrite their own authoritative keys.
+        // 先写自定义数据：其作用域已扩大到整个原版 NBT，作为基底层先合并，
+        // 再由各类型化组件覆写各自拥有的权威键。
+        writeCustomData(tag, components);
+
         writeEnchantments(tag, components);
         writeDisplayName(tag, components);
         writeLore(tag, components);
@@ -68,7 +74,6 @@ public final class ComponentMigration {
         writeUnbreakable(tag, components);
         writeRepairCost(tag, components);
         writeBlockEntityTag(tag, components);
-        writeCustomData(tag, components);
     }
 
     /**
@@ -145,6 +150,8 @@ public final class ComponentMigration {
     }
 
     private static void readCustomData(NBTTagCompound tag, DataComponentMap.Builder builder) {
+        // Full-scope: the component captures the entire vanilla stackTagCompound.
+        // 全量作用域：组件捕获整个原版 stackTagCompound。
         CustomData custom = CustomData.SERIALIZER.read(tag);
         if (custom != null && !custom.isEmpty()) {
             builder.set(RegisteredComponents.CUSTOM_DATA, custom);
@@ -229,11 +236,13 @@ public final class ComponentMigration {
     }
 
     private static void writeCustomData(NBTTagCompound tag, DataComponentMap components) {
+        // Merge the full-NBT snapshot into the root tag; typed writers run afterwards
+        // and remain the source of truth for their own keys.
+        // 将全量 NBT 快照合并到根标签；类型化写入器随后执行，
+        // 对各自的键保持权威。
         CustomData custom = components.get(RegisteredComponents.CUSTOM_DATA);
         if (custom != null && !custom.isEmpty()) {
             CustomData.SERIALIZER.write(tag, custom);
-        } else {
-            tag.removeTag("CustomData");
         }
     }
 

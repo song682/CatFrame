@@ -19,7 +19,7 @@ public final class RegisteredComponents {
 
     // ========== 组件类型定义 ==========
 
-    /** 自定义数据（兜底 NBT） */
+    /** 自定义数据（兜底 NBT，作用域为整个原版物品 NBT / full vanilla item NBT） */
     public static final DataComponentType<CustomData> CUSTOM_DATA =
             DataComponentType.<CustomData>builder(new ResourceLocation(Tags.MODID, "custom_data"))
                     .persistent(CustomData.SERIALIZER)

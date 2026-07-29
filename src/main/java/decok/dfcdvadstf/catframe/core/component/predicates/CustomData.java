@@ -10,12 +10,16 @@ import javax.annotation.Nullable;
  * <p>
  * 类似 26.1.2 {@code net.minecraft.world.item.component.CustomData}。
  * 用于存储没有对应组件的任意 NBT 数据，确保与旧版 NBT 兼容。
+ * <p>
+ * Scope: covers the ENTIRE vanilla item NBT (the whole stackTagCompound),
+ * mirroring the legacy {@code nbt} predicate semantics — not a nested sub-tag.
+ * <br>
+ * 作用范围：覆盖整个原版物品 NBT（完整的 stackTagCompound），
+ * 对齐旧版 {@code nbt} 谓词语义——不再是嵌套子标签。
  */
 public final class CustomData {
 
     private static final CustomData EMPTY = new CustomData(new NBTTagCompound());
-
-    private static final String CUSTOM_DATA_KEY = "CustomData";
 
     private final NBTTagCompound tag;
     private final int cachedHash;
@@ -91,26 +95,37 @@ public final class CustomData {
 
     // ========== 序列化器 ==========
 
+    /**
+     * Full-scope serializer: read wraps the whole vanilla tag; write merges
+     * the held keys back into the root tag (no nested "CustomData" key).
+     * <br>
+     * 全量作用域序列化器：读取时包装整个原版标签；写入时将持有的键
+     * 合并回根标签（不再使用嵌套的 "CustomData" 键）。
+     */
     public static final ComponentSerializer<CustomData> SERIALIZER = new ComponentSerializer<CustomData>() {
         @Override
         public void write(NBTTagCompound nbt, CustomData value) {
-            if (!value.isEmpty()) {
-                nbt.setTag(CUSTOM_DATA_KEY, value.tag);
-            } else if (nbt.hasKey(CUSTOM_DATA_KEY)) {
-                nbt.removeTag(CUSTOM_DATA_KEY);
+            // Same live tag already in place — nothing to merge.
+            // 与根标签为同一实例，数据已就位，无需合并。
+            if (value.isEmpty() || value.tag == nbt) return;
+            for (Object keyObj : value.tag.func_150296_c()) {
+                String key = (String) keyObj;
+                nbt.setTag(key, value.tag.getTag(key).copy());
             }
         }
 
         @Nullable
         @Override
         public CustomData read(NBTTagCompound nbt) {
-            if (!nbt.hasKey(CUSTOM_DATA_KEY, 10)) return null;
-            return wrap(nbt.getCompoundTag(CUSTOM_DATA_KEY));
+            // Whole vanilla NBT is the component value.
+            // 整个原版 NBT 即为组件值。
+            if (nbt.hasNoTags()) return null;
+            return wrap(nbt);
         }
 
         @Override
         public boolean hasData(NBTTagCompound nbt) {
-            return nbt.hasKey(CUSTOM_DATA_KEY, 10);
+            return !nbt.hasNoTags();
         }
     };
 }

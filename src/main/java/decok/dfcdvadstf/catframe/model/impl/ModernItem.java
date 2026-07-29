@@ -20,7 +20,9 @@ import net.minecraft.util.IIcon;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -234,16 +236,22 @@ public class ModernItem extends Item implements IItemStateProvider {
             ItemStateNode inventoryLeaf = new ItemStateNode.ModelLeaf(inventoryModelPath);
             ItemStateNode handLeaf = new ItemStateNode.ModelLeaf(handModelPath);
 
-            Map<String, ItemStateNode> cases = new HashMap<>();
-            cases.put(RenderPhase.ITEM_HAND_FIRST_PERSON.name(), handLeaf);
-            cases.put(RenderPhase.ITEM_HAND_THIRD_PERSON.name(), handLeaf);
-            cases.put(RenderPhase.ITEM_FIXED.name(), handLeaf);
-            cases.put(RenderPhase.ITEM_GUI.name(), inventoryLeaf);
-            cases.put(RenderPhase.DROPPED_ITEM_GROUND.name(), inventoryLeaf);
+            List<ItemStateNode.SelectCase> cases = new ArrayList<>();
+            // 手持/展示架等 3D 阶段 → hand 模型
+            // Handheld / item-frame 3D phases -> hand model
+            cases.add(new ItemStateNode.SelectCase(new LinkedHashSet<>(Arrays.asList(
+                    RenderPhase.ITEM_HAND_FIRST_PERSON.name(),
+                    RenderPhase.ITEM_HAND_THIRD_PERSON.name(),
+                    RenderPhase.ITEM_FIXED.name())), handLeaf));
+            // GUI/掉落物等 2D 阶段 → inventory 模型
             // 方块物品掉落物也使用 2D inventory 模型（ModernItem 本身不是 ItemBlock，但为兼容保留）
-            cases.put(RenderPhase.DROPPED_BLOCK_GROUND.name(), inventoryLeaf);
+            // GUI / dropped-item 2D phases -> inventory model
+            cases.add(new ItemStateNode.SelectCase(new LinkedHashSet<>(Arrays.asList(
+                    RenderPhase.ITEM_GUI.name(),
+                    RenderPhase.DROPPED_ITEM_GROUND.name(),
+                    RenderPhase.DROPPED_BLOCK_GROUND.name())), inventoryLeaf));
 
-            this.itemStateRoot = new ItemStateNode.ExactMatchNode(
+            this.itemStateRoot = new ItemStateNode.SelectNode(
                     ItemProperties.DISPLAY_CONTEXT.getName(), cases, inventoryLeaf);
         } else {
             String singlePath = inventoryModelPath != null ? inventoryModelPath : handModelPath;

@@ -131,16 +131,6 @@ public class ItemStateModel implements IItemStateProvider {
             }
             return null;
         }
-        if (node instanceof ItemStateNode.ExactMatchNode) {
-            ItemStateNode.ExactMatchNode en = (ItemStateNode.ExactMatchNode) node;
-            Matrix4d r = findTransformationForModel(en.fallback, path);
-            if (r != null) return r;
-            for (ItemStateNode child : en.cases.values()) {
-                r = findTransformationForModel(child, path);
-                if (r != null) return r;
-            }
-            return null;
-        }
         if (node instanceof ItemStateNode.SelectNode) {
             ItemStateNode.SelectNode sn = (ItemStateNode.SelectNode) node;
             Matrix4d r = findTransformationForModel(sn.fallback, path);
@@ -187,17 +177,6 @@ public class ItemStateModel implements IItemStateProvider {
             }
             for (ItemStateNode.ThresholdEntry e : rn.entries) {
                 List<ItemTint> r = findTintsForModel(e.node, path, props);
-                if (!r.isEmpty()) return r;
-            }
-        }
-        if (node instanceof ItemStateNode.ExactMatchNode) {
-            ItemStateNode.ExactMatchNode en = (ItemStateNode.ExactMatchNode) node;
-            if (en.fallback != null) {
-                List<ItemTint> r = findTintsForModel(en.fallback, path, props);
-                if (!r.isEmpty()) return r;
-            }
-            for (ItemStateNode child : en.cases.values()) {
-                List<ItemTint> r = findTintsForModel(child, path, props);
                 if (!r.isEmpty()) return r;
             }
         }
@@ -274,12 +253,6 @@ public class ItemStateModel implements IItemStateProvider {
             ItemStateNode.RangeDispatchNode rn = (ItemStateNode.RangeDispatchNode) node;
             if (nodeHasTint(rn.fallback)) return true;
             for (ItemStateNode.ThresholdEntry e : rn.entries) if (nodeHasTint(e.node)) return true;
-            return false;
-        }
-        if (node instanceof ItemStateNode.ExactMatchNode) {
-            ItemStateNode.ExactMatchNode en = (ItemStateNode.ExactMatchNode) node;
-            if (nodeHasTint(en.fallback)) return true;
-            for (ItemStateNode child : en.cases.values()) if (nodeHasTint(child)) return true;
             return false;
         }
         if (node instanceof ItemStateNode.SelectNode) {

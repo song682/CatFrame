@@ -15,12 +15,11 @@ import java.util.*;
  * 运行时每帧根据 ItemStack 的实时属性（使用状态、damage、display context 等）
  * 自顶向下求值，最终选定一个具体模型来渲染。
  * <p>
- * 七种节点类型（可任意嵌套组合）：
+ * 六种节点类型（可任意嵌套组合）：
  * <ul>
  *   <li>{@link ModelLeaf} — 叶子节点，指向具体模型路径</li>
  *   <li>{@link ConditionNode} — 布尔分支，根据 property 的 true/false 走 on_true/on_false 子树</li>
  *   <li>{@link RangeDispatchNode} — 数值阈值分派，根据 property 值落入哪个 threshold 区间选择子树</li>
- *   <li>{@link ExactMatchNode} — 精确值匹配（旧格式），根据 property 值精确选择子树</li>
  *   <li>{@link SelectNode} — 枚举选择（wiki 规范 select），cases 带 when 数组</li>
  *   <li>{@link CompositeNode} — 组合分层，按顺序渲染多个子树</li>
  *   <li>{@link EmptyNode} — 空节点，不渲染任何模型</li>
@@ -221,58 +220,6 @@ public abstract class ItemStateNode {
         }
     }
 
-    // ==================== 精确值匹配节点 ====================
-
-    /**
-     * 精确值匹配节点：根据 property 值的字符串表示精确选择子树。
-     * <p>
-     * 如果当前属性值在 cases 中有对应条目，使用该条目的子树；否则使用 fallback。
-     * <p>JSON:
-     * <pre>{@code
-     * {
-     *   "type": "minecraft:exact_match",
-     *   "property": "minecraft:damage",
-     *   "fallback": { ... },
-     *   "cases": {
-     *     "0": { "type": "minecraft:model", "model": "item/dye_black" },
-     *     "1": { "type": "minecraft:model", "model": "item/dye_red" }
-     *   }
-     * }
-     * }</pre>
-     */
-    public static class ExactMatchNode extends ItemStateNode {
-        public final String property;
-        public final Map<String, ItemStateNode> cases;
-        public final ItemStateNode fallback;
-
-        public ExactMatchNode(String property, Map<String, ItemStateNode> cases,
-                               ItemStateNode fallback) {
-            this.property = property;
-            this.cases = cases;
-            this.fallback = fallback;
-        }
-
-        @Override
-        public EvalResult evaluate(Map<String, Comparable<?>> properties) {
-            Comparable<?> value = properties.get(property);
-            if (value == null) {
-                return fallback != null ? fallback.evaluate(properties) : EvalResult.empty();
-            }
-            String key = value.toString();
-            ItemStateNode matched = cases.get(key);
-            if (matched != null) return matched.evaluate(properties);
-            return fallback != null ? fallback.evaluate(properties) : EvalResult.empty();
-        }
-
-        @Override
-        public void collectModelPaths(Set<String> out) {
-            if (fallback != null) fallback.collectModelPaths(out);
-            for (ItemStateNode node : cases.values()) {
-                if (node != null) node.collectModelPaths(out);
-            }
-        }
-    }
-
     // ==================== 空节点 ====================
 
     /**
@@ -339,7 +286,7 @@ public abstract class ItemStateNode {
     /**
      * 枚举选择节点：根据 property 值匹配 cases 中的 when 集合选择子树。
      * <p>
-     * 与 {@link ExactMatchNode} 的区别：cases 是列表形式，每个 case 的 {@code when}
+     * cases 是列表形式，每个 case 的 {@code when}
      * 可以是字符串数组（匹配多个值）。未匹配时使用 fallback。
      * <p>JSON:
      * <pre>{@code
@@ -478,8 +425,6 @@ public abstract class ItemStateNode {
                     return deserializeCondition(obj, context);
                 case "minecraft:range_dispatch":
                     return deserializeRangeDispatch(obj, context);
-                case "minecraft:exact_match":
-                    return deserializeExactMatch(obj, context);
                 case "minecraft:composite":
                     return deserializeComposite(obj, context);
                 case "minecraft:select":
@@ -589,22 +534,6 @@ public abstract class ItemStateNode {
             entries.sort(Comparator.comparingDouble(e -> e.threshold));
 
             return new RangeDispatchNode(property, scale, fallback, entries);
-        }
-
-        private ExactMatchNode deserializeExactMatch(JsonObject obj, JsonDeserializationContext ctx) {
-            String property = obj.has("property") ? obj.get("property").getAsString() : null;
-            ItemStateNode fallback = obj.has("fallback")
-                    ? ctx.deserialize(obj.get("fallback"), ItemStateNode.class) : null;
-
-            Map<String, ItemStateNode> cases = new LinkedHashMap<>();
-            if (obj.has("cases") && obj.get("cases").isJsonObject()) {
-                for (Map.Entry<String, JsonElement> entry : obj.getAsJsonObject("cases").entrySet()) {
-                    ItemStateNode node = ctx.deserialize(entry.getValue(), ItemStateNode.class);
-                    cases.put(entry.getKey(), node);
-                }
-            }
-
-            return new ExactMatchNode(property, cases, fallback);
         }
 
         private CompositeNode deserializeComposite(JsonObject obj, JsonDeserializationContext ctx) {

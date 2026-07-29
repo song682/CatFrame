@@ -85,14 +85,14 @@ public class ItemModelGenerator {
                         bakeHorizontalEdge(quads, sprite, x, y, false, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
-                // 左边：左侧像素透明 → 生成 EAST 面 quad（26.1.2 LEFT→EAST）
+                // 左边：左侧像素透明 → 生成 WEST 面 quad（朝外绕序，见 bakeVerticalEdge 说明）
                 if (isTransparent(flatPixels, x - 1, y, width)) {
                     String key = "L" + x + "," + y;
                     if (emitted.add(key)) {
                         bakeVerticalEdge(quads, sprite, x, y, true, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
-                // 右边：右侧像素透明 → 生成 WEST 面 quad（26.1.2 RIGHT→WEST）
+                // 右边：右侧像素透明 → 生成 EAST 面 quad（朝外绕序，见 bakeVerticalEdge 说明）
                 if (isTransparent(flatPixels, x + 1, y, width)) {
                     String key = "R" + x + "," + y;
                     if (emitted.add(key)) {
@@ -192,9 +192,18 @@ public class ItemModelGenerator {
      * <p>
      * quad 是 YZ 平面上的平片：高 = 1px，深 = 1px（Z: 7.5→8.5）。
      * <p>
-     * 26.1.2 方向约定：
-     *   LEFT  → Direction.EAST  (法线 +X，面在像素左侧，从左边可见)
-     *   RIGHT → Direction.WEST  (法线 -X，面在像素右侧，从右边可见)
+     * 方向映射（刻意偏离 26.1.2 的 LEFT→EAST / RIGHT→WEST）：
+     *   LEFT  → Direction.WEST  (法线 -X，朝向左侧透明像素，从左边可见)
+     *   RIGHT → Direction.EAST  (法线 +X，朝向右侧透明像素，从右边可见)
+     * <p>
+     * 原版 26.1.2 让东西侧面朝向像素<b>内侧</b>（LEFT→EAST），可见性依赖
+     * cutout 丢弃透明纹素后"从对侧透视看到远端条带"的机制；CatFrame 固定管线
+     * 开启背面剔除且无该 cutout 深度语义，朝内绕序会被整面剔除（表现为东西面
+     * 挤出透明消失）。故此处改为<b>朝外</b>绕序，与 UP/DOWN 的朝外约定对齐，
+     * 剔除语义等同实心几何体。
+     * Deliberate deviation from vanilla: vertical side faces wind OUTWARD
+     * (towards the transparent neighbour) so they survive backface culling
+     * in the 1.7.10 fixed pipeline, matching the UP/DOWN convention.
      */
     private static void bakeVerticalEdge(
             List<JsonModelBake.BakedQuad> quads,
@@ -219,8 +228,9 @@ public class ItemModelGenerator {
         float v0 = (y + UV_SHRINK) * yScale;
         float v1 = (y + 1.0F - UV_SHRINK) * yScale;
 
-        // 26.1.2: LEFT→EAST, RIGHT→WEST
-        Direction face = isLeft ? Direction.EAST : Direction.WEST;
+        // 朝外绕序：LEFT→WEST（-X）, RIGHT→EAST（+X），偏离 26.1.2（理由见方法 JavaDoc）
+        // Outward-facing: LEFT→WEST, RIGHT→EAST (see method JavaDoc for rationale)
+        Direction face = isLeft ? Direction.WEST : Direction.EAST;
 
         JsonModelBake.BakedQuad q = new JsonModelBake.BakedQuad();
         q.icon = sprite;
@@ -236,34 +246,34 @@ public class ItemModelGenerator {
         //   WEST: v0(idx=010)=MAX_Y,MIN_Z  v1(idx=000)=MIN_Y,MIN_Z  v2(idx=001)=MIN_Y,MAX_Z  v3(idx=011)=MAX_Y,MAX_Z
         float minZ = MIN_Z / 16.0F, maxZ = MAX_Z / 16.0F;
         if (isLeft) {
-            // EAST face (LEFT edge)
-            q.vertices[0] = new Vector3d(worldX, worldY1, maxZ);
-            q.vertices[1] = new Vector3d(worldX, worldY0, maxZ);
-            q.vertices[2] = new Vector3d(worldX, worldY0, minZ);
-            q.vertices[3] = new Vector3d(worldX, worldY1, minZ);
-        } else {
-            // WEST face (RIGHT edge)
+            // WEST face (LEFT edge, outward -X)
             q.vertices[0] = new Vector3d(worldX, worldY1, minZ);
             q.vertices[1] = new Vector3d(worldX, worldY0, minZ);
             q.vertices[2] = new Vector3d(worldX, worldY0, maxZ);
             q.vertices[3] = new Vector3d(worldX, worldY1, maxZ);
+        } else {
+            // EAST face (RIGHT edge, outward +X)
+            q.vertices[0] = new Vector3d(worldX, worldY1, maxZ);
+            q.vertices[1] = new Vector3d(worldX, worldY0, maxZ);
+            q.vertices[2] = new Vector3d(worldX, worldY0, minZ);
+            q.vertices[3] = new Vector3d(worldX, worldY1, minZ);
         }
         // UV 按顶点分配：V 沿 Y 轴（v0→MAX_Y(top) 顶点, v1→MIN_Y(bottom) 顶点）；
         // U 沿 Z 轴跨越像素宽度（u0→MIN_Z, u1→MAX_Z，与 bakeHorizontalEdge 的 v0→MIN_Z 约定同构，
         // 对标 26.1.2 bakeSideFaces 垂直边缘同样给出 u0→u1 完整跨度）。
         // Full u0→u1 span across the Z-depth axis, matching vanilla 26.1.2 side-face UVs.
         if (isLeft) {
-            // EAST: 顶点 0/1 在 MAX_Z，顶点 2/3 在 MIN_Z
-            q.up[0] = u1; q.vp[0] = v0;
-            q.up[1] = u1; q.vp[1] = v1;
-            q.up[2] = u0; q.vp[2] = v1;
-            q.up[3] = u0; q.vp[3] = v0;
-        } else {
             // WEST: 顶点 0/1 在 MIN_Z，顶点 2/3 在 MAX_Z
             q.up[0] = u0; q.vp[0] = v0;
             q.up[1] = u0; q.vp[1] = v1;
             q.up[2] = u1; q.vp[2] = v1;
             q.up[3] = u1; q.vp[3] = v0;
+        } else {
+            // EAST: 顶点 0/1 在 MAX_Z，顶点 2/3 在 MIN_Z
+            q.up[0] = u1; q.vp[0] = v0;
+            q.up[1] = u1; q.vp[1] = v1;
+            q.up[2] = u0; q.vp[2] = v1;
+            q.up[3] = u0; q.vp[3] = v0;
         }
 
         q.faceNormal = faceNormal(face);

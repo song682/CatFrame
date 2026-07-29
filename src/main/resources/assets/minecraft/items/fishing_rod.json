@@ -9,10 +9,6 @@
       "type": "minecraft:model",
       "model": "minecraft:item/fishing_rod_cast"
     },
-    "fallback":{
-      "type": "minecraft:model",
-      "model": "minecraft:item/fishing_rod"
-    },
-    "property": "minecraft:using_item"
+    "property": "minecraft:fishing_rod/cast"
   }
 }

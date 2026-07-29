@@ -212,8 +212,8 @@ public class ItemModelGenerator {
         float worldY0 = (16.0F - (y + 1.0F) * yScale) / 16.0F;
         float worldY1 = (16.0F - y * yScale) / 16.0F;
 
-        // UV（像素空间）—— 对标 26.1.2：u0/u1 为像素左右边界 + UV_SHRINK，
-        // v0/v1 为像素上下边界 + UV_SHRINK（垂直面 V 轴不反转）
+        // UV（像素空间）—— 对标 26.1.2：u0/u1 为像素左右边界 + UV_SHRINK（沿 Z 轴跨越挤出深度），
+        // v0/v1 为像素上下边界 + UV_SHRINK（沿世界 Y 轴分配：v0=top, v1=bottom）
         float u0 = (x + UV_SHRINK) * xScale;
         float u1 = (x + 1.0F - UV_SHRINK) * xScale;
         float v0 = (y + UV_SHRINK) * yScale;
@@ -248,11 +248,23 @@ public class ItemModelGenerator {
             q.vertices[2] = new Vector3d(worldX, worldY0, maxZ);
             q.vertices[3] = new Vector3d(worldX, worldY1, maxZ);
         }
-        // UV 按顶点分配：v0→MAX_Y(top) 顶点, v1→MIN_Y(bottom) 顶点；u 统一
-        q.up[0] = u0; q.vp[0] = v0;
-        q.up[1] = u0; q.vp[1] = v1;
-        q.up[2] = u0; q.vp[2] = v1;
-        q.up[3] = u0; q.vp[3] = v0;
+        // UV 按顶点分配：V 沿 Y 轴（v0→MAX_Y(top) 顶点, v1→MIN_Y(bottom) 顶点）；
+        // U 沿 Z 轴跨越像素宽度（u0→MIN_Z, u1→MAX_Z，与 bakeHorizontalEdge 的 v0→MIN_Z 约定同构，
+        // 对标 26.1.2 bakeSideFaces 垂直边缘同样给出 u0→u1 完整跨度）。
+        // Full u0→u1 span across the Z-depth axis, matching vanilla 26.1.2 side-face UVs.
+        if (isLeft) {
+            // EAST: 顶点 0/1 在 MAX_Z，顶点 2/3 在 MIN_Z
+            q.up[0] = u1; q.vp[0] = v0;
+            q.up[1] = u1; q.vp[1] = v1;
+            q.up[2] = u0; q.vp[2] = v1;
+            q.up[3] = u0; q.vp[3] = v0;
+        } else {
+            // WEST: 顶点 0/1 在 MIN_Z，顶点 2/3 在 MAX_Z
+            q.up[0] = u0; q.vp[0] = v0;
+            q.up[1] = u0; q.vp[1] = v1;
+            q.up[2] = u1; q.vp[2] = v1;
+            q.up[3] = u1; q.vp[3] = v0;
+        }
 
         q.faceNormal = faceNormal(face);
         quads.add(q);

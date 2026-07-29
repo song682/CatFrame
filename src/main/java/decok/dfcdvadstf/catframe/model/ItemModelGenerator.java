@@ -158,7 +158,9 @@ public class ItemModelGenerator {
         q.face = face;
         q.tintIndex = tintIndex;
         q.guiLight = "front";
-        q.solidColor = pixelARGB;
+        // Force opaque alpha: side faces are solid-color filled in a second untextured pass
+        // 侧面强制不透明：由第二遍无纹理渲染以纯色填充，避免半透明纹素被 blend 冲淡
+        q.solidColor = pixelARGB | 0xFF000000;
 
         // 顶点绕序：对标 BlockJsonModelBake.emitFaceFromCorners
         //   UP:  v0(idx=010)=MIN_X,MIN_Z  v1(idx=011)=MIN_X,MAX_Z  v2(idx=111)=MAX_X,MAX_Z  v3(idx=110)=MAX_X,MIN_Z
@@ -225,7 +227,9 @@ public class ItemModelGenerator {
         q.face = face;
         q.tintIndex = tintIndex;
         q.guiLight = "front";
-        q.solidColor = pixelARGB;
+        // Force opaque alpha: side faces are solid-color filled in a second untextured pass
+        // 侧面强制不透明：由第二遍无纹理渲染以纯色填充，避免半透明纹素被 blend 冲淡
+        q.solidColor = pixelARGB | 0xFF000000;
 
         // 顶点绕序：对标 BlockJsonModelBake.emitFaceFromCorners
         //   EAST: v0(idx=111)=MAX_Y,MAX_Z  v1(idx=101)=MIN_Y,MAX_Z  v2(idx=100)=MIN_Y,MIN_Z  v3(idx=110)=MAX_Y,MIN_Z

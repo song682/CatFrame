@@ -125,8 +125,13 @@ public final class QuadWriter {
 
     /**
      * 写入物品 quads（GUI / 手持 / 掉落 / 展示框）。迁移自原 {@code renderItemQuads} 的 for-quad 循环。
+     * <p>
+     * {@code solidColor != 0} 的 quad（侧面纯色 quad）在本方法中<b>跳过</b>，
+     * 由 {@link #writeSolidColorQuads(RenderSubmit, Tessellator)} 在独立的无纹理 draw call 中渲染：
+     * 侧面 quad 的 UV 紧贴“不透明→透明”边界，双线性 / mipmap 采样会混入透明邻居纹素，
+     * 且 GL_MODULATE 会将纹素 alpha 乘入片段，导致窄面渲染为透明。
      *
-     * @return 是否写入了任何顶点（供调用方决定是否 {@code t.draw()}）
+     * @return {@code true} 若存在被跳过的 solidColor quad（调用方需执行第二遍无纹理渲染）
      */
     public static boolean writeItemQuads(RenderSubmit s, Tessellator t) {
         List<BakedQuad> allQuads = s.part.getAllQuads();
@@ -143,9 +148,16 @@ public final class QuadWriter {
         Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
         int baseBrightness = gui ? 255 : 15728880;
-        boolean hasVertices = false;
+        boolean hasSolidColor = false;
 
         for (BakedQuad q : allQuads) {
+            // solidColor quad 跳过，留给 writeSolidColorQuads 无纹理渲染
+            // Skip solid-color side quads: rendered in a separate untextured pass
+            if (q.solidColor != 0) {
+                hasSolidColor = true;
+                continue;
+            }
+
             // 方向阴影：GUI 按面方向烘焙 CardinalLighting 系数；
             // 非 GUI 交由 GL_LIGHTING 依逐面法线计算，baseShade 取 1.0 以免双重着色。
             float baseShade = glLit ? 1.0f : CardinalLighting.DEFAULT.byFace(q.face);
@@ -153,7 +165,6 @@ public final class QuadWriter {
                     s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, baseShade);
             ModelRenderRegistry.apply(ctx);
             if (ctx.skip) continue;
-            hasVertices = true;
 
             // 非 GUI 阶段：发送逐面法线（随 display / transformation / preTransform 旋转），供 GL_LIGHTING 使用。
             if (glLit) {
@@ -191,7 +202,67 @@ public final class QuadWriter {
                 t.addVertexWithUV(tmpVec.x, tmpVec.y, tmpVec.z, U, V);
             }
         }
-        return hasVertices;
+        return hasSolidColor;
+    }
+
+    /**
+     * 写入 solidColor quad（侧面纯色 quad）—— 纯顶点色渲染，<b>调用方必须先禁用纹理</b>。
+     * <p>
+     * 对标 26.1.2 {@code ItemModelGenerator} 侧面渲染语义：侧面使用边缘像素的 RGB
+     * 作为不透明纯色填充，不受纹理 alpha 影响。1.7.10 固定管线下，{@code GL_MODULATE}
+     * 会把半透明纹素 alpha 乘入最终片段，导致半透明纹理的侧面消失；禁用纹理后 fragment
+     * 颜色完全由顶点色决定，alpha 恒为 1.0。
+     * <p>
+     * <b>职责边界</b>：本方法只写顶点，不做 {@code glDisable(GL_TEXTURE_2D)} 等 GL
+     * 状态管理（由 {@link FeatureRenderDispatcher} 负责）。
+     */
+    public static void writeSolidColorQuads(RenderSubmit s, Tessellator t) {
+        List<BakedQuad> allQuads = s.part.getAllQuads();
+        boolean gui = (s.phase == RenderPhase.ITEM_GUI);
+        boolean glLit = !gui;
+        Matrix4d preTransform = s.preTransform;
+        Matrix4d transformation = s.transformation;
+        Point3d tmpVec = new Point3d();
+        Vector3d tmpNormal = glLit ? new Vector3d() : null;
+
+        int baseBrightness = gui ? 255 : 15728880;
+
+        for (BakedQuad q : allQuads) {
+            if (q.solidColor == 0) continue;
+
+            float baseShade = glLit ? 1.0f : CardinalLighting.DEFAULT.byFace(q.face);
+            RenderContext ctx = new RenderContext(s.phase, q,
+                    s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, baseShade);
+            ModelRenderRegistry.apply(ctx);
+            if (ctx.skip) continue;
+
+            if (glLit) {
+                writeQuadNormal(t, q, ctx.displayTransform, transformation, preTransform, tmpNormal);
+            }
+
+            t.setBrightness(ctx.effectiveBrightness());
+            // 使用 solidColor 的 RGB，alpha 固定 1.0（侧面恒不透明）
+            float cr = ((q.solidColor >> 16) & 0xFF) / 255.0f * ctx.shade;
+            float cg = ((q.solidColor >> 8) & 0xFF) / 255.0f * ctx.shade;
+            float cb = (q.solidColor & 0xFF) / 255.0f * ctx.shade;
+            t.setColorRGBA_F(cr, cg, cb, 1.0f);
+
+            for (int i = 0; i < 4; i++) {
+                // 顶点变换顺序与 writeItemQuads 一致：v' = M_pre × M_transformation × M_display × v
+                tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
+                if (ctx.displayTransform != null) {
+                    ctx.displayTransform.transform(tmpVec);
+                }
+                if (transformation != null) {
+                    transformation.transform(tmpVec);
+                }
+                if (preTransform != null) {
+                    preTransform.transform(tmpVec);
+                }
+                // 无纹理时 UV 被忽略，但 addVertexWithUV 是 Tessellator 唯一的提交 API
+                t.addVertexWithUV(tmpVec.x, tmpVec.y, tmpVec.z, 0, 0);
+            }
+        }
     }
 
     /**

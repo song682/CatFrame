@@ -14,6 +14,8 @@ import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.BlockstateKeyValidator;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
+import decok.dfcdvadstf.catframe.model.state.property.CatItemProperties;
+import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyProvider;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 
@@ -112,6 +114,12 @@ public class ModelManagerDataLoader {
                     }
                 }
                 interfaceItemStates.put(item, is);
+                // 接口化属性声明：对标方块侧 getStateDefinition() 的可选钩子，
+                // 实现类声明的自定义属性在发现时自动注册
+                // Interface-based property declaration: mirrors the block-side
+                // getStateDefinition() optional hook — declared custom properties
+                // are auto-registered at discovery time
+                registerDeclaredProperties(item, is);
                 CatFrame.logger.debug("[VMM] IItemState discovered: {}",
                         Item.itemRegistry.getNameForObject(item));
             }
@@ -144,6 +152,43 @@ public class ModelManagerDataLoader {
         CatFrame.logger.info("VanillaModelManager: Loaded {} namespaces, {} state-blocks, {} block-textures pending, {} item-textures pending",
                 namespaces.size(), registeredStateBlocks.size(),
                 VanillaTextureTracker.pendingTextures.size(), VanillaTextureTracker.pendingItemTextures.size());
+    }
+
+    /**
+     * 注册 {@link IItemStateProvider#getPropertyDefinitions()} 声明的自定义属性。
+     * <p>
+     * 防御式处理：单个非法声明（裸名 / 空 key / null provider）只跳过并记录警告，
+     * 不中断整个发现流程。合法条目经 {@link CatItemProperties#register} 注册
+     * （命名空间强制 + 默认表先行物化）。
+     * <p>
+     * Registers the custom properties declared via
+     * {@link IItemStateProvider#getPropertyDefinitions()}. Defensive: a single bad
+     * declaration (bare name / empty key / null provider) is skipped with a warning
+     * instead of aborting discovery; valid entries go through
+     * {@link CatItemProperties#register} (namespace enforcement + defaults-first).
+     */
+    private static void registerDeclaredProperties(Item item, IItemStateProvider provider) {
+        Map<String, ItemPropertyProvider> declarations = provider.getPropertyDefinitions();
+        if (declarations == null || declarations.isEmpty()) return;
+
+        String itemId = Item.itemRegistry.getNameForObject(item);
+        for (Map.Entry<String, ItemPropertyProvider> entry : declarations.entrySet()) {
+            String key = entry.getKey();
+            int colon = key != null ? key.indexOf(':') : -1;
+            // 要求完整 modid:name 形式，两段均非空
+            // Require the full modid:name form with both parts non-empty
+            if (colon <= 0 || colon >= key.length() - 1) {
+                CatFrame.logger.warn("[VMM] Item {} declared property '{}' without a valid 'modid:name' key, skipped",
+                        itemId, key);
+                continue;
+            }
+            try {
+                CatItemProperties.register(key.substring(0, colon), key.substring(colon + 1), entry.getValue());
+                CatFrame.logger.debug("[VMM] Item {} declared property '{}' registered", itemId, key);
+            } catch (IllegalArgumentException e) {
+                CatFrame.logger.warn("[VMM] Item {} declared invalid property '{}': {}", itemId, key, e.getMessage());
+            }
+        }
     }
 
     /**

@@ -3,12 +3,15 @@ package decok.dfcdvadstf.catframe.model;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+import decok.dfcdvadstf.catframe.model.state.property.CatItemProperties;
+import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyProvider;
 import net.minecraft.item.ItemStack;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 物品状态模型接口 — CatFrame 物品渲染的唯一抽象。
@@ -39,6 +42,13 @@ import java.util.List;
  *   <li>{@link #handles(RenderPhase)} — 每阶段精细控制，{@code false} 时走原版渲染</li>
  *   <li>{@link #render(ItemStack, RenderPhase)} — 实际渲染逻辑</li>
  * </ul>
+ * <p>
+ * 对标方块侧 {@link IBlockStateProvider#getStateDefinition()} 的可选声明钩子，
+ * {@link #getPropertyDefinitions()} 允许实现类就地声明自定义物品属性，
+ * 由发现阶段自动注册（见下方方法说明）。
+ * <br>Mirroring the optional declaration hook {@link IBlockStateProvider#getStateDefinition()}
+ * on the block side, {@link #getPropertyDefinitions()} lets implementations declare
+ * custom item properties in place, auto-registered during discovery.
  */
 public interface IItemStateProvider {
 
@@ -101,5 +111,30 @@ public interface IItemStateProvider {
      */
     default List<BlockStateModelPart> getGuiModelParts(ItemStack stack) {
         return Collections.emptyList();
+    }
+
+    /**
+     * 可选声明本物品需要的自定义属性（{@code modid:name} → provider）。
+     * <p>
+     * 对标 {@link IBlockStateProvider#getStateDefinition()} 的接口化声明范式：
+     * 实现类在此返回非空 Map 后，CatFrame 在 {@link ModelManagerDataLoader#init()}
+     * 发现阶段经 {@link CatItemProperties} 校验并自动注册，实现类无需再手动调用注册 facade。
+     * key 必须为完整命名空间形式（{@code modid:name}），裸名会被拒绝并记录警告。
+     * <p>
+     * Optionally declares the custom properties this item needs
+     * ({@code modid:name} → provider). Mirrors the interface-based declaration
+     * paradigm of {@link IBlockStateProvider#getStateDefinition()}: when a non-empty
+     * map is returned, CatFrame validates and registers the entries through
+     * {@link CatItemProperties} during discovery, so implementations never need to
+     * call the registration facade manually. Keys must be fully namespaced
+     * ({@code modid:name}); bare names are rejected with a warning.
+     * <p>
+     * 默认返回空 Map（不声明任何属性）。
+     * <br>Default returns an empty map (no property declarations).
+     *
+     * @return 属性声明 Map（{@code modid:name} → provider），可为空
+     */
+    default Map<String, ItemPropertyProvider> getPropertyDefinitions() {
+        return Collections.emptyMap();
     }
 }

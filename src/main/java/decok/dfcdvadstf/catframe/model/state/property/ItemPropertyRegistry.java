@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.state.property;
 
+import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.render.RenderPhase;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
@@ -20,6 +21,12 @@ import java.util.Map;
  * <p>
  * {@link #registerDefaults()} 在模组初始化时调用一次，注册 wiki 规范中定义的全部 33+ 属性。
  * 未实现的属性提供安全的占位值（false / 0 / ""），不会导致决策树崩溃。
+ * <p>
+ * 第三方模组请勿直接调用本类，应走 {@link CatItemProperties} facade（强制命名空间 +
+ * 默认表先行物化）。
+ * <br>Third-party mods should go through the {@link CatItemProperties} facade
+ * (namespace enforcement + defaults-first materialization) instead of calling
+ * this class directly.
  */
 public class ItemPropertyRegistry {
 
@@ -33,7 +40,13 @@ public class ItemPropertyRegistry {
      * @param provider 属性计算逻辑
      */
     public static void register(String name, ItemPropertyProvider provider) {
-        REGISTRY.put(name, provider);
+        // 冲突检测：盲写覆盖会让"谁后加载谁赢"难以排查，替换已有 provider 时打条警告
+        // Conflict detection: blind puts make "last loader wins" hard to debug,
+        // so warn whenever an existing provider gets replaced
+        ItemPropertyProvider previous = REGISTRY.put(name, provider);
+        if (previous != null && previous != provider) {
+            CatFrame.logger.warn("ItemPropertyRegistry: property '{}' provider replaced", name);
+        }
         if (!name.contains(":")) {
             REGISTRY.put("minecraft:" + name, provider);
         }

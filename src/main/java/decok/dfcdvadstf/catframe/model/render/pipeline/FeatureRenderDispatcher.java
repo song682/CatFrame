@@ -94,6 +94,15 @@ public final class FeatureRenderDispatcher {
                             t.draw();
                             GL11.glEnable(GL11.GL_TEXTURE_2D);
                         }
+
+                        // 附魔光效 pass：必须在 applyAfterPart() 之前执行 ——
+                        // beforePart 状态（display 矩阵等）仍有效，重放几何才能与正常 pass 重合。
+                        // GlintPass 内部 glPushAttrib 全量保护（含纹理绑定），不影响后续提交项。
+                        // Enchantment glint pass: must run before applyAfterPart() so the
+                        // beforePart state (display matrix, etc.) is still valid for geometry replay.
+                        if (GlintPass.applicable(s)) {
+                            GlintPass.render(s, t);
+                        }
                     } finally {
                         // 生命周期：quad 处理后（GuiLightExtension 恢复 GL_LIGHTING、
                         // DisplayTransformExtension 清矩阵）

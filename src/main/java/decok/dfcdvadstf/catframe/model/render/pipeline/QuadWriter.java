@@ -266,6 +266,76 @@ public final class QuadWriter {
     }
 
     /**
+     * 写入附魔光效（glint）quads —— 重放提交项的<b>全部</b>几何（含 solidColor 侧面），
+     * 供 {@link GlintPass} 以 glint 纹理 + 滚动纹理矩阵叠加绘制。
+     * Write enchantment glint quads: replays ALL geometry (including solid-color
+     * side quads) so the glint covers the full model silhouette, for {@link GlintPass} overlay passes.
+     * <p>
+     * 与 {@link #writeItemQuads} 的差异：
+     * <ul>
+     *   <li><b>不跳过</b> {@code solidColor != 0} 的 quad —— 光效必须盖满模型轮廓；</li>
+     *   <li>颜色强制为 glint 紫（对标原版 {@code RenderItem.renderEffect} 的
+     *       {@code (0.5, 0.25, 0.8)}；非 GUI 阶段对标 1.7.10 {@code ItemRenderer}
+     *       手持光效乘 0.76）；</li>
+     *   <li>不写法线 —— {@link GlintPass} 已关闭 {@code GL_LIGHTING}；</li>
+     *   <li>UV 仍取烘焙图集 UV，流纹跨度由 {@link GlintPass} 的纹理矩阵 scale 控制。</li>
+     * </ul>
+     * 顶点变换链与 {@link #writeItemQuads} <b>逐位一致</b>
+     * （v' = M_pre × M_transformation × M_display × v），且运行同一扩展链尊重
+     * {@code ctx.skip}，保证重放几何与正常 pass 完全重合，通过 {@code GL_EQUAL} 深度测试。
+     * <p>
+     * <b>调用前提</b>：必须在 {@code applyBeforePart} 状态仍有效期间调用
+     * （display 矩阵等 beforePart 状态才能重算一致）。
+     */
+    public static void writeGlintQuads(RenderSubmit s, Tessellator t) {
+        List<BakedQuad> allQuads = s.part.getAllQuads();
+        boolean gui = (s.phase == RenderPhase.ITEM_GUI);
+        Matrix4d preTransform = s.preTransform;
+        Matrix4d transformation = s.transformation;
+        Point3d tmpVec = new Point3d();
+
+        int baseBrightness = gui ? 255 : 15728880;
+        // glint 紫：GUI 对标 RenderItem.renderEffect (0.5, 0.25, 0.8)；
+        // 非 GUI 对标 1.7.10 ItemRenderer 手持光效（同色乘 0.76）
+        // Glint purple: GUI matches RenderItem.renderEffect; non-GUI multiplied by 0.76
+        float k = gui ? 1.0f : 0.76f;
+        float gr = 0.5f * k, gg = 0.25f * k, gb = 0.8f * k;
+
+        for (BakedQuad q : allQuads) {
+            // 运行扩展链：获取 displayTransform 并尊重 skip（与正常 pass 的可见性一致）
+            // Run extension chain: obtain displayTransform and honor skip flag
+            RenderContext ctx = new RenderContext(s.phase, q,
+                    s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, 1.0f);
+            ModelRenderRegistry.apply(ctx);
+            if (ctx.skip) continue;
+
+            t.setBrightness(baseBrightness);
+            t.setColorRGBA_F(gr, gg, gb, 1.0f);
+
+            IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
+            for (int i = 0; i < 4; i++) {
+                // solidColor quad 可能无 icon，UV 兜底为 0（流纹动画仍由纹理矩阵驱动）
+                // solid-color quads may lack an icon; fall back to UV 0
+                double U = (icon != null) ? icon.getInterpolatedU(q.up[i]) : 0.0;
+                double V = (icon != null) ? icon.getInterpolatedV(q.vp[i]) : 0.0;
+
+                // 顶点变换顺序与 writeItemQuads 一致：v' = M_pre × M_transformation × M_display × v
+                tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
+                if (ctx.displayTransform != null) {
+                    ctx.displayTransform.transform(tmpVec);
+                }
+                if (transformation != null) {
+                    transformation.transform(tmpVec);
+                }
+                if (preTransform != null) {
+                    preTransform.transform(tmpVec);
+                }
+                t.addVertexWithUV(tmpVec.x, tmpVec.y, tmpVec.z, U, V);
+            }
+        }
+    }
+
+    /**
      * [方案B] 计算 quad 的逐面法线并写入 Tessellator。
      * <p>
      * 法线取自 {@link BakedQuad#face} 的方向向量，依次经 display / transformation / preTransform

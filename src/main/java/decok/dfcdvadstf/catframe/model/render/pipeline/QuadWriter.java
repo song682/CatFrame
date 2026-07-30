@@ -267,9 +267,9 @@ public final class QuadWriter {
 
     /**
      * 写入附魔光效（glint）quads —— 重放提交项的<b>全部</b>几何（含 solidColor 侧面），
-     * 供 {@link GlintPass} 以 glint 纹理 + 滚动纹理矩阵叠加绘制。
+     * 供 {@code GuiGraphicsExtractor.renderEnchantmentGlint} 以 glint 纹理 + 滚动纹理矩阵叠加绘制。
      * Write enchantment glint quads: replays ALL geometry (including solid-color
-     * side quads) so the glint covers the full model silhouette, for {@link GlintPass} overlay passes.
+     * side quads) so the glint covers the full model silhouette, for the glint overlay passes.
      * <p>
      * 与 {@link #writeItemQuads} 的差异：
      * <ul>
@@ -277,8 +277,8 @@ public final class QuadWriter {
      *   <li>颜色强制为 glint 紫（对标原版 {@code RenderItem.renderEffect} 的
      *       {@code (0.5, 0.25, 0.8)}；非 GUI 阶段对标 1.7.10 {@code ItemRenderer}
      *       手持光效乘 0.76）；</li>
-     *   <li>不写法线 —— {@link GlintPass} 已关闭 {@code GL_LIGHTING}；</li>
-     *   <li>UV 仍取烘焙图集 UV，流纹跨度由 {@link GlintPass} 的纹理矩阵 scale 控制。</li>
+     *   <li>不写法线 —— 光效 pass 已关闭 {@code GL_LIGHTING}；</li>
+     *   <li>UV 仍取烘焙图集 UV，流纹跨度由光效 pass 的纹理矩阵 scale 控制。</li>
      * </ul>
      * 顶点变换链与 {@link #writeItemQuads} <b>逐位一致</b>
      * （v' = M_pre × M_transformation × M_display × v），且运行同一扩展链尊重

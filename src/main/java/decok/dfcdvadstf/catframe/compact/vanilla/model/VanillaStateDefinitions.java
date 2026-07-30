@@ -189,8 +189,8 @@ public final class VanillaStateDefinitions {
     // ==================== 登记入口 ====================
 
     /**
-     * 登记全部原版方块的类型化状态定义。preInit 阶段调用（在
-     * {@code ModelManagerDataLoader.init()} 之前）。
+     * 登记全部原版方块的类型化状态定义。preInit 阶段调用（早于纹理缝合期
+     * 由 {@code TexturesStitch} 触发的 {@code ModelManagerDataLoader.init()}）。
      */
     @SideOnly(Side.CLIENT)
     public static void registerVanillaStateDefinitions() {

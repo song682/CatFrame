@@ -260,8 +260,9 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
      * <p>
      * 流程 / Flow：
      * <ol>
-     *   <li>首次调用时快照 classpath 基线（内层容器浅拷贝）
-     *       / snapshot classpath baseline on first call (shallow-copy inner containers)</li>
+     *   <li>按命名空间增量快照 classpath 基线（内层容器浅拷贝；缝合驱动发现后命名空间可能随时新增）
+     *       / snapshot classpath baseline per namespace incrementally (shallow-copy inner
+     *       containers; stitch-driven discovery can add namespaces at any pass)</li>
      *   <li>还原基线 —— 资源包被移除后覆盖自动消失
      *       / restore baseline so overrides vanish when the pack is removed</li>
      *   <li>叠加本轮扫描到的 blockstate / ItemState 覆盖
@@ -277,19 +278,33 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         // Model system not initialized yet (immediate callback during preInit) → nothing to merge
         if (!ModelManagerDataLoader.initialized) return;
 
-        // 1. 首次快照 classpath 基线 / snapshot classpath baseline on first call
+        // 1. 按命名空间增量拍基线 / snapshot classpath baseline per namespace, incrementally
+        //
+        // 发现流程改由纹理缝合驱动后，命名空间可能在任意一轮缝合时新增（迟到的 mod 注册）。
+        // 缝合（TextureMap 监听器）先于本监听器执行，此刻新命名空间的 loaded* 数据仍是纯
+        // classpath 内容（覆盖叠加发生在下方步骤 3），因此在这里补拍安全；若仍用一次性
+        // 全量快照，后续轮次的「还原基线」会把迟到命名空间的数据整个抹掉。
+        // Since discovery became stitch-driven, namespaces may appear at ANY stitch pass
+        // (late mod registrations). The stitch (TextureMap listener) runs before this
+        // listener, so a newly discovered namespace's loaded* data is still pure classpath
+        // here (overlays are applied only in step 3 below) — snapshotting now is safe.
+        // A one-shot full snapshot would let the "restore baseline" step wipe them.
         if (baselineBlockstates == null) {
             baselineBlockstates = new HashMap<>();
-            for (Map.Entry<String, Map<String, BlockstateJson>> e : ModelManagerDataLoader.loadedBlockstates.entrySet()) {
-                baselineBlockstates.put(e.getKey(), new HashMap<>(e.getValue()));
-            }
             baselineItemStates = new HashMap<>();
-            for (Map.Entry<String, Map<String, ItemStateNode>> e : ModelManagerDataLoader.loadedItemStates.entrySet()) {
-                baselineItemStates.put(e.getKey(), new HashMap<>(e.getValue()));
-            }
             baselineOversizedItems = new HashMap<>();
-            for (Map.Entry<String, Set<String>> e : ModelManagerDataLoader.loadedOversizedItems.entrySet()) {
-                baselineOversizedItems.put(e.getKey(), new HashSet<>(e.getValue()));
+        }
+        for (String ns : ModelManagerDataLoader.loadedNamespaces) {
+            if (baselineBlockstates.containsKey(ns)) continue;
+            Map<String, BlockstateJson> bs = ModelManagerDataLoader.loadedBlockstates.get(ns);
+            baselineBlockstates.put(ns, bs != null ? new HashMap<>(bs) : new HashMap<>());
+            Map<String, ItemStateNode> is = ModelManagerDataLoader.loadedItemStates.get(ns);
+            if (is != null) {
+                baselineItemStates.put(ns, new HashMap<>(is));
+            }
+            Set<String> ov = ModelManagerDataLoader.loadedOversizedItems.get(ns);
+            if (ov != null) {
+                baselineOversizedItems.put(ns, new HashSet<>(ov));
             }
         }
 

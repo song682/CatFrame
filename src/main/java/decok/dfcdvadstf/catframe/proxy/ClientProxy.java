@@ -43,12 +43,18 @@ public class ClientProxy extends CommonProxy {
         OverlayManager.INSTANCE.register(ToastOverlay.INSTANCE);
 
         VanillaStateDefinitions.registerVanillaStateDefinitions();
+        // Reference-only namespace registration — discovery itself now runs incrementally at
+        // TextureStitchEvent.Pre (first stitch fires after ALL mods' preInit), see
+        // ModelManagerDataLoader.init() invoked from TexturesStitch.
+        // 纯引用型命名空间登记 —— 发现流程本身已移至 TextureStitchEvent.Pre 增量执行
+        //（第一次缝合在全体 mod preInit 之后），见 TexturesStitch 调用的
+        // ModelManagerDataLoader.init()。
         ModelManagerDataLoader.registerNamespace(Tags.MODID);
-        ModelManagerDataLoader.init();
 
         /// Note: There is no need to manually register blueyPlushy models here.
         /// BlueyPlushyItem extends ModernItem and implements IItemStateProvider;
-        /// the Tier-3 scan performed by ModelManagerDataLoader.init() automatically discovers all registered
+        /// the Tier-3 scan performed by ModelManagerDataLoader.init() at texture stitch automatically
+        /// discovers all registered
         /// (GameRegistry.registerItem) and registers them as models using the items themselves, marking them as persistent,
         /// in Step 4c of Baking.registerAllModels().
         /// The mapping between models and items is based on the registration ID, consistent with the vanilla version.

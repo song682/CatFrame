@@ -145,8 +145,9 @@ public class ModernBlock extends Block implements IBlockStateProvider {
      *   <li>在客户端注册 ISBRH，获取并设置 renderType ID</li>
      * </ol>
      *
-     * <p>推荐在 {@link ModelManagerDataLoader#init()} 之后调用；若在此之前调用，blockstate 会延迟到
-     * init 阶段加载，但 renderType 只能在客户端获取。
+     * <p>注册时机已放开：发现流程由纹理缝合驱动（每次 {@code TextureStitchEvent.Pre} 增量执行），
+     * 实现了 IBlockStateProvider 的注册表方块也会被自动发现；blockstate 至迟在下一次缝合时加载
+     * （首轮发现完成后调用则立即加载）。renderType 只能在客户端获取。
      *
      * @param block 要注册的 ModernBlock 实例
      * @return 分配的 ISBRH renderType ID；服务端返回 -1

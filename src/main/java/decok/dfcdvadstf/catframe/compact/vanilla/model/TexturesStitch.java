@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.compact.vanilla.model;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
 import net.minecraftforge.client.event.TextureStitchEvent;
@@ -13,6 +14,12 @@ public class TexturesStitch {
     @SideOnly(Side.CLIENT)
     public void onTextureStitchPre(TextureStitchEvent.Pre event) {
         if (event.map.getTextureType() == 0) {
+            // Incremental model discovery at the platform sync point: the first block-atlas
+            // stitch fires after ALL mods' preInit, the second (refreshResources) after the
+            // whole FML lifecycle — late registrations get picked up there.
+            // 在平台同步点做增量模型发现：第一次方块图集缝合在全体 preInit 之后，
+            // 第二次（refreshResources）在整个 FML 生命周期之后 —— 迟到的注册在此补票。
+            ModelManagerDataLoader.init();
             // Register vanilla model textures before atlas is stitched
             VanillaTextureTracker.registerTextures(event.map);
             // Register _opaque leaf textures

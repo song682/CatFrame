@@ -1,0 +1,14 @@
+{
+  "multipart": [
+    { "apply": { "model": "minecraft:block/iron_bars_post" } },
+    { "when": { "north": "true" }, "apply": { "model": "minecraft:block/iron_bars_side" } },
+    { "when": { "east": "true" }, "apply": { "model": "minecraft:block/iron_bars_side", "y": 90 } },
+    { "when": { "south": "true" }, "apply": { "model": "minecraft:block/iron_bars_side", "y": 180 } },
+    { "when": { "west": "true" }, "apply": { "model": "minecraft:block/iron_bars_side", "y": 270 } },
+    { "when": { "north": "false" }, "apply": { "model": "minecraft:block/iron_bars_cap" } },
+    { "when": { "east": "false" }, "apply": { "model": "minecraft:block/iron_bars_cap", "y": 90 } },
+    { "when": { "south": "false" }, "apply": { "model": "minecraft:block/iron_bars_cap", "y": 180 } },
+    { "when": { "west": "false" }, "apply": { "model": "minecraft:block/iron_bars_cap", "y": 270 } },
+    { "when": { "north": "true", "east": "true", "south": "true", "west": "true" }, "apply": { "model": "minecraft:block/iron_bars_post_ends" } }
+  ]
+}

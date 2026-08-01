@@ -19,33 +19,36 @@ import java.util.Map;
  * 收纳原先散落在 {@code StairsBlockModel} / {@code PaneMultipartRedirectModel} 中的世界内
  * 属性计算逻辑，作为 {@link DynamicPropertyResolver} 提供给 {@link ResidentStateModel}。
  * <ul>
- *   <li>{@link #STAIRS} — 楼梯转角形状（facing/half + shape）</li>
- *   <li>{@link #PANE} — 玻璃板/铁栏杆连接（north/east/south/west）</li>
- *   <li>{@link #DOOR} — 门上下两半 meta 合并（facing/half/hinge/open）</li>
+ * <li>{@link #STAIRS} — 楼梯转角形状（facing/half + shape）</li>
+ * <li>{@link #PANE} — 玻璃板/铁栏杆连接（north/east/south/west）</li>
+ * <li>{@link #DOOR} — 门上下两半 meta 合并（facing/half/hinge/open）</li>
  * </ul>
  */
 @SideOnly(Side.CLIENT)
 public final class VanillaBlockResolvers {
 
-    private VanillaBlockResolvers() {}
+    private VanillaBlockResolvers() {
+    }
 
     // ==================== 楼梯 ====================
 
     /** facing: 0=east,1=west,2=south,3=north */
-    private static final String[] STAIR_FACINGS = {"east", "west", "south", "north"};
-    // CW (rotateY):  0(east)→2(south), 2(south)→1(west), 1(west)→3(north), 3(north)→0(east)
-    private static final int[] CW = {2, 3, 1, 0};
+    private static final String[] STAIR_FACINGS = { "east", "west", "south", "north" };
+    // CW (rotateY): 0(east)→2(south), 2(south)→1(west), 1(west)→3(north),
+    // 3(north)→0(east)
+    private static final int[] CW = { 2, 3, 1, 0 };
     // 前方偏移（facing 方向），后方取其相反数
     private static final int[][] FRONT_OFFSET = {
-        {1, 0},  // east
-        {-1, 0}, // west
-        {0, 1},  // south
-        {0, -1}  // north
+            { 1, 0 }, // east
+            { -1, 0 }, // west
+            { 0, 1 }, // south
+            { 0, -1 } // north
     };
 
     /**
      * 楼梯动态解析器：写入 facing/half/shape。
-     * <p>转角检测对齐 1.12+ {@code BlockStairs#getShape}（移植自原 {@code StairsBlockModel}）。
+     * <p>
+     * 转角检测对齐 1.12+ {@code BlockStairs#getShape}（移植自原 {@code StairsBlockModel}）。
      */
     public static final DynamicPropertyResolver STAIRS = new DynamicPropertyResolver() {
         @Override
@@ -78,9 +81,11 @@ public final class VanillaBlockResolvers {
 
     private static Integer getStairFacing(IBlockAccess world, int nx, int ny, int nz, boolean top) {
         Block block = world.getBlock(nx, ny, nz);
-        if (!(block instanceof BlockStairs)) return null;
+        if (!(block instanceof BlockStairs))
+            return null;
         int meta = world.getBlockMetadata(nx, ny, nz);
-        if (((meta & 4) != 0) != top) return null;
+        if (((meta & 4) != 0) != top)
+            return null;
         return meta & 3;
     }
 
@@ -88,11 +93,14 @@ public final class VanillaBlockResolvers {
 
     /**
      * 连接类方块动态解析器：写入 north/east/south/west。
-     * <p>连接判定按自方块类型分派（移植自原 {@code PaneMultipartRedirectModel}）：
+     * <p>
+     * 连接判定按自方块类型分派（移植自原 {@code PaneMultipartRedirectModel}）：
      * <ul>
-     *   <li>{@link BlockPane} 子类（玻璃板/铁栏杆）→ {@link BlockPane#canPaneConnectTo}</li>
-     *   <li>{@link BlockWall}（1.7.10 石墙非 BlockPane）→ {@link BlockWall#canConnectWallTo}</li>
-     *   <li>{@link BlockFence}（1.7.10 栅栏非 BlockPane）→ {@link BlockFence#canConnectFenceTo}</li>
+     * <li>{@link BlockPane} 子类（玻璃板/铁栏杆）→ {@link BlockPane#canPaneConnectTo}</li>
+     * <li>{@link BlockWall}（1.7.10 石墙非 BlockPane）→
+     * {@link BlockWall#canConnectWallTo}</li>
+     * <li>{@link BlockFence}（1.7.10 栅栏非 BlockPane）→
+     * {@link BlockFence#canConnectFenceTo}</li>
      * </ul>
      */
     public static final DynamicPropertyResolver PANE = new DynamicPropertyResolver() {
@@ -100,9 +108,9 @@ public final class VanillaBlockResolvers {
         public void resolve(IBlockAccess world, int x, int y, int z, int meta, Map<String, String> props) {
             Block self = (world != null) ? world.getBlock(x, y, z) : null;
             props.put("north", canConnect(self, world, x, y, z - 1, ForgeDirection.NORTH) ? "true" : "false");
-            props.put("east",  canConnect(self, world, x + 1, y, z, ForgeDirection.EAST)  ? "true" : "false");
+            props.put("east", canConnect(self, world, x + 1, y, z, ForgeDirection.EAST) ? "true" : "false");
             props.put("south", canConnect(self, world, x, y, z + 1, ForgeDirection.SOUTH) ? "true" : "false");
-            props.put("west",  canConnect(self, world, x - 1, y, z, ForgeDirection.WEST)  ? "true" : "false");
+            props.put("west", canConnect(self, world, x - 1, y, z, ForgeDirection.WEST) ? "true" : "false");
         }
 
         /**
@@ -118,7 +126,8 @@ public final class VanillaBlockResolvers {
                 // 1.7.10 fence: 连接其他栅栏 / fence_gate / 不透明正常渲染方块
                 return ((BlockFence) self).canConnectFenceTo(world, x, y, z);
             }
-            if (!(self instanceof BlockPane)) return false;
+            if (!(self instanceof BlockPane))
+                return false;
             return ((BlockPane) self).canPaneConnectTo(world, x, y, z, dir);
         }
     };
@@ -127,18 +136,20 @@ public final class VanillaBlockResolvers {
 
     /**
      * Door facing lookup: 1.7.10 lower-half meta&3 → modern facing.
-     * <p>门朝向查表：1.7.10 下半 meta&3 → 现代 facing。
-     * 对齐 1.8 {@code BlockDoor#getStateFromMeta} 的 {@code getHorizontal(meta&3).rotateYCCW()}。
+     * <p>
+     * 门朝向查表：1.7.10 下半 meta&3 → 现代 facing。
+     * 对齐 1.8 {@code BlockDoor#getStateFromMeta} 的
+     * {@code getHorizontal(meta&3).rotateYCCW()}。
      */
-    private static final String[] DOOR_FACINGS = {"east", "south", "west", "north"};
+    private static final String[] DOOR_FACINGS = { "east", "south", "west", "north" };
 
     /**
      * 门动态解析器：写入 facing/half/hinge/open。
      * <p>
      * 1.7.10 的门把完整状态拆在上下两半 meta 中（对齐 {@code BlockDoor#func_150012_g}）：
      * <ul>
-     *   <li>下半（bit3=0）：bit0-1 = 朝向，bit2 = open</li>
-     *   <li>上半（bit3=1）：bit0 = hinge（1=right）</li>
+     * <li>下半（bit3=0）：bit0-1 = 朝向，bit2 = open</li>
+     * <li>上半（bit3=1）：bit0 = hinge（1=right）</li>
      * </ul>
      * 因此渲染任意一半时都必须跨方块读取另一半的 meta 才能拼出完整 blockstate 键。
      * 另一半缺失（如 setblock 摆出的残门）时按默认值兜底：facing=east, open=false, hinge=left。

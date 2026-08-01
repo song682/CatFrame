@@ -142,10 +142,14 @@ public final class VanillaStateDefinitions {
                         "8", "9", "10", "11", "12", "13", "14", "15");
 
         // 红石线爬线（1.7.10 renderBlockRedstoneWire 四方向独立上坡面）
-        private static final Property<String> REDSTONE_UP_NORTH = StateDefinitions.stringProp("up_north", "false", "true");
-        private static final Property<String> REDSTONE_UP_EAST = StateDefinitions.stringProp("up_east", "false", "true");
-        private static final Property<String> REDSTONE_UP_SOUTH = StateDefinitions.stringProp("up_south", "false", "true");
-        private static final Property<String> REDSTONE_UP_WEST = StateDefinitions.stringProp("up_west", "false", "true");
+        private static final Property<String> REDSTONE_UP_NORTH = StateDefinitions.stringProp("up_north", "false",
+                        "true");
+        private static final Property<String> REDSTONE_UP_EAST = StateDefinitions.stringProp("up_east", "false",
+                        "true");
+        private static final Property<String> REDSTONE_UP_SOUTH = StateDefinitions.stringProp("up_south", "false",
+                        "true");
+        private static final Property<String> REDSTONE_UP_WEST = StateDefinitions.stringProp("up_west", "false",
+                        "true");
 
         // 中继器 / 比较器的 facing（输出方向）
         private static final Property<String> DIODE_FACING = StateDefinitions.stringProp("facing", "north", "east",
@@ -665,9 +669,11 @@ public final class VanillaStateDefinitions {
                 // 及 renderBlockRedstoneWire 判定计算。metaCodec 只解码 power。
                 CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.redstone_wire)
                                 .add(POWER, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST,
-                                                REDSTONE_UP_NORTH, REDSTONE_UP_EAST, REDSTONE_UP_SOUTH, REDSTONE_UP_WEST)
+                                                REDSTONE_UP_NORTH, REDSTONE_UP_EAST, REDSTONE_UP_SOUTH,
+                                                REDSTONE_UP_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST,
-                                                REDSTONE_UP_NORTH, REDSTONE_UP_EAST, REDSTONE_UP_SOUTH, REDSTONE_UP_WEST)
+                                                REDSTONE_UP_NORTH, REDSTONE_UP_EAST, REDSTONE_UP_SOUTH,
+                                                REDSTONE_UP_WEST)
                                 .metaCodec(meta -> new Comparable<?>[] { POWER.getValues().get(meta & 15) })
                                 .create();
                 CatModels.register(Blocks.redstone_wire)
@@ -730,9 +736,11 @@ public final class VanillaStateDefinitions {
                 // piston / sticky_piston (BlockPistonBase): facing[meta&7] + extended[bit3]
                 // 1.7.10 meta 布局：meta[0:2] =
                 // EnumFacing（0=down,1=up,2=north,3=south,4=west,5=east），
-                // bit3 = extended（伸出状态，本体缩回 1/4 格并露出 piston_inner 面）
+                // bit3 = extended（伸出状态，本体缩回 1/4 格并露出 piston_inner 面）。
+                // meta 6/7 是无效 facing（EnumFacing 仅 0-5），但 create() 预填
+                // resolvedByMeta[0..15] 会对全部 meta 调用本 codec，必须钳制索引
                 CatStateDefinition.MetaCodec pistonCodec = meta -> new Comparable<?>[] {
-                                PISTON_FACING.getValues().get(meta & 7),
+                                PISTON_FACING.getValues().get(Math.min(meta & 7, 5)),
                                 (meta & 8) != 0 ? "true" : "false" };
 
                 CatStateDefinition<Block> pistonDef = new CatStateDefinition.Builder<Block>(Blocks.piston)

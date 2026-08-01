@@ -9,7 +9,6 @@ import decok.dfcdvadstf.catframe.model.render.pipeline.QuadWriter;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import decok.dfcdvadstf.catframe.ui.render.GuiRenderState;
-import decok.dfcdvadstf.catframe.ui.render.GuiRenderState.ItemRenderState;
 import decok.dfcdvadstf.catframe.ui.render.pip.*;
 import decok.dfcdvadstf.catframe.ui.tooltip.*;
 import net.minecraft.client.Minecraft;

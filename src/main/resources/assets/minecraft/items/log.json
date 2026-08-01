@@ -2,12 +2,39 @@
     "model": {
         "type": "minecraft:select",
         "property": "catframe:meta",
-        "fallback": { "type": "minecraft:model", "model": "minecraft:block/log" },
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:block/log"
+        },
         "cases": [
-            {"when": "0", "model": { "type": "minecraft:model", "model": "minecraft:block/oak_log" }},
-            {"when": "1", "model": { "type": "minecraft:model", "model": "minecraft:block/spruce_log" }},
-            {"when": "2", "model": { "type": "minecraft:model", "model": "minecraft:block/birch_log" }},
-            {"when": "3", "model": { "type": "minecraft:model", "model": "minecraft:block/jungle_log" }}
+            {
+                "when": "0", 
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/oak_log"
+                }
+            },
+            {
+                "when": "1", 
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/spruce_log"
+                }
+            },
+            {
+                "when": "2", 
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/birch_log"
+                }
+            },
+            {
+                "when": "3", 
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/jungle_log"
+                }
+            }
         ]
     }
 }

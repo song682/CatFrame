@@ -8,7 +8,10 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.IIcon;
 
 import javax.vecmath.Vector3d;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * 物品模型侧面生成器 —— 对标 26.1.2 {@code ItemModelGenerator.bakeSideFaces}。

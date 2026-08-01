@@ -1,11 +1,6 @@
 package decok.dfcdvadstf.catframe.ui;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
 

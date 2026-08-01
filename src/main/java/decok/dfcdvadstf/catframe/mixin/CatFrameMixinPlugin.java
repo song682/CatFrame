@@ -29,10 +29,10 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
     @Override
     public List<String> getMixins() {
         return Arrays.asList(
-            "middle.MixinRenderBlocks",
-            "middle.MixinWorldRenderer",
-            "middle.MixinGuiScreen",
-            "middle.MixinGuiScreenEventBridge"
+                "middle.MixinRenderBlocks",
+                "middle.MixinWorldRenderer",
+                "middle.MixinGuiScreen",
+                "middle.MixinGuiScreenEventBridge"
         );
     }
 

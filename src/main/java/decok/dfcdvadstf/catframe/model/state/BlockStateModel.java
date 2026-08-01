@@ -1,7 +1,9 @@
 package decok.dfcdvadstf.catframe.model.state;
 
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
-import decok.dfcdvadstf.catframe.model.state.block.*;
+import decok.dfcdvadstf.catframe.model.state.block.MultipartBlockModel;
+import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
+import decok.dfcdvadstf.catframe.model.state.block.StateProviderBlockModel;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 

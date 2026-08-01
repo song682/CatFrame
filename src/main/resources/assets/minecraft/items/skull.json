@@ -1,0 +1,47 @@
+{
+    "model": {
+        "type": "minecraft:select",
+        "property": "catframe:meta",
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:item/skeleton_head"
+        },
+        "cases": [
+            {
+                "when": "0",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/skeleton_head"
+                }
+            },
+            {
+                "when": "1",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/wither_head"
+                }
+            },
+            {
+                "when": "2",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/zombie_head"
+                }
+            },
+            {
+                "when": "3",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/human_head"
+                }
+            },
+            {
+                "when": "4",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/creeper_head"
+                }
+            }
+        ]
+    }
+}

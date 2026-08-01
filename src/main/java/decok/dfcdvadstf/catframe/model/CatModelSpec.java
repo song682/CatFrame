@@ -12,11 +12,7 @@ import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.block.Block;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * {@link CatModels} 登记的方块模型规格（数据 holder）。

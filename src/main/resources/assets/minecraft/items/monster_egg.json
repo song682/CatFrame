@@ -7,12 +7,48 @@
             "model": "minecraft:block/stone"
         },
         "cases": [
-            {"when": "0", "model": {"type": "minecraft:model", "model": "minecraft:block/stone"}},
-            {"when": "1", "model": {"type": "minecraft:model", "model": "minecraft:block/cobblestone"}},
-            {"when": "2", "model": {"type": "minecraft:model", "model": "minecraft:block/stone_brick"}},
-            {"when": "3", "model": {"type": "minecraft:model", "model": "minecraft:block/mossy_stone_brick"}},
-            {"when": "4", "model": {"type": "minecraft:model", "model": "minecraft:block/cracked_stone_brick"}},
-            {"when": "5", "model": {"type": "minecraft:model", "model": "minecraft:block/chiseled_stone_brick"}}
+            {
+                "when": "0", 
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/stone"
+                }
+            },
+            {
+                "when": "1", 
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/cobblestone"
+                }
+            },
+            {
+                "when": "2", 
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/stone_brick"
+                }
+            },
+            {
+                "when": "3", 
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/mossy_stone_brick"
+                }
+            },
+            {
+                "when": "4", 
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/cracked_stone_brick"
+                }
+            },
+            {
+                "when": "5", 
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/chiseled_stone_brick"
+                }
+            }
         ]
     }
 }

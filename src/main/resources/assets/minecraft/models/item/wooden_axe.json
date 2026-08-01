@@ -1,6 +1,6 @@
 {
     "parent": "item/handheld",
     "textures": {
-        "layer0": "minecraft:items/wooden_axe"
+        "layer0": "minecraft:items/wood_axe"
     }
 }

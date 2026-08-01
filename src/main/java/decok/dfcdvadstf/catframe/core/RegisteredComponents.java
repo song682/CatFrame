@@ -4,7 +4,6 @@ import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.core.component.ComponentSerializers;
 import decok.dfcdvadstf.catframe.core.component.DataComponentType;
 import decok.dfcdvadstf.catframe.core.component.DataComponents;
-import decok.dfcdvadstf.catframe.core.component.predicates.CustomData;
 import decok.dfcdvadstf.catframe.core.component.predicates.*;
 import net.minecraft.util.ResourceLocation;
 

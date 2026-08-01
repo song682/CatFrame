@@ -1,6 +1,10 @@
 {
   "variants": {
-    "variant=grass": { "model": "minecraft:block/tall_grass" },
-    "variant=fern":  { "model": "minecraft:block/fern" }
+    "variant=grass": {
+      "model": "minecraft:block/short_grass"
+    },
+    "variant=fern":  {
+      "model": "minecraft:block/fern"
+    }
   }
 }

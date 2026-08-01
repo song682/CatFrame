@@ -20,11 +20,7 @@ import net.minecraft.util.IIcon;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * ModernItem — extended Item with two key features over vanilla Item:

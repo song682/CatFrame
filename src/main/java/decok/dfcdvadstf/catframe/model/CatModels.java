@@ -122,6 +122,17 @@ public final class CatModels {
             if (spec.def != null) {
                 ModelRegistry.registerStateDefinition(spec.block, spec.def);
             }
+            // 同步登记 redirect：ModelManagerDataLoader.init() 的预载循环只遍历
+            // blockstateRedirects —— 不登记则 redirect 目标 blockstate（如 16 色
+            // 染色玻璃板）在 stitch 前不加载、纹理不收集，渲染时懒加载已太晚
+            // （atlas 已缝合）。
+            // Register the redirect here as well: init()'s preload loop only walks
+            // blockstateRedirects — without this, redirect targets (e.g. the 16
+            // per-color stained glass panes) are never preloaded before the atlas
+            // stitch, and lazy loads at render time are already too late.
+            if (spec.redirect != null) {
+                ModelManagerDataLoader.registerBlockstateRedirect(spec.block, spec.redirect);
+            }
         }
     }
 

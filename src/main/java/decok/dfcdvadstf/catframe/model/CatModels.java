@@ -22,6 +22,7 @@ import java.util.Map;
  * {@code registerBlockstateRedirect} / 手写 model 类实例化。
  *
  * <h3>用法</h3>
+ * 
  * <pre>{@code
  * CatModels.register(Blocks.wool)
  *     .states(StateDefinitions colorDef)   // typed 常驻表
@@ -36,13 +37,15 @@ import java.util.Map;
  *
  * <h3>时序</h3>
  * {@link #register()} 只登记声明式 {@link CatModelSpec}；真正需要 blockstate JSON 的物化
- * 推迟到 {@link #materialize()}（由 {@code VanillaModelManager.Baking.registerAllModels}
+ * 推迟到 {@link #materialize()}（由
+ * {@code VanillaModelManager.Baking.registerAllModels}
  * 在 blockstate 加载完成后调用）。
  */
 @SideOnly(Side.CLIENT)
 public final class CatModels {
 
-    private CatModels() {}
+    private CatModels() {
+    }
 
     /** preInit 登记的所有 spec（保序，供物化遍历）。 */
     public static final Map<Block, CatModelSpec> SPECS = new LinkedHashMap<>();
@@ -162,7 +165,8 @@ public final class CatModels {
 
             BlockstateJson bs = null;
             Map<String, BlockstateJson> nsMap = ModelManagerDataLoader.loadedBlockstates.get(namespace);
-            if (nsMap != null && name != null) bs = nsMap.get(name);
+            if (nsMap != null && name != null)
+                bs = nsMap.get(name);
 
             // 常驻方块模型（redirect 模式允许 bs 为 null）
             ResidentStateModel model = spec.buildBlockModel(bs);

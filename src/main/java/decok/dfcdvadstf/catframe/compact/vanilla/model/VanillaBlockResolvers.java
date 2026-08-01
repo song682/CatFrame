@@ -4,8 +4,10 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel.DynamicPropertyResolver;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockFence;
 import net.minecraft.block.BlockPane;
 import net.minecraft.block.BlockStairs;
+import net.minecraft.block.BlockWall;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -86,25 +88,38 @@ public final class VanillaBlockResolvers {
 
     /**
      * 连接类方块动态解析器：写入 north/east/south/west。
-     * <p>连接判定用 {@link BlockPane#canPaneConnectTo}（移植自原 {@code PaneMultipartRedirectModel}）。
-     * 从渲染坐标处的方块取得 {@link BlockPane} 实例。
+     * <p>连接判定按自方块类型分派（移植自原 {@code PaneMultipartRedirectModel}）：
+     * <ul>
+     *   <li>{@link BlockPane} 子类（玻璃板/铁栏杆）→ {@link BlockPane#canPaneConnectTo}</li>
+     *   <li>{@link BlockWall}（1.7.10 石墙非 BlockPane）→ {@link BlockWall#canConnectWallTo}</li>
+     *   <li>{@link BlockFence}（1.7.10 栅栏非 BlockPane）→ {@link BlockFence#canConnectFenceTo}</li>
+     * </ul>
      */
     public static final DynamicPropertyResolver PANE = new DynamicPropertyResolver() {
         @Override
         public void resolve(IBlockAccess world, int x, int y, int z, int meta, Map<String, String> props) {
             Block self = (world != null) ? world.getBlock(x, y, z) : null;
-            if (!(self instanceof BlockPane)) {
-                props.put("north", "false");
-                props.put("east", "false");
-                props.put("south", "false");
-                props.put("west", "false");
-                return;
+            props.put("north", canConnect(self, world, x, y, z - 1, ForgeDirection.NORTH) ? "true" : "false");
+            props.put("east",  canConnect(self, world, x + 1, y, z, ForgeDirection.EAST)  ? "true" : "false");
+            props.put("south", canConnect(self, world, x, y, z + 1, ForgeDirection.SOUTH) ? "true" : "false");
+            props.put("west",  canConnect(self, world, x - 1, y, z, ForgeDirection.WEST)  ? "true" : "false");
+        }
+
+        /**
+         * 按自方块类型判定相邻方块是否可连接。
+         * Dispatch the connection check by the rendered block's own type.
+         */
+        private boolean canConnect(Block self, IBlockAccess world, int x, int y, int z, ForgeDirection dir) {
+            if (self instanceof BlockWall) {
+                // 1.7.10 wall: 连接其他墙 / fence_gate / 不透明正常渲染方块
+                return ((BlockWall) self).canConnectWallTo(world, x, y, z);
             }
-            BlockPane pane = (BlockPane) self;
-            props.put("north", pane.canPaneConnectTo(world, x, y, z - 1, ForgeDirection.NORTH) ? "true" : "false");
-            props.put("east",  pane.canPaneConnectTo(world, x + 1, y, z, ForgeDirection.EAST)  ? "true" : "false");
-            props.put("south", pane.canPaneConnectTo(world, x, y, z + 1, ForgeDirection.SOUTH) ? "true" : "false");
-            props.put("west",  pane.canPaneConnectTo(world, x - 1, y, z, ForgeDirection.WEST)  ? "true" : "false");
+            if (self instanceof BlockFence) {
+                // 1.7.10 fence: 连接其他栅栏 / fence_gate / 不透明正常渲染方块
+                return ((BlockFence) self).canConnectFenceTo(world, x, y, z);
+            }
+            if (!(self instanceof BlockPane)) return false;
+            return ((BlockPane) self).canPaneConnectTo(world, x, y, z, dir);
         }
     };
 

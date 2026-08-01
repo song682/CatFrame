@@ -202,6 +202,7 @@ public final class VanillaStateDefinitions {
         registerHopper();
         registerQuartzBlock();
         registerStairs();
+        registerWall();
         registerPanes();
         registerFlowersAndGrass();
         registerDoubleSlabs();
@@ -292,9 +293,6 @@ public final class VanillaStateDefinitions {
         // dirt: meta==2 ? podzol : dirt
         singleVariant(Blocks.dirt, DIRT_VARIANT,
                 meta -> new Comparable<?>[]{DIRT_VARIANT.getValues().get(meta == 2 ? 1 : 0)});
-        // cobblestone_wall: meta==0 ? cobblestone : mossy_cobblestone
-        singleVariant(Blocks.cobblestone_wall, WALL_VARIANT,
-                meta -> new Comparable<?>[]{WALL_VARIANT.getValues().get(meta == 0 ? 0 : 1)});
     }
 
     private static void singleVariant(Block block, Property<String> prop, CatStateDefinition.MetaCodec codec) {
@@ -422,7 +420,26 @@ public final class VanillaStateDefinitions {
         }
     }
 
-    // ==================== 玻璃板（连接全动态） ====================
+    // ==================== 石墙（variant 静态 + 连接全动态） ====================
+
+    private static void registerWall() {
+        // cobblestone_wall: meta 0/1 静态解码材质 variant，连接状态由 PANE resolver 计算。
+        // 1.7.10 BlockWall 非 BlockPane，靠 resolver 的 canConnectWallTo 特判；
+        // blockstate 为 10-case multipart（2 材质 × post + 4 向 side，when 匹配 variant+方向）。
+        CatStateDefinition<Block> wallDef = new CatStateDefinition.Builder<Block>(Blocks.cobblestone_wall)
+                .add(WALL_VARIANT, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                .metaCodec(meta -> new Comparable<?>[]{
+                        WALL_VARIANT.getValues().get(meta == 0 ? 0 : 1)})
+                .create();
+        CatModels.register(Blocks.cobblestone_wall)
+                .states(wallDef)
+                .dynamic(VanillaBlockResolvers.PANE)
+                .connectionMultipart()
+                .register();
+    }
+
+    // ==================== 玻璃板 / 栅栏（连接全动态） ====================
 
     private static void registerPanes() {
         // glass_pane: north/east/south/west 全动态（meta 忽略，运行时由 PANE resolver 计算）
@@ -446,6 +463,17 @@ public final class VanillaStateDefinitions {
                 .dynamic(VanillaBlockResolvers.PANE)
                 .connectionMultipart()
                 .redirect(meta -> StateDefinitions.COLORS[meta & 15] + "_stained_glass_pane", "minecraft")
+                .register();
+
+        // fence: 连接同上（1.7.10 BlockFence 非 BlockPane，靠 resolver 的 canConnectFenceTo 特判）
+        CatStateDefinition<Block> fenceDef = new CatStateDefinition.Builder<Block>(Blocks.fence)
+                .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                .create();
+        CatModels.register(Blocks.fence)
+                .states(fenceDef)
+                .dynamic(VanillaBlockResolvers.PANE)
+                .connectionMultipart()
                 .register();
     }
 

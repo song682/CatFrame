@@ -505,7 +505,8 @@ public final class VanillaStateDefinitions {
                                 .connectionMultipart()
                                 .register();
 
-                // nether_brick_fence: BlockFence 实例（canConnectFenceTo 判定），blockstate 为 5-case multipart
+                // nether_brick_fence: BlockFence 实例（canConnectFenceTo 判定），blockstate 为 5-case
+                // multipart
                 CatStateDefinition<Block> nbfDef = new CatStateDefinition.Builder<Block>(Blocks.nether_brick_fence)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)

@@ -12,8 +12,15 @@ public enum RenderPhase {
      */
     BLOCK_WORLD,
     /**
-     * 方块在 GUI 中渲染（有 BlockAccess）。
+     * <p>
+     * 
+     * @deprecated 由于 Item Model 的加入，方块在 GUI 中渲染的场景越来越少。<br>
+     *             基本上切换到了物品渲染，此阶段已很少使用，仅保留向后兼容。<br>
+     *             使用 {@link #ITEM_GUI} 替代。
+     * </p>
+     *  方块在 GUI 中渲染（有 BlockAccess）。
      */
+    @Deprecated
     BLOCK_GUI,
     /**
      * 物品在 GUI / 物品栏中渲染（有 ItemStack）。
@@ -43,7 +50,8 @@ public enum RenderPhase {
      */
     ITEM_FIXED,
     /**
-     * @deprecated 使用 {@link #ITEM_HAND_FIRST_PERSON} 或 {@link #ITEM_HAND_THIRD_PERSON} 替代。
+     * @deprecated 使用 {@link #ITEM_HAND_FIRST_PERSON} 或
+     *             {@link #ITEM_HAND_THIRD_PERSON} 替代。
      */
     @Deprecated
     ITEM_HAND;

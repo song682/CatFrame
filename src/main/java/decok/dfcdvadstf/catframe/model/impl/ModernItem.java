@@ -34,10 +34,12 @@ import java.util.*;
  * <h3>2. Dual-model rendering (2D inventory + 3D handheld)</h3>
  * Call {@link #setModels(String, String)} in the constructor to specify
  * separate 2D (inventory) and 3D (handheld) model paths.
- * Internally an {@link ItemStateNode} decision tree is built which automatically dispatches:
+ * Internally an {@link ItemStateNode} decision tree is built which
+ * automatically dispatches:
  * <ul>
- *   <li>GUI / dropped item → 2D inventory model (builtin/generated, with side thickness)</li>
- *   <li>First/third person hand → 3D handheld model</li>
+ * <li>GUI / dropped item → 2D inventory model (builtin/generated, with side
+ * thickness)</li>
+ * <li>First/third person hand → 3D handheld model</li>
  * </ul>
  * When only one model is set, that model is used for all phases.
  *
@@ -66,15 +68,21 @@ public class ModernItem extends Item implements IItemStateProvider {
     // ==================== Dual-model configuration ====================
 
     /**
-     * 2D inventory model path (e.g. "item/bluey_inventory"), used for GUI and dropped item rendering.
-     * Set by {@link #setModels(String, String)}.
+     * @deprecated use {@link IItemStateProvider} Item model system instead<br>
+     *             2D inventory model path (e.g. "item/bluey_inventory"), used for
+     *             GUI and dropped item rendering.
+     *             Set by {@link #setModels(String, String)}.
      */
+    @Deprecated
     protected String inventoryModelPath;
 
     /**
-     * 3D handheld model path (e.g. "item/bluey"), used for first/third person hand rendering.
-     * Set by {@link #setModels(String, String)}.
+     * @deprecated use {@link IItemStateProvider} Item model system instead<br>
+     *             3D handheld model path (e.g. "item/bluey"), used for first/third
+     *             person hand rendering.
+     *             Set by {@link #setModels(String, String)}.
      */
+    @Deprecated
     protected String handModelPath;
 
     /**
@@ -90,14 +98,24 @@ public class ModernItem extends Item implements IItemStateProvider {
     }
 
     /**
-     * @param layers number of render passes (≥ 1).  Values &lt; 1 are clamped to 1.
+     * @param layers number of render passes (≥ 1). Values &lt; 1 are clamped to 1.
      */
     public ModernItem(int layers) {
         this.layerCount = Math.max(1, layers);
         this.layerIcons = new IIcon[this.layerCount];
         this.layerIconNames = new String[this.layerCount];
-        this.setFull3D();               // Enable vanilla 3D-in-hand; JSON models override with display transforms
-        this.setHasSubtypes(true);      // allow damage-based sub-items by default
+        // Keep isFull3D = true. RenderJsonItemModel.computePreTransform() consumes it
+        // in the
+        // RenderBiped branch (EQUIPPED, non-player entity, non-ItemBlock): isFull3D
+        // picks the
+        // full3D counter-transform vs the 2D fallback. Player-held / item-frame /
+        // dropped-item
+        // phases never read it, so removing this looks safe but silently mis-positions
+        // mob-held items.
+        // 保留 isFull3D = true：RenderJsonItemModel.computePreTransform() 的 RenderBiped 分支
+        // （第三人称、非玩家实体、非 ItemBlock）依赖它选择 full3D 反抵消矩阵或 2D 回退矩阵。
+        // 玩家手持 / 展示架 / 掉落物阶段都不读它——删除看似安全，实则非玩家实体手持时会静默错位。
+        this.setFull3D();
     }
 
     // ==================== Layer configuration ====================
@@ -114,7 +132,8 @@ public class ModernItem extends Item implements IItemStateProvider {
      * Must be called <b>before</b> {@link #registerIcons} to have effect.
      */
     protected void setLayerCount(int layers) {
-        if (layers < 1) layers = 1;
+        if (layers < 1)
+            layers = 1;
         this.layerCount = layers;
         this.layerIcons = new IIcon[this.layerCount];
         this.layerIconNames = new String[this.layerCount];
@@ -125,15 +144,17 @@ public class ModernItem extends Item implements IItemStateProvider {
      * Also forwards the first name to {@link #setTextureName(String)}
      * so vanilla tooling (e.g. missing-icon fallback) keeps working.
      *
-     * @param names one texture name per layer, e.g. {@code "catframe:items/sword_blade", "catframe:items/sword_handle"}
+     * @param names one texture name per layer, e.g.
+     *              {@code "catframe:items/sword_blade", "catframe:items/sword_handle"}
      * @return this
      */
     public ModernItem setLayerTextureNames(String... names) {
-        if (names == null || names.length == 0) return this;
+        if (names == null || names.length == 0)
+            return this;
         this.layerCount = names.length;
         this.layerIcons = new IIcon[this.layerCount];
         this.layerIconNames = names;
-        this.setTextureName(names[0]);   // compatibility with vanilla iconString
+        this.setTextureName(names[0]); // compatibility with vanilla iconString
         return this;
     }
 
@@ -170,8 +191,8 @@ public class ModernItem extends Item implements IItemStateProvider {
     }
 
     /**
-     * Per-layer colour tint.  Subclasses (e.g. dyed items) should override
-     * this to return a different colour per pass.  Default: opaque white.
+     * Per-layer colour tint. Subclasses (e.g. dyed items) should override
+     * this to return a different colour per pass. Default: opaque white.
      */
     @Override
     @SideOnly(Side.CLIENT)
@@ -196,22 +217,37 @@ public class ModernItem extends Item implements IItemStateProvider {
     // ==================== Dual-model API ====================
 
     /**
-     * Set separate 2D and 3D model paths for this item.
      * <p>
-     * Set an internal {@link ItemStateNode} node：
-     * <ul>
-     *   <li>GUI / looting stage（display_context = ITEM_GUI / DROPPED_ITEM_GROUND）→ 2D inventory model</li>
-     *   <li>手持阶段（display_context = ITEM_HAND_FIRST_PERSON / ITEM_HAND_THIRD_PERSON）→ 3D handheld model</li>
-     * </ul>
-     * If only a model is input, regressed to the single {@link ItemStateNode.ModelLeaf}。
-     * <p>
-     * Must be called <b>before</b> {@link ModelManagerDataLoader#init()}
-     * so that texture collection can pick up both models' textures.
+     * 
+     * @deprecated use {@link IItemStateProvider} Item model system instead
+     *             </p>
+     * 
+     *             <p>
+     *             Set separate 2D and 3D model paths for this item.
+     *             </p>
+     *             <p>
+     *             Set an internal {@link ItemStateNode} node：
+     *             <ul>
+     *             <li>GUI / looting stage（display_context = ITEM_GUI /
+     *             DROPPED_ITEM_GROUND）→ 2D inventory model</li>
+     *             <li>手持阶段（display_context = ITEM_HAND_FIRST_PERSON /
+     *             ITEM_HAND_THIRD_PERSON）→ 3D handheld model</li>
+     *             </ul>
+     *             If only a model is input, regressed to the single
+     *             {@link ItemStateNode.ModelLeaf}。
+     *             <p>
+     *             Must be called <b>before</b>
+     *             {@link ModelManagerDataLoader#init()}
+     *             so that texture collection can pick up both models' textures.
+     *             </p>
      *
-     * @param inventoryModel 2D model path for GUI and dropped items (e.g. "item/bluey_inventory")
-     * @param handModel      3D model path for handheld rendering (e.g. "item/bluey")
+     * @param inventoryModel 2D model path for GUI and dropped items (e.g.
+     *                       "item/bluey_inventory")
+     * @param handModel      3D model path for handheld rendering (e.g.
+     *                       "item/bluey")
      * @return this
      */
+    @Deprecated
     public ModernItem setModels(String inventoryModel, String handModel) {
         this.inventoryModelPath = inventoryModel;
         this.handModelPath = handModel;
@@ -256,8 +292,10 @@ public class ModernItem extends Item implements IItemStateProvider {
     }
 
     /**
-     * Returns true if this item has dual-model configuration.
+     * @deprecated use {@link IItemStateProvider} Item model system instead<br>
+     *             Returns true if this item has dual-model configuration.
      */
+    @Deprecated
     public boolean hasDualModels() {
         return inventoryModelPath != null && handModelPath != null;
     }
@@ -272,16 +310,19 @@ public class ModernItem extends Item implements IItemStateProvider {
     @Override
     @SideOnly(Side.CLIENT)
     public void render(ItemStack stack, RenderPhase phase) {
-        if (itemStateRoot == null) return;
+        if (itemStateRoot == null)
+            return;
 
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
         EvalResult result = itemStateRoot.evaluate(props);
-        if (result.isEmpty()) return;
+        if (result.isEmpty())
+            return;
 
         for (String path : result.getModels()) {
             String cacheKey = BakedModelCache.buildKey(path, 0, 0);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
-            if (part == null || part.isEmpty()) continue;
+            if (part == null || part.isEmpty())
+                continue;
             UniformRenderPipeline.renderItemQuads(part, stack, phase);
         }
     }
@@ -289,17 +330,20 @@ public class ModernItem extends Item implements IItemStateProvider {
     @Override
     @SideOnly(Side.CLIENT)
     public void render(ItemStack stack, RenderPhase phase,
-                       @Nullable Matrix4d preTransform) {
-        if (itemStateRoot == null) return;
+            @Nullable Matrix4d preTransform) {
+        if (itemStateRoot == null)
+            return;
 
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
         EvalResult result = itemStateRoot.evaluate(props);
-        if (result.isEmpty()) return;
+        if (result.isEmpty())
+            return;
 
         for (String path : result.getModels()) {
             String cacheKey = BakedModelCache.buildKey(path, 0, 0);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
-            if (part == null || part.isEmpty()) continue;
+            if (part == null || part.isEmpty())
+                continue;
             UniformRenderPipeline.renderItemQuads(part, stack, phase,
                     null, 0, 0, 0, null, preTransform);
         }
@@ -343,13 +387,14 @@ public class ModernItem extends Item implements IItemStateProvider {
         return this.itemIcon;
     }
 
-    // ==================== Creative tabs — multi-subtype support ====================
+    // ==================== Creative tabs — multi-subtype support
+    // ====================
 
     @Override
     @SideOnly(Side.CLIENT)
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     public void getSubItems(Item item, CreativeTabs tab, List list) {
-        // Default: single sub-item.  Subclasses with multiple damage values
+        // Default: single sub-item. Subclasses with multiple damage values
         // should override this.
         list.add(new ItemStack(item, 1, 0));
     }

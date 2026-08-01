@@ -1,12 +1,8 @@
 {
-    "parent": "minecraft:block/cube",
+    "parent": "minecraft:block/cube_bottom_top",
     "textures": {
-        "down": "minecraft:blocks/piston_bottom",
-        "up": "minecraft:blocks/piston_top_sticky",
-        "north": "minecraft:blocks/piston_side",
-        "south": "minecraft:blocks/piston_side",
-        "west": "minecraft:blocks/piston_side",
-        "east": "minecraft:blocks/piston_side",
-        "particle": "minecraft:blocks/piston_side"
+        "bottom": "minecraft:blocks/piston_bottom",
+        "top": "minecraft:blocks/piston_top_sticky",
+        "side": "minecraft:blocks/piston_side"
     }
 }

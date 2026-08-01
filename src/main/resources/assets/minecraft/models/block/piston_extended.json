@@ -1,6 +1,9 @@
 {
     "textures": {
-        "particle": "#side"
+        "particle": "#side",
+        "side": "minecraft:blocks/piston_side",
+        "bottom": "minecraft:blocks/piston_bottom",
+        "inside": "minecraft:blocks/piston_inner"
     },
     "elements": [
         {

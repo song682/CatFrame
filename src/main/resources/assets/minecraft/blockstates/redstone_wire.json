@@ -1,69 +1,355 @@
 {
   "multipart": [
-    { "when": { "OR": [
-        { "north": "false", "south": "false", "east": "false", "west": "false" },
-        { "north": "true",  "south": "false", "east": "false", "west": "false" },
-        { "north": "false", "south": "true",  "east": "false", "west": "false" },
-        { "north": "false", "south": "false", "east": "true",  "west": "false" },
-        { "north": "false", "south": "false", "east": "false", "west": "true"  },
-        { "north": "true",  "south": "true",  "east": "true",  "west": "false" },
-        { "north": "true",  "south": "true",  "east": "false", "west": "true"  },
-        { "north": "true",  "south": "true",  "east": "true",  "west": "true"  },
-        { "north": "true",  "south": "false", "east": "true",  "west": "false" },
-        { "north": "true",  "south": "false", "east": "false", "west": "true"  },
-        { "north": "true",  "south": "false", "east": "true",  "west": "true"  },
-        { "north": "false", "south": "true",  "east": "true",  "west": "false" },
-        { "north": "false", "south": "true",  "east": "false", "west": "true"  },
-        { "north": "false", "south": "true",  "east": "true",  "west": "true"  }
-      ] },
-      "apply": { "model": "minecraft:block/redstone_dust_dot" } },
-    { "when": { "OR": [
-        { "north": "true",  "south": "false", "east": "false", "west": "false" },
-        { "north": "true",  "south": "true",  "east": "true",  "west": "false" },
-        { "north": "true",  "south": "true",  "east": "false", "west": "true"  },
-        { "north": "true",  "south": "true",  "east": "true",  "west": "true"  },
-        { "north": "true",  "south": "false", "east": "true",  "west": "false" },
-        { "north": "true",  "south": "false", "east": "false", "west": "true"  },
-        { "north": "true",  "south": "false", "east": "true",  "west": "true"  }
-      ] },
-      "apply": { "model": "minecraft:block/redstone_dust_side_north" } },
-    { "when": { "OR": [
-        { "north": "false", "south": "true",  "east": "false", "west": "false" },
-        { "north": "true",  "south": "true",  "east": "true",  "west": "false" },
-        { "north": "true",  "south": "true",  "east": "false", "west": "true"  },
-        { "north": "true",  "south": "true",  "east": "true",  "west": "true"  },
-        { "north": "false", "south": "true",  "east": "true",  "west": "false" },
-        { "north": "false", "south": "true",  "east": "false", "west": "true"  },
-        { "north": "false", "south": "true",  "east": "true",  "west": "true"  }
-      ] },
-      "apply": { "model": "minecraft:block/redstone_dust_side_south" } },
-    { "when": { "OR": [
-        { "north": "false", "south": "false", "east": "true",  "west": "false" },
-        { "north": "true",  "south": "true",  "east": "true",  "west": "false" },
-        { "north": "true",  "south": "true",  "east": "true",  "west": "true"  },
-        { "north": "true",  "south": "false", "east": "true",  "west": "false" },
-        { "north": "true",  "south": "false", "east": "true",  "west": "true"  },
-        { "north": "false", "south": "true",  "east": "true",  "west": "false" },
-        { "north": "false", "south": "true",  "east": "true",  "west": "true"  }
-      ] },
-      "apply": { "model": "minecraft:block/redstone_dust_side_east" } },
-    { "when": { "OR": [
-        { "north": "false", "south": "false", "east": "false", "west": "true"  },
-        { "north": "true",  "south": "true",  "east": "false", "west": "true"  },
-        { "north": "true",  "south": "true",  "east": "true",  "west": "true"  },
-        { "north": "true",  "south": "false", "east": "false", "west": "true"  },
-        { "north": "true",  "south": "false", "east": "true",  "west": "true"  },
-        { "north": "false", "south": "true",  "east": "false", "west": "true"  },
-        { "north": "false", "south": "true",  "east": "true",  "west": "true"  }
-      ] },
-      "apply": { "model": "minecraft:block/redstone_dust_side_west" } },
-    { "when": { "north": "false", "south": "false", "east": "true", "west": "true" },
-      "apply": { "model": "minecraft:block/redstone_dust_line" } },
-    { "when": { "north": "true", "south": "true", "east": "false", "west": "false" },
-      "apply": { "model": "minecraft:block/redstone_dust_line_ns" } },
-    { "when": { "up_north": "true" }, "apply": { "model": "minecraft:block/redstone_dust_up_north" } },
-    { "when": { "up_east": "true" },  "apply": { "model": "minecraft:block/redstone_dust_up_east" } },
-    { "when": { "up_south": "true" }, "apply": { "model": "minecraft:block/redstone_dust_up_south" } },
-    { "when": { "up_west": "true" },  "apply": { "model": "minecraft:block/redstone_dust_up_west" } }
+    {
+      "when": {
+        "OR": [
+          {
+            "north": "false",
+            "south": "false",
+            "east": "false",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "false",
+            "west": "false"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "false",
+            "west": "false"
+          },
+          {
+            "north": "false",
+            "south": "false",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "false",
+            "south": "false",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "true",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "true",
+            "west": "true"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "true",
+            "west": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_dot"
+      }
+    },
+    {
+      "when": {
+        "OR": [
+          {
+            "north": "true",
+            "south": "false",
+            "east": "false",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "true",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "true",
+            "west": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_side_north"
+      }
+    },
+    {
+      "when": {
+        "OR": [
+          {
+            "north": "false",
+            "south": "true",
+            "east": "false",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "true",
+            "west": "true"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "true",
+            "west": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_side_south"
+      }
+    },
+    {
+      "when": {
+        "OR": [
+          {
+            "north": "false",
+            "south": "false",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "true",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "true",
+            "west": "true"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "true",
+            "west": "false"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "true",
+            "west": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_side_east"
+      }
+    },
+    {
+      "when": {
+        "OR": [
+          {
+            "north": "false",
+            "south": "false",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "true",
+            "east": "true",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "true",
+            "south": "false",
+            "east": "true",
+            "west": "true"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "false",
+            "west": "true"
+          },
+          {
+            "north": "false",
+            "south": "true",
+            "east": "true",
+            "west": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_side_west"
+      }
+    },
+    {
+      "when": {
+        "north": "false",
+        "south": "false",
+        "east": "true",
+        "west": "true"
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_line"
+      }
+    },
+    {
+      "when": {
+        "north": "true",
+        "south": "true",
+        "east": "false",
+        "west": "false"
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_line_ns"
+      }
+    },
+    {
+      "when": {
+        "up_north": "true"
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_up_north"
+      }
+    },
+    {
+      "when": {
+        "up_east": "true"
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_up_east"
+      }
+    },
+    {
+      "when": {
+        "up_south": "true"
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_up_south"
+      }
+    },
+    {
+      "when": {
+        "up_west": "true"
+      },
+      "apply": {
+        "model": "minecraft:block/redstone_dust_up_west"
+      }
+    }
   ]
 }

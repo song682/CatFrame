@@ -35,7 +35,8 @@ public class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(new ClientScreenGraphicsHandler());
 
         // Bridge OverlayManager into the HUD render/tick loop and the screen draw pass
-        // (pure Forge; also hosts the welcome-toast trigger), then register the ActionBar
+        // (pure Forge; also hosts the welcome-toast trigger), then register the
+        // ActionBar
         // and the centred Title as HUD-context overlays and the Toast system as a
         // BOTH-context overlay (HUD + any open screen, main menu included).
         MinecraftForge.EVENT_BUS.register(new ClientOverlayHandler());
@@ -44,21 +45,25 @@ public class ClientProxy extends CommonProxy {
         OverlayManager.INSTANCE.register(ToastOverlay.INSTANCE);
 
         VanillaStateDefinitions.registerVanillaStateDefinitions();
-        // Reference-only namespace registration — discovery itself now runs incrementally at
+        // Reference-only namespace registration — discovery itself now runs
+        // incrementally at
         // TextureStitchEvent.Pre (first stitch fires after ALL mods' preInit), see
         // ModelManagerDataLoader.init() invoked from TexturesStitch.
         // 纯引用型命名空间登记 —— 发现流程本身已移至 TextureStitchEvent.Pre 增量执行
-        //（第一次缝合在全体 mod preInit 之后），见 TexturesStitch 调用的
+        // （第一次缝合在全体 mod preInit 之后），见 TexturesStitch 调用的
         // ModelManagerDataLoader.init()。
         ModelManagerDataLoader.registerNamespace(Tags.MODID);
 
         /// Note: There is no need to manually register blueyPlushy models here.
         /// BlueyPlushyItem extends ModernItem and implements IItemStateProvider;
-        /// the Tier-3 scan performed by ModelManagerDataLoader.init() at texture stitch automatically
+        /// the Tier-3 scan performed by ModelManagerDataLoader.init() at texture stitch
+        /// automatically
         /// discovers all registered
-        /// (GameRegistry.registerItem) and registers them as models using the items themselves, marking them as persistent,
+        /// (GameRegistry.registerItem) and registers them as models using the items
+        /// themselves, marking them as persistent,
         /// in Step 4c of Baking.registerAllModels().
-        /// The mapping between models and items is based on the registration ID, consistent with the vanilla version.
+        /// The mapping between models and items is based on the registration ID,
+        /// consistent with the vanilla version.
 
         // Register tint providers and graphics extensions
         TintRegistry.register(new LeavesTintProvider());

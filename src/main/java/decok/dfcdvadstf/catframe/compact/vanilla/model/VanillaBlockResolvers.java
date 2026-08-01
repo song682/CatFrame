@@ -136,7 +136,8 @@ public final class VanillaBlockResolvers {
         }
     };
 
-    // ==================== 红石粉（1.7.10 renderBlockRedstoneWire 连接判定） ====================
+    // ==================== 红石粉（1.7.10 renderBlockRedstoneWire 连接判定）
+    // ====================
 
     /**
      * 红石粉动态解析器：写入 north/east/south/west + up_north/up_east/up_south/up_west。
@@ -172,28 +173,32 @@ public final class VanillaBlockResolvers {
             // 水平连接 + 下坡连接（flag = west, flag1 = east, flag2 = north, flag3 = south）
             boolean west = isPowerProviderOrWire(world, x - 1, y, z, 1)
                     || !world.getBlock(x - 1, y, z).isNormalCube()
-                    && isPowerProviderOrWire(world, x - 1, y - 1, z, -1);
+                            && isPowerProviderOrWire(world, x - 1, y - 1, z, -1);
             boolean east = isPowerProviderOrWire(world, x + 1, y, z, 3)
                     || !world.getBlock(x + 1, y, z).isNormalCube()
-                    && isPowerProviderOrWire(world, x + 1, y - 1, z, -1);
+                            && isPowerProviderOrWire(world, x + 1, y - 1, z, -1);
             boolean north = isPowerProviderOrWire(world, x, y, z - 1, 2)
                     || !world.getBlock(x, y, z - 1).isNormalCube()
-                    && isPowerProviderOrWire(world, x, y - 1, z - 1, -1);
+                            && isPowerProviderOrWire(world, x, y - 1, z - 1, -1);
             boolean south = isPowerProviderOrWire(world, x, y, z + 1, 0)
                     || !world.getBlock(x, y, z + 1).isNormalCube()
-                    && isPowerProviderOrWire(world, x, y - 1, z + 1, -1);
+                            && isPowerProviderOrWire(world, x, y - 1, z + 1, -1);
 
             // 上坡连接：本线上方非完整方块，邻块完整方块，邻块上方可供电/导线
             boolean upWireAbove = !world.getBlock(x, y + 1, z).isNormalCube();
             if (upWireAbove) {
                 if (world.getBlock(x - 1, y, z).isNormalCube()
-                        && isPowerProviderOrWire(world, x - 1, y + 1, z, -1)) west = true;
+                        && isPowerProviderOrWire(world, x - 1, y + 1, z, -1))
+                    west = true;
                 if (world.getBlock(x + 1, y, z).isNormalCube()
-                        && isPowerProviderOrWire(world, x + 1, y + 1, z, -1)) east = true;
+                        && isPowerProviderOrWire(world, x + 1, y + 1, z, -1))
+                    east = true;
                 if (world.getBlock(x, y, z - 1).isNormalCube()
-                        && isPowerProviderOrWire(world, x, y + 1, z - 1, -1)) north = true;
+                        && isPowerProviderOrWire(world, x, y + 1, z - 1, -1))
+                    north = true;
                 if (world.getBlock(x, y, z + 1).isNormalCube()
-                        && isPowerProviderOrWire(world, x, y + 1, z + 1, -1)) south = true;
+                        && isPowerProviderOrWire(world, x, y + 1, z + 1, -1))
+                    south = true;
             }
 
             props.put("north", north ? "true" : "false");
@@ -219,7 +224,8 @@ public final class VanillaBlockResolvers {
          */
         private boolean isPowerProviderOrWire(IBlockAccess world, int x, int y, int z, int side) {
             Block block = world.getBlock(x, y, z);
-            if (block == Blocks.redstone_wire) return true;
+            if (block == Blocks.redstone_wire)
+                return true;
             if (isDiode(block)) {
                 int meta = world.getBlockMetadata(x, y, z);
                 int facing = meta & 3;

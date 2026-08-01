@@ -148,6 +148,13 @@ public final class VanillaStateDefinitions {
         private static final Property<String> COMPARATOR_MODE = StateDefinitions.stringProp("mode", "compare",
                         "subtract");
 
+        // 活塞 facing（down/up/north/south/west/east——EnumFacing 顺序）与伸出/粘性标志
+        // BlockPistonBase meta[0:2]=facing, bit3=extended；BlockPistonExtension 同布局但 bit3=sticky
+        private static final Property<String> PISTON_FACING = StateDefinitions.stringProp("facing", "down", "up",
+                        "north", "south", "west", "east");
+        private static final Property<String> EXTENDED = StateDefinitions.stringProp("extended", "false", "true");
+        private static final Property<String> STICKY = StateDefinitions.stringProp("sticky", "false", "true");
+
         // ==================== 第四组：梯子/拉杆/栅栏门等 ====================
 
         // 梯子 facing（north/south/west/east）
@@ -213,6 +220,7 @@ public final class VanillaStateDefinitions {
                 registerDispenserAndDropper();
                 registerButtons();
                 registerFurnaces();
+                registerPistons();
         }
 
         // ==================== 纯 16 色（单 COLOR，默认笛卡尔解码 meta&15） ====================
@@ -696,6 +704,37 @@ public final class VanillaStateDefinitions {
                                 .metaCodec(comparatorCodec)
                                 .create();
                 CatModels.register(Blocks.unpowered_comparator).states(unpoweredDef).register();
+        }
+
+        // ==================== 活塞（facing+extended / 活塞头 facing+sticky） ====================
+
+        private static void registerPistons() {
+                // piston / sticky_piston (BlockPistonBase): facing[meta&7] + extended[bit3]
+                // 1.7.10 meta 布局：meta[0:2] = EnumFacing（0=down,1=up,2=north,3=south,4=west,5=east），
+                // bit3 = extended（伸出状态，本体缩回 1/4 格并露出 piston_inner 面）
+                CatStateDefinition.MetaCodec pistonCodec = meta -> new Comparable<?>[] {
+                                PISTON_FACING.getValues().get(meta & 7),
+                                (meta & 8) != 0 ? "true" : "false" };
+
+                CatStateDefinition<Block> pistonDef = new CatStateDefinition.Builder<Block>(Blocks.piston)
+                                .add(PISTON_FACING, EXTENDED)
+                                .metaCodec(pistonCodec)
+                                .create();
+                CatModels.register(Blocks.piston).states(pistonDef).register();
+
+                CatStateDefinition<Block> stickyDef = new CatStateDefinition.Builder<Block>(Blocks.sticky_piston)
+                                .add(PISTON_FACING, EXTENDED)
+                                .metaCodec(pistonCodec)
+                                .create();
+                CatModels.register(Blocks.sticky_piston).states(stickyDef).register();
+
+                // piston_head (BlockPistonExtension): facing[meta&7] + sticky[bit3]
+                // 静止活塞头方块（piston_extension / BlockPistonMoving 移动中走 TileEntity 渲染，不注册）
+                CatStateDefinition<Block> headDef = new CatStateDefinition.Builder<Block>(Blocks.piston_head)
+                                .add(PISTON_FACING, STICKY)
+                                .metaCodec(pistonCodec)
+                                .create();
+                CatModels.register(Blocks.piston_head).states(headDef).register();
         }
 
         // ==================== 梯子（单 facing，自定义解码） ====================

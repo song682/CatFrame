@@ -6,18 +6,18 @@
         "overlay": "minecraft:blocks/redstone_dust_cross_overlay"
     },
     "elements": [
-        {   "from": [ 5, 0.25, 5 ],
-            "to": [ 11, 0.25, 11 ],
+        {   "from": [ 0, 0.25, 11 ],
+            "to": [ 16, 0.25, 16 ],
             "shade": false,
             "faces": {
-                "up": { "uv": [ 5, 5, 11, 11 ], "texture": "#line", "tintindex": 0 }
+                "up": { "uv": [ 0, 11, 16, 16 ], "texture": "#line", "tintindex": 0 }
             }
         },
-        {   "from": [ 5, 0.25, 5 ],
-            "to": [ 11, 0.25, 11 ],
+        {   "from": [ 0, 0.25, 11 ],
+            "to": [ 16, 0.25, 16 ],
             "shade": false,
             "faces": {
-                "up": { "uv": [ 5, 5, 11, 11 ], "texture": "#overlay" }
+                "up": { "uv": [ 0, 11, 16, 16 ], "texture": "#overlay" }
             }
         }
     ]

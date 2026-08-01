@@ -8,10 +8,13 @@ import net.minecraft.block.BlockFence;
 import net.minecraft.block.BlockPane;
 import net.minecraft.block.BlockStairs;
 import net.minecraft.block.BlockWall;
+import net.minecraft.init.Blocks;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import java.util.Map;
+
+import static net.minecraft.util.Direction.rotateOpposite;
 
 /**
  * Vanilla 方块运行时动态属性解析器集合。
@@ -21,6 +24,7 @@ import java.util.Map;
  * <ul>
  * <li>{@link #STAIRS} — 楼梯转角形状（facing/half + shape）</li>
  * <li>{@link #PANE} — 玻璃板/铁栏杆连接（north/east/south/west）</li>
+ * <li>{@link #REDSTONE_WIRE} — 红石粉连接（north/east/south/west + up_* 爬线）</li>
  * <li>{@link #DOOR} — 门上下两半 meta 合并（facing/half/hinge/open）</li>
  * </ul>
  */
@@ -129,6 +133,105 @@ public final class VanillaBlockResolvers {
             if (!(self instanceof BlockPane))
                 return false;
             return ((BlockPane) self).canPaneConnectTo(world, x, y, z, dir);
+        }
+    };
+
+    // ==================== 红石粉（1.7.10 renderBlockRedstoneWire 连接判定） ====================
+
+    /**
+     * 红石粉动态解析器：写入 north/east/south/west + up_north/up_east/up_south/up_west。
+     * <p>
+     * 完全复刻 1.7.10 {@code RenderBlocks#renderBlockRedstoneWire} 的连接判定：
+     * <ul>
+     * <li>水平连接：{@code isPowerProviderOrWire(邻, side)}，或邻块非完整方块时
+     * 下坡连 {@code isPowerProviderOrWire(邻下, -1)}（-1 只对红石线成立）；</li>
+     * <li>上坡：本线上方非完整方块、邻块完整方块、且 {@code isPowerProviderOrWire(邻上, -1)}；</li>
+     * <li>爬线面：邻块完整方块且邻块上方严格为红石线（{@code Blocks.redstone_wire}），
+     * 与水平连接标志相互独立。</li>
+     * </ul>
+     * side 方向码（vanilla Direction XZ 平面）：0=south, 1=west, 2=north, 3=east。
+     * 中继器/比较器仅当 side 等于其朝向或背面时连接
+     * （{@code side == (meta&3) || side == rotateOpposite[meta&3]}）。
+     */
+    public static final DynamicPropertyResolver REDSTONE_WIRE = new DynamicPropertyResolver() {
+        @Override
+        public void resolve(IBlockAccess world, int x, int y, int z, int meta, Map<String, String> props) {
+            if (world == null) {
+                // 无世界上下文（如 GUI 预览）：按孤立点渲染
+                props.put("north", "false");
+                props.put("east", "false");
+                props.put("south", "false");
+                props.put("west", "false");
+                props.put("up_north", "false");
+                props.put("up_east", "false");
+                props.put("up_south", "false");
+                props.put("up_west", "false");
+                return;
+            }
+
+            // 水平连接 + 下坡连接（flag = west, flag1 = east, flag2 = north, flag3 = south）
+            boolean west = isPowerProviderOrWire(world, x - 1, y, z, 1)
+                    || !world.getBlock(x - 1, y, z).isNormalCube()
+                    && isPowerProviderOrWire(world, x - 1, y - 1, z, -1);
+            boolean east = isPowerProviderOrWire(world, x + 1, y, z, 3)
+                    || !world.getBlock(x + 1, y, z).isNormalCube()
+                    && isPowerProviderOrWire(world, x + 1, y - 1, z, -1);
+            boolean north = isPowerProviderOrWire(world, x, y, z - 1, 2)
+                    || !world.getBlock(x, y, z - 1).isNormalCube()
+                    && isPowerProviderOrWire(world, x, y - 1, z - 1, -1);
+            boolean south = isPowerProviderOrWire(world, x, y, z + 1, 0)
+                    || !world.getBlock(x, y, z + 1).isNormalCube()
+                    && isPowerProviderOrWire(world, x, y - 1, z + 1, -1);
+
+            // 上坡连接：本线上方非完整方块，邻块完整方块，邻块上方可供电/导线
+            boolean upWireAbove = !world.getBlock(x, y + 1, z).isNormalCube();
+            if (upWireAbove) {
+                if (world.getBlock(x - 1, y, z).isNormalCube()
+                        && isPowerProviderOrWire(world, x - 1, y + 1, z, -1)) west = true;
+                if (world.getBlock(x + 1, y, z).isNormalCube()
+                        && isPowerProviderOrWire(world, x + 1, y + 1, z, -1)) east = true;
+                if (world.getBlock(x, y, z - 1).isNormalCube()
+                        && isPowerProviderOrWire(world, x, y + 1, z - 1, -1)) north = true;
+                if (world.getBlock(x, y, z + 1).isNormalCube()
+                        && isPowerProviderOrWire(world, x, y + 1, z + 1, -1)) south = true;
+            }
+
+            props.put("north", north ? "true" : "false");
+            props.put("east", east ? "true" : "false");
+            props.put("south", south ? "true" : "false");
+            props.put("west", west ? "true" : "false");
+
+            // 爬线面：邻块完整方块且邻块上方严格为红石线（1.7.10 2553/2567/2581/2595 行）
+            props.put("up_north", upWireAbove && world.getBlock(x, y, z - 1).isNormalCube()
+                    && world.getBlock(x, y + 1, z - 1) == Blocks.redstone_wire ? "true" : "false");
+            props.put("up_east", upWireAbove && world.getBlock(x + 1, y, z).isNormalCube()
+                    && world.getBlock(x + 1, y + 1, z) == Blocks.redstone_wire ? "true" : "false");
+            props.put("up_south", upWireAbove && world.getBlock(x, y, z + 1).isNormalCube()
+                    && world.getBlock(x, y + 1, z + 1) == Blocks.redstone_wire ? "true" : "false");
+            props.put("up_west", upWireAbove && world.getBlock(x - 1, y, z).isNormalCube()
+                    && world.getBlock(x - 1, y + 1, z) == Blocks.redstone_wire ? "true" : "false");
+        }
+
+        /**
+         * 1.7.10 {@code BlockRedstoneWire#isPowerProviderOrWire} 复刻：
+         * 红石线恒连；中继器/比较器按朝向+背面（meta&3 与 rotateOpposite）；
+         * 其余方块走 {@link Block#canConnectRedstone}（默认仅可供电方块，且 side != -1）。
+         */
+        private boolean isPowerProviderOrWire(IBlockAccess world, int x, int y, int z, int side) {
+            Block block = world.getBlock(x, y, z);
+            if (block == Blocks.redstone_wire) return true;
+            if (isDiode(block)) {
+                int meta = world.getBlockMetadata(x, y, z);
+                int facing = meta & 3;
+                return side == facing || side == rotateOpposite[facing];
+            }
+            return block.canConnectRedstone(world, x, y, z, side);
+        }
+
+        /** 中继器/比较器（powered + unpowered 共 4 种），对应 1.7.10 func_149907_e。 */
+        private boolean isDiode(Block block) {
+            return block == Blocks.unpowered_repeater || block == Blocks.powered_repeater
+                    || block == Blocks.unpowered_comparator || block == Blocks.powered_comparator;
         }
     };
 

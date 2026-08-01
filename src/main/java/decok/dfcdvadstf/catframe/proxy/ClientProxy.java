@@ -14,6 +14,7 @@ import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesInHandTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
+import decok.dfcdvadstf.catframe.model.render.extension.tint.RedstoneWireTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
 import decok.dfcdvadstf.catframe.ui.components.ActionBarOverlay;
 import decok.dfcdvadstf.catframe.ui.components.TitleOverlay;
@@ -62,6 +63,7 @@ public class ClientProxy extends CommonProxy {
         // Register tint providers and graphics extensions
         TintRegistry.register(new LeavesTintProvider());
         TintRegistry.register(new LeavesInHandTintProvider());
+        TintRegistry.register(new RedstoneWireTintProvider());
         ModelRenderRegistry.register(new LeavesGraphicsExtension());
     }
 

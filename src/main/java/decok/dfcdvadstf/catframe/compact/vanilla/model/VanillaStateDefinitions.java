@@ -141,6 +141,12 @@ public final class VanillaStateDefinitions {
                         "6", "7",
                         "8", "9", "10", "11", "12", "13", "14", "15");
 
+        // 红石线爬线（1.7.10 renderBlockRedstoneWire 四方向独立上坡面）
+        private static final Property<String> REDSTONE_UP_NORTH = StateDefinitions.stringProp("up_north", "false", "true");
+        private static final Property<String> REDSTONE_UP_EAST = StateDefinitions.stringProp("up_east", "false", "true");
+        private static final Property<String> REDSTONE_UP_SOUTH = StateDefinitions.stringProp("up_south", "false", "true");
+        private static final Property<String> REDSTONE_UP_WEST = StateDefinitions.stringProp("up_west", "false", "true");
+
         // 中继器 / 比较器的 facing（输出方向）
         private static final Property<String> DIODE_FACING = StateDefinitions.stringProp("facing", "north", "east",
                         "south", "west");
@@ -149,7 +155,8 @@ public final class VanillaStateDefinitions {
                         "subtract");
 
         // 活塞 facing（down/up/north/south/west/east——EnumFacing 顺序）与伸出/粘性标志
-        // BlockPistonBase meta[0:2]=facing, bit3=extended；BlockPistonExtension 同布局但 bit3=sticky
+        // BlockPistonBase meta[0:2]=facing, bit3=extended；BlockPistonExtension 同布局但
+        // bit3=sticky
         private static final Property<String> PISTON_FACING = StateDefinitions.stringProp("facing", "down", "up",
                         "north", "south", "west", "east");
         private static final Property<String> EXTENDED = StateDefinitions.stringProp("extended", "false", "true");
@@ -650,14 +657,24 @@ public final class VanillaStateDefinitions {
                                 meta -> new Comparable<?>[] { LEVEL.getValues().get(meta & 3) });
         }
 
-        // ==================== 红石线（power） ====================
+        // ==================== 红石线（power + 连接方向） ====================
 
         private static void registerRedstoneWire() {
-                // redstone_wire: power[meta] 0-15（默认解码 meta%16 == meta&15）
+                // redstone_wire: power[meta] 0-15 静态；north/east/south/west 连接 + up_* 爬线
+                // 全动态，运行时由 REDSTONE_WIRE resolver 按 1.7.10 isPowerProviderOrWire
+                // 及 renderBlockRedstoneWire 判定计算。metaCodec 只解码 power。
                 CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.redstone_wire)
-                                .add(POWER)
+                                .add(POWER, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST,
+                                                REDSTONE_UP_NORTH, REDSTONE_UP_EAST, REDSTONE_UP_SOUTH, REDSTONE_UP_WEST)
+                                .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST,
+                                                REDSTONE_UP_NORTH, REDSTONE_UP_EAST, REDSTONE_UP_SOUTH, REDSTONE_UP_WEST)
+                                .metaCodec(meta -> new Comparable<?>[] { POWER.getValues().get(meta & 15) })
                                 .create();
-                CatModels.register(Blocks.redstone_wire).states(def).register();
+                CatModels.register(Blocks.redstone_wire)
+                                .states(def)
+                                .dynamic(VanillaBlockResolvers.REDSTONE_WIRE)
+                                .connectionMultipart()
+                                .register();
         }
 
         // ==================== 中继器（facing+delay） ====================
@@ -706,11 +723,13 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.unpowered_comparator).states(unpoweredDef).register();
         }
 
-        // ==================== 活塞（facing+extended / 活塞头 facing+sticky） ====================
+        // ==================== 活塞（facing+extended / 活塞头 facing+sticky）
+        // ====================
 
         private static void registerPistons() {
                 // piston / sticky_piston (BlockPistonBase): facing[meta&7] + extended[bit3]
-                // 1.7.10 meta 布局：meta[0:2] = EnumFacing（0=down,1=up,2=north,3=south,4=west,5=east），
+                // 1.7.10 meta 布局：meta[0:2] =
+                // EnumFacing（0=down,1=up,2=north,3=south,4=west,5=east），
                 // bit3 = extended（伸出状态，本体缩回 1/4 格并露出 piston_inner 面）
                 CatStateDefinition.MetaCodec pistonCodec = meta -> new Comparable<?>[] {
                                 PISTON_FACING.getValues().get(meta & 7),

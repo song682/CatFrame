@@ -14,16 +14,14 @@ import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateRoot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IReloadableResourceManager;
-import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
+import net.minecraft.client.resources.IResourcePack;
+import net.minecraft.client.resources.ResourcePackRepository;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -140,28 +138,23 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
                     registryName.contains(":") ? registryName.substring(registryName.indexOf(':') + 1) : registryName);
         }
         for (String blockName : blockCandidates) {
-            ResourceLocation loc = new ResourceLocation(ns, "blockstates/" + blockName + ".json");
             try {
-                List<?> all = manager.getAllResources(loc);
-                if (all == null || all.isEmpty())
-                    continue;
                 // 多模组环境下 Forge 的 ModResourcePack 在 mod jar 内找不到资源时会 fallback
-                // 全局 classpath，使本 jar 的 JSON 被每个 mod 的包层重复提供 —— 层数判定必然
-                // 误报（all.size() 恒 ≥2）。改为内容比对：mod fallback 提供的就是 classpath
-                // 上的同一份字节，与基线相同 → 跳过；仅当某层内容异于 classpath 基线
-                // （用户资源包真覆盖/纯新增）时才视为覆盖，且取最后一个异层（最高优先级）。
+                // 全局 classpath，使本 jar 的 JSON 被每个 mod 的包层重复提供 —— 基于
+                // getAllResources 的任何判定都会误报。直接查询激活的用户资源包
+                // （resourcepacks/，与 Minecraft.refreshResources 的包序一致），
+                // 只有用户资源包真正提供该资源时才视为覆盖。
                 // In multi-mod envs ModResourcePack falls back to the global classpath, so
-                // every mod pack layer re-provides this jar's JSON and layer-count checks
-                // always false-positive. Compare CONTENT instead: the mod fallback serves
-                // the exact classpath bytes (equal to baseline → skip); only a layer whose
-                // content differs from the classpath baseline (real pack override / pure
-                // addition) counts, and the last differing layer wins.
-                IResource topResource = findTopOverride(all,
-                        "/assets/" + ns + "/blockstates/" + blockName + ".json");
-                if (topResource == null)
+                // every mod pack layer re-provides this jar's JSON and any getAllResources
+                // based check false-positives. Query the ACTIVE USER resource packs
+                // directly (same pack order as Minecraft.refreshResources): only a real
+                // user-pack hit counts as an override.
+                IResourcePack topPack = findTopUserPack(ns, "blockstates/" + blockName + ".json");
+                if (topPack == null)
                     continue;
                 BlockstateJson bs = ModelManagerDataLoader.blockstateGson.fromJson(
-                        new InputStreamReader(topResource.getInputStream()),
+                        new InputStreamReader(topPack.getInputStream(
+                                new ResourceLocation(ns, "blockstates/" + blockName + ".json"))),
                         BlockstateJson.class);
                 if (bs != null) {
                     String key = ns + ":" + blockName;
@@ -200,10 +193,10 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
      * <p>
      * 候选名 = Item 注册表中属于该 namespace 的物品名 ∪ classpath 已加载的决策树名，
      * 与 {@code NamespaceLoadTask#loadItemStates} 的自动发现口径一致。
-     * 通过 {@link IResourceManager#getAllResources} 的**内容比对**判断是否为真覆盖：
-     * 仅当某层内容异于 classpath 基线（用户资源包真覆盖/纯新增）时才记录；
+     * 直接查询激活的用户资源包（resourcepacks/ 目录）判断是否为真覆盖：
+     * 仅当某个用户资源包提供该资源（真覆盖/纯新增）时才记录；
      * 多模组下 Forge ModResourcePack 会 fallback classpath 重复提供本 jar 的 JSON，
-     * 其内容与基线相同，层数判定必然误报，同内容层一律忽略。
+     * 基于 getAllResources 的任何判定都会误报，本方案完全不经过资源管理器层列表。
      */
     private static void scanItemStates(IResourceManager manager, String ns) {
         Map<String, ItemStateNode> nsItemStates = ModelManagerDataLoader.loadedItemStates.get(ns);
@@ -226,20 +219,17 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         }
 
         for (String itemName : candidates) {
-            ResourceLocation loc = new ResourceLocation(ns, "items/" + itemName + ".json");
             try {
-                List<?> all = manager.getAllResources(loc);
-                if (all == null || all.isEmpty())
-                    continue;
-                // 同 scanNamespace：层数判定在多模组下必然误报，改为内容比对判定
-                // Same as scanNamespace: layer-count checks false-positive in multi-mod
-                // environments; judge by content comparison instead.
-                IResource topResource = findTopOverride(all,
-                        "/assets/" + ns + "/items/" + itemName + ".json");
-                if (topResource == null)
+                // 同 scanNamespace：直接查用户资源包，不经过资源管理器层列表
+                // Same as scanNamespace: query user packs directly, bypassing the
+                // resource-manager layer list entirely.
+                IResourcePack topPack = findTopUserPack(ns, "items/" + itemName + ".json");
+                if (topPack == null)
                     continue;
                 JsonObject json = ModelResolver.GSON.fromJson(
-                        new InputStreamReader(topResource.getInputStream()), JsonObject.class);
+                        new InputStreamReader(topPack.getInputStream(
+                                new ResourceLocation(ns, "items/" + itemName + ".json"))),
+                        JsonObject.class);
                 ItemStateRoot root = ItemStateNode.parseRootFull(json);
                 if (root != null) {
                     String key = ns + ":" + itemName;
@@ -266,15 +256,13 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         }
         ResourceLocation loc = new ResourceLocation(ns, "models/" + path + ".json");
         try {
-            // 与 blockstate/item 一致：内容比对，忽略 mod fallback 假层
-            // Diagnostic only — same content comparison to ignore mod-fallback layers
-            List<?> all = manager.getAllResources(loc);
-            IResource topResource = findTopOverride(all,
-                    "/assets/" + ns + "/models/" + path + ".json");
-            if (topResource == null)
+            // 与 blockstate/item 一致：直接查用户资源包，忽略 mod fallback 假层
+            // Diagnostic only — same user-pack direct query to ignore mod-fallback layers
+            IResourcePack topPack = findTopUserPack(ns, "models/" + path + ".json");
+            if (topPack == null)
                 return;
             ModelJson model = ModelResolver.GSON.fromJson(
-                    new InputStreamReader(topResource.getInputStream()),
+                    new InputStreamReader(topPack.getInputStream(loc)),
                     ModelJson.class);
             if (model != null) {
                 String key = ns + ":" + path;
@@ -287,58 +275,39 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         }
     }
 
-    // ==================== 资源包覆盖内容判定 ====================
+    // ==================== 用户资源包覆盖判定 ====================
 
     /**
-     * 在 getAllResources 的层列表中查找最后一个「内容异于 classpath 基线」的层。
+     * 在激活的用户资源包（resourcepacks/ 目录）中查找最后一个能提供该资源的包。
      * <p>
-     * 1.7.10 中 Forge 的 ModResourcePack 在 mod jar 内找不到资源时会 fallback 到全局
-     * classpath，因此多模组环境下本 jar 自带的 JSON 会被每个 mod 的包层重复提供，
-     * 且提供的正是 classpath 上的同一份字节 —— 层数判定必然误报，而内容比对天然
-     * 排除这些假层：仅当某层内容与 classpath 基线不同（用户资源包真覆盖）或基线
-     * 不存在（资源包纯新增）时才算覆盖，取最后一个异层即最高优先级覆盖。
+     * 与 {@link Minecraft#refreshResources()} 的包序一致（default → 用户包按配置序 →
+     * mod 包），资源管理器从后向前查找，用户包段内后者优先，故取最后一个
+     * {@code resourceExists} 的包即最高优先级提供者。直接操作 {@link IResourcePack}
+     * 完全绕开 getAllResources —— 多模组下 Forge ModResourcePack 会 fallback classpath
+     * 重复提供本 jar 的 JSON，任何基于层列表的判定都会误报；这里只认用户资源包，
+     * 天然排除 mod 假层，且"纯新增"（jar 未提供）同样能命中。
+     * 注：Entry 的 pack 可能曾被 close（FileResourcePack 懒重开 ZipFile），随时可用。
      *
-     * @param all           getAllResources 返回的完整层列表（可能为空）
-     * @param classpathPath 同一资源在 classpath 上的路径（如
-     *                      /assets/minecraft/blockstates/x.json）
-     * @return 最后一个内容异于基线的层；无真覆盖时返回 null
+     * @param domain 资源域名（如 minecraft）
+     * @param path   资源路径（如 blockstates/double_plant.json）
+     * @return 最高优先级的用户资源包；无则返回 null
      */
-    private static IResource findTopOverride(List<?> all, String classpathPath) {
-        if (all == null || all.isEmpty())
+    private static IResourcePack findTopUserPack(String domain, String path) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc == null || mc.getResourcePackRepository() == null)
             return null;
-        byte[] baseline = readAll(ResourcePackModelDetector.class.getResourceAsStream(classpathPath));
-        IResource override = null;
-        for (Object obj : all) {
-            if (!(obj instanceof IResource))
-                continue;
-            IResource res = (IResource) obj;
-            byte[] content = readAll(res.getInputStream());
-            if (!Arrays.equals(baseline, content)) {
-                override = res;
+        ResourceLocation loc = new ResourceLocation(domain, path);
+        IResourcePack top = null;
+        // getRepositoryEntries() 是 raw List（1.7.10 反编译签名），元素为 Entry
+        for (Object obj : mc.getResourcePackRepository().getRepositoryEntries()) {
+            if (obj instanceof ResourcePackRepository.Entry) {
+                IResourcePack pack = ((ResourcePackRepository.Entry) obj).getResourcePack();
+                if (pack != null && pack.resourceExists(loc)) {
+                    top = pack;
+                }
             }
         }
-        return override;
-    }
-
-    /** 读取输入流全部字节；失败或流为空时返回 null */
-    private static byte[] readAll(InputStream in) {
-        if (in == null)
-            return null;
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream(4096);
-            byte[] buf = new byte[4096];
-            int n;
-            while ((n = in.read(buf)) != -1)
-                out.write(buf, 0, n);
-            return out.toByteArray();
-        } catch (IOException e) {
-            return null;
-        } finally {
-            try {
-                in.close();
-            } catch (IOException ignored) {
-            }
-        }
+        return top;
     }
 
     // ==================== 覆盖生效（合并 + 重注册） ====================

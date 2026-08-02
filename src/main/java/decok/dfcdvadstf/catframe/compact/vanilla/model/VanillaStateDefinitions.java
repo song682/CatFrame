@@ -552,13 +552,16 @@ public final class VanillaStateDefinitions {
                 // Clamp to 5: only 6 variants exist but meta&7 ranges 0~7 (vanilla
                 // BlockDoublePlant clamps too)
                 // 钳制到 5：变体只有 6 种，但 meta&7 范围是 0~7（原版 BlockDoublePlant 同样做了钳制）
+                // 上半块的低 3 位是 onBlockPlacedBy 写入的朝向残值而非变体，真实变体由
+                // DOUBLE_PLANT 动态解析器从下方方块读取（对齐原版 func_149885_e）
                 CatStateDefinition<Block> doublePlantDef = new CatStateDefinition.Builder<Block>(Blocks.double_plant)
                                 .add(DOUBLE_PLANT_VARIANT, PLANT_HALF)
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 DOUBLE_PLANT_VARIANT.getValues().get(Math.min(meta & 7, 5)),
                                                 PLANT_HALF.getValues().get((meta & 8) == 0 ? 0 : 1) })
                                 .create();
-                CatModels.register(Blocks.double_plant).states(doublePlantDef).register();
+                CatModels.register(Blocks.double_plant).states(doublePlantDef)
+                                .dynamic(VanillaBlockResolvers.DOUBLE_PLANT).register();
         }
 
         // ==================== 双台阶（double_stone_slab / double_wooden_slab）

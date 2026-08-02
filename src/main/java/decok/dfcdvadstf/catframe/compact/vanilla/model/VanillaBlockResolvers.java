@@ -26,6 +26,7 @@ import static net.minecraft.util.Direction.rotateOpposite;
  * <li>{@link #PANE} — 玻璃板/铁栏杆连接（north/east/south/west）</li>
  * <li>{@link #REDSTONE_WIRE} — 红石粉连接（north/east/south/west + up_* 爬线）</li>
  * <li>{@link #DOOR} — 门上下两半 meta 合并（facing/half/hinge/open）</li>
+ * <li>{@link #DOUBLE_PLANT} — 双植物上半块变体从下方读取（variant/half）</li>
  * </ul>
  */
 @SideOnly(Side.CLIENT)
@@ -286,6 +287,47 @@ public final class VanillaBlockResolvers {
             props.put("facing", DOOR_FACINGS[lowerMeta & 3]);
             props.put("open", (lowerMeta & 4) != 0 ? "true" : "false");
             props.put("hinge", (upperMeta & 1) != 0 ? "right" : "left");
+        }
+    };
+
+    // ==================== 双植物 ====================
+
+    /**
+     * 双植物变体名查表：0=sunflower, 1=lilac, 2=double_grass, 3=double_fern,
+     * 4=rose_bush, 5=peony —— 必须与 blockstate 双植物 JSON 的 variant 键一致
+     * （对应 1.7.10 {@code BlockDoublePlant#field_149892_a} 的
+     * sunflower/syringa/grass/fern/rose/paeonia，映射到 1.8+ 词汇）。
+     */
+    private static final String[] DOUBLE_PLANT_VARIANTS = { "sunflower", "lilac", "double_grass", "double_fern", "rose_bush", "peony" };
+
+    /**
+     * 双植物动态解析器：写入 variant/half。
+     * <p>
+     * 1.7.10 的 {@code BlockDoublePlant} 把完整状态拆在上下两半 meta 中
+     * （对齐 {@code BlockDoublePlant#func_149885_e}）：
+     * <ul>
+     * <li>下半（bit3=0）：低 3 位 = 变体（0=sunflower, 1=syringa, 2=grass, 3=fern,
+     * 4=rose, 5=paeonia，再映射为 blockstate 的 1.8+ 词汇）</li>
+     * <li>上半（bit3=1）：低 2 位是 {@code onBlockPlacedBy} 按玩家朝向写入的残值，
+     * 真实变体必须从下方方块读取</li>
+     * </ul>
+     * 因此渲染上半块时必须跨方块读取下方 meta 才能得到真实变体。
+     * 下方缺失/非同方块（如 setblock 摆出的残株）时按自身低 3 位兜底。
+     */
+    public static final DynamicPropertyResolver DOUBLE_PLANT = new DynamicPropertyResolver() {
+        @Override
+        public void resolve(IBlockAccess world, int x, int y, int z, int meta, Map<String, String> props) {
+            boolean upper = (meta & 8) != 0;
+            int variantMeta = meta & 7;
+            if (upper && world != null) {
+                Block self = world.getBlock(x, y, z);
+                // 上半块变体只存于下方方块（vanilla func_149885_e）
+                if (world.getBlock(x, y - 1, z) == self) {
+                    variantMeta = world.getBlockMetadata(x, y - 1, z);
+                }
+            }
+            props.put("variant", DOUBLE_PLANT_VARIANTS[Math.min(variantMeta & 7, 5)]);
+            props.put("half", upper ? "upper" : "lower");
         }
     };
 }

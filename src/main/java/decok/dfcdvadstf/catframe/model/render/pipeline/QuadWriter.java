@@ -242,9 +242,13 @@ public final class QuadWriter {
 
             t.setBrightness(ctx.effectiveBrightness());
             // 使用 solidColor 的 RGB，alpha 固定 1.0（侧面恒不透明）
-            float cr = ((q.solidColor >> 16) & 0xFF) / 255.0f * ctx.shade;
-            float cg = ((q.solidColor >> 8) & 0xFF) / 255.0f * ctx.shade;
-            float cb = (q.solidColor & 0xFF) / 255.0f * ctx.shade;
+            // 颜色再乘 ctx.color（tint 扩展注入）：与 writeItemQuads 正面渲染对齐，
+            // 避免 grass 等 tint 物品的侧面挤出显示未染色的原始纹理色（颜色失调）
+            // Multiply by ctx.color (tint) to match the front-face pass, so tinted
+            // items (e.g. grass) no longer show raw un-tinted side extrusions.
+            float cr = ((q.solidColor >> 16) & 0xFF) / 255.0f * ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
+            float cg = ((q.solidColor >> 8) & 0xFF) / 255.0f * ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
+            float cb = (q.solidColor & 0xFF) / 255.0f * (ctx.color & 0xFF) / 255.0f * ctx.shade;
             t.setColorRGBA_F(cr, cg, cb, 1.0f);
 
             for (int i = 0; i < 4; i++) {

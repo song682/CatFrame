@@ -57,7 +57,8 @@ public final class QuadWriter {
                     s.world, s.x, s.y, s.z, s.block, null, baseBrightness, baseShade);
             ctx.metadata = s.metadata;
             ModelRenderRegistry.apply(ctx);
-            if (ctx.skip) continue;
+            if (ctx.skip)
+                continue;
             hasVertices = true;
 
             // 提交到 Tessellator
@@ -81,7 +82,9 @@ public final class QuadWriter {
                     if (ctx.displayTransform != null) {
                         tmpVec.set(vx, vy, vz);
                         ctx.displayTransform.transform(tmpVec);
-                        vx = tmpVec.x; vy = tmpVec.y; vz = tmpVec.z;
+                        vx = tmpVec.x;
+                        vy = tmpVec.y;
+                        vz = tmpVec.z;
                     }
                     IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
                     double U = icon.getInterpolatedU(q.up[i]);
@@ -112,7 +115,9 @@ public final class QuadWriter {
                     if (ctx.displayTransform != null) {
                         tmpVec.set(vx, vy, vz);
                         ctx.displayTransform.transform(tmpVec);
-                        vx = tmpVec.x; vy = tmpVec.y; vz = tmpVec.z;
+                        vx = tmpVec.x;
+                        vy = tmpVec.y;
+                        vz = tmpVec.z;
                     }
                     double U = icon.getInterpolatedU(q.up[i]);
                     double V = icon.getInterpolatedV(q.vp[i]);
@@ -127,7 +132,8 @@ public final class QuadWriter {
      * 写入物品 quads（GUI / 手持 / 掉落 / 展示框）。迁移自原 {@code renderItemQuads} 的 for-quad 循环。
      * <p>
      * {@code solidColor != 0} 的 quad（侧面纯色 quad）在本方法中<b>跳过</b>，
-     * 由 {@link #writeSolidColorQuads(RenderSubmit, Tessellator)} 在独立的无纹理 draw call 中渲染：
+     * 由 {@link #writeSolidColorQuads(RenderSubmit, Tessellator)} 在独立的无纹理 draw call
+     * 中渲染：
      * 侧面 quad 的 UV 紧贴“不透明→透明”边界，双线性 / mipmap 采样会混入透明邻居纹素，
      * 且 GL_MODULATE 会将纹素 alpha 乘入片段，导致窄面渲染为透明。
      *
@@ -164,9 +170,11 @@ public final class QuadWriter {
             RenderContext ctx = new RenderContext(s.phase, q,
                     s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, baseShade);
             ModelRenderRegistry.apply(ctx);
-            if (ctx.skip) continue;
+            if (ctx.skip)
+                continue;
 
-            // 非 GUI 阶段：发送逐面法线（随 display / transformation / preTransform 旋转），供 GL_LIGHTING 使用。
+            // 非 GUI 阶段：发送逐面法线（随 display / transformation / preTransform 旋转），供 GL_LIGHTING
+            // 使用。
             if (glLit) {
                 writeQuadNormal(t, q, ctx.displayTransform, transformation, preTransform, tmpNormal);
             }
@@ -228,13 +236,15 @@ public final class QuadWriter {
         int baseBrightness = gui ? 255 : 15728880;
 
         for (BakedQuad q : allQuads) {
-            if (q.solidColor == 0) continue;
+            if (q.solidColor == 0)
+                continue;
 
             float baseShade = glLit ? 1.0f : CardinalLighting.DEFAULT.byFace(q.face);
             RenderContext ctx = new RenderContext(s.phase, q,
                     s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, baseShade);
             ModelRenderRegistry.apply(ctx);
-            if (ctx.skip) continue;
+            if (ctx.skip)
+                continue;
 
             if (glLit) {
                 writeQuadNormal(t, q, ctx.displayTransform, transformation, preTransform, tmpNormal);
@@ -271,18 +281,20 @@ public final class QuadWriter {
 
     /**
      * 写入附魔光效（glint）quads —— 重放提交项的<b>全部</b>几何（含 solidColor 侧面），
-     * 供 {@code GuiGraphicsExtractor.renderEnchantmentGlint} 以 glint 纹理 + 滚动纹理矩阵叠加绘制。
+     * 供 {@code GuiGraphicsExtractor.renderEnchantmentGlint} 以 glint 纹理 +
+     * 滚动纹理矩阵叠加绘制。
      * Write enchantment glint quads: replays ALL geometry (including solid-color
-     * side quads) so the glint covers the full model silhouette, for the glint overlay passes.
+     * side quads) so the glint covers the full model silhouette, for the glint
+     * overlay passes.
      * <p>
      * 与 {@link #writeItemQuads} 的差异：
      * <ul>
-     *   <li><b>不跳过</b> {@code solidColor != 0} 的 quad —— 光效必须盖满模型轮廓；</li>
-     *   <li>颜色强制为 glint 紫（对标原版 {@code RenderItem.renderEffect} 的
-     *       {@code (0.5, 0.25, 0.8)}；非 GUI 阶段对标 1.7.10 {@code ItemRenderer}
-     *       手持光效乘 0.76）；</li>
-     *   <li>不写法线 —— 光效 pass 已关闭 {@code GL_LIGHTING}；</li>
-     *   <li>UV 仍取烘焙图集 UV，流纹跨度由光效 pass 的纹理矩阵 scale 控制。</li>
+     * <li><b>不跳过</b> {@code solidColor != 0} 的 quad —— 光效必须盖满模型轮廓；</li>
+     * <li>颜色强制为 glint 紫（对标原版 {@code RenderItem.renderEffect} 的
+     * {@code (0.5, 0.25, 0.8)}；非 GUI 阶段对标 1.7.10 {@code ItemRenderer}
+     * 手持光效乘 0.76）；</li>
+     * <li>不写法线 —— 光效 pass 已关闭 {@code GL_LIGHTING}；</li>
+     * <li>UV 仍取烘焙图集 UV，流纹跨度由光效 pass 的纹理矩阵 scale 控制。</li>
      * </ul>
      * 顶点变换链与 {@link #writeItemQuads} <b>逐位一致</b>
      * （v' = M_pre × M_transformation × M_display × v），且运行同一扩展链尊重
@@ -311,7 +323,8 @@ public final class QuadWriter {
             RenderContext ctx = new RenderContext(s.phase, q,
                     s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, 1.0f);
             ModelRenderRegistry.apply(ctx);
-            if (ctx.skip) continue;
+            if (ctx.skip)
+                continue;
 
             t.setBrightness(baseBrightness);
             t.setColorRGBA_F(gr, gg, gb, 1.0f);
@@ -347,19 +360,23 @@ public final class QuadWriter {
      * 长度由 {@code GL_NORMALIZE} 兜底（见 {@link FeatureRenderDispatcher}），故只需方向正确。
      */
     private static void writeQuadNormal(Tessellator t, BakedQuad q,
-                                        Matrix4d displayTransform, Matrix4d transformation,
-                                        Matrix4d preTransform, Vector3d tmp) {
+            Matrix4d displayTransform, Matrix4d transformation,
+            Matrix4d preTransform, Vector3d tmp) {
         Direction face = q.face;
         if (face != null) {
             tmp.set(face.getStepX(), face.getStepY(), face.getStepZ());
         } else {
             tmp.set(0.0, 1.0, 0.0);
         }
-        if (displayTransform != null) transformDirection(displayTransform, tmp);
-        if (transformation != null) transformDirection(transformation, tmp);
-        if (preTransform != null) transformDirection(preTransform, tmp);
+        if (displayTransform != null)
+            transformDirection(displayTransform, tmp);
+        if (transformation != null)
+            transformDirection(transformation, tmp);
+        if (preTransform != null)
+            transformDirection(preTransform, tmp);
         double len = tmp.length();
-        if (len > 1.0e-6) tmp.scale(1.0 / len);
+        if (len > 1.0e-6)
+            tmp.scale(1.0 / len);
         t.setNormal((float) tmp.x, (float) tmp.y, (float) tmp.z);
     }
 

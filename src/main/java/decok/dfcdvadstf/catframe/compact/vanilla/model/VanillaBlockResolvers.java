@@ -298,7 +298,8 @@ public final class VanillaBlockResolvers {
      * （对应 1.7.10 {@code BlockDoublePlant#field_149892_a} 的
      * sunflower/syringa/grass/fern/rose/paeonia，映射到 1.8+ 词汇）。
      */
-    private static final String[] DOUBLE_PLANT_VARIANTS = { "sunflower", "lilac", "double_grass", "double_fern", "rose_bush", "peony" };
+    private static final String[] DOUBLE_PLANT_VARIANTS = { "sunflower", "lilac", "double_grass", "double_fern",
+            "rose_bush", "peony" };
 
     /**
      * 双植物动态解析器：写入 variant/half。

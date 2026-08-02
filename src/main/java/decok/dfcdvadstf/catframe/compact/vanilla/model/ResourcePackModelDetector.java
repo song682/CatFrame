@@ -21,6 +21,9 @@ import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,18 +35,20 @@ import java.util.concurrent.ConcurrentHashMap;
  * 使用 {@link IResourceManager#getResource(ResourceLocation)} 获取顶层资源包中的版本，
  * 解析为 {@link ModelJson} / {@link BlockstateJson} 供其他子系统查询。
  * <p>
- * 注册方式完全复用 {@link decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener}
+ * 注册方式完全复用
+ * {@link decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener}
  * 的延迟注册模式：资源管理器不可用时通过一次性 ClientTick 延迟注册。
  * <p>
  * 资源包覆盖生效链路（扫描 → 合并 → 重注册）：
  * <ul>
- *   <li><b>items/ ItemState 决策树</b>：候选名来自 Item 注册表 ∪ 已加载决策树；
- *       通过 {@link IResourceManager#getAllResources} 区分“仅 mod jar 自带”与“被资源包覆盖/新增”，
- *       覆盖项合并进 {@link ModelManagerDataLoader#loadedItemStates} 后重建 item 模型 wrapper。</li>
- *   <li><b>blockstates/</b>：候选名来自 Block 注册表 ∪ 已加载 blockstate；同样区分 jar 自带与真覆盖，
- *       覆盖项合并进 {@link ModelManagerDataLoader#loadedBlockstates} 后重新注册方块模型。</li>
- *   <li><b>models/</b>：无需合并 —— {@link ModelResolver} 每次解析都走 IResourceManager，
- *       重载时清缓存即可自然感知资源包；这里的扫描结果仅供诊断。</li>
+ * <li><b>items/ ItemState 决策树</b>：候选名来自 Item 注册表 ∪ 已加载决策树；
+ * 通过 {@link IResourceManager#getAllResources} 区分“仅 mod jar 自带”与“被资源包覆盖/新增”，
+ * 覆盖项合并进 {@link ModelManagerDataLoader#loadedItemStates} 后重建 item 模型
+ * wrapper。</li>
+ * <li><b>blockstates/</b>：候选名来自 Block 注册表 ∪ 已加载 blockstate；同样区分 jar 自带与真覆盖，
+ * 覆盖项合并进 {@link ModelManagerDataLoader#loadedBlockstates} 后重新注册方块模型。</li>
+ * <li><b>models/</b>：无需合并 —— {@link ModelResolver} 每次解析都走 IResourceManager，
+ * 重载时清缓存即可自然感知资源包；这里的扫描结果仅供诊断。</li>
  * </ul>
  * <p>
  * 时序说明：1.7.10 中 TextureMap 的 reload listener 先于本监听器注册，因此重载时
@@ -90,9 +95,11 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         ModelResolver.clearCache();
         scanAllNamespaces(manager);
         // 合并覆盖并重注册懒模型（扫描 → 还原基线 → 叠加覆盖 → 重注册）
-        // Merge overrides and re-register lazy models (scan → restore baseline → overlay → re-register)
+        // Merge overrides and re-register lazy models (scan → restore baseline →
+        // overlay → re-register)
         applyOverrides();
-        CatFrame.logger.info("ResourcePackModelDetector: detected {} model overrides, {} blockstate overrides, {} item state overrides",
+        CatFrame.logger.info(
+                "ResourcePackModelDetector: detected {} model overrides, {} blockstate overrides, {} item state overrides",
                 PACK_MODEL_PATHS.size(), PACK_BLOCKSTATE_PATHS.size(), PACK_ITEM_STATE_PATHS.size());
     }
 
@@ -120,22 +127,39 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
             blockCandidates.addAll(nsBlockstates.keySet());
         }
         for (Object obj : net.minecraft.block.Block.blockRegistry) {
-            if (obj == null) continue;
+            if (obj == null)
+                continue;
             String registryName = net.minecraft.block.Block.blockRegistry.getNameForObject(obj);
-            if (registryName == null) continue;
-            String blockNs = registryName.contains(":") ? registryName.substring(0, registryName.indexOf(':')) : "minecraft";
-            if (!blockNs.equals(ns)) continue;
-            blockCandidates.add(registryName.contains(":") ? registryName.substring(registryName.indexOf(':') + 1) : registryName);
+            if (registryName == null)
+                continue;
+            String blockNs = registryName.contains(":") ? registryName.substring(0, registryName.indexOf(':'))
+                    : "minecraft";
+            if (!blockNs.equals(ns))
+                continue;
+            blockCandidates.add(
+                    registryName.contains(":") ? registryName.substring(registryName.indexOf(':') + 1) : registryName);
         }
         for (String blockName : blockCandidates) {
             ResourceLocation loc = new ResourceLocation(ns, "blockstates/" + blockName + ".json");
             try {
                 List<?> all = manager.getAllResources(loc);
-                if (all == null || all.isEmpty()) continue;
-                // 仅 mod jar 自带（classpath 已加载且无更高优先级副本）→ 非资源包覆盖，跳过
-                boolean classpathHasIt = nsBlockstates != null && nsBlockstates.containsKey(blockName);
-                if (all.size() == 1 && classpathHasIt) continue;
-                IResource topResource = (IResource) all.get(all.size() - 1);
+                if (all == null || all.isEmpty())
+                    continue;
+                // 多模组环境下 Forge 的 ModResourcePack 在 mod jar 内找不到资源时会 fallback
+                // 全局 classpath，使本 jar 的 JSON 被每个 mod 的包层重复提供 —— 层数判定必然
+                // 误报（all.size() 恒 ≥2）。改为内容比对：mod fallback 提供的就是 classpath
+                // 上的同一份字节，与基线相同 → 跳过；仅当某层内容异于 classpath 基线
+                // （用户资源包真覆盖/纯新增）时才视为覆盖，且取最后一个异层（最高优先级）。
+                // In multi-mod envs ModResourcePack falls back to the global classpath, so
+                // every mod pack layer re-provides this jar's JSON and layer-count checks
+                // always false-positive. Compare CONTENT instead: the mod fallback serves
+                // the exact classpath bytes (equal to baseline → skip); only a layer whose
+                // content differs from the classpath baseline (real pack override / pure
+                // addition) counts, and the last differing layer wins.
+                IResource topResource = findTopOverride(all,
+                        "/assets/" + ns + "/blockstates/" + blockName + ".json");
+                if (topResource == null)
+                    continue;
                 BlockstateJson bs = ModelManagerDataLoader.blockstateGson.fromJson(
                         new InputStreamReader(topResource.getInputStream()),
                         BlockstateJson.class);
@@ -176,19 +200,26 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
      * <p>
      * 候选名 = Item 注册表中属于该 namespace 的物品名 ∪ classpath 已加载的决策树名，
      * 与 {@code NamespaceLoadTask#loadItemStates} 的自动发现口径一致。
-     * 通过 {@link IResourceManager#getAllResources} 的层数判断是否为真覆盖：
-     * 仅当存在多个副本（资源包叠加在 jar 之上）或 classpath 未加载过（资源包纯新增）时才记录。
+     * 通过 {@link IResourceManager#getAllResources} 的**内容比对**判断是否为真覆盖：
+     * 仅当某层内容异于 classpath 基线（用户资源包真覆盖/纯新增）时才记录；
+     * 多模组下 Forge ModResourcePack 会 fallback classpath 重复提供本 jar 的 JSON，
+     * 其内容与基线相同，层数判定必然误报，同内容层一律忽略。
      */
     private static void scanItemStates(IResourceManager manager, String ns) {
         Map<String, ItemStateNode> nsItemStates = ModelManagerDataLoader.loadedItemStates.get(ns);
         Set<String> candidates = new LinkedHashSet<>();
         for (Object obj : Item.itemRegistry) {
-            if (obj == null) continue;
+            if (obj == null)
+                continue;
             String registryName = Item.itemRegistry.getNameForObject(obj);
-            if (registryName == null) continue;
-            String itemNs = registryName.contains(":") ? registryName.substring(0, registryName.indexOf(':')) : "minecraft";
-            if (!itemNs.equals(ns)) continue;
-            candidates.add(registryName.contains(":") ? registryName.substring(registryName.indexOf(':') + 1) : registryName);
+            if (registryName == null)
+                continue;
+            String itemNs = registryName.contains(":") ? registryName.substring(0, registryName.indexOf(':'))
+                    : "minecraft";
+            if (!itemNs.equals(ns))
+                continue;
+            candidates.add(
+                    registryName.contains(":") ? registryName.substring(registryName.indexOf(':') + 1) : registryName);
         }
         if (nsItemStates != null) {
             candidates.addAll(nsItemStates.keySet());
@@ -198,11 +229,15 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
             ResourceLocation loc = new ResourceLocation(ns, "items/" + itemName + ".json");
             try {
                 List<?> all = manager.getAllResources(loc);
-                if (all == null || all.isEmpty()) continue;
-                // 仅 mod jar 自带 → 非资源包覆盖，跳过
-                boolean classpathHasIt = nsItemStates != null && nsItemStates.containsKey(itemName);
-                if (all.size() == 1 && classpathHasIt) continue;
-                IResource topResource = (IResource) all.get(all.size() - 1);
+                if (all == null || all.isEmpty())
+                    continue;
+                // 同 scanNamespace：层数判定在多模组下必然误报，改为内容比对判定
+                // Same as scanNamespace: layer-count checks false-positive in multi-mod
+                // environments; judge by content comparison instead.
+                IResource topResource = findTopOverride(all,
+                        "/assets/" + ns + "/items/" + itemName + ".json");
+                if (topResource == null)
+                    continue;
                 JsonObject json = ModelResolver.GSON.fromJson(
                         new InputStreamReader(topResource.getInputStream()), JsonObject.class);
                 ItemStateRoot root = ItemStateNode.parseRootFull(json);
@@ -219,7 +254,8 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
     }
 
     private static void scanModel(IResourceManager manager, String modelPath) {
-        if (modelPath == null) return;
+        if (modelPath == null)
+            return;
         String ns, path;
         if (modelPath.contains(":")) {
             ns = modelPath.substring(0, modelPath.indexOf(':'));
@@ -230,7 +266,13 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         }
         ResourceLocation loc = new ResourceLocation(ns, "models/" + path + ".json");
         try {
-            IResource topResource = manager.getResource(loc);
+            // 与 blockstate/item 一致：内容比对，忽略 mod fallback 假层
+            // Diagnostic only — same content comparison to ignore mod-fallback layers
+            List<?> all = manager.getAllResources(loc);
+            IResource topResource = findTopOverride(all,
+                    "/assets/" + ns + "/models/" + path + ".json");
+            if (topResource == null)
+                return;
             ModelJson model = ModelResolver.GSON.fromJson(
                     new InputStreamReader(topResource.getInputStream()),
                     ModelJson.class);
@@ -245,32 +287,90 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         }
     }
 
+    // ==================== 资源包覆盖内容判定 ====================
+
+    /**
+     * 在 getAllResources 的层列表中查找最后一个「内容异于 classpath 基线」的层。
+     * <p>
+     * 1.7.10 中 Forge 的 ModResourcePack 在 mod jar 内找不到资源时会 fallback 到全局
+     * classpath，因此多模组环境下本 jar 自带的 JSON 会被每个 mod 的包层重复提供，
+     * 且提供的正是 classpath 上的同一份字节 —— 层数判定必然误报，而内容比对天然
+     * 排除这些假层：仅当某层内容与 classpath 基线不同（用户资源包真覆盖）或基线
+     * 不存在（资源包纯新增）时才算覆盖，取最后一个异层即最高优先级覆盖。
+     *
+     * @param all           getAllResources 返回的完整层列表（可能为空）
+     * @param classpathPath 同一资源在 classpath 上的路径（如
+     *                      /assets/minecraft/blockstates/x.json）
+     * @return 最后一个内容异于基线的层；无真覆盖时返回 null
+     */
+    private static IResource findTopOverride(List<?> all, String classpathPath) {
+        if (all == null || all.isEmpty())
+            return null;
+        byte[] baseline = readAll(ResourcePackModelDetector.class.getResourceAsStream(classpathPath));
+        IResource override = null;
+        for (Object obj : all) {
+            if (!(obj instanceof IResource))
+                continue;
+            IResource res = (IResource) obj;
+            byte[] content = readAll(res.getInputStream());
+            if (!Arrays.equals(baseline, content)) {
+                override = res;
+            }
+        }
+        return override;
+    }
+
+    /** 读取输入流全部字节；失败或流为空时返回 null */
+    private static byte[] readAll(InputStream in) {
+        if (in == null)
+            return null;
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream(4096);
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) != -1)
+                out.write(buf, 0, n);
+            return out.toByteArray();
+        } catch (IOException e) {
+            return null;
+        } finally {
+            try {
+                in.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
     // ==================== 覆盖生效（合并 + 重注册） ====================
 
     /**
      * 将扫描到的资源包覆盖合并进模型系统并重注册懒模型。
      * <p>
-     * Apply scanned resource-pack overrides into the model system and re-register lazy models.
+     * Apply scanned resource-pack overrides into the model system and re-register
+     * lazy models.
      * <p>
      * 流程 / Flow：
      * <ol>
-     *   <li>按命名空间增量快照 classpath 基线（内层容器浅拷贝；缝合驱动发现后命名空间可能随时新增）
-     *       / snapshot classpath baseline per namespace incrementally (shallow-copy inner
-     *       containers; stitch-driven discovery can add namespaces at any pass)</li>
-     *   <li>还原基线 —— 资源包被移除后覆盖自动消失
-     *       / restore baseline so overrides vanish when the pack is removed</li>
-     *   <li>叠加本轮扫描到的 blockstate / ItemState 覆盖
-     *       / overlay this round's blockstate / ItemState overrides</li>
-     *   <li>图集就绪时按需重注册（blockstate 变化走全量，仅 item 变化走增量）
-     *       / re-register on demand when the atlas is ready (full for blockstates, incremental for items only)</li>
+     * <li>按命名空间增量快照 classpath 基线（内层容器浅拷贝；缝合驱动发现后命名空间可能随时新增）
+     * / snapshot classpath baseline per namespace incrementally (shallow-copy inner
+     * containers; stitch-driven discovery can add namespaces at any pass)</li>
+     * <li>还原基线 —— 资源包被移除后覆盖自动消失
+     * / restore baseline so overrides vanish when the pack is removed</li>
+     * <li>叠加本轮扫描到的 blockstate / ItemState 覆盖
+     * / overlay this round's blockstate / ItemState overrides</li>
+     * <li>图集就绪时按需重注册（blockstate 变化走全量，仅 item 变化走增量）
+     * / re-register on demand when the atlas is ready (full for blockstates,
+     * incremental for items only)</li>
      * </ol>
      * 注意：{@code registerReloadListener} 注册时的立即回调场景下图集未就绪，
      * 此时仅合并数据、跳过重注册（首轮 {@code registerAllModels} 由纹理缝合事件触发）。
      */
     private static void applyOverrides() {
         // 模型系统尚未初始化（preInit 阶段的立即回调）→ 无基线可合并
-        // Model system not initialized yet (immediate callback during preInit) → nothing to merge
-        if (!ModelManagerDataLoader.initialized) return;
+        // Model system not initialized yet (immediate callback during preInit) →
+        // nothing to merge
+        if (!ModelManagerDataLoader.initialized)
+            return;
 
         // 1. 按命名空间增量拍基线 / snapshot classpath baseline per namespace, incrementally
         //
@@ -278,9 +378,11 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         // 缝合（TextureMap 监听器）先于本监听器执行，此刻新命名空间的 loaded* 数据仍是纯
         // classpath 内容（覆盖叠加发生在下方步骤 3），因此在这里补拍安全；若仍用一次性
         // 全量快照，后续轮次的「还原基线」会把迟到命名空间的数据整个抹掉。
-        // Since discovery became stitch-driven, namespaces may appear at ANY stitch pass
+        // Since discovery became stitch-driven, namespaces may appear at ANY stitch
+        // pass
         // (late mod registrations). The stitch (TextureMap listener) runs before this
-        // listener, so a newly discovered namespace's loaded* data is still pure classpath
+        // listener, so a newly discovered namespace's loaded* data is still pure
+        // classpath
         // here (overlays are applied only in step 3 below) — snapshotting now is safe.
         // A one-shot full snapshot would let the "restore baseline" step wipe them.
         if (baselineBlockstates == null) {
@@ -289,7 +391,8 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
             baselineOversizedItems = new HashMap<>();
         }
         for (String ns : ModelManagerDataLoader.loadedNamespaces) {
-            if (baselineBlockstates.containsKey(ns)) continue;
+            if (baselineBlockstates.containsKey(ns))
+                continue;
             Map<String, BlockstateJson> bs = ModelManagerDataLoader.loadedBlockstates.get(ns);
             baselineBlockstates.put(ns, bs != null ? new HashMap<>(bs) : new HashMap<>());
             Map<String, ItemStateNode> is = ModelManagerDataLoader.loadedItemStates.get(ns);
@@ -350,12 +453,14 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         boolean anyBlockNow = !PACK_BLOCKSTATES.isEmpty();
         boolean anyItemNow = !PACK_ITEM_STATES.isEmpty();
         // 图集就绪判断：注册时的立即回调发生在缝合之前，此时跳过重注册
-        // Atlas-ready check: the immediate callback on registration happens before stitching
+        // Atlas-ready check: the immediate callback on registration happens before
+        // stitching
         boolean atlasReady = !VanillaTextureTracker.textureIcons.isEmpty();
         if (atlasReady) {
             if (anyBlockNow || blockOverridesWereActive) {
                 // blockstate 覆盖出现或消失 → 全量重注册（同时覆盖 item 侧）
-                // Blockstate overrides appeared/vanished → full re-registration (covers items too)
+                // Blockstate overrides appeared/vanished → full re-registration (covers items
+                // too)
                 VanillaModelManager.Baking.registerAllModels();
             } else if (anyItemNow || itemOverridesWereActive) {
                 // 仅 ItemState 覆盖变化 → 增量重建物品 wrapper

@@ -34,10 +34,33 @@ public final class AtlasPixelCache {
     }
 
     /**
-     * 每个 sprite 的 level-0 像素数据（flat ARGB int[]，大小 = width × height）。
+     * 每个 sprite 的 level-0 内容像素切片（flat ARGB int[]，大小 = width × height）。
      * 键为 {@link TextureAtlasSprite#getIconName()}。
+     * <p>
+     * 切片尺寸按 sprite 的 UV 区域（minU~maxU）换算，而非 getIconWidth()/getIconHeight()：
+     * 开启各向异性过滤时 1.7.10 原版会把物理存储扩为 (内容+16)x(内容+16)、并把 UV 缩进
+     * 指向居中的内容区域（见 TextureAtlasSprite.loadSprite / initSprite / prepareAnisotropicData），
+     * 此时 getIconWidth() 返回物理存储尺寸，若直接用作切片宽会混入相邻 sprite 的像素。
      */
-    private static final Map<String, int[]> spritePixels = new HashMap<>();
+    private static final Map<String, CachedSprite> spriteCache = new HashMap<>();
+
+    /**
+     * 按 UV 区域裁剪出的 sprite 像素切片（内容区域，不含各向异性过滤的填充边框）。
+     */
+    public static final class CachedSprite {
+        /** flat ARGB 像素数组（row-major，width × height） */
+        public final int[] pixels;
+        /** 内容区域宽度（像素） */
+        public final int width;
+        /** 内容区域高度（像素） */
+        public final int height;
+
+        CachedSprite(int[] pixels, int width, int height) {
+            this.pixels = pixels;
+            this.width = width;
+            this.height = height;
+        }
+    }
 
     /**
      * 从 GPU 回读指定图集的 level-0 像素，并为给定的 sprite 集合切出子矩形。
@@ -85,8 +108,11 @@ public final class AtlasPixelCache {
             if (!(icon instanceof TextureAtlasSprite)) continue;
             TextureAtlasSprite sprite = (TextureAtlasSprite) icon;
 
-            int w = sprite.getIconWidth();
-            int h = sprite.getIconHeight();
+            // 切片尺寸按 UV 区域换算（内容区域）：各向异性过滤时 1.7.10 原版把物理存储
+            // 扩为 (内容+16)x(内容+16) 并把 UV 缩进指向居中的内容区域，getIconWidth()
+            // 返回物理存储尺寸，直接作为切片宽会混入相邻 sprite 的像素（见类注释）。
+            int w = Math.max(1, Math.round((sprite.getMaxU() - sprite.getMinU()) * atlasW));
+            int h = Math.max(1, Math.round((sprite.getMaxV() - sprite.getMinV()) * atlasH));
             if (w <= 0 || h <= 0) continue;
 
             // 从 UV 反算像素原点（atlas 坐标系）
@@ -108,7 +134,7 @@ public final class AtlasPixelCache {
                 System.arraycopy(atlasARGB, srcOffset, pixels, sy * w, w);
             }
 
-            spritePixels.put(sprite.getIconName(), pixels);
+            spriteCache.put(sprite.getIconName(), new CachedSprite(pixels, w, h));
             cached++;
         }
 
@@ -117,19 +143,30 @@ public final class AtlasPixelCache {
     }
 
     /**
-     * 获取指定 sprite 的 level-0 像素数据（flat ARGB int[]）。
+     * 获取指定 sprite 的 level-0 内容像素切片（flat ARGB int[]）。
      *
      * @param iconName sprite 名称（如 "stick"、"diamond_sword"）
      * @return 像素数组，或 null（未缓存时）
      */
     public static int[] getPixels(String iconName) {
-        return spritePixels.get(iconName);
+        CachedSprite cached = spriteCache.get(iconName);
+        return cached != null ? cached.pixels : null;
+    }
+
+    /**
+     * 获取指定 sprite 的内容像素切片（含内容宽高）。
+     *
+     * @param iconName sprite 名称（如 "stick"、"diamond_sword"）
+     * @return 切片对象，或 null（未缓存时）
+     */
+    public static CachedSprite getSprite(String iconName) {
+        return spriteCache.get(iconName);
     }
 
     /**
      * 清空缓存（资源重载时调用）。
      */
     public static void clear() {
-        spritePixels.clear();
+        spriteCache.clear();
     }
 }

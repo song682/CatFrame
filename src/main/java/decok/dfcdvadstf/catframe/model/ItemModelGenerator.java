@@ -36,6 +36,10 @@ public class ItemModelGenerator {
 
     /**
      * 为一个图层纹理生成侧面 quad。
+     * <p>
+     * 扫描网格与坐标比例以 AtlasPixelCache 的内容切片（UV 区域）为准，
+     * 不信任 {@code getIconWidth()}：各向异性过滤时 1.7.10 原版会把物理存储
+     * 扩为 (内容+16)x(内容+16) 并让 getIconWidth() 返回该填充尺寸。
      *
      * @param icon      图层纹理 sprite
      * @param tintIndex 染色索引（多层模型时对应 layerN），-1 表示无染色
@@ -49,15 +53,20 @@ public class ItemModelGenerator {
         }
         TextureAtlasSprite sprite = (TextureAtlasSprite) icon;
 
-        int width = sprite.getIconWidth();
-        int height = sprite.getIconHeight();
-
-        // 纹理像素数据从 GPU 回读缓存获取（替代旧的 MixinTextureMap preservedFrames 机制）
-        int[] flatPixels = AtlasPixelCache.getPixels(sprite.getIconName());
-        if (flatPixels == null || flatPixels.length < width * height) {
+        // 扫描网格以内容切片为准（AtlasPixelCache 按 sprite 的 UV 区域裁剪）：
+        // 开启各向异性过滤时 1.7.10 原版把物理存储扩为 (内容+16)x(内容+16)，
+        // getIconWidth() 返回物理存储尺寸（含填充边框），不能作为内容网格。
+        // Grid/scale are driven by the UV-region content slice, not by
+        // getIconWidth(), which reports the padded storage size under
+        // anisotropic filtering.
+        AtlasPixelCache.CachedSprite cached = AtlasPixelCache.getSprite(sprite.getIconName());
+        if (cached == null || cached.pixels.length < cached.width * cached.height) {
             CatFrame.logger.debug("[ItemModelGenerator] no pixel data for sprite '{}'", sprite.getIconName());
             return quads;
         }
+        int[] flatPixels = cached.pixels;
+        int width = cached.width;
+        int height = cached.height;
 
         float xScale = 16.0F / width;
         float yScale = 16.0F / height;
@@ -105,8 +114,8 @@ public class ItemModelGenerator {
             }
         }
 
-        CatFrame.logger.info("[ItemModelGenerator] sprite '{}' {}x{}: {} edge pixels → {} side quads",
-                sprite.getIconName(), width, height, emitted.size(), quads.size());
+        CatFrame.logger.info("[ItemModelGenerator] sprite '{}' content {}x{} (phys {}x{}): {} edge pixels → {} side quads",
+                sprite.getIconName(), width, height, sprite.getIconWidth(), sprite.getIconHeight(), emitted.size(), quads.size());
 
         return quads;
     }

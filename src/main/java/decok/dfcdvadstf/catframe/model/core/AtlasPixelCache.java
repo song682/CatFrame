@@ -17,7 +17,8 @@ import java.util.Map;
 /**
  * GPU 侧纹理图集回读缓存 —— 替代 {@code MixinTextureMap} 的 CPU 帧数据保存机制。
  * <p>
- * 在 {@link net.minecraftforge.client.event.TextureStitchEvent.Post} 阶段（主线程、GL 上下文活着、
+ * 在 {@link net.minecraftforge.client.event.TextureStitchEvent.Post} 阶段（主线程、GL
+ * 上下文活着、
  * atlas 已上传完毕）通过 {@code glGetTexImage} 一次性回读整张图集 level-0，
  * 再按各 sprite 的 UV 坐标切出子矩形并转为 ARGB int 数组。
  * <p>
@@ -39,7 +40,8 @@ public final class AtlasPixelCache {
      * <p>
      * 切片尺寸按 sprite 的 UV 区域（minU~maxU）换算，而非 getIconWidth()/getIconHeight()：
      * 开启各向异性过滤时 1.7.10 原版会把物理存储扩为 (内容+16)x(内容+16)、并把 UV 缩进
-     * 指向居中的内容区域（见 TextureAtlasSprite.loadSprite / initSprite / prepareAnisotropicData），
+     * 指向居中的内容区域（见 TextureAtlasSprite.loadSprite / initSprite /
+     * prepareAnisotropicData），
      * 此时 getIconWidth() 返回物理存储尺寸，若直接用作切片宽会混入相邻 sprite 的像素。
      */
     private static final Map<String, CachedSprite> spriteCache = new HashMap<>();
@@ -68,10 +70,12 @@ public final class AtlasPixelCache {
      * <b>必须在主线程（GL 上下文活着）调用。</b>
      *
      * @param atlas 纹理图集（block atlas 或 item atlas）
-     * @param icons 需要缓存像素的 sprite 集合（通常来自 {@link VanillaTextureTracker#textureIcons}）
+     * @param icons 需要缓存像素的 sprite 集合（通常来自
+     *              {@link VanillaTextureTracker#textureIcons}）
      */
     public static void readAtlas(TextureMap atlas, Collection<IIcon> icons) {
-        if (atlas == null || icons == null || icons.isEmpty()) return;
+        if (atlas == null || icons == null || icons.isEmpty())
+            return;
 
         int glTexId = atlas.getGlTextureId();
         if (glTexId <= 0) {
@@ -105,7 +109,8 @@ public final class AtlasPixelCache {
         // 逐 sprite 切片
         int cached = 0;
         for (IIcon icon : icons) {
-            if (!(icon instanceof TextureAtlasSprite)) continue;
+            if (!(icon instanceof TextureAtlasSprite))
+                continue;
             TextureAtlasSprite sprite = (TextureAtlasSprite) icon;
 
             // 切片尺寸按 UV 区域换算（内容区域）：各向异性过滤时 1.7.10 原版把物理存储
@@ -113,7 +118,8 @@ public final class AtlasPixelCache {
             // 返回物理存储尺寸，直接作为切片宽会混入相邻 sprite 的像素（见类注释）。
             int w = Math.max(1, Math.round((sprite.getMaxU() - sprite.getMinU()) * atlasW));
             int h = Math.max(1, Math.round((sprite.getMaxV() - sprite.getMinV()) * atlasH));
-            if (w <= 0 || h <= 0) continue;
+            if (w <= 0 || h <= 0)
+                continue;
 
             // 从 UV 反算像素原点（atlas 坐标系）
             int originX = Math.round(sprite.getMinU() * atlasW);
@@ -122,7 +128,8 @@ public final class AtlasPixelCache {
             // 安全边界检查
             if (originX < 0 || originY < 0
                     || originX + w > atlasW || originY + h > atlasH) {
-                CatFrame.logger.debug("[AtlasPixelCache] sprite '{}' out of bounds: origin=({},{}) size={}x{} atlas={}x{}",
+                CatFrame.logger.debug(
+                        "[AtlasPixelCache] sprite '{}' out of bounds: origin=({},{}) size={}x{} atlas={}x{}",
                         sprite.getIconName(), originX, originY, w, h, atlasW, atlasH);
                 continue;
             }

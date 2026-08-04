@@ -48,7 +48,9 @@ public class ImageWidget extends AbstractComponent {
 
     /**
      * Creates an image widget with the given size (position defaults to 0,0).
-     * <p>以给定尺寸创建图片组件（位置默认为 0,0）。</p>
+     * <p>
+     * 以给定尺寸创建图片组件（位置默认为 0,0）。
+     * </p>
      */
     public static ImageWidget texture(int width, int height, ResourceLocation texture, int texW, int texH) {
         return new ImageWidget(0, 0, width, height, texture, texW, texH);
@@ -56,16 +58,20 @@ public class ImageWidget extends AbstractComponent {
 
     /**
      * Creates an image widget at the given position and size.
-     * <p>以给定位置和尺寸创建图片组件。</p>
+     * <p>
+     * 以给定位置和尺寸创建图片组件。
+     * </p>
      */
     public static ImageWidget texture(int x, int y, int width, int height,
-                                      ResourceLocation texture, int texW, int texH) {
+            ResourceLocation texture, int texW, int texH) {
         return new ImageWidget(x, y, width, height, texture, texW, texH);
     }
 
     /**
      * Updates the displayed texture at runtime.
-     * <p>运行时更新显示的纹理。</p>
+     * <p>
+     * 运行时更新显示的纹理。
+     * </p>
      */
     public void updateResource(ResourceLocation texture) {
         this.texture = texture;
@@ -73,7 +79,9 @@ public class ImageWidget extends AbstractComponent {
 
     /**
      * Returns the currently displayed texture.
-     * <p>返回当前显示的纹理。</p>
+     * <p>
+     * 返回当前显示的纹理。
+     * </p>
      */
     public ResourceLocation getTexture() {
         return texture;
@@ -81,7 +89,8 @@ public class ImageWidget extends AbstractComponent {
 
     @Override
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-        if (texture == null) return;
+        if (texture == null)
+            return;
         TextureStretching.drawStatic(texture, x, y, width, height, texW, texH, alpha);
     }
 }

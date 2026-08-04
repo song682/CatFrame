@@ -2,10 +2,10 @@ package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
-import org.lwjgl.opengl.GL11;
 
 /**
  * <p>
@@ -91,15 +91,11 @@ public class Checkbox extends AbstractButton {
             texture = (isHovered || focused) ? CHECKBOX_HIGHLIGHTED_TEXTURE : CHECKBOX_TEXTURE;
         }
 
-        Minecraft mc = Minecraft.getMinecraft();
-        mc.getTextureManager().bindTexture(texture);
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, this.alpha);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        vanillaGui.drawTexturedModalRect(x, y, 0, 0, BOX_SIZE, BOX_SIZE);
-        GL11.glDisable(GL11.GL_BLEND);
+        // 16×16 独立纹理，1:1 像素绘制 —— drawStatic 强制整数倍拉伸（此处为 1 倍）。
+        // 16x16 standalone texture drawn 1:1 — drawStatic enforces integer-multiple upscaling.
+        TextureStretching.drawStatic(texture, x, y, BOX_SIZE, BOX_SIZE, BOX_SIZE, BOX_SIZE, this.alpha);
 
-        FontRenderer font = mc.fontRenderer;
+        FontRenderer font = Minecraft.getMinecraft().fontRenderer;
         String label = getMessage() != null ? getMessage().getString() : "";
         int textX = x + BOX_SIZE + SPACING;
         int textY = y + BOX_SIZE / 2 - font.FONT_HEIGHT / 2;

@@ -2,10 +2,10 @@ package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
-import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
 
@@ -40,6 +40,9 @@ public class ToggleButton extends AbstractButton {
      */
     private static final int TOGGLE_W = 32;
     private static final int TOGGLE_H = 16;
+    /** Source texture size in pixels / 源纹理尺寸（像素） */
+    private static final int TOGGLE_TEX_W = 16;
+    private static final int TOGGLE_TEX_H = 8;
     /** Margin between the label and the switch / 标签与开关之间的边距 */
     private static final int LABEL_MARGIN = 8;
 
@@ -119,14 +122,9 @@ public class ToggleButton extends AbstractButton {
         int switchX = x + width - LABEL_MARGIN - TOGGLE_W;
         int switchY = y + (height - TOGGLE_H) / 2;
 
-        mc.getTextureManager().bindTexture(tex);
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, this.alpha);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        // Stretch the whole source texture over the rendered switch area.
-        // 将整张源纹理拉伸到开关渲染区域。
-        vanillaGui.drawTexturedModalRect(switchX, switchY, 0, 0, TOGGLE_W, TOGGLE_H);
-        GL11.glDisable(GL11.GL_BLEND);
+        // 16x8 独立纹理按整数倍（2 倍）放大绘制。
+        // 16x8 standalone texture upscaled by an integer factor (2x).
+        TextureStretching.drawStatic(tex, switchX, switchY, TOGGLE_W, TOGGLE_H, TOGGLE_TEX_W, TOGGLE_TEX_H, this.alpha);
     }
 
     /**

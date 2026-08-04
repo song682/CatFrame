@@ -37,30 +37,36 @@ public class ImageButon extends Button {
 
     /**
      * Creates an image button with a single texture for all states.
-     * <p>使用单一纹理创建图片按钮（所有状态共用）。</p>
+     * <p>
+     * 使用单一纹理创建图片按钮（所有状态共用）。
+     * </p>
      */
     public ImageButon(int x, int y, int width, int height,
-                      ResourceLocation texture, int texW, int texH, OnPress onPress) {
+            ResourceLocation texture, int texW, int texH, OnPress onPress) {
         this(x, y, width, height, texture, texture, texture, texW, texH, onPress);
     }
 
     /**
      * Creates an image button with separate normal and highlighted textures.
-     * <p>使用普通 / 高亮双纹理创建图片按钮（禁用时回退普通纹理）。</p>
+     * <p>
+     * 使用普通 / 高亮双纹理创建图片按钮（禁用时回退普通纹理）。
+     * </p>
      */
     public ImageButon(int x, int y, int width, int height,
-                      ResourceLocation texture, ResourceLocation highlightedTexture,
-                      int texW, int texH, OnPress onPress) {
+            ResourceLocation texture, ResourceLocation highlightedTexture,
+            int texW, int texH, OnPress onPress) {
         this(x, y, width, height, texture, highlightedTexture, texture, texW, texH, onPress);
     }
 
     /**
      * Creates an image button with full per-state textures.
-     * <p>使用完整三态纹理创建图片按钮。</p>
+     * <p>
+     * 使用完整三态纹理创建图片按钮。
+     * </p>
      */
     public ImageButon(int x, int y, int width, int height,
-                      ResourceLocation texture, ResourceLocation highlightedTexture,
-                      ResourceLocation disabledTexture, int texW, int texH, OnPress onPress) {
+            ResourceLocation texture, ResourceLocation highlightedTexture,
+            ResourceLocation disabledTexture, int texW, int texH, OnPress onPress) {
         super(x, y, width, height, Text.literal(""), onPress);
         if (texW <= 0 || texH <= 0) {
             throw new IllegalArgumentException(
@@ -80,7 +86,8 @@ public class ImageButon extends Button {
     @Override
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         // 仅绘制图片 —— 不调用 super，避免 Button 的背景与文本渲染。
-        // Draw only the image — no super call, so the Button background/text are skipped.
+        // Draw only the image — no super call, so the Button background/text are
+        // skipped.
         ResourceLocation tex = !active ? disabledTexture : (isHovered ? highlightedTexture : texture);
         TextureStretching.drawStatic(tex, x, y, width, height, texW, texH, alpha);
     }

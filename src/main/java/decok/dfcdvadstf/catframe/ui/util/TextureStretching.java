@@ -215,7 +215,8 @@ public final class TextureStretching {
      * {@link IllegalArgumentException}。<br>
      * The target size must be an integer multiple of the texture's original size
      * (e.g. a 16×16 texture may only draw 16×16, 32×32, 48×48…), guaranteeing
-     * pixel-perfect upscaling; invalid sizes throw {@link IllegalArgumentException}.
+     * pixel-perfect upscaling; invalid sizes throw
+     * {@link IllegalArgumentException}.
      * </p>
      *
      * @param texture 纹理资源 / texture resource
@@ -237,8 +238,9 @@ public final class TextureStretching {
      * @param alpha 透明度 0.0-1.0 / alpha 0.0-1.0
      */
     public static void drawStatic(ResourceLocation texture, int x, int y, int w, int h,
-                                  int texW, int texH, float alpha) {
-        if (w <= 0 || h <= 0) return;
+            int texW, int texH, float alpha) {
+        if (w <= 0 || h <= 0)
+            return;
         if (texW <= 0 || texH <= 0) {
             throw new IllegalArgumentException(
                     "Original texture size must be positive: " + texW + "x" + texH);

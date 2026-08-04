@@ -1,7 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components.events;
 
 import decok.dfcdvadstf.catframe.ui.components.AbstractComponent;
-import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 
 import javax.annotation.Nullable;
@@ -24,7 +23,7 @@ import javax.annotation.Nullable;
 public abstract class AbstractContainerEventHandler extends AbstractComponent implements ContainerEventHandler {
 
     @Nullable
-    private Component focusedChild;
+    private GuiScreenEvent focusedChild;
     private boolean dragging;
 
     public AbstractContainerEventHandler() {
@@ -50,12 +49,12 @@ public abstract class AbstractContainerEventHandler extends AbstractComponent im
 
     @Nullable
     @Override
-    public Component getFocused() {
+    public GuiScreenEvent getFocused() {
         return focusedChild;
     }
 
     @Override
-    public void setFocused(@Nullable Component focused) {
+    public void setFocused(@Nullable GuiScreenEvent focused) {
         if (this.focusedChild == focused) {
             return;
         }

@@ -1,6 +1,5 @@
 package decok.dfcdvadstf.catframe.ui.components.events;
 
-import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenDirection;
 import org.lwjgl.input.Keyboard;
@@ -37,7 +36,7 @@ public final class ScreenKeyboardInput {
      *
      * @param root the CatFrame root component/container / CatFrame 根组件/容器
      */
-    public static void handleCurrentEvent(@Nullable Component root) {
+    public static void handleCurrentEvent(@Nullable GuiScreenEvent root) {
         if (root == null) {
             return;
         }
@@ -79,7 +78,7 @@ public final class ScreenKeyboardInput {
      *
      * @return true if focus moved / 若焦点发生移动则返回 true
      */
-    public static boolean navigate(@Nullable Component root, ScreenDirection direction) {
+    public static boolean navigate(@Nullable GuiScreenEvent root, ScreenDirection direction) {
         if (!(root instanceof ContainerEventHandler)) {
             return false;
         }

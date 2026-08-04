@@ -27,6 +27,14 @@ public class KeyTypedEvent {
         return isWhichKeyPressed(Keyboard.KEY_LSHIFT) || isWhichKeyPressed(Keyboard.KEY_RSHIFT);
     }
 
+    public static boolean isLShiftKeyPressed(){
+        return isWhichKeyPressed(Keyboard.KEY_LSHIFT);
+    }
+
+    public static boolean isRShiftKeyPressed(){
+        return isWhichKeyPressed(Keyboard.KEY_RSHIFT);
+    }
+
     public static boolean isTabKeyPressed(){
         return isWhichKeyPressed(Keyboard.KEY_TAB);
     }

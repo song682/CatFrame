@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components.tab;
 
 import decok.dfcdvadstf.catframe.exception.TabUncorrespondException;
-import decok.dfcdvadstf.catframe.ui.components.Component;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
@@ -57,8 +57,8 @@ public class TabManager {
     /**
      * Component-specific add/remove consumers for high-version style.
      */
-    private Consumer<Component> addComponent = c -> {};
-    private Consumer<Component> removeComponent = c -> {};
+    private Consumer<GuiScreenEvent> addComponent = c -> {};
+    private Consumer<GuiScreenEvent> removeComponent = c -> {};
     private Consumer<Tab> onSelected = t -> {};
     private Consumer<Tab> onDeselected = t -> {};
     @Nullable
@@ -132,7 +132,7 @@ public class TabManager {
      * <p>使用 Consumer 控件管理方式（支持 Component）创建 TabManager。</p>
      */
     public TabManager(Consumer<Object> addWidget, Consumer<Object> removeWidget,
-                      Consumer<Component> addComponent, Consumer<Component> removeComponent,
+                      Consumer<GuiScreenEvent> addComponent, Consumer<GuiScreenEvent> removeComponent,
                       int width, int height, String barId) {
         if (barId == null || barId.isEmpty()) {
             throw new IllegalArgumentException("barId must not be null or empty");

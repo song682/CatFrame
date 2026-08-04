@@ -1,6 +1,5 @@
 package decok.dfcdvadstf.catframe.ui.components.events;
 
-import decok.dfcdvadstf.catframe.ui.components.Component;
 import decok.dfcdvadstf.catframe.ui.components.TabOrderedElement;
 import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenDirection;
@@ -29,14 +28,14 @@ public interface ContainerEventHandler {
      * Returns the list of child components in this container.
      * <p>返回此容器中的子组件列表。</p>
      */
-    List<? extends Component> children();
+    List<? extends GuiScreenEvent> children();
 
     /**
      * Find the child component at the given mouse position.
      * <p>查找给定鼠标位置下的子组件。</p>
      */
-    default Optional<Component> getChildAt(int x, int y) {
-        for (Component child : children()) {
+    default Optional<GuiScreenEvent> getChildAt(int x, int y) {
+        for (GuiScreenEvent child : children()) {
             if (child.isMouseOver(x, y)) {
                 return Optional.of(child);
             }
@@ -50,11 +49,11 @@ public interface ContainerEventHandler {
      * <p>处理鼠标点击 —— 找到鼠标下的子组件并转发事件，自动设焦点。</p>
      */
     default void dispatchMouseClicked(int mouseX, int mouseY, int mouseButton) {
-        Optional<Component> child = getChildAt(mouseX, mouseY);
+        Optional<GuiScreenEvent> child = getChildAt(mouseX, mouseY);
         if (!child.isPresent()) {
             return;
         }
-        Component widget = child.get();
+        GuiScreenEvent widget = child.get();
         widget.mouseClicked(mouseX, mouseY, mouseButton);
         setFocused(widget);
         if (mouseButton == 0) {
@@ -69,7 +68,7 @@ public interface ContainerEventHandler {
     default void dispatchMouseReleased(int mouseX, int mouseY, int mouseButton) {
         if (mouseButton == 0 && isDragging()) {
             setDragging(false);
-            Component focused = getFocused();
+            GuiScreenEvent focused = getFocused();
             if (focused != null) {
                 focused.mouseReleased(mouseX, mouseY, mouseButton);
             }
@@ -81,7 +80,7 @@ public interface ContainerEventHandler {
      * <p>处理鼠标拖动 —— 转发给当前焦点子组件。</p>
      */
     default void dispatchMouseDragged(int mouseX, int mouseY, int mouseButton, long timeSinceLastClick) {
-        Component focused = getFocused();
+        GuiScreenEvent focused = getFocused();
         if (focused != null && isDragging() && mouseButton == 0) {
             focused.mouseDrag(mouseX, mouseY, mouseButton, timeSinceLastClick);
         }
@@ -92,7 +91,7 @@ public interface ContainerEventHandler {
      * <p>处理鼠标滚轮 —— 转发给鼠标下的子组件。</p>
      */
     default void dispatchMouseScrolled(int mouseX, int mouseY, int delta) {
-        Optional<Component> child = getChildAt(mouseX, mouseY);
+        Optional<GuiScreenEvent> child = getChildAt(mouseX, mouseY);
         if (child.isPresent()) {
             child.get().mouseScrolled(delta);
         }
@@ -103,7 +102,7 @@ public interface ContainerEventHandler {
      * <p>处理按键 —— 转发给当前焦点子组件。</p>
      */
     default void dispatchKeyTyped(char typedChar, int keyCode) {
-        Component focused = getFocused();
+        GuiScreenEvent focused = getFocused();
         if (focused != null) {
             focused.keyTyped(typedChar, keyCode);
         }
@@ -114,7 +113,7 @@ public interface ContainerEventHandler {
      * <p>处理拆分后的按键按下 —— 转发给当前焦点子组件。</p>
      */
     default boolean dispatchKeyPressed(int keyCode) {
-        Component focused = getFocused();
+        GuiScreenEvent focused = getFocused();
         return focused != null && focused.keyPressed(keyCode);
     }
 
@@ -123,7 +122,7 @@ public interface ContainerEventHandler {
      * <p>处理拆分后的按键松开 —— 转发给当前焦点子组件。</p>
      */
     default boolean dispatchKeyReleased(int keyCode) {
-        Component focused = getFocused();
+        GuiScreenEvent focused = getFocused();
         return focused != null && focused.keyReleased(keyCode);
     }
 
@@ -132,7 +131,7 @@ public interface ContainerEventHandler {
      * <p>处理拆分后的字符输入 —— 转发给当前焦点子组件。</p>
      */
     default boolean dispatchCharTyped(char codePoint) {
-        Component focused = getFocused();
+        GuiScreenEvent focused = getFocused();
         return focused != null && focused.charTyped(codePoint);
     }
 
@@ -148,7 +147,7 @@ public interface ContainerEventHandler {
      */
     @Nullable
     default ComponentPath nextFocusPathInContainer(FocusNavigationEvent event) {
-        Component current = getFocused();
+        GuiScreenEvent current = getFocused();
         if (current != null) {
             ComponentPath childPath = current.nextFocusPath(event);
             if (childPath != null) {
@@ -171,8 +170,8 @@ public interface ContainerEventHandler {
      * 返回第一个接受焦点的子组件。</p>
      */
     @Nullable
-    default ComponentPath tabNavigate(FocusNavigationEvent event, @Nullable Component current, boolean forward) {
-        List<Component> ordered = new ArrayList<Component>(children());
+    default ComponentPath tabNavigate(FocusNavigationEvent event, @Nullable GuiScreenEvent current, boolean forward) {
+        List<GuiScreenEvent> ordered = new ArrayList<GuiScreenEvent>(children());
         ordered.sort(Comparator.comparingInt(ContainerEventHandler::tabOrderOf));
         int size = ordered.size();
         if (size == 0) {
@@ -210,12 +209,12 @@ public interface ContainerEventHandler {
      * 基础几何启发式（中心距离）。</p>
      */
     @Nullable
-    default ComponentPath arrowNavigate(FocusNavigationEvent.ArrowNavigation event, @Nullable Component current) {
+    default ComponentPath arrowNavigate(FocusNavigationEvent.ArrowNavigation event, @Nullable GuiScreenEvent current) {
         ScreenDirection dir = event.direction();
         ScreenRectangle from = current != null ? current.getRectangle() : null;
-        Component best = null;
+        GuiScreenEvent best = null;
         long bestScore = Long.MAX_VALUE;
-        for (Component child : children()) {
+        for (GuiScreenEvent child : children()) {
             if (child == current) {
                 continue;
             }
@@ -245,7 +244,7 @@ public interface ContainerEventHandler {
      * @return the tab-order group of a component (0 if it is not a {@link TabOrderedElement})
      *         / 组件的 tab 顺序组（非 {@link TabOrderedElement} 时为 0）
      */
-    static int tabOrderOf(Component c) {
+    static int tabOrderOf(GuiScreenEvent c) {
         return (c instanceof TabOrderedElement) ? ((TabOrderedElement) c).getTabOrderGroup() : 0;
     }
 
@@ -277,13 +276,13 @@ public interface ContainerEventHandler {
      * @return the currently focused child, or null / 当前焦点子组件，或 null
      */
     @Nullable
-    Component getFocused();
+    GuiScreenEvent getFocused();
 
     /**
      * Set the focused child component.
      * <p>设置焦点子组件。</p>
      */
-    void setFocused(@Nullable Component focused);
+    void setFocused(@Nullable GuiScreenEvent focused);
 
     /**
      * @return whether this container has focus / 此容器是否有焦点

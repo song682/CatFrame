@@ -1,6 +1,5 @@
-package decok.dfcdvadstf.catframe.ui.components;
+package decok.dfcdvadstf.catframe.ui.components.events;
 
-import decok.dfcdvadstf.catframe.ui.components.events.ComponentPath;
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
@@ -9,21 +8,13 @@ import javax.annotation.Nullable;
 
 /**
  * <p>
- * 组件基接口 —— 所有 UI 控件的基础抽象。<br>
- * 对标高版本 Minecraft 的 {@code LayoutElement + GuiEventListener} 的合并接口；
- * 渲染能力由独立的 {@link Renderable} 接口提供（对标高版本 {@code Renderable}）。
- * </p>
- * <p>
  * Base component interface — the fundamental abstraction for all UI
  * widgets.<br>
  * Merges the high-version Minecraft equivalents of {@code LayoutElement} and
- * {@code GuiEventListener};
- * rendering capability is provided by the standalone {@link Renderable}
- * interface
- * (counterpart of the high-version {@code Renderable}).
+ * {@code GuiEventListener}.
  * </p>
  */
-public interface Component extends ILayout {
+public interface GuiScreenEvent extends ILayout {
 
     // ──── Position / Size ────
 
@@ -224,5 +215,9 @@ public interface Component extends ILayout {
     default boolean isMouseOver(int mouseX, int mouseY) {
         return mouseX >= getX() && mouseX < getX() + getWidth()
                 && mouseY >= getY() && mouseY < getY() + getHeight();
+    }
+
+    default String getTheme(){
+        return null;
     }
 }

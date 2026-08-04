@@ -1,16 +1,16 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
-import decok.dfcdvadstf.catframe.ui.components.Component;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
 import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
  * 高版本风格的 Toast 接口<br>
- * 现在继承 {@link Component}，融入统一的组件体系。
+ * 现在继承 {@link GuiScreenEvent}，融入统一的组件体系。
  * </p>
  * <p>
  * High-version style Toast interface.<br>
- * Now extends {@link Component}, integrated into the unified component system.
+ * Now extends {@link GuiScreenEvent}, integrated into the unified component system.
  * </p>
  *
  * <p>
@@ -21,7 +21,7 @@ import net.minecraft.util.ResourceLocation;
  * {@code FontRenderer} 需要通过 {@code Minecraft.getMinecraft().fontRenderer} 获取。
  * </p>
  */
-public interface Toast extends Component {
+public interface Toast extends GuiScreenEvent {
 
     /** Default Toast width / 默认 Toast 宽度 */
     int DEFAULT_WIDTH = 160;

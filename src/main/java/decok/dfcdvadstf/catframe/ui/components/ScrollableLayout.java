@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 import decok.dfcdvadstf.catframe.ui.layouts.Layout;
 
@@ -176,7 +177,7 @@ public class ScrollableLayout implements Layout {
      */
     public class ScrollContainer extends AbstractContainerWidget {
 
-        private final List<Component> childComponents = new ArrayList<>();
+        private final List<GuiScreenEvent> childGuiScreenEvents = new ArrayList<>();
 
         public ScrollContainer(int width, int height, ScrollbarSettings scrollbarSettings) {
             super(0, 0, width, height, scrollbarSettings);
@@ -184,10 +185,10 @@ public class ScrollableLayout implements Layout {
         }
 
         private void collectChildren() {
-            childComponents.clear();
+            childGuiScreenEvents.clear();
             content.visitWidgets(obj -> {
-                if (obj instanceof Component) {
-                    childComponents.add((Component) obj);
+                if (obj instanceof GuiScreenEvent) {
+                    childGuiScreenEvents.add((GuiScreenEvent) obj);
                 }
             });
         }
@@ -198,8 +199,8 @@ public class ScrollableLayout implements Layout {
         }
 
         @Override
-        public List<? extends Component> children() {
-            return childComponents;
+        public List<? extends GuiScreenEvent> children() {
+            return childGuiScreenEvents;
         }
 
         @Override
@@ -211,7 +212,7 @@ public class ScrollableLayout implements Layout {
             collectChildren();
 
             enableScissor();
-            for (Component child : childComponents) {
+            for (GuiScreenEvent child : childGuiScreenEvents) {
                 if (child instanceof Renderable) {
                     ((Renderable) child).extractRenderState(GuiGraphicsExtractor.getInstance(),
                             mouseX, mouseY, partialTicks);

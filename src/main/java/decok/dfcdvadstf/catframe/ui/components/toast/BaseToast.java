@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
-import decok.dfcdvadstf.catframe.ui.components.AbstractComponent;
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
+import decok.dfcdvadstf.catframe.ui.components.AbstractComponent;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;

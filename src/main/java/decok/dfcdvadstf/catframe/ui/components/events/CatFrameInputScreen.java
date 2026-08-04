@@ -1,7 +1,5 @@
 package decok.dfcdvadstf.catframe.ui.components.events;
 
-import decok.dfcdvadstf.catframe.ui.components.Component;
-
 import javax.annotation.Nullable;
 
 /**
@@ -35,7 +33,7 @@ public interface CatFrameInputScreen {
      *         / 应接收键盘输入的根组件/容器；返回 {@code null} 则本帧跳过 CatFrame 分发
      */
     @Nullable
-    Component getEventRoot();
+    GuiScreenEvent getEventRoot();
 
     /**
      * Whether this screen dispatches CatFrame split keyboard events on its own — e.g. by

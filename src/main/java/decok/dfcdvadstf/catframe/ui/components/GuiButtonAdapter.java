@@ -1,15 +1,16 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 
 /**
  * <p>
- * 原版 GuiButton 适配器 —— 将原版 {@link GuiButton} 包装为 {@link Component}。<br>
+ * 原版 GuiButton 适配器 —— 将原版 {@link GuiButton} 包装为 {@link GuiScreenEvent}。<br>
  * 用于 Tab 系统中兼容已有原版按钮的过渡。
  * </p>
  * <p>
- * Vanilla GuiButton adapter — wraps the vanilla {@link GuiButton} as a {@link Component}.<br>
+ * Vanilla GuiButton adapter — wraps the vanilla {@link GuiButton} as a {@link GuiScreenEvent}.<br>
  * Used for transitional compatibility in the Tab system.
  * </p>
  */

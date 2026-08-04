@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui.components;
 
 import com.google.common.collect.Lists;
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
 import net.minecraft.client.Minecraft;
 
 import javax.annotation.Nullable;
@@ -233,7 +234,7 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
     // ──── Focus ────
 
     @Override
-    public void setFocused(@Nullable Component focused) {
+    public void setFocused(@Nullable GuiScreenEvent focused) {
         super.setFocused(focused);
         int index = children.indexOf(focused);
         if (index >= 0) {
@@ -353,7 +354,7 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
      *
      * @param <E> the entry type / 条目类型
      */
-    public abstract static class Entry<E extends Entry<E>> implements Component {
+    public abstract static class Entry<E extends Entry<E>> implements GuiScreenEvent {
 
         private int x = 0;
         private int y = 0;
@@ -501,7 +502,7 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     // ──── Inner class: TrackedList ────
 
-    private class TrackedList extends java.util.AbstractList<E> {
+    private class TrackedList extends AbstractList<E> {
         private final List<E> delegate = Lists.newArrayList();
 
         @Override

@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.components.events.ComponentPath;
 import decok.dfcdvadstf.catframe.ui.components.events.ContainerEventHandler;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
 import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 
 import javax.annotation.Nullable;
@@ -19,7 +20,7 @@ import javax.annotation.Nullable;
 public abstract class AbstractContainerWidget extends AbstractScrollArea implements ContainerEventHandler {
 
     @Nullable
-    private Component focused;
+    private GuiScreenEvent focused;
     private boolean containerDragging;
 
     public AbstractContainerWidget(int x, int y, int width, int height, ScrollbarSettings scrollbarSettings) {
@@ -42,12 +43,12 @@ public abstract class AbstractContainerWidget extends AbstractScrollArea impleme
 
     @Nullable
     @Override
-    public Component getFocused() {
+    public GuiScreenEvent getFocused() {
         return focused;
     }
 
     @Override
-    public void setFocused(@Nullable Component focused) {
+    public void setFocused(@Nullable GuiScreenEvent focused) {
         if (this.focused == focused) {
             return;
         }

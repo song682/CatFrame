@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.ui.components.tab;
 
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
-import decok.dfcdvadstf.catframe.ui.components.Component;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
 import decok.dfcdvadstf.catframe.ui.components.Renderable;
 import decok.dfcdvadstf.catframe.ui.layouts.FrameLayout;
 import decok.dfcdvadstf.catframe.ui.layouts.GridLayout;
@@ -89,8 +89,8 @@ public class GridLayoutTab extends AbstractScreenTab {
         for (ILayout child : layout.getChildren()) {
             if (child instanceof GuiButton) {
                 addButton((GuiButton) child);
-            } else if (child instanceof Component) {
-                addComponent((Component) child);
+            } else if (child instanceof GuiScreenEvent) {
+                addComponent((GuiScreenEvent) child);
             } else {
                 addWidget(child);
             }
@@ -114,16 +114,16 @@ public class GridLayoutTab extends AbstractScreenTab {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         layout.draw(mouseX, mouseY, partialTicks);
         // Auto-render all Component children
-        for (Component component : tabComponents) {
-            if (component instanceof Renderable) {
-                ((Renderable) component).extractRenderState(GuiGraphicsExtractor.getInstance(),
+        for (GuiScreenEvent guiScreenEvent : tabGuiScreenEvents) {
+            if (guiScreenEvent instanceof Renderable) {
+                ((Renderable) guiScreenEvent).extractRenderState(GuiGraphicsExtractor.getInstance(),
                         mouseX, mouseY, partialTicks);
             }
         }
     }
 
     @Override
-    public void visitComponents(Consumer<Component> visitor) {
+    public void visitComponents(Consumer<GuiScreenEvent> visitor) {
         // Visit all Component children registered via addComponent
         super.visitComponents(visitor);
     }
@@ -137,8 +137,8 @@ public class GridLayoutTab extends AbstractScreenTab {
         // Forward mouse click to all registered Components (CyclingArea, Button,
         // EditBox, etc.)
         // 将鼠标点击转发到所有已注册的 Component（CyclingArea、Button、EditBox 等）
-        for (Component component : tabComponents) {
-            component.mouseClicked(mouseX, mouseY, mouseButton);
+        for (GuiScreenEvent guiScreenEvent : tabGuiScreenEvents) {
+            guiScreenEvent.mouseClicked(mouseX, mouseY, mouseButton);
         }
     }
 
@@ -146,8 +146,8 @@ public class GridLayoutTab extends AbstractScreenTab {
     public void keyTyped(char typedChar, int keyCode) {
         // Forward key input to all registered Components (EditBox, etc.)
         // 将按键输入转发到所有已注册的 Component（EditBox 等）
-        for (Component component : tabComponents) {
-            component.keyTyped(typedChar, keyCode);
+        for (GuiScreenEvent guiScreenEvent : tabGuiScreenEvents) {
+            guiScreenEvent.keyTyped(typedChar, keyCode);
         }
     }
 

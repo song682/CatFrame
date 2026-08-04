@@ -1,7 +1,5 @@
 package decok.dfcdvadstf.catframe.ui.components.events;
 
-import decok.dfcdvadstf.catframe.ui.components.Component;
-
 /**
  * <p>
  * 焦点导航路径 —— 描述从根容器到当前焦点叶子组件的一条链路。<br>
@@ -18,7 +16,7 @@ public interface ComponentPath {
     /**
      * @return the leaf (focused) component at the end of this path / 路径末端的焦点叶子组件
      */
-    Component component();
+    GuiScreenEvent component();
 
     /**
      * Apply (or clear) focus along the whole path.
@@ -40,8 +38,8 @@ public interface ComponentPath {
      * Create a leaf path pointing at a single component.
      * <p>创建指向单个组件的叶子路径。</p>
      */
-    static ComponentPath leaf(final Component component) {
-        return new Leaf(component);
+    static ComponentPath leaf(final GuiScreenEvent guiScreenEvent) {
+        return new Leaf(guiScreenEvent);
     }
 
     /**
@@ -60,20 +58,20 @@ public interface ComponentPath {
      */
     final class Leaf implements ComponentPath {
 
-        private final Component component;
+        private final GuiScreenEvent guiScreenEvent;
 
-        Leaf(final Component component) {
-            this.component = component;
+        Leaf(final GuiScreenEvent guiScreenEvent) {
+            this.guiScreenEvent = guiScreenEvent;
         }
 
         @Override
-        public Component component() {
-            return this.component;
+        public GuiScreenEvent component() {
+            return this.guiScreenEvent;
         }
 
         @Override
         public void applyFocus(final boolean focused) {
-            this.component.setFocused(focused);
+            this.guiScreenEvent.setFocused(focused);
         }
     }
 
@@ -92,7 +90,7 @@ public interface ComponentPath {
         }
 
         @Override
-        public Component component() {
+        public GuiScreenEvent component() {
             return this.childPath.component();
         }
 
@@ -103,7 +101,7 @@ public interface ComponentPath {
                 this.parent.setFocused(this.childPath.component());
             } else {
                 this.childPath.applyFocus(false);
-                this.parent.setFocused((Component) null);
+                this.parent.setFocused((GuiScreenEvent) null);
             }
         }
     }

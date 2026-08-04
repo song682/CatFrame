@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.ui.components;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Style;
 import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
 
 import javax.annotation.Nullable;
 
@@ -19,7 +20,7 @@ import javax.annotation.Nullable;
  * {@code AbstractWidget implements Renderable}).
  * </p>
  */
-public abstract class AbstractComponent implements Component, Renderable, TabOrderedElement {
+public abstract class AbstractComponent implements GuiScreenEvent, Renderable, TabOrderedElement {
 
     protected int x;
     protected int y;

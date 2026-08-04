@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components.tab;
 
 import decok.dfcdvadstf.catframe.ui.Text;
-import decok.dfcdvadstf.catframe.ui.components.Component;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.resources.I18n;
@@ -24,7 +24,7 @@ public abstract class AbstractScreenTab implements Tab {
     /**
      * 高版本风格组件列表。
      */
-    protected List<Component> tabComponents = new ArrayList<>();
+    protected List<GuiScreenEvent> tabGuiScreenEvents = new ArrayList<>();
     protected boolean visible = true;
     protected int tabId;
     protected String tabNameKey;
@@ -83,7 +83,7 @@ public abstract class AbstractScreenTab implements Tab {
         this.tabManager = tabManager;
         tabButtons.clear();
         tabWidgets.clear();
-        tabComponents.clear();
+        tabGuiScreenEvents.clear();
     }
 
     @Override
@@ -143,9 +143,9 @@ public abstract class AbstractScreenTab implements Tab {
     /**
      * 注册一个高版本风格的 Component 到 Tab。
      */
-    protected void addComponent(Component component) {
-        tabComponents.add(component);
-        tabWidgets.add(component);
+    protected void addComponent(GuiScreenEvent guiScreenEvent) {
+        tabGuiScreenEvents.add(guiScreenEvent);
+        tabWidgets.add(guiScreenEvent);
     }
 
     /**
@@ -157,20 +157,20 @@ public abstract class AbstractScreenTab implements Tab {
     @Override
     public void visitChildren(Consumer<Object> visitor) {
         for (Object widget : tabWidgets) {
-            if (!(widget instanceof Component) || !tabComponents.contains(widget)) {
+            if (!(widget instanceof GuiScreenEvent) || !tabGuiScreenEvents.contains(widget)) {
                 visitor.accept(widget);
             }
         }
     }
 
     @Override
-    public void visitComponents(Consumer<Component> visitor) {
-        for (Component component : tabComponents) {
-            visitor.accept(component);
+    public void visitComponents(Consumer<GuiScreenEvent> visitor) {
+        for (GuiScreenEvent guiScreenEvent : tabGuiScreenEvents) {
+            visitor.accept(guiScreenEvent);
         }
         for (Object widget : tabWidgets) {
-            if (widget instanceof Component && !tabComponents.contains(widget)) {
-                visitor.accept((Component) widget);
+            if (widget instanceof GuiScreenEvent && !tabGuiScreenEvents.contains(widget)) {
+                visitor.accept((GuiScreenEvent) widget);
             }
         }
     }

@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.components.events.ContainerEventHandler;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
 
 import javax.annotation.Nullable;
 
@@ -29,7 +30,7 @@ public abstract class ContainerObjectSelectionList<E extends ContainerObjectSele
     }
 
     @Override
-    public void setFocused(@Nullable Component focused) {
+    public void setFocused(@Nullable GuiScreenEvent focused) {
         if (getFocused() != focused) {
             super.setFocused(focused);
             if (focused == null) {
@@ -51,7 +52,7 @@ public abstract class ContainerObjectSelectionList<E extends ContainerObjectSele
             implements ContainerEventHandler {
 
         @Nullable
-        private Component focused;
+        private GuiScreenEvent focused;
         private boolean dragging;
 
         // ──── ContainerEventHandler: dragging ────
@@ -70,12 +71,12 @@ public abstract class ContainerObjectSelectionList<E extends ContainerObjectSele
 
         @Nullable
         @Override
-        public Component getFocused() {
+        public GuiScreenEvent getFocused() {
             return focused;
         }
 
         @Override
-        public void setFocused(@Nullable Component focused) {
+        public void setFocused(@Nullable GuiScreenEvent focused) {
             if (this.focused != null) {
                 this.focused.setActive(true);
             }

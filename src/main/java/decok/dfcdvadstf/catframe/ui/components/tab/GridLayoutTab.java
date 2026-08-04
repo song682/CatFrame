@@ -1,7 +1,9 @@
 package decok.dfcdvadstf.catframe.ui.components.tab;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.components.Component;
+import decok.dfcdvadstf.catframe.ui.components.Renderable;
 import decok.dfcdvadstf.catframe.ui.layouts.FrameLayout;
 import decok.dfcdvadstf.catframe.ui.layouts.GridLayout;
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
@@ -21,7 +23,10 @@ import java.util.function.Consumer;
  * 子元素按网格排列，整个布局在屏幕内居中（水平居中，垂直约 1/6 处）。
  * </p>
  *
- * <p>Usage / 用法:</p>
+ * <p>
+ * Usage / 用法:
+ * </p>
+ * 
  * <pre>{@code
  * public class MyTab extends GridLayoutTab {
  *     public MyTab() {
@@ -44,7 +49,9 @@ public class GridLayoutTab extends AbstractScreenTab {
     /**
      * Vertical alignment within the tab content area (0.0 = top, 1.0 = bottom).
      * Subclasses can override this to adjust vertical positioning.
-     * <p>在 Tab 内容区域内的垂直对齐系数。子类可覆写以调整垂直位置。</p>
+     * <p>
+     * 在 Tab 内容区域内的垂直对齐系数。子类可覆写以调整垂直位置。
+     * </p>
      */
     protected float verticalAlignment = 0.16666667F;
 
@@ -60,11 +67,11 @@ public class GridLayoutTab extends AbstractScreenTab {
      * </p>
      *
      * <pre>{@code
-     *   // Flat key format (lazy translation via I18n)
-     *   super(100, Text.translatable("tab.game"));
+     * // Flat key format (lazy translation via I18n)
+     * super(100, Text.translatable("tab.game"));
      *
-     *   // Literal fallback
-     *   super(100, Text.literal("My Tab"));
+     * // Literal fallback
+     * super(100, Text.literal("My Tab"));
      * }</pre>
      */
     public GridLayoutTab(int tabId, Text tabTitle) {
@@ -75,8 +82,10 @@ public class GridLayoutTab extends AbstractScreenTab {
     public void initGui(TabManager tabManager, int width, int height) {
         super.initGui(tabManager, width, height);
 
-        // Register all children with the Tab (GuiButton → buttonList, Component → component list, others → widget list)
-        // 将所有子元素注册到 Tab（GuiButton 进 buttonList，Component 进 component list，其他进 widget list）
+        // Register all children with the Tab (GuiButton → buttonList, Component →
+        // component list, others → widget list)
+        // 将所有子元素注册到 Tab（GuiButton 进 buttonList，Component 进 component list，其他进 widget
+        // list）
         for (ILayout child : layout.getChildren()) {
             if (child instanceof GuiButton) {
                 addButton((GuiButton) child);
@@ -98,7 +107,7 @@ public class GridLayoutTab extends AbstractScreenTab {
         // 此调用会覆盖 initGui 中的降级定位。
         layout.arrangeElements();
         FrameLayout.alignInRectangle(layout, rectangle.x, rectangle.y,
-            rectangle.width, rectangle.height, 0.5F, verticalAlignment);
+                rectangle.width, rectangle.height, 0.5F, verticalAlignment);
     }
 
     @Override
@@ -106,7 +115,10 @@ public class GridLayoutTab extends AbstractScreenTab {
         layout.draw(mouseX, mouseY, partialTicks);
         // Auto-render all Component children
         for (Component component : tabComponents) {
-            component.render(mouseX, mouseY, partialTicks);
+            if (component instanceof Renderable) {
+                ((Renderable) component).extractRenderState(GuiGraphicsExtractor.getInstance(),
+                        mouseX, mouseY, partialTicks);
+            }
         }
     }
 
@@ -122,7 +134,8 @@ public class GridLayoutTab extends AbstractScreenTab {
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        // Forward mouse click to all registered Components (CyclingArea, Button, EditBox, etc.)
+        // Forward mouse click to all registered Components (CyclingArea, Button,
+        // EditBox, etc.)
         // 将鼠标点击转发到所有已注册的 Component（CyclingArea、Button、EditBox 等）
         for (Component component : tabComponents) {
             component.mouseClicked(mouseX, mouseY, mouseButton);

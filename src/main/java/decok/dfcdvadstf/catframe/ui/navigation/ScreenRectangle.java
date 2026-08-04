@@ -4,12 +4,8 @@ import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 
 /**
  * <p>
- * 屏幕矩形区域 —— 描述一个控件在屏幕上的位置和尺寸。<br>
- * 对标高版本 Minecraft 的 {@code ScreenRectangle}，用于 Tab 系统布局。
- * </p>
- * <p>
  * Screen rectangle — describes the position and size of a widget on screen.<br>
- * Counterpart of higher Minecraft versions' {@code ScreenRectangle}, used by the Tab system.
+ * Counterpart of higher Minecraft versions' {@code ScreenRectangle}, used by screen layouts.
  * </p>
  */
 public final class ScreenRectangle {
@@ -27,8 +23,7 @@ public final class ScreenRectangle {
     }
 
     /**
-     * Creates a ScreenRectangle from an ILayout's current bounds.
-     * <p>从 ILayout 的当前边界创建 ScreenRectangle。</p>
+     * Creates a ScreenRectangle from an ILayout's current bounds.\
      */
     public static ScreenRectangle of(final ILayout layout) {
         return new ScreenRectangle(layout.getX(), layout.getY(), layout.getWidth(), layout.getHeight());
@@ -51,9 +46,9 @@ public final class ScreenRectangle {
     }
 
     /**
-     * 判断两个矩形是否相交（有重叠区域）。
-     * <p>对标 26.1.2 {@code ScreenRectangle.intersects()}，
-     * 用于 {@code GuiRenderState.Node} 的自动分层判定。</p>
+     * Determine whether two of rectangle has some overlapping regions.
+     * <p>Align with modern {@code ScreenRectangle.intersects()}，
+     * for {@code GuiRenderState.Node} 's Automatic Layering Judgment.</p>
      */
     public boolean intersects(final ScreenRectangle other) {
         return this.x < other.x + other.width
@@ -63,9 +58,9 @@ public final class ScreenRectangle {
     }
 
     /**
-     * 判断本矩形是否完全包含另一个矩形。
-     * <p>对标 26.1.2 {@code ScreenRectangle.encompasses()}，
-     * 用于 {@code GuiRenderState} 判断新元素是否属于当前节点的子层级。</p>
+     * Check if this rectangle completely contains another rectangle.
+     * <p>Align with modern {@code ScreenRectangle.encompasses()},
+     *  used by {@code GuiRenderState} to check if a new element belongs to the current node's sub-hierarchy.</p>
      */
     public boolean encompasses(final ScreenRectangle other) {
         return other.x >= this.x

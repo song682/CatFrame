@@ -8,22 +8,26 @@ import org.lwjgl.opengl.GL11;
 /**
  * <p>
  * 纹理拉伸工具系统 —— 提供可扩展的纹理绘制策略。<br>
- * Texture stretching utility system — provides extensible texture drawing strategies.
+ * Texture stretching utility system — provides extensible texture drawing
+ * strategies.
  * </p>
  *
  * <h3>内建策略 / Built-in strategies</h3>
  * <ul>
- *   <li>{@link #drawNinePatch} — 九宫格拉伸（4 角固定、4 边平铺、中心平铺）</li>
- *   <li>{@link #drawFixedEndRepeat} — 两端固定中间重复（水平方向）</li>
- *   <li>{@link #drawTiled} — 通用平铺</li>
+ * <li>{@link #drawNinePatch} — 九宫格拉伸（4 角固定、4 边平铺、中心平铺）</li>
+ * <li>{@link #drawFixedEndRepeat} — 两端固定中间重复（水平方向）</li>
+ * <li>{@link #drawTiled} — 通用平铺</li>
  * </ul>
  *
  * <h3>扩展方式 / Extension</h3>
- * <p>实现 {@link StretchStrategy} 接口即可定义自定义策略。</p>
+ * <p>
+ * 实现 {@link StretchStrategy} 接口即可定义自定义策略。
+ * </p>
  */
 public final class TextureStretching {
 
-    private TextureStretching() {}
+    private TextureStretching() {
+    }
 
     // ──── Strategy interface ────
 
@@ -36,7 +40,9 @@ public final class TextureStretching {
     public interface StretchStrategy {
         /**
          * Draw the texture using this strategy.
-         * <p>使用此策略绘制纹理。</p>
+         * <p>
+         * 使用此策略绘制纹理。
+         * </p>
          *
          * @param texture 纹理资源 / texture resource
          * @param x       屏幕 X / screen X
@@ -80,9 +86,10 @@ public final class TextureStretching {
      * @param texH    纹理总高度 / total texture height
      */
     public static void drawNinePatch(ResourceLocation texture, int x, int y, int w, int h,
-                                     int edgeL, int edgeT, int edgeR, int edgeB,
-                                     int texW, int texH) {
-        if (w <= 0 || h <= 0) return;
+            int edgeL, int edgeT, int edgeR, int edgeB,
+            int texW, int texH) {
+        if (w <= 0 || h <= 0)
+            return;
 
         int innerW = w - edgeL - edgeR;
         int innerH = h - edgeT - edgeB;
@@ -145,7 +152,8 @@ public final class TextureStretching {
     /**
      * <p>
      * 两端固定中间重复 —— 水平方向：左端 edgeL 像素固定，右端 edgeR 像素固定，中间 tileW 像素重复平铺。<br>
-     * Two-end-fixed middle-repeat — horizontally: left edgeL pixels fixed, right edgeR pixels fixed,
+     * Two-end-fixed middle-repeat — horizontally: left edgeL pixels fixed, right
+     * edgeR pixels fixed,
      * middle tileW pixels tiled.
      * </p>
      *
@@ -161,9 +169,10 @@ public final class TextureStretching {
      * @param texH    纹理总高度 / total texture height
      */
     public static void drawFixedEndRepeat(ResourceLocation texture, int x, int y, int w, int h,
-                                          int edgeL, int edgeR, int tileW,
-                                          int texW, int texH) {
-        if (w <= 0 || h <= 0) return;
+            int edgeL, int edgeR, int tileW,
+            int texW, int texH) {
+        if (w <= 0 || h <= 0)
+            return;
 
         int middleW = w - edgeL - edgeR;
         if (middleW < 0) {
@@ -192,12 +201,68 @@ public final class TextureStretching {
         cleanup();
     }
 
+    // ──── Static (integer-multiple upscale) ────
+
+    /**
+     * <p>
+     * 整图静态拉伸 —— 将整张纹理（UV 0..1）按整数倍放大绘制到目标区域。<br>
+     * Static stretch — draws the whole texture (UV 0..1) scaled by an integer
+     * factor over the target area.
+     * </p>
+     * <p>
+     * 目标尺寸必须是纹理原始尺寸的整数倍（如 16×16 纹理只能绘制 16×16、32×32、
+     * 48×48…），保证像素完美放大；传入不合适的尺寸将抛出
+     * {@link IllegalArgumentException}。<br>
+     * The target size must be an integer multiple of the texture's original size
+     * (e.g. a 16×16 texture may only draw 16×16, 32×32, 48×48…), guaranteeing
+     * pixel-perfect upscaling; invalid sizes throw {@link IllegalArgumentException}.
+     * </p>
+     *
+     * @param texture 纹理资源 / texture resource
+     * @param x       屏幕 X / screen X
+     * @param y       屏幕 Y / screen Y
+     * @param w       目标宽度（须为 texW 整数倍）/ target width (integer multiple of texW)
+     * @param h       目标高度（须为 texH 整数倍）/ target height (integer multiple of texH)
+     * @param texW    纹理原始宽度 / original texture width
+     * @param texH    纹理原始高度 / original texture height
+     */
+    public static void drawStatic(ResourceLocation texture, int x, int y, int w, int h, int texW, int texH) {
+        drawStatic(texture, x, y, w, h, texW, texH, 1.0F);
+    }
+
+    /**
+     * 整图静态拉伸，带透明度。<br>
+     * Static stretch with alpha.
+     *
+     * @param alpha 透明度 0.0-1.0 / alpha 0.0-1.0
+     */
+    public static void drawStatic(ResourceLocation texture, int x, int y, int w, int h,
+                                  int texW, int texH, float alpha) {
+        if (w <= 0 || h <= 0) return;
+        if (texW <= 0 || texH <= 0) {
+            throw new IllegalArgumentException(
+                    "Original texture size must be positive: " + texW + "x" + texH);
+        }
+        if (w % texW != 0 || h % texH != 0) {
+            throw new IllegalArgumentException("Target size " + w + "x" + h
+                    + " is not an integer multiple of texture size " + texW + "x" + texH);
+        }
+
+        bindAndPrepare(texture, alpha);
+        Tessellator t = Tessellator.instance;
+        t.startDrawingQuads();
+        addQuad(t, x, y, w, h, 0, 0, 1, 1, 1, 1);
+        t.draw();
+        cleanup();
+    }
+
     // ──── General tiling ────
 
     /**
      * <p>
      * 通用平铺 —— 将纹理按 tileW×tileH 像素为单位平铺到目标区域。<br>
-     * General tiling — tiles the texture in tileW×tileH pixel units across the target area.
+     * General tiling — tiles the texture in tileW×tileH pixel units across the
+     * target area.
      * </p>
      *
      * @param texture 纹理资源 / texture resource
@@ -209,8 +274,9 @@ public final class TextureStretching {
      * @param tileH   平铺单元高度 / tile height
      */
     public static void drawTiled(ResourceLocation texture, int x, int y, int w, int h,
-                                 int tileW, int tileH) {
-        if (w <= 0 || h <= 0 || tileW <= 0 || tileH <= 0) return;
+            int tileW, int tileH) {
+        if (w <= 0 || h <= 0 || tileW <= 0 || tileH <= 0)
+            return;
 
         bindAndPrepare(texture);
         Tessellator t = Tessellator.instance;
@@ -239,26 +305,30 @@ public final class TextureStretching {
 
     /**
      * Draw a texture using parameters loaded from its {@code .mcmeta} file.
-     * <p>Falls back to the given type with hardcoded defaults if no metadata is found.</p>
-     * <p>根据 {@code .mcmeta} 文件中的参数自动绘制纹理。找不到元数据时使用回退类型和参数。</p>
+     * <p>
+     * Falls back to the given type with hardcoded defaults if no metadata is found.
+     * </p>
+     * <p>
+     * 根据 {@code .mcmeta} 文件中的参数自动绘制纹理。找不到元数据时使用回退类型和参数。
+     * </p>
      *
-     * @param texture       texture resource / 纹理资源
-     * @param x             screen X / 屏幕 X
-     * @param y             screen Y / 屏幕 Y
-     * @param w             target width / 目标宽度
-     * @param h             target height / 目标高度
-     * @param fallbackType  fallback stretch type / 回退拉伸类型
-     * @param fallbackW     fallback texture width / 回退纹理宽度
-     * @param fallbackH     fallback texture height / 回退纹理高度
-     * @param fallbackL     fallback left edge / 回退左边缘
-     * @param fallbackT     fallback top edge / 回退上边缘
-     * @param fallbackR     fallback right edge / 回退右边缘
-     * @param fallbackB     fallback bottom edge / 回退下边缘
+     * @param texture      texture resource / 纹理资源
+     * @param x            screen X / 屏幕 X
+     * @param y            screen Y / 屏幕 Y
+     * @param w            target width / 目标宽度
+     * @param h            target height / 目标高度
+     * @param fallbackType fallback stretch type / 回退拉伸类型
+     * @param fallbackW    fallback texture width / 回退纹理宽度
+     * @param fallbackH    fallback texture height / 回退纹理高度
+     * @param fallbackL    fallback left edge / 回退左边缘
+     * @param fallbackT    fallback top edge / 回退上边缘
+     * @param fallbackR    fallback right edge / 回退右边缘
+     * @param fallbackB    fallback bottom edge / 回退下边缘
      */
     public static void drawAuto(ResourceLocation texture, int x, int y, int w, int h,
-                                StretchType fallbackType,
-                                int fallbackW, int fallbackH,
-                                int fallbackL, int fallbackT, int fallbackR, int fallbackB) {
+            StretchType fallbackType,
+            int fallbackW, int fallbackH,
+            int fallbackL, int fallbackT, int fallbackR, int fallbackB) {
         TextureStretchingMetadata meta = TextureStretchingMetadata.load(texture);
 
         if (meta != null) {
@@ -279,6 +349,10 @@ public final class TextureStretching {
                     drawTiled(texture, x, y, w, h,
                             meta.getDefaultWidth(), meta.getDefaultHeight());
                     return;
+                case STATIC:
+                    drawStatic(texture, x, y, w, h,
+                            meta.getDefaultWidth(), meta.getDefaultHeight());
+                    return;
                 default:
                     break;
             }
@@ -295,6 +369,9 @@ public final class TextureStretching {
             case TILE:
                 drawTiled(texture, x, y, w, h, fallbackW, fallbackH);
                 break;
+            case STATIC:
+                drawStatic(texture, x, y, w, h, fallbackW, fallbackH);
+                break;
             case NINE_PATCH:
             default:
                 drawNinePatch(texture, x, y, w, h,
@@ -306,10 +383,12 @@ public final class TextureStretching {
 
     /**
      * Draw a texture using mcmeta metadata (nine-patch default fallback).
-     * <p>Convenience overload that assumes nine-patch with symmetric borders.</p>
+     * <p>
+     * Convenience overload that assumes nine-patch with symmetric borders.
+     * </p>
      */
     public static void drawAutoNinePatch(ResourceLocation texture, int x, int y, int w, int h,
-                                          int fallbackTexW, int fallbackTexH, int fallbackBorder) {
+            int fallbackTexW, int fallbackTexH, int fallbackBorder) {
         drawAuto(texture, x, y, w, h,
                 StretchType.NINE_PATCH,
                 fallbackTexW, fallbackTexH,
@@ -318,10 +397,12 @@ public final class TextureStretching {
 
     /**
      * Draw a texture using mcmeta metadata (three-patch default fallback).
-     * <p>Convenience overload for horizontal three-patch with symmetric edges.</p>
+     * <p>
+     * Convenience overload for horizontal three-patch with symmetric edges.
+     * </p>
      */
     public static void drawAutoThreePatch(ResourceLocation texture, int x, int y, int w, int h,
-                                          int fallbackTexW, int fallbackTexH, int fallbackEdge) {
+            int fallbackTexW, int fallbackTexH, int fallbackEdge) {
         drawAuto(texture, x, y, w, h,
                 StretchType.THREE_PATCH,
                 fallbackTexW, fallbackTexH,
@@ -332,13 +413,19 @@ public final class TextureStretching {
 
     /**
      * Bind texture and set up GL blend state.
-     * <p>If texture is null, skips binding (assumes texture already bound).</p>
+     * <p>
+     * If texture is null, skips binding (assumes texture already bound).
+     * </p>
      */
     private static void bindAndPrepare(ResourceLocation texture) {
+        bindAndPrepare(texture, 1.0F);
+    }
+
+    private static void bindAndPrepare(ResourceLocation texture, float alpha) {
         if (texture != null) {
             Minecraft.getMinecraft().getTextureManager().bindTexture(texture);
         }
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GL11.glColor4f(1.0f, 1.0f, 1.0f, alpha);
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
@@ -354,8 +441,8 @@ public final class TextureStretching {
      * Add a single textured quad (fixed UV, no tiling).
      */
     private static void addQuad(Tessellator t, int sx, int sy, int sw, int sh,
-                                float texU, float texV, float texSW, float texSH,
-                                int texW, int texH) {
+            float texU, float texV, float texSW, float texSH,
+            int texW, int texH) {
         float u1 = texU / texW;
         float u2 = (texU + texSW) / texW;
         float v1 = texV / texH;
@@ -371,8 +458,8 @@ public final class TextureStretching {
      * Add a tiled textured quad — repeats the UV region across the screen area.
      */
     private static void addTiledQuad(Tessellator t, int sx, int sy, int screenW, int screenH,
-                                     float texU, float texV, float texTileW, float texTileH,
-                                     int texW, int texH) {
+            float texU, float texV, float texTileW, float texTileH,
+            int texW, int texH) {
         for (int offX = 0; offX < screenW; offX += (int) texTileW) {
             for (int offY = 0; offY < screenH; offY += (int) texTileH) {
                 int drawW = Math.min((int) texTileW, screenW - offX);

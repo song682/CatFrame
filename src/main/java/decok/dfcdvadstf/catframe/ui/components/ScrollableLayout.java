@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 import decok.dfcdvadstf.catframe.ui.layouts.Layout;
 
@@ -13,8 +14,10 @@ import java.util.function.Consumer;
  * 对标高版本 Minecraft 的 {@code ScrollableLayout}。
  * </p>
  * <p>
- * Scrollable layout wrapper — wraps an existing {@link Layout} into a scrollable
- * container. Counterpart of the high-version Minecraft {@code ScrollableLayout}.
+ * Scrollable layout wrapper — wraps an existing {@link Layout} into a
+ * scrollable
+ * container. Counterpart of the high-version Minecraft
+ * {@code ScrollableLayout}.
  * </p>
  */
 public class ScrollableLayout implements Layout {
@@ -30,7 +33,9 @@ public class ScrollableLayout implements Layout {
 
     /**
      * Create a scrollable layout wrapping the given content with a maximum height.
-     * <p>创建一个可滚动布局，包装给定的内容并限制最大高度。</p>
+     * <p>
+     * 创建一个可滚动布局，包装给定的内容并限制最大高度。
+     * </p>
      *
      * @param content   the content layout to make scrollable / 要使其可滚动的内容布局
      * @param maxHeight maximum visible height / 最大可见高度
@@ -107,13 +112,15 @@ public class ScrollableLayout implements Layout {
 
     @Override
     public void draw(int mouseX, int mouseY, float partialTicks) {
-        container.render(mouseX, mouseY, partialTicks);
+        container.extractRenderState(GuiGraphicsExtractor.getInstance(), mouseX, mouseY, partialTicks);
     }
 
     // ──── ILayout: position/size delegates ────
 
     @Override
-    public int getX() { return container.getX(); }
+    public int getX() {
+        return container.getX();
+    }
 
     @Override
     public void setX(int x) {
@@ -122,7 +129,9 @@ public class ScrollableLayout implements Layout {
     }
 
     @Override
-    public int getY() { return container.getY(); }
+    public int getY() {
+        return container.getY();
+    }
 
     @Override
     public void setY(int y) {
@@ -131,10 +140,14 @@ public class ScrollableLayout implements Layout {
     }
 
     @Override
-    public int getWidth() { return container.getWidth(); }
+    public int getWidth() {
+        return container.getWidth();
+    }
 
     @Override
-    public int getHeight() { return container.getHeight(); }
+    public int getHeight() {
+        return container.getHeight();
+    }
 
     // ──── Access ────
 
@@ -191,14 +204,18 @@ public class ScrollableLayout implements Layout {
 
         @Override
         public void render(int mouseX, int mouseY, float partialTicks) {
-            if (!visible) return;
+            if (!visible)
+                return;
 
             // Re-collect children in case layout changed
             collectChildren();
 
             enableScissor();
             for (Component child : childComponents) {
-                child.render(mouseX, mouseY, partialTicks);
+                if (child instanceof Renderable) {
+                    ((Renderable) child).extractRenderState(GuiGraphicsExtractor.getInstance(),
+                            mouseX, mouseY, partialTicks);
+                }
             }
             disableScissor();
 

@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components.tab;
 
 import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.components.TabButton;
 import decok.dfcdvadstf.catframe.ui.components.events.KeyTypedEvent;
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
@@ -23,12 +24,14 @@ import java.util.*;
  * Subclasses must supply a {@code barId} and may customise the background
  * (solid colour fill + optional tiled texture; defaults to solid black).<br>
  * External mods register their tabs via {@link TabRegistry#registerTab} during
- * {@code preInit}, then the tabs are loaded into this Bar at GUI initialisation.
+ * {@code preInit}, then the tabs are loaded into this Bar at GUI
+ * initialisation.
  * </p>
  *
  * <p>
  * 此类还提供导航栏功能（按钮布局、绘制、输入处理），可直接在 GUI 屏幕中使用。<br>
- * This class also provides navigation bar features (button layout, rendering, input handling)
+ * This class also provides navigation bar features (button layout, rendering,
+ * input handling)
  * that can be used directly in GUI screens.
  * </p>
  */
@@ -38,6 +41,7 @@ public abstract class TabBar implements ILayout {
 
     /**
      * Default tab button texture path. / 默认 Tab 按钮纹理路径。
+     * 
      * @deprecated Use {@link Tab#DEFAULT_TAB_TEXTURE} instead.
      */
     @Deprecated
@@ -62,11 +66,13 @@ public abstract class TabBar implements ILayout {
     // ──── Tab entry/instance management ────
 
     /**
-     * Entries registered to this bar (from TabRegistry), keyed by tab ID. / 注册到此 Bar 的 TabEntry（来自 TabRegistry），以 tab ID 为键。
+     * Entries registered to this bar (from TabRegistry), keyed by tab ID. / 注册到此
+     * Bar 的 TabEntry（来自 TabRegistry），以 tab ID 为键。
      */
     protected final Map<Integer, TabRegistry.TabEntry> entries = new LinkedHashMap<>();
     /**
-     * Tabs instantiated from entries, keyed by tab ID. / 从 entries 实例化出的 Tab，以 tab ID 为键。
+     * Tabs instantiated from entries, keyed by tab ID. / 从 entries 实例化出的 Tab，以 tab
+     * ID 为键。
      */
     protected final Map<Integer, Tab> tabs = new LinkedHashMap<>();
     private final String barId;
@@ -74,11 +80,12 @@ public abstract class TabBar implements ILayout {
     // ──── Background configuration ────
 
     /**
-     * Solid background colour (ARGB).  Default: opaque black. / 纯色背景（ARGB）。默认：不透明黑色。
+     * Solid background colour (ARGB). Default: opaque black. / 纯色背景（ARGB）。默认：不透明黑色。
      */
     protected int backgroundColor = 0xFF000000;
     /**
-     * Optional tiled background texture.  {@code null} = no texture. / 可选平铺背景贴图。{@code null} = 无贴图。
+     * Optional tiled background texture. {@code null} = no texture. /
+     * 可选平铺背景贴图。{@code null} = 无贴图。
      */
     protected ResourceLocation backgroundTexture;
     /**
@@ -94,12 +101,16 @@ public abstract class TabBar implements ILayout {
     private int buttonWidth;
 
     /**
-     * TabButton instances managed by this bar, created in {@link #arrangeNavElements()}.
-     * <p>由此 Bar 托管的 TabButton 实例，在 {@link #arrangeNavElements()} 中创建。</p>
+     * TabButton instances managed by this bar, created in
+     * {@link #arrangeNavElements()}.
+     * <p>
+     * 由此 Bar 托管的 TabButton 实例，在 {@link #arrangeNavElements()} 中创建。
+     * </p>
      */
     private List<TabButton> tabButtons = new ArrayList<>();
 
-    // ──── ILayout position (managed by parent layout, e.g. HeaderFooterLayout) ────
+    // ──── ILayout position (managed by parent layout, e.g. HeaderFooterLayout)
+    // ────
     private int layoutX;
     private int layoutY;
 
@@ -179,15 +190,18 @@ public abstract class TabBar implements ILayout {
     }
 
     /**
-     * @return The background texture, or {@code null} if none. / 背景贴图，无则为 {@code null}。
+     * @return The background texture, or {@code null} if none. / 背景贴图，无则为
+     *         {@code null}。
      */
     public ResourceLocation getBackgroundTexture() {
         return backgroundTexture;
     }
 
     /**
-     * Set an optional tiled background texture.  Pass {@code null} to remove it.
-     * <p>设置可选的平铺背景贴图。传入 {@code null} 移除贴图。</p>
+     * Set an optional tiled background texture. Pass {@code null} to remove it.
+     * <p>
+     * 设置可选的平铺背景贴图。传入 {@code null} 移除贴图。
+     * </p>
      */
     public void setBackgroundTexture(ResourceLocation texture) {
         this.backgroundTexture = texture;
@@ -205,20 +219,26 @@ public abstract class TabBar implements ILayout {
     /**
      * @param texture Texture used when rendering tab buttons for this bar.
      *                Pass {@code null} to reset to default.
-     *                <p>传入 {@code null} 恢复默认纹理。</p>
+     *                <p>
+     *                传入 {@code null} 恢复默认纹理。
+     *                </p>
      */
     public void setTabTexture(ResourceLocation texture) {
         this.tabTexture = texture != null ? texture : Tab.DEFAULT_TAB_TEXTURE;
     }
 
-    // ==================== Tab entry management (from TabRegistry) ====================
+    // ==================== Tab entry management (from TabRegistry)
+    // ====================
 
     /**
      * Register a {@link TabRegistry.TabEntry} into this bar.
-     * <p>向此 Bar 注册一个 {@link TabRegistry.TabEntry}。</p>
+     * <p>
+     * 向此 Bar 注册一个 {@link TabRegistry.TabEntry}。
+     * </p>
      */
     public void registerEntry(TabRegistry.TabEntry entry) {
-        if (entry == null) return;
+        if (entry == null)
+            return;
         entries.put(entry.tabId, entry);
     }
 
@@ -240,10 +260,13 @@ public abstract class TabBar implements ILayout {
 
     /**
      * Register a tab instance directly into this bar.
-     * <p>直接向此 Bar 注册一个 Tab 实例。</p>
+     * <p>
+     * 直接向此 Bar 注册一个 Tab 实例。
+     * </p>
      */
     public void registerTab(Tab tab) {
-        if (tab == null) return;
+        if (tab == null)
+            return;
         tabs.put(tab.getTabId(), tab);
     }
 
@@ -295,8 +318,11 @@ public abstract class TabBar implements ILayout {
     // ==================== Background rendering ====================
 
     /**
-     * Draw the bar's background — solid colour fill first, then optional tiled texture on top.
-     * <p>绘制 Bar 的背景：先绘制纯色填充，再在其上绘制可选平铺贴图。</p>
+     * Draw the bar's background — solid colour fill first, then optional tiled
+     * texture on top.
+     * <p>
+     * 绘制 Bar 的背景：先绘制纯色填充，再在其上绘制可选平铺贴图。
+     * </p>
      *
      * @param x      Left edge X / 左边缘 X
      * @param y      Top edge Y / 上边缘 Y
@@ -304,7 +330,8 @@ public abstract class TabBar implements ILayout {
      * @param height Height in GUI pixels / 高度（GUI 像素）
      */
     public void drawBackground(int x, int y, int width, int height) {
-        if (width <= 0 || height <= 0) return;
+        if (width <= 0 || height <= 0)
+            return;
 
         // 1. Solid colour fill / 纯色填充
         Gui.drawRect(x, y, x + width, y + height, backgroundColor);
@@ -317,8 +344,12 @@ public abstract class TabBar implements ILayout {
 
     /**
      * Subclasses may override this to customise how the tiled texture is rendered.
-     * <p>子类可重写此方法以自定义平铺贴图的渲染方式。</p>
-     * <p>Delegates to {@link TextureStretching#drawTiled}.</p>
+     * <p>
+     * 子类可重写此方法以自定义平铺贴图的渲染方式。
+     * </p>
+     * <p>
+     * Delegates to {@link TextureStretching#drawTiled}.
+     * </p>
      */
     protected void drawTiledBackground(int x, int y, int width, int height) {
         TextureStretching.drawTiled(backgroundTexture, x, y, width, height,
@@ -367,7 +398,7 @@ public abstract class TabBar implements ILayout {
             // Push bar-level texture to the button (only when customised)
             if (this.tabTexture != Tab.DEFAULT_TAB_TEXTURE) {
                 btn.setStateTexture(this.tabTexture, this.tabTexture,
-                                    this.tabTexture, this.tabTexture);
+                        this.tabTexture, this.tabTexture);
             }
             this.tabButtons.add(btn);
 
@@ -378,7 +409,8 @@ public abstract class TabBar implements ILayout {
     /**
      * <p>
      * 从 {@link #tabs} map 获取有序的 Tab 列表（基于 LinkedHashMap 的插入顺序）。<br>
-     * Get an ordered Tab list from {@link #tabs} map (based on LinkedHashMap insertion order).
+     * Get an ordered Tab list from {@link #tabs} map (based on LinkedHashMap
+     * insertion order).
      * </p>
      */
     private List<Tab> getOrderedTabList() {
@@ -396,11 +428,13 @@ public abstract class TabBar implements ILayout {
      * @param mouseX       鼠标 X / mouse X
      * @param mouseY       鼠标 Y / mouse Y
      * @param partialTicks 部分 tick / partial tick
-     * @param tabManager   标签页管理器（用于判断当前选中 Tab）/ tab manager (to determine the selected tab)
+     * @param tabManager   标签页管理器（用于判断当前选中 Tab）/ tab manager (to determine the
+     *                     selected tab)
      */
     public void drawNavButtons(int mouseX, int mouseY, float partialTicks, TabManager tabManager) {
         List<Tab> tabList = getOrderedTabList();
-        if (tabList.isEmpty()) return;
+        if (tabList.isEmpty())
+            return;
 
         // Draw the nav bar background (solid fill + optional tiled texture)
         // 绘制导航栏背景（纯色填充 + 可选平铺纹理）
@@ -411,7 +445,7 @@ public abstract class TabBar implements ILayout {
         Tab currentTab = tabManager != null ? tabManager.getCurrentTab() : null;
         for (TabButton btn : tabButtons) {
             btn.setSelected(currentTab == btn.getTab());
-            btn.render(mouseX, mouseY, partialTicks);
+            btn.extractRenderState(GuiGraphicsExtractor.getInstance(), mouseX, mouseY, partialTicks);
         }
 
         // Draw header separator across the full width, indented 2px from edges
@@ -423,16 +457,18 @@ public abstract class TabBar implements ILayout {
     /**
      * <p>
      * 绘制单个 Tab 按钮。<br>
+     * 
      * @deprecated 由 {@link TabButton} 组件替代，保留此方法仅为向后兼容。<br>
-     * Replaced by the {@link TabButton} component; kept for backward compatibility.
-     * </p>
+     *             Replaced by the {@link TabButton} component; kept for backward
+     *             compatibility.
+     *             </p>
      */
     @Deprecated
     private void drawSingleTabButton(int index, Tab tab, int mouseX, int mouseY, TabManager tabManager) {
         if (index >= 0 && index < tabButtons.size()) {
             TabButton btn = tabButtons.get(index);
             btn.setSelected(tabManager != null && tabManager.getCurrentTab() == tab);
-            btn.render(mouseX, mouseY, 0);
+            btn.extractRenderState(GuiGraphicsExtractor.getInstance(), mouseX, mouseY, 0);
         }
     }
 
@@ -447,9 +483,12 @@ public abstract class TabBar implements ILayout {
      * @return true 如果点击到了某个 Tab 按钮 / true if a tab button was clicked
      */
     public boolean mouseClickedNav(int mouseX, int mouseY, int mouseButton, TabManager tabManager) {
-        if (mouseButton != 0) return false;
-        if (mouseY < 0 || mouseY >= NAV_HEIGHT) return false;
-        if (tabManager == null) return false;
+        if (mouseButton != 0)
+            return false;
+        if (mouseY < 0 || mouseY >= NAV_HEIGHT)
+            return false;
+        if (tabManager == null)
+            return false;
 
         for (TabButton btn : tabButtons) {
             if (btn.isMouseOver(mouseX, mouseY)) {
@@ -464,16 +503,19 @@ public abstract class TabBar implements ILayout {
     /**
      * <p>
      * 处理键盘事件 —— Ctrl+Tab/Ctrl+Shift+Tab 循环切换，Ctrl+数字直接跳转。<br>
-     * Handle keyboard events — Ctrl+Tab/Ctrl+Shift+Tab cycling, Ctrl+digit direct jump.
+     * Handle keyboard events — Ctrl+Tab/Ctrl+Shift+Tab cycling, Ctrl+digit direct
+     * jump.
      * </p>
      *
      * @return true 如果按键被处理 / true if the key was handled
      */
     public boolean keyPressedNav(int keyCode, boolean ctrlDown, boolean shiftDown, TabManager tabManager) {
-        if (!ctrlDown || tabManager == null) return false;
+        if (!ctrlDown || tabManager == null)
+            return false;
 
         List<Tab> tabList = getOrderedTabList();
-        if (tabList.isEmpty()) return false;
+        if (tabList.isEmpty())
+            return false;
 
         Tab current = tabManager.getCurrentTab();
         int currentIndex = current != null ? tabList.indexOf(current) : NO_TAB;
@@ -520,14 +562,18 @@ public abstract class TabBar implements ILayout {
     /**
      * <p>
      * 使用 TabManager 和屏幕宽度创建 Builder，用于快速配置导航栏。<br>
-     * Create a Builder with the given TabManager and screen width for quick nav setup.
+     * Create a Builder with the given TabManager and screen width for quick nav
+     * setup.
      * </p>
      *
-     * <p>Usage / 用法:</p>
+     * <p>
+     * Usage / 用法:
+     * </p>
+     * 
      * <pre>{@code
      * TabBar.builder(tabManager, width)
-     *     .addAllFromManager()
-     *     .build(tabBar);
+     *         .addAllFromManager()
+     *         .build(tabBar);
      *
      * // Then in drawScreen:
      * tabBar.drawNavButtons(mouseX, mouseY, partialTicks, tabManager);
@@ -543,7 +589,8 @@ public abstract class TabBar implements ILayout {
     /**
      * <p>
      * TabBar 构建器 —— 用于选择要显示的 Tab 并初始化导航布局。<br>
-     * TabBar Builder — selects which tabs to show and initialises the navigation layout.
+     * TabBar Builder — selects which tabs to show and initialises the navigation
+     * layout.
      * </p>
      */
     public static final class Builder {
@@ -558,7 +605,9 @@ public abstract class TabBar implements ILayout {
 
         /**
          * Add one or more tabs to the navigation bar.
-         * <p>向导航栏添加一个或多个 Tab。</p>
+         * <p>
+         * 向导航栏添加一个或多个 Tab。
+         * </p>
          */
         public Builder addTabs(Tab... tabs) {
             Collections.addAll(this.tabList, tabs);
@@ -567,7 +616,9 @@ public abstract class TabBar implements ILayout {
 
         /**
          * Add all tabs from the TabManager to the navigation bar.
-         * <p>从 TabManager 添加所有 Tab 到导航栏。</p>
+         * <p>
+         * 从 TabManager 添加所有 Tab 到导航栏。
+         * </p>
          */
         public Builder addAllFromManager() {
             this.tabList.addAll(this.tabManager.getAllTabs().values());
@@ -576,7 +627,9 @@ public abstract class TabBar implements ILayout {
 
         /**
          * Apply the builder configuration to the given TabBar.
-         * <p>将构建器配置应用到指定的 TabBar。</p>
+         * <p>
+         * 将构建器配置应用到指定的 TabBar。
+         * </p>
          */
         public void build(TabBar tabBar) {
             for (Tab tab : tabList) {

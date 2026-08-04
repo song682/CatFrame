@@ -1,5 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.overlay;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
+import decok.dfcdvadstf.catframe.ui.components.Renderable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import org.lwjgl.opengl.GL11;
@@ -12,7 +14,8 @@ import java.util.*;
  * 参考 {@code ToastManager} 的槽位管理架构。
  * </p>
  * <p>
- * Overlay Manager — manages registration, positioning, auto-stacking, and rendering
+ * Overlay Manager — manages registration, positioning, auto-stacking, and
+ * rendering
  * of screen overlays. Inspired by the {@code ToastManager} slot architecture.
  * </p>
  *
@@ -34,7 +37,7 @@ public class OverlayManager {
 
     private OverlayManager() {
         for (ScreenAnchor anchor : ScreenAnchor.values()) {
-            overlays.put(anchor, new ArrayList<Overlay>());
+            overlays.put(anchor, new ArrayList<>());
         }
     }
 
@@ -42,10 +45,13 @@ public class OverlayManager {
 
     /**
      * Register an overlay.
-     * <p>注册一个 Overlay。</p>
+     * <p>
+     * 注册一个 Overlay。
+     * </p>
      */
     public void register(Overlay overlay) {
-        if (overlay == null) return;
+        if (overlay == null)
+            return;
         requirePauseContextValid(overlay);
         List<Overlay> list = overlays.get(overlay.getAnchor());
         if (!list.contains(overlay)) {
@@ -56,16 +62,21 @@ public class OverlayManager {
 
     /**
      * Unregister an overlay.
-     * <p>注销一个 Overlay。</p>
+     * <p>
+     * 注销一个 Overlay。
+     * </p>
      */
     public void unregister(Overlay overlay) {
-        if (overlay == null) return;
+        if (overlay == null)
+            return;
         overlays.get(overlay.getAnchor()).remove(overlay);
     }
 
     /**
      * Remove all overlays.
-     * <p>移除所有 Overlay。</p>
+     * <p>
+     * 移除所有 Overlay。
+     * </p>
      */
     public void clearAll() {
         for (List<Overlay> list : overlays.values()) {
@@ -75,7 +86,9 @@ public class OverlayManager {
 
     /**
      * Remove all overlays at the given anchor.
-     * <p>移除指定锚点的所有 Overlay。</p>
+     * <p>
+     * 移除指定锚点的所有 Overlay。
+     * </p>
      */
     public void clearAnchor(ScreenAnchor anchor) {
         overlays.get(anchor).clear();
@@ -85,7 +98,9 @@ public class OverlayManager {
 
     /**
      * Get all registered overlays at the given anchor.
-     * <p>获取指定锚点的所有已注册 Overlay。</p>
+     * <p>
+     * 获取指定锚点的所有已注册 Overlay。
+     * </p>
      */
     public List<Overlay> getOverlays(ScreenAnchor anchor) {
         return Collections.unmodifiableList(overlays.get(anchor));
@@ -93,7 +108,9 @@ public class OverlayManager {
 
     /**
      * Get total count of all registered overlays.
-     * <p>获取所有已注册 Overlay 的总数。</p>
+     * <p>
+     * 获取所有已注册 Overlay 的总数。
+     * </p>
      */
     public int getOverlayCount() {
         int count = 0;
@@ -104,11 +121,15 @@ public class OverlayManager {
     }
 
     /**
-     * Whether any registered, visible SCREEN-context overlay currently requests a game pause.
-     * Host screens can OR this into their {@code doesGuiPauseGame()} so an overlay can pause the
+     * Whether any registered, visible SCREEN-context overlay currently requests a
+     * game pause.
+     * Host screens can OR this into their {@code doesGuiPauseGame()} so an overlay
+     * can pause the
      * single-player world just like the vanilla screen mechanism.
-     * <p>是否存在任一已注册且可见的 SCREEN 上下文 Overlay 正在请求暂停游戏。宿主界面可将其
-     * 并入自身的 {@code doesGuiPauseGame()}，使 Overlay 能像原版界面机制那样暂停单人世界。</p>
+     * <p>
+     * 是否存在任一已注册且可见的 SCREEN 上下文 Overlay 正在请求暂停游戏。宿主界面可将其
+     * 并入自身的 {@code doesGuiPauseGame()}，使 Overlay 能像原版界面机制那样暂停单人世界。
+     * </p>
      */
     public boolean isPausingGame() {
         for (List<Overlay> list : overlays.values()) {
@@ -126,7 +147,9 @@ public class OverlayManager {
 
     /**
      * Update all visible overlays. Call once per tick.
-     * <p>更新所有可见 Overlay。每 tick 调用一次。</p>
+     * <p>
+     * 更新所有可见 Overlay。每 tick 调用一次。
+     * </p>
      */
     public void updateAll() {
         for (List<Overlay> list : overlays.values()) {
@@ -141,8 +164,11 @@ public class OverlayManager {
     // ──── Rendering ────
 
     /**
-     * Render all visible SCREEN-context overlays. Call from the screen's drawScreen method.
-     * <p>渲染所有可见的 SCREEN 上下文 Overlay。从屏幕的 drawScreen 方法中调用。</p>
+     * Render all visible SCREEN-context overlays. Call from the screen's drawScreen
+     * method.
+     * <p>
+     * 渲染所有可见的 SCREEN 上下文 Overlay。从屏幕的 drawScreen 方法中调用。
+     * </p>
      *
      * @param mouseX       mouse X / 鼠标 X
      * @param mouseY       mouse Y / 鼠标 Y
@@ -153,28 +179,38 @@ public class OverlayManager {
     }
 
     /**
-     * Render all visible HUD-context overlays. Call from the in-game HUD render path,
+     * Render all visible HUD-context overlays. Call from the in-game HUD render
+     * path,
      * e.g. Forge's {@code RenderGameOverlayEvent.Post}.
-     * <p>渲染所有可见的 HUD 上下文 Overlay。从游戏内 HUD 渲染路径调用，
-     * 如 Forge 的 {@code RenderGameOverlayEvent.Post}。</p>
-     * <p>HUD 上无有意义的鼠标坐标，传入 {@code (-1, -1)}。</p>
+     * <p>
+     * 渲染所有可见的 HUD 上下文 Overlay。从游戏内 HUD 渲染路径调用，
+     * 如 Forge 的 {@code RenderGameOverlayEvent.Post}。
+     * </p>
+     * <p>
+     * HUD 上无有意义的鼠标坐标，传入 {@code (-1, -1)}。
+     * </p>
      *
      * @param partialTicks partial tick / 部分 tick
      */
     public void renderHud(float partialTicks) {
         renderTarget(true, -1, -1, partialTicks);
 
-        // Restore GL state so overlay rendering never leaks tint/blend onto the vanilla HUD.
+        // Restore GL state so overlay rendering never leaks tint/blend onto the vanilla
+        // HUD.
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glDisable(GL11.GL_BLEND);
     }
 
     /**
-     * Shared rendering routine for a given target (HUD vs screen). Resolves anchor position,
-     * applies auto-stacking, temporarily assigns coordinates, and renders each matching overlay.
-     * <p>针对指定目标（HUD 或屏幕）的共享渲染例程：解析锚点位置、应用自动堆叠、
-     * 临时设置坐标并渲染每个匹配的 Overlay。</p>
+     * Shared rendering routine for a given target (HUD vs screen). Resolves anchor
+     * position,
+     * applies auto-stacking, temporarily assigns coordinates, and renders each
+     * matching overlay.
+     * <p>
+     * 针对指定目标（HUD 或屏幕）的共享渲染例程：解析锚点位置、应用自动堆叠、
+     * 临时设置坐标并渲染每个匹配的 Overlay。
+     * </p>
      */
     private void renderTarget(boolean hud, int mouseX, int mouseY, float partialTicks) {
         Minecraft mc = Minecraft.getMinecraft();
@@ -186,11 +222,13 @@ public class OverlayManager {
         for (Map.Entry<ScreenAnchor, List<Overlay>> entry : overlays.entrySet()) {
             ScreenAnchor anchor = entry.getKey();
             List<Overlay> list = entry.getValue();
-            if (list.isEmpty()) continue;
+            if (list.isEmpty())
+                continue;
 
             int stackOffsetY = 0;
             for (Overlay overlay : list) {
-                if (!overlay.isVisible() || !matchesTarget(overlay, hud, screenOpen)) continue;
+                if (!overlay.isVisible() || !matchesTarget(overlay, hud, screenOpen))
+                    continue;
 
                 // A HUD overlay must never pause the world; pausing only makes sense on an open
                 // GUI (SCREEN). Fail fast so this design contract can't be violated at runtime.
@@ -217,7 +255,10 @@ public class OverlayManager {
                 overlay.setX(resolvedX);
                 overlay.setY(resolvedY);
 
-                overlay.render(mouseX, mouseY, partialTicks);
+                if (overlay instanceof Renderable) {
+                    ((Renderable) overlay).extractRenderState(GuiGraphicsExtractor.getInstance(),
+                            mouseX, mouseY, partialTicks);
+                }
 
                 // Restore original position
                 overlay.setX(oldX);
@@ -231,14 +272,20 @@ public class OverlayManager {
 
     /**
      * Whether the overlay should render for the given target.
-     * <p>Overlay 是否应在给定目标下渲染。</p>
      * <p>
-     * A {@link OverlayContext#BOTH} overlay is rendered by exactly one pass per frame:
-     * while a screen is open, the screen pass ({@code renderAll}) owns it and the HUD pass
+     * Overlay 是否应在给定目标下渲染。
+     * </p>
+     * <p>
+     * A {@link OverlayContext#BOTH} overlay is rendered by exactly one pass per
+     * frame:
+     * while a screen is open, the screen pass ({@code renderAll}) owns it and the
+     * HUD pass
      * skips it, so it is never drawn twice in the same frame.
      * </p>
-     * <p>{@link OverlayContext#BOTH} 的 Overlay 每帧只由一条路径渲染：界面打开时
-     * 由屏幕路径（{@code renderAll}）接管，HUD 路径跳过，避免同帧双重绘制。</p>
+     * <p>
+     * {@link OverlayContext#BOTH} 的 Overlay 每帧只由一条路径渲染：界面打开时
+     * 由屏幕路径（{@code renderAll}）接管，HUD 路径跳过，避免同帧双重绘制。
+     * </p>
      */
     private static boolean matchesTarget(Overlay overlay, boolean hud, boolean screenOpen) {
         OverlayContext ctx = overlay.getContext();
@@ -251,8 +298,11 @@ public class OverlayManager {
     // ──── Input forwarding ────
 
     /**
-     * Forward mouse click to overlays. Returns true if a blocking overlay consumed it.
-     * <p>将鼠标点击转发给 Overlay。如果阻断型 Overlay 消费了事件则返回 true。</p>
+     * Forward mouse click to overlays. Returns true if a blocking overlay consumed
+     * it.
+     * <p>
+     * 将鼠标点击转发给 Overlay。如果阻断型 Overlay 消费了事件则返回 true。
+     * </p>
      */
     public boolean handleMouseClick(int mouseX, int mouseY, int mouseButton) {
         for (List<Overlay> list : overlays.values()) {
@@ -268,8 +318,11 @@ public class OverlayManager {
     }
 
     /**
-     * Forward key press to overlays. Returns true if a blocking overlay consumed it.
-     * <p>将按键转发给 Overlay。如果阻断型 Overlay 消费了事件则返回 true。</p>
+     * Forward key press to overlays. Returns true if a blocking overlay consumed
+     * it.
+     * <p>
+     * 将按键转发给 Overlay。如果阻断型 Overlay 消费了事件则返回 true。
+     * </p>
      */
     public boolean handleKeyPress(char typedChar, int keyCode) {
         for (List<Overlay> list : overlays.values()) {
@@ -286,10 +339,14 @@ public class OverlayManager {
     // ──── Internal ────
 
     /**
-     * Enforce that only SCREEN-context overlays may request a game pause. A HUD (or BOTH) overlay
-     * that returns {@code true} from {@link Overlay#isPausingGame()} is a programming error.
-     * <p>强制只有 SCREEN 上下文的 Overlay 才可请求暂停游戏。HUD（或 BOTH）上下文的 Overlay
-     * 若从 {@link Overlay#isPausingGame()} 返回 {@code true} 即为编码错误。</p>
+     * Enforce that only SCREEN-context overlays may request a game pause. A HUD (or
+     * BOTH) overlay
+     * that returns {@code true} from {@link Overlay#isPausingGame()} is a
+     * programming error.
+     * <p>
+     * 强制只有 SCREEN 上下文的 Overlay 才可请求暂停游戏。HUD（或 BOTH）上下文的 Overlay
+     * 若从 {@link Overlay#isPausingGame()} 返回 {@code true} 即为编码错误。
+     * </p>
      */
     private static void requirePauseContextValid(Overlay overlay) {
         if (overlay.isPausingGame() && overlay.getContext() != OverlayContext.SCREEN) {

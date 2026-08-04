@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.ui.components;
+package decok.dfcdvadstf.catframe.ui;
 
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
@@ -53,4 +53,5 @@ public final class GuiDrawing {
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glDisable(GL11.GL_BLEND);
     }
+
 }

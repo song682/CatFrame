@@ -16,27 +16,28 @@ import java.util.Map;
 /**
  * <p>
  * 纹理拉伸元数据 —— 从 {@code .mcmeta} JSON 文件中加载拉伸参数。<br>
- * Texture stretching metadata — loads stretching parameters from {@code .mcmeta} JSON files.
+ * Texture stretching metadata — loads stretching parameters from {@code
+ * .mcmeta} JSON files.
  * </p>
  *
  * <h3>mcmeta 格式 / Format</h3>
  * <pre>{@code
  * {
- *     "stretching": {
- *         "type": "nine_patch",
- *         "default": { "width": 160, "height": 32 },
- *         "edge": { "left": 4, "top": 4, "right": 4, "bottom": 4 }
- *     }
+ * "stretching": {
+ * "type": "nine_patch",
+ * "default": { "width": 160, "height": 32 },
+ * "edge": { "left": 4, "top": 4, "right": 4, "bottom": 4 }
+ * }
  * }
  *
  * // 或者 three_patch:
  * {
- *     "stretching": {
- *         "type": "three_patch",
- *         "default": { "width": 200, "height": 20 },
- *         "edge": { "left": 2, "right": 2 },
- *         "tileWidth": 196
- *     }
+ * "stretching": {
+ * "type": "three_patch",
+ * "default": { "width": 200, "height": 20 },
+ * "edge": { "left": 2, "right": 2 },
+ * "tileWidth": 196
+ * }
  * }
  * }</pre>
  */
@@ -59,9 +60,9 @@ public final class TextureStretchingMetadata {
     private final int tileWidth;
 
     private TextureStretchingMetadata(TextureStretching.StretchType type,
-                                      int defaultWidth, int defaultHeight,
-                                      int edgeLeft, int edgeTop, int edgeRight, int edgeBottom,
-                                      int tileWidth) {
+            int defaultWidth, int defaultHeight,
+            int edgeLeft, int edgeTop, int edgeRight, int edgeBottom,
+            int tileWidth) {
         this.type = type;
         this.defaultWidth = defaultWidth;
         this.defaultHeight = defaultHeight;
@@ -74,27 +75,56 @@ public final class TextureStretchingMetadata {
 
     // ──── Getters ────
 
-    public TextureStretching.StretchType getType() { return type; }
-    public int getDefaultWidth() { return defaultWidth; }
-    public int getDefaultHeight() { return defaultHeight; }
-    public int getEdgeLeft() { return edgeLeft; }
-    public int getEdgeTop() { return edgeTop; }
-    public int getEdgeRight() { return edgeRight; }
-    public int getEdgeBottom() { return edgeBottom; }
-    public int getTileWidth() { return tileWidth; }
+    public TextureStretching.StretchType getType() {
+        return type;
+    }
+
+    public int getDefaultWidth() {
+        return defaultWidth;
+    }
+
+    public int getDefaultHeight() {
+        return defaultHeight;
+    }
+
+    public int getEdgeLeft() {
+        return edgeLeft;
+    }
+
+    public int getEdgeTop() {
+        return edgeTop;
+    }
+
+    public int getEdgeRight() {
+        return edgeRight;
+    }
+
+    public int getEdgeBottom() {
+        return edgeBottom;
+    }
+
+    public int getTileWidth() {
+        return tileWidth;
+    }
 
     // ──── Loader ────
 
     /**
      * Load stretching metadata for the given texture.
-     * <p>Reads and parses the {@code .mcmeta} file next to the texture PNG.</p>
-     * <p>Results are cached. Returns {@code null} if no mcmeta or no "stretching" key.</p>
+     * <p>
+     * Reads and parses the {@code .mcmeta} file next to the texture PNG.
+     * </p>
+     * <p>
+     * Results are cached. Returns {@code null} if no mcmeta or no "stretching" key.
+     * </p>
      *
-     * @param textureLocation texture ResourceLocation (e.g. catframe:textures/gui/toast/default.png)
+     * @param textureLocation texture ResourceLocation (e.g.
+     *                        catframe:textures/gui/toast/default.png)
      * @return parsed metadata, or null
      */
     public static TextureStretchingMetadata load(ResourceLocation textureLocation) {
-        if (textureLocation == null) return null;
+        if (textureLocation == null)
+            return null;
 
         if (CACHE.containsKey(textureLocation)) {
             return CACHE.get(textureLocation);
@@ -102,8 +132,7 @@ public final class TextureStretchingMetadata {
 
         ResourceLocation mcmetaLocation = new ResourceLocation(
                 textureLocation.getResourceDomain(),
-                textureLocation.getResourcePath() + ".mcmeta"
-        );
+                textureLocation.getResourcePath() + ".mcmeta");
 
         TextureStretchingMetadata metadata = null;
         try {
@@ -121,7 +150,8 @@ public final class TextureStretchingMetadata {
                     JsonObject def = s.getAsJsonObject("default");
                     defW = def.get("width").getAsInt();
                     defH = def.get("height").getAsInt();
-                    if (defW < 0 || defH < 0) throw new WrongMetadataError(defW, defH);
+                    if (defW < 0 || defH < 0)
+                        throw new WrongMetadataError(defW, defH);
                 }
 
                 if ("nine_patch".equals(typeStr)) {
@@ -140,10 +170,14 @@ public final class TextureStretchingMetadata {
                         }
                     }
                     // Validate edge values / 校验边缘值
-                    if (eL < 0) throw new WrongMetadataError("left", eL);
-                    if (eT < 0) throw new WrongMetadataError("top", eT);
-                    if (eR < 0) throw new WrongMetadataError("right", eR);
-                    if (eB < 0) throw new WrongMetadataError("bottom", eB);
+                    if (eL < 0)
+                        throw new WrongMetadataError("left", eL);
+                    if (eT < 0)
+                        throw new WrongMetadataError("top", eT);
+                    if (eR < 0)
+                        throw new WrongMetadataError("right", eR);
+                    if (eB < 0)
+                        throw new WrongMetadataError("bottom", eB);
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.NINE_PATCH,
                             defW, defH, eL, eT, eR, eB, 0);
@@ -161,8 +195,10 @@ public final class TextureStretchingMetadata {
                         }
                     }
                     // Validate edge values / 校验边缘值
-                    if (eL < 0) throw new WrongMetadataError("left", eL);
-                    if (eR < 0) throw new WrongMetadataError("right", eR);
+                    if (eL < 0)
+                        throw new WrongMetadataError("left", eL);
+                    if (eR < 0)
+                        throw new WrongMetadataError("right", eR);
                     int tw = s.has("tileWidth") ? s.get("tileWidth").getAsInt() : (defW - eL - eR);
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.THREE_PATCH,
@@ -171,6 +207,12 @@ public final class TextureStretchingMetadata {
                 } else if ("tile".equals(typeStr)) {
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.TILE,
+                            defW, defH, 0, 0, 0, 0, 0);
+                } else if ("static".equals(typeStr)) {
+                    // 整图拉伸 —— 将整张纹理拉伸到目标区域，不做切片。
+                    // Whole-texture stretch — draws the whole texture over the target area.
+                    metadata = new TextureStretchingMetadata(
+                            TextureStretching.StretchType.STATIC,
                             defW, defH, 0, 0, 0, 0, 0);
                 } else {
                     throw new WrongMetadataError(typeStr);
@@ -190,7 +232,9 @@ public final class TextureStretchingMetadata {
 
     /**
      * Clear the metadata cache.
-     * <p>清除缓存。</p>
+     * <p>
+     * 清除缓存。
+     * </p>
      */
     public static void clearCache() {
         CACHE.clear();

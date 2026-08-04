@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Style;
 import decok.dfcdvadstf.catframe.ui.Text;
 
@@ -7,12 +8,18 @@ import javax.annotation.Nullable;
 
 /**
  * <p>
- * 组件抽象基类 —— 提供位置、尺寸、可见性等公共字段和默认实现。<br>
- * Abstract base class for components — provides position, size, visibility and other
- * common fields with default implementations.
+ * 组件抽象基类 —— 提供位置、尺寸、可见性等公共字段和默认实现，
+ * 并实现 {@link Renderable} 渲染入口（对标高版本
+ * {@code AbstractWidget implements Renderable}）。<br>
+ * Abstract base class for components — provides position, size, visibility and
+ * other
+ * common fields with default implementations, and implements the
+ * {@link Renderable}
+ * render entry (counterpart of the high-version
+ * {@code AbstractWidget implements Renderable}).
  * </p>
  */
-public abstract class AbstractComponent implements Component, TabOrderedElement {
+public abstract class AbstractComponent implements Component, Renderable, TabOrderedElement {
 
     protected int x;
     protected int y;
@@ -122,7 +129,9 @@ public abstract class AbstractComponent implements Component, TabOrderedElement 
 
     /**
      * 设置该组件的工具提示内容。
-     * <p>对标 26.1.2 {@code AbstractWidget#setTooltip(Tooltip)}。</p>
+     * <p>
+     * 对标 26.1.2 {@code AbstractWidget#setTooltip(Tooltip)}。
+     * </p>
      */
     public void setTooltip(@Nullable Tooltip tooltip) {
         this.tooltip.set(tooltip);
@@ -138,7 +147,9 @@ public abstract class AbstractComponent implements Component, TabOrderedElement 
 
     /**
      * 设置工具提示的显示延迟（毫秒）。
-     * <p>对标 26.1.2 {@code AbstractWidget#setTooltipDelay(Duration)}。</p>
+     * <p>
+     * 对标 26.1.2 {@code AbstractWidget#setTooltipDelay(Duration)}。
+     * </p>
      */
     public void setTooltipDelay(long delayMs) {
         this.tooltip.setDelay(delayMs);
@@ -160,7 +171,9 @@ public abstract class AbstractComponent implements Component, TabOrderedElement 
 
     /**
      * Update hover state based on mouse position. Call before rendering.
-     * <p>根据鼠标位置更新悬停状态。在渲染前调用。</p>
+     * <p>
+     * 根据鼠标位置更新悬停状态。在渲染前调用。
+     * </p>
      */
     protected void updateHoverState(int mouseX, int mouseY) {
         this.isHovered = isMouseOver(mouseX, mouseY);
@@ -169,12 +182,54 @@ public abstract class AbstractComponent implements Component, TabOrderedElement 
         this.tooltip.refreshTooltipForNextRenderPass(mouseX, mouseY, this.isHovered, this.focused, getRectangle());
     }
 
+    // ──── Rendering (Renderable) ────
+
+    /**
+     * 渲染入口 —— 对标高版本 {@code Renderable.extractRenderState}。<br>
+     * 模板方法：不可见时直接跳过；刷新悬停状态后委托 {@link #renderWidget} 完成实际绘制。
+     * <p>
+     * Render entry point — counterpart of the high-version
+     * {@code Renderable.extractRenderState}. Template method: skips when invisible,
+     * refreshes hover state, then delegates the actual drawing to
+     * {@link #renderWidget}.
+     * </p>
+     */
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
+        if (!visible)
+            return;
+        updateHoverState(mouseX, mouseY);
+        renderWidget(graphics, mouseX, mouseY, partialTicks);
+    }
+
+    /**
+     * 子类绘制钩子 —— 新组件应覆盖此方法实现具体绘制。<br>
+     * Widget drawing hook — new components should override this to draw themselves.
+     * <p>
+     * 默认桥接到旧 {@link #render} 入口，保证既有子类（Button、TabButton 等）
+     * 无需改动即可继续渲染。
+     * </p>
+     */
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
+        render(mouseX, mouseY, partialTicks);
+    }
+
+    /**
+     * 旧渲染入口 —— 仅保留给既有子类；新组件请覆盖 {@link #renderWidget}。<br>
+     * Legacy render entry — kept only for existing subclasses; new components
+     * should override {@link #renderWidget} instead.
+     */
+    protected void render(int mouseX, int mouseY, float partialTicks) {
+    }
+
     // ──── Equals / Hash ────
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof AbstractComponent)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof AbstractComponent))
+            return false;
         AbstractComponent that = (AbstractComponent) o;
         return x == that.x && y == that.y && width == that.width && height == that.height;
     }
@@ -195,8 +250,10 @@ public abstract class AbstractComponent implements Component, TabOrderedElement 
 
         /**
          * Creates the default grayed-out inactive message.
-         * <p>创建默认的灰化失效消息。对标 26.1.2
-         * {@code AbstractWidget.WithInactiveMessage#defaultInactiveMessage(Component)}。</p>
+         * <p>
+         * 创建默认的灰化失效消息。对标 26.1.2
+         * {@code AbstractWidget.WithInactiveMessage#defaultInactiveMessage(Component)}。
+         * </p>
          */
         public static Text defaultInactiveMessage(final Text activeMessage) {
             return activeMessage.withStyleApplied(Style.EMPTY.withColor(-6250336));

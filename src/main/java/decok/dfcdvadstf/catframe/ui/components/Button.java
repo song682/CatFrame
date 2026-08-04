@@ -6,17 +6,13 @@ import net.minecraft.client.gui.FontRenderer;
 
 /**
  * <p>
- * 按钮组件实现。<br>
- * 对标高版本 Minecraft 的 {@code Button}。
- * </p>
- * <p>
  * Button component implementation.<br>
  * Counterpart of the high-version Minecraft {@code Button}.
  * </p>
  */
 public class Button extends AbstractButton {
 
-    /** Standard widths / 标准宽度 */
+    /** Standard widths */
     public static final int SMALL_WIDTH = 120;
     public static final int DEFAULT_WIDTH = 150;
     public static final int BIG_WIDTH = 200;
@@ -36,7 +32,9 @@ public class Button extends AbstractButton {
 
     /**
      * Creates a new Button builder.
-     * <p>创建新的 Button 构建器。</p>
+     * <p>
+     * 创建新的 Button 构建器。
+     * </p>
      */
     public static Builder builder(Text message, OnPress onPress) {
         return new Builder(message, onPress);
@@ -51,7 +49,8 @@ public class Button extends AbstractButton {
 
     @Override
     public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
+        if (!visible)
+            return;
 
         updateHoverState(mouseX, mouseY);
         renderBackground(mouseX, mouseY, partialTicks);
@@ -85,7 +84,9 @@ public class Button extends AbstractButton {
 
     /**
      * Builder for constructing a {@link Button}.
-     * <p>用于构建 {@link Button} 的构建器。</p>
+     * <p>
+     * 用于构建 {@link Button} 的构建器。
+     * </p>
      */
     public static class Builder {
         private final Text message;

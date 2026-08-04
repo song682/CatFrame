@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import com.google.common.collect.Lists;
+import decok.dfcdvadstf.catframe.ui.GuiDrawing;
 import net.minecraft.client.Minecraft;
 
 import javax.annotation.Nullable;
@@ -245,7 +246,8 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     @Override
     public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
+        if (!visible)
+            return;
 
         hovered = isMouseOver(mouseX, mouseY) ? getEntryAtPosition(mouseX, mouseY) : null;
 
@@ -261,7 +263,9 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * Render the list background. Default is a dark fill.
-     * <p>渲染列表背景。默认为深色填充。</p>
+     * <p>
+     * 渲染列表背景。默认为深色填充。
+     * </p>
      */
     protected void renderBackground(int mouseX, int mouseY, float partialTicks) {
         GuiDrawing.drawRect(getX(), getY(), getRight(), getBottom(), 0xFF000000);
@@ -269,7 +273,9 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * Render visible list entries within the scissor clip.
-     * <p>在裁剪区域内渲染可见的列表条目。</p>
+     * <p>
+     * 在裁剪区域内渲染可见的列表条目。
+     * </p>
      */
     protected void renderListItems(int mouseX, int mouseY, float partialTicks) {
         for (E child : children) {
@@ -281,7 +287,9 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * Render a single entry, including selection highlight.
-     * <p>渲染单个条目，包括选中高亮。</p>
+     * <p>
+     * 渲染单个条目，包括选中高亮。
+     * </p>
      */
     protected void renderItem(E entry, int mouseX, int mouseY, float partialTicks) {
         if (entriesCanBeSelected() && selected == entry) {
@@ -294,7 +302,9 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * Render selection highlight around an entry.
-     * <p>渲染条目周围的选中高亮边框。</p>
+     * <p>
+     * 渲染条目周围的选中高亮边框。
+     * </p>
      */
     protected void renderSelection(E entry, int outlineColor) {
         int x0 = entry.getX();
@@ -309,7 +319,9 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * Render header/footer separators. Default is no-op.
-     * <p>渲染头部/底部分隔线。默认为空操作。</p>
+     * <p>
+     * 渲染头部/底部分隔线。默认为空操作。
+     * </p>
      */
     protected void renderSeparators() {
         // no-op by default; subclasses can override
@@ -353,26 +365,42 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
         // ──── Component: position/size ────
 
         @Override
-        public int getX() { return x; }
+        public int getX() {
+            return x;
+        }
 
         @Override
-        public void setX(int x) { this.x = x; }
+        public void setX(int x) {
+            this.x = x;
+        }
 
         @Override
-        public int getY() { return y; }
+        public int getY() {
+            return y;
+        }
 
         @Override
-        public void setY(int y) { this.y = y; }
+        public void setY(int y) {
+            this.y = y;
+        }
 
         @Override
-        public int getWidth() { return width; }
+        public int getWidth() {
+            return width;
+        }
 
-        public void setWidth(int width) { this.width = width; }
+        public void setWidth(int width) {
+            this.width = width;
+        }
 
         @Override
-        public int getHeight() { return height; }
+        public int getHeight() {
+            return height;
+        }
 
-        public void setHeight(int height) { this.height = height; }
+        public void setHeight(int height) {
+            this.height = height;
+        }
 
         @Override
         public void setSize(int width, int height) {
@@ -383,16 +411,24 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
         // ──── Component: visibility/active ────
 
         @Override
-        public boolean isVisible() { return visible; }
+        public boolean isVisible() {
+            return visible;
+        }
 
         @Override
-        public void setVisible(boolean visible) { this.visible = visible; }
+        public void setVisible(boolean visible) {
+            this.visible = visible;
+        }
 
         @Override
-        public boolean isActive() { return active; }
+        public boolean isActive() {
+            return active;
+        }
 
         @Override
-        public void setActive(boolean active) { this.active = active; }
+        public void setActive(boolean active) {
+            this.active = active;
+        }
 
         // ──── Component: events (defaults) ────
 
@@ -415,31 +451,45 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
         // ──── Content area (with padding) ────
 
-        public int getContentX() { return getX() + CONTENT_PADDING; }
+        public int getContentX() {
+            return getX() + CONTENT_PADDING;
+        }
 
-        public int getContentY() { return getY() + CONTENT_PADDING; }
+        public int getContentY() {
+            return getY() + CONTENT_PADDING;
+        }
 
-        public int getContentHeight() { return getHeight() - CONTENT_PADDING * 2; }
+        public int getContentHeight() {
+            return getHeight() - CONTENT_PADDING * 2;
+        }
 
-        public int getContentYMiddle() { return getContentY() + getContentHeight() / 2; }
+        public int getContentYMiddle() {
+            return getContentY() + getContentHeight() / 2;
+        }
 
-        public int getContentBottom() { return getContentY() + getContentHeight(); }
+        public int getContentBottom() {
+            return getContentY() + getContentHeight();
+        }
 
-        public int getContentWidth() { return getWidth() - CONTENT_PADDING * 2; }
+        public int getContentWidth() {
+            return getWidth() - CONTENT_PADDING * 2;
+        }
 
-        public int getContentXMiddle() { return getContentX() + getContentWidth() / 2; }
+        public int getContentXMiddle() {
+            return getContentX() + getContentWidth() / 2;
+        }
 
-        public int getContentRight() { return getContentX() + getContentWidth(); }
+        public int getContentRight() {
+            return getContentX() + getContentWidth();
+        }
 
         // ──── Rendering ────
 
-        @Override
-        public void render(int mouseX, int mouseY, float partialTicks) {
-        }
-
         /**
          * Render this entry's content. Subclasses must implement this.
-         * <p>渲染此条目的内容。子类必须实现。</p>
+         * <p>
+         * 渲染此条目的内容。子类必须实现。
+         * </p>
          *
          * @param mouseX       mouse X / 鼠标 X
          * @param mouseY       mouse Y / 鼠标 Y

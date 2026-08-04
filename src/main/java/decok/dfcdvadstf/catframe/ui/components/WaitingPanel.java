@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.GuiDrawing;
 import decok.dfcdvadstf.catframe.ui.LoadingDotsText;
 import decok.dfcdvadstf.catframe.ui.Text;
 import net.minecraft.client.Minecraft;

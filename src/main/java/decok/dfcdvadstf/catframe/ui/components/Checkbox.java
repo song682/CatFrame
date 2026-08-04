@@ -92,7 +92,8 @@ public class Checkbox extends AbstractButton {
         }
 
         // 16×16 独立纹理，1:1 像素绘制 —— drawStatic 强制整数倍拉伸（此处为 1 倍）。
-        // 16x16 standalone texture drawn 1:1 — drawStatic enforces integer-multiple upscaling.
+        // 16x16 standalone texture drawn 1:1 — drawStatic enforces integer-multiple
+        // upscaling.
         TextureStretching.drawStatic(texture, x, y, BOX_SIZE, BOX_SIZE, BOX_SIZE, BOX_SIZE, this.alpha);
 
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;

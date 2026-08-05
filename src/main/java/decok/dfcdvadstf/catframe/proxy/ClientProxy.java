@@ -5,6 +5,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.command.CommandTitle;
 import decok.dfcdvadstf.catframe.compact.CompactBase;
+import decok.dfcdvadstf.catframe.compact.IMECompact;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientOverlayHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
@@ -73,7 +74,12 @@ public class ClientProxy extends CommonProxy {
         ModelRenderRegistry.register(new LeavesGraphicsExtension());
 
         if (CompactBase.isIMEBackportInstalled()) {
-
+            // Register CatFrame's text-area family as an IME commit target. The
+            // API is compileOnly, so IMECompact is only ever loaded (and its
+            // IMEInputAPI reference resolved) when the mod is present.
+            // 将 CatFrame 文本框体系注册为 IME 提交目标。API 为 compileOnly，
+            // 因此 IMECompact 仅在模组存在时才会被加载（及其 IMEInputAPI 引用被解析）。
+            IMECompact.register();
         }
     }
 

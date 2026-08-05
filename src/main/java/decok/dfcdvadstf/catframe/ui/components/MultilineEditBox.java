@@ -96,6 +96,24 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
         return this.textField.value();
     }
 
+    /**
+     * Insert text at the caret as a whole, delegating to the inner
+     * {@link MultilineTextField} so character filtering, character/line limits
+     * and a single valueListener refresh all apply. Bulk input such as IME
+     * commits should use this entry.
+     * <p>
+     * 在光标处整体插入文本，委托内部 {@link MultilineTextField}：字符过滤、
+     * 字符/行数限制与一次 valueListener 刷新全部生效。IME 提交等批量输入
+     * 应走此入口。
+     * </p>
+     *
+     * @param text text to insert (may be null / 待插入文本，可为 null)
+     */
+    @Override
+    public void insertText(String text) {
+        this.textField.insertText(text);
+    }
+
     // ──── Event handling ────
 
     @Override

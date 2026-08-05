@@ -110,6 +110,17 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
         return text;
     }
 
+    /**
+     * Current caret position (character index), for external anchoring such as
+     * the IME candidate-window anchor.
+     * <p>
+     * 当前光标位置（字符索引），供 IME 候选窗锚点等外部定位使用。
+     * </p>
+     */
+    public int getCursorPosition() {
+        return cursorPosition;
+    }
+
     public void setHint(String hint) {
         this.hint = hint;
     }
@@ -162,20 +173,10 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
             setClipboardString(getSelectedText());
             return;
         }
-        // Ctrl+V: paste
+        // Ctrl+V: paste (whole-insert path, shared with IME commits)
+        // Ctrl+V：粘贴（与 IME 提交共用的整体插入路径）
         if (keyCode == 47 && isCtrlKeyDown()) {
-            String clip = getClipboardString();
-            if (clip != null) {
-                for (int i = 0; i < clip.length() && text.length() < maxLength; i++) {
-                    char c = clip.charAt(i);
-                    if (ChatAllowedCharacters.isAllowedCharacter(c)) {
-                        text = text.substring(0, cursorPosition) + c + text.substring(cursorPosition);
-                        cursorPosition++;
-                    }
-                }
-                selectionEnd = cursorPosition;
-            }
-            onTextChanged();
+            insertText(getClipboardString());
             return;
         }
         // Ctrl+X: cut
@@ -233,6 +234,34 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
             selectionEnd = cursorPosition;
             onTextChanged();
         }
+    }
+
+    /**
+     * Insert text at the caret as a whole, keeping the same path as Ctrl+V
+     * paste: per-character filtering and the maxLength limit apply, and the
+     * content refresh fires exactly once. Bulk input such as IME commits
+     * should use this entry.
+     * <p>
+     * 在光标处整体插入文本，与 Ctrl+V 粘贴路径一致：逐字符过滤与 maxLength
+     * 限制保持，内容刷新只触发一次。IME 提交等批量输入应走此入口。
+     * </p>
+     *
+     * @param text text to insert (may be null / 待插入文本，可为 null)
+     */
+    @Override
+    public void insertText(String text) {
+        if (text == null) {
+            return;
+        }
+        for (int i = 0; i < text.length() && this.text.length() < maxLength; i++) {
+            char c = text.charAt(i);
+            if (ChatAllowedCharacters.isAllowedCharacter(c)) {
+                this.text = this.text.substring(0, cursorPosition) + c + this.text.substring(cursorPosition);
+                cursorPosition++;
+            }
+        }
+        selectionEnd = cursorPosition;
+        onTextChanged();
     }
 
     private void deleteSelection() {

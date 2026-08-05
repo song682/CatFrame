@@ -125,9 +125,49 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     protected void extractDecorations(GuiGraphicsExtractor graphics) {
     }
 
+    // ──── Text input (IME / paste) ────
+
+    /**
+     * Insert text at the caret as a whole, keeping the same path as manual
+     * input: character filtering, length limits and the content refresh all
+     * apply. Intended for bulk input such as IME commits.
+     * <p>
+     * 在光标处整体插入文本，与手动输入的路径保持一致：字符过滤、长度限制
+     * 与内容刷新全部生效。供 IME 提交等批量输入使用。
+     * </p>
+     * <p>
+     * The default feeds characters through {@link #keyTyped(char, int)} so
+     * unoverridden subclasses still validate and refresh; editable subclasses
+     * with a single-pass insert (e.g. a bulk-insert backing model) should
+     * override for one refresh per commit.
+     * </p>
+     * <p>
+     * 默认实现将字符逐个送入 {@link #keyTyped(char, int)}，未覆盖的子类
+     * 依然获得校验与刷新；具备一体化插入能力的可编辑子类（如背后有批量
+     * 插入模型）应覆盖以实现每次提交只刷新一次。
+     * </p>
+     *
+     * @param text committed text (may be null / 提交文本，可为 null)
+     */
+    public void insertText(String text) {
+        if (text == null) {
+            return;
+        }
+        for (int i = 0; i < text.length(); i++) {
+            keyTyped(text.charAt(i), Keyboard.KEY_NONE);
+        }
+    }
+
     // ──── Geometry ────
 
-    protected int innerPadding() {
+    /**
+     * Inner padding between content and border (single side). Public so
+     * external positioning (e.g. the IME candidate-window anchor) can reuse it.
+     * <p>
+     * 内容与边框之间的内边距（单侧）。公开以供外部定位（如 IME 候选窗锚点）复用。
+     * </p>
+     */
+    public int innerPadding() {
         return INNER_PADDING;
     }
 

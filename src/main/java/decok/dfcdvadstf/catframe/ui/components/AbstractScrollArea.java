@@ -12,7 +12,8 @@ import org.lwjgl.opengl.GL11;
  * </p>
  * <p>
  * Scroll panel base — provides scroll offset, scrollbar rendering and Scissor
- * clipping. Counterpart of the high-version Minecraft {@code AbstractScrollArea}.
+ * clipping. Counterpart of the high-version Minecraft
+ * {@code AbstractScrollArea}.
  * </p>
  */
 public abstract class AbstractScrollArea extends AbstractComponent {
@@ -21,12 +22,14 @@ public abstract class AbstractScrollArea extends AbstractComponent {
     public static final int SCROLLBAR_WIDTH = 6;
 
     /** Scroller (thumb) texture — 6x32, border 1 nine-patch / 滑块纹理 */
-    protected static final ResourceLocation SCROLLER_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/scroll.png");
+    protected static final ResourceLocation SCROLLER_TEXTURE = new ResourceLocation("catframe",
+            "textures/gui/widgets/scroll.png");
 
-    /** Scrollbar background track texture — 6x32, border 1 nine-patch / 滚动条背景轨道纹理 */
-    protected static final ResourceLocation SCROLLER_BACKGROUND_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/scroll_background.png");
+    /**
+     * Scrollbar background track texture — 6x32, border 1 nine-patch / 滚动条背景轨道纹理
+     */
+    protected static final ResourceLocation SCROLLER_BACKGROUND_TEXTURE = new ResourceLocation("catframe",
+            "textures/gui/widgets/scroll_background.png");
 
     /** Scrollbar texture dimensions / 滚动条纹理尺寸 */
     protected static final int SCROLLBAR_TEX_W = 6;
@@ -36,6 +39,17 @@ public abstract class AbstractScrollArea extends AbstractComponent {
     private final ScrollbarSettings scrollbarSettings;
     private double scrollAmount;
     private boolean scrolling;
+
+    /**
+     * Last mouse Y during scrollbar dragging — used to compute the relative
+     * movement
+     * delta (dy), since the GuiEventListener interface only provides absolute
+     * coords.
+     * <p>
+     * 拖动期间上一次的鼠标 Y，用于计算相对位移增量（事件接口只提供绝对坐标）。
+     * </p>
+     */
+    private double lastDragY;
 
     public AbstractScrollArea(int x, int y, int width, int height, ScrollbarSettings scrollbarSettings) {
         super(x, y, width, height);
@@ -53,7 +67,9 @@ public abstract class AbstractScrollArea extends AbstractComponent {
 
     /**
      * Set the scroll amount, clamped to [0, maxScrollAmount].
-     * <p>设置滚动偏移量，限制在 [0, maxScrollAmount] 范围内。</p>
+     * <p>
+     * 设置滚动偏移量，限制在 [0, maxScrollAmount] 范围内。
+     * </p>
      */
     public void setScrollAmount(double scrollAmount) {
         this.scrollAmount = Math.max(0, Math.min(scrollAmount, maxScrollAmount()));
@@ -75,7 +91,9 @@ public abstract class AbstractScrollArea extends AbstractComponent {
 
     /**
      * Re-clamp the current scroll amount after content size changes.
-     * <p>内容尺寸变化后重新限制滚动量。</p>
+     * <p>
+     * 内容尺寸变化后重新限制滚动量。
+     * </p>
      */
     public void refreshScrollAmount() {
         setScrollAmount(this.scrollAmount);
@@ -95,7 +113,8 @@ public abstract class AbstractScrollArea extends AbstractComponent {
      */
     protected int scrollerHeight() {
         int ch = contentHeight();
-        if (ch <= 0) return scrollbarSettings.scrollerMinHeight();
+        if (ch <= 0)
+            return scrollbarSettings.scrollerMinHeight();
         int h = (int) ((float) (this.height * this.height) / ch);
         return Math.max(scrollbarSettings.scrollerMinHeight(), Math.min(h, this.height - 8));
     }
@@ -111,7 +130,8 @@ public abstract class AbstractScrollArea extends AbstractComponent {
      * @return Y position of the scroller (thumb) / 滑块 Y 坐标
      */
     public int scrollBarY() {
-        if (maxScrollAmount() == 0) return this.y;
+        if (maxScrollAmount() == 0)
+            return this.y;
         int barH = this.height - scrollerHeight();
         int scrollY = (int) (scrollAmount * barH / maxScrollAmount()) + this.y;
         return Math.max(this.y, scrollY);
@@ -119,7 +139,9 @@ public abstract class AbstractScrollArea extends AbstractComponent {
 
     /**
      * Check if the given point is over the scrollbar area.
-     * <p>判断给定点是否在滚动条区域内。</p>
+     * <p>
+     * 判断给定点是否在滚动条区域内。
+     * </p>
      */
     protected boolean isOverScrollbar(int mx, int my) {
         int sbx = scrollBarX();
@@ -129,12 +151,19 @@ public abstract class AbstractScrollArea extends AbstractComponent {
 
     /**
      * Begin scrollbar dragging if clicking on the scrollbar.
-     * <p>如果点击在滚动条上，开始拖动。</p>
+     * <p>
+     * 如果点击在滚动条上，开始拖动。
+     * </p>
      *
      * @return true if scrollbar dragging started / 是否开始拖动滚动条
      */
     public boolean updateScrolling(int mx, int my, int mouseButton) {
         this.scrolling = scrollable() && mouseButton == 0 && isOverScrollbar(mx, my);
+        if (this.scrolling) {
+            // Record the drag-start Y so mouseDrag can accumulate relative deltas.
+            // 记录拖动起始 Y，使 mouseDrag 可以累积相对位移增量。
+            this.lastDragY = my;
+        }
         return this.scrolling;
     }
 
@@ -142,7 +171,9 @@ public abstract class AbstractScrollArea extends AbstractComponent {
 
     /**
      * Enable GL scissor to clip rendering to this container's bounds.
-     * <p>启用 GL 裁剪，将渲染限制在此容器的范围内。</p>
+     * <p>
+     * 启用 GL 裁剪，将渲染限制在此容器的范围内。
+     * </p>
      */
     protected void enableScissor() {
         int displayHeight = Minecraft.getMinecraft().displayHeight;
@@ -152,7 +183,9 @@ public abstract class AbstractScrollArea extends AbstractComponent {
 
     /**
      * Disable GL scissor.
-     * <p>禁用 GL 裁剪。</p>
+     * <p>
+     * 禁用 GL 裁剪。
+     * </p>
      */
     protected void disableScissor() {
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
@@ -161,9 +194,12 @@ public abstract class AbstractScrollArea extends AbstractComponent {
     // ──── Scrollbar rendering ────
 
     /**
-     * Render the scrollbar (background track + scroller thumb) via mcmeta-driven textures.
-     * <p>通过 mcmeta 数据驱动纹理渲染滚动条（背景轨道 + 滑块）。
-     * 当对应 {@code .mcmeta} 存在时自动读取拉伸参数；否则回退到 nine_patch 6x32 border=1。</p>
+     * Render the scrollbar (background track + scroller thumb) via mcmeta-driven
+     * textures.
+     * <p>
+     * 通过 mcmeta 数据驱动纹理渲染滚动条（背景轨道 + 滑块）。
+     * 当对应 {@code .mcmeta} 存在时自动读取拉伸参数；否则回退到 nine_patch 6x32 border=1。
+     * </p>
      */
     protected void renderScrollbar(int mouseX, int mouseY) {
         int sbx = scrollBarX();
@@ -196,7 +232,8 @@ public abstract class AbstractScrollArea extends AbstractComponent {
 
     @Override
     public void mouseScrolled(int delta) {
-        if (!visible) return;
+        if (!visible)
+            return;
         setScrollAmount(scrollAmount() - delta * scrollRate());
     }
 
@@ -211,14 +248,25 @@ public abstract class AbstractScrollArea extends AbstractComponent {
                 double max = Math.max(1, maxScrollAmount());
                 int barH = scrollerHeight();
                 double yDragScale = Math.max(1.0, max / (this.height - barH));
-                setScrollAmount(scrollAmount() + mouseY * yDragScale);
+                // Accumulate the relative mouse delta (mouseY - lastDragY) instead of the
+                // absolute mouseY, matching the high-version AbstractScrollArea formula:
+                // setScrollAmount(scrollAmount() + dy * yDragScale).
+                // 累加相对鼠标位移（mouseY - lastDragY）而非绝对坐标，
+                // 与高版本 AbstractScrollArea 公式 setScrollAmount(scrollAmount() + dy * yDragScale)
+                // 一致。
+                setScrollAmount(scrollAmount() + (mouseY - lastDragY) * yDragScale);
             }
+            // Sync the delta baseline even on the edge branches, so dragging back into
+            // the area resumes smoothly without a jump.
+            // 边界分支同样同步基准点，拖回区域内时不会产生跳动。
+            lastDragY = mouseY;
         }
     }
 
     @Override
     public void mouseReleased(int mouseX, int mouseY, int mouseButton) {
         this.scrolling = false;
+        lastDragY = 0;
     }
 
     /**

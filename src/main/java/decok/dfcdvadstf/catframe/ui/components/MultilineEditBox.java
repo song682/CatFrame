@@ -16,11 +16,15 @@ import java.util.function.Consumer;
  * {@link #scrollToCursor()} 驱动（上下键不触发父类的整页滚动，与高版本一致）。
  * </p>
  * <p>
- * Multi-line edit box — based on {@link AbstractTextAreaWidget}, counterpart of the
- * high-version Minecraft {@code MultiLineEditBox}. Supports line wrapping, scrolling,
+ * Multi-line edit box — based on {@link AbstractTextAreaWidget}, counterpart of
+ * the
+ * high-version Minecraft {@code MultiLineEditBox}. Supports line wrapping,
+ * scrolling,
  * selection highlighting and character/line limits.<br>
- * Keyboard editing is delegated to {@link MultilineTextField}; scrolling is driven by
- * the cursor listener {@link #scrollToCursor()} (Up/Down do not trigger the parent's
+ * Keyboard editing is delegated to {@link MultilineTextField}; scrolling is
+ * driven by
+ * the cursor listener {@link #scrollToCursor()} (Up/Down do not trigger the
+ * parent's
  * page scroll, matching the high-version behaviour).
  * </p>
  */
@@ -47,8 +51,9 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
     }
 
     public MultilineEditBox(int x, int y, int width, int height, String placeholder,
-                            boolean showBackground, boolean showDecorations) {
-        super(x, y, width, height, ScrollbarSettings.defaultSettings((int) (9.0 / 2.0)), showBackground, showDecorations);
+            boolean showBackground, boolean showDecorations) {
+        super(x, y, width, height, ScrollbarSettings.defaultSettings((int) (9.0 / 2.0)), showBackground,
+                showDecorations);
         this.font = Minecraft.getMinecraft().fontRenderer;
         this.placeholder = placeholder != null ? placeholder : "";
         this.textField = new MultilineTextField(this.font, width - this.totalInnerPadding());
@@ -95,7 +100,8 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
 
     @Override
     public void keyTyped(char typedChar, int keyCode) {
-        if (!focused) return;
+        if (!focused)
+            return;
         // Deliberately not calling super: cursor movement and scrolling are both
         // driven by MultilineTextField + scrollToCursor, so Up/Down must not also
         // trigger the parent's page scroll (mirrors MultiLineEditBox.keyPressed).
@@ -161,19 +167,22 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
 
         for (MultilineTextField.StringView lineView : this.textField.iterateLines()) {
             boolean lineWithinVisibleBounds = this.withinContentAreaTopBottom(drawTop, drawTop + this.font.FONT_HEIGHT);
-            if (!hasDrawnCursor && showCursor && insertCursor && cursor >= lineView.beginIndex && cursor <= lineView.endIndex) {
+            if (!hasDrawnCursor && showCursor && insertCursor && cursor >= lineView.beginIndex
+                    && cursor <= lineView.endIndex) {
                 if (lineWithinVisibleBounds) {
                     String textBeforeCursor = value.substring(lineView.beginIndex, cursor);
                     int textBeforeCursorPosRight = innerLeft + this.font.getStringWidth(textBeforeCursor);
                     String textAfterCursor = value.substring(cursor, lineView.endIndex);
                     this.font.drawString(textBeforeCursor, innerLeft, drawTop, this.textColor, this.textShadow);
-                    this.font.drawString(textAfterCursor, textBeforeCursorPosRight, drawTop, this.textColor, this.textShadow);
+                    this.font.drawString(textAfterCursor, textBeforeCursorPosRight, drawTop, this.textColor,
+                            this.textShadow);
                     cursorX = textBeforeCursorPosRight;
                     cursorY = drawTop;
                     if (showCursor) {
                         // Insert cursor: vertical bar between characters.
                         // 插入光标：字符间的竖线。
-                        GuiDrawing.drawRect(cursorX, cursorY - 1, cursorX + 1, cursorY + this.font.FONT_HEIGHT, CURSOR_COLOR);
+                        GuiDrawing.drawRect(cursorX, cursorY - 1, cursorX + 1, cursorY + this.font.FONT_HEIGHT,
+                                CURSOR_COLOR);
                     }
                     hasDrawnCursor = true;
                 }
@@ -209,14 +218,17 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
                     }
                     if (this.withinContentAreaTopBottom(drawTop, drawTop + this.font.FONT_HEIGHT)) {
                         int drawBegin = this.font.getStringWidth(
-                                value.substring(lineView.beginIndex, Math.max(selection.beginIndex, lineView.beginIndex)));
+                                value.substring(lineView.beginIndex,
+                                        Math.max(selection.beginIndex, lineView.beginIndex)));
                         int drawEnd;
                         if (selection.endIndex > lineView.endIndex) {
                             drawEnd = this.width - this.innerPadding();
                         } else {
-                            drawEnd = this.font.getStringWidth(value.substring(lineView.beginIndex, selection.endIndex));
+                            drawEnd = this.font
+                                    .getStringWidth(value.substring(lineView.beginIndex, selection.endIndex));
                         }
-                        GuiDrawing.drawRect(drawX + drawBegin, drawTop, drawX + drawEnd, drawTop + this.font.FONT_HEIGHT, HIGHLIGHT_COLOR);
+                        GuiDrawing.drawRect(drawX + drawBegin, drawTop, drawX + drawEnd,
+                                drawTop + this.font.FONT_HEIGHT, HIGHLIGHT_COLOR);
                     }
                     drawTop += this.font.FONT_HEIGHT;
                 }
@@ -245,12 +257,13 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
 
     private void scrollToCursor() {
         double scrollAmount = this.scrollAmount();
-        MultilineTextField.StringView firstFullyVisibleLine = this.textField.getLineView((int) (scrollAmount / this.font.FONT_HEIGHT));
+        MultilineTextField.StringView firstFullyVisibleLine = this.textField
+                .getLineView((int) (scrollAmount / this.font.FONT_HEIGHT));
         if (this.textField.cursor() <= firstFullyVisibleLine.beginIndex) {
             scrollAmount = this.textField.getLineAtCursor() * this.font.FONT_HEIGHT;
         } else {
-            MultilineTextField.StringView lastFullyVisibleLine =
-                    this.textField.getLineView((int) ((scrollAmount + this.height) / this.font.FONT_HEIGHT) - 1);
+            MultilineTextField.StringView lastFullyVisibleLine = this.textField
+                    .getLineView((int) ((scrollAmount + this.height) / this.font.FONT_HEIGHT) - 1);
             if (this.textField.cursor() > lastFullyVisibleLine.endIndex) {
                 scrollAmount = this.textField.getLineAtCursor() * this.font.FONT_HEIGHT
                         - this.height + this.font.FONT_HEIGHT + this.totalInnerPadding();

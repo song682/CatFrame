@@ -16,17 +16,18 @@ import org.lwjgl.opengl.GL11;
  * <p>
  * Text area base — provides inner padding, background/decorations toggles and a
  * scissored, scrollable drawing skeleton; subclasses implement
- * {@link #extractContents} and {@link #getInnerHeight} for the actual text drawing.
+ * {@link #extractContents} and {@link #getInnerHeight} for the actual text
+ * drawing.
  * Counterpart of the high-version Minecraft {@code AbstractTextAreaWidget}.
  * </p>
  */
 public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
 
     /** CatFrame custom text field textures / CatFrame 自定义文本框纹理 */
-    protected static final ResourceLocation TEXT_FIELD_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/text_field.png");
-    protected static final ResourceLocation TEXT_FIELD_HIGHLIGHTED_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/text_field_highlighted.png");
+    protected static final ResourceLocation TEXT_FIELD_TEXTURE = new ResourceLocation("catframe",
+            "textures/gui/widgets/text_field.png");
+    protected static final ResourceLocation TEXT_FIELD_HIGHLIGHTED_TEXTURE = new ResourceLocation("catframe",
+            "textures/gui/widgets/text_field_highlighted.png");
 
     /** Text field default size from mcmeta / 文本框默认尺寸 */
     protected static final int TEXT_FIELD_DEFAULT_W = 200;
@@ -66,7 +67,8 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
 
     @Override
     public void keyTyped(char typedChar, int keyCode) {
-        // Up/Down scroll the content while focused; consume the key when the scroll moved.
+        // Up/Down scroll the content while focused; consume the key when the scroll
+        // moved.
         // 聚焦时上下键滚动内容；滚动量发生变化时消费该按键。
         if (focused && (keyCode == Keyboard.KEY_UP || keyCode == Keyboard.KEY_DOWN)) {
             double previousScrollAmount = scrollAmount();
@@ -82,7 +84,8 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
 
     @Override
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
+        if (!visible)
+            return;
 
         if (showBackground) {
             extractBackground(graphics);
@@ -115,7 +118,9 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     /**
      * Hook for drawing decorations on top of the contents (e.g. character limit
      * counters). Called after the scrollbar.
-     * <p>内容之上的装饰绘制钩子（如字数统计）。在滚动条之后调用。</p>
+     * <p>
+     * 内容之上的装饰绘制钩子（如字数统计）。在滚动条之后调用。
+     * </p>
      */
     protected void extractDecorations(GuiGraphicsExtractor graphics) {
     }
@@ -156,7 +161,9 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
 
     /**
      * Draw the text field border+background, highlighted when active and focused.
-     * <p>绘制文本框边框+背景；激活且聚焦时高亮。</p>
+     * <p>
+     * 绘制文本框边框+背景；激活且聚焦时高亮。
+     * </p>
      */
     protected void extractBorder(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
         ResourceLocation tex = (isActive() && isFocused()) ? TEXT_FIELD_HIGHLIGHTED_TEXTURE : TEXT_FIELD_TEXTURE;
@@ -167,7 +174,9 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     /**
      * Whether the given top/bottom line bounds intersect the visible content area,
      * taking the current scroll offset into account.
-     * <p>给定的上下行边界是否与可见内容区相交（计入当前滚动量）。</p>
+     * <p>
+     * 给定的上下行边界是否与可见内容区相交（计入当前滚动量）。
+     * </p>
      */
     protected boolean withinContentAreaTopBottom(int top, int bottom) {
         return bottom - this.scrollAmount() >= this.getY() && top - this.scrollAmount() <= this.getY() + this.height;
@@ -181,10 +190,13 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     protected abstract int getInnerHeight();
 
     /**
-     * Draw the scrollable contents at {@link #getInnerLeft()}/{@link #getInnerTop()}.
+     * Draw the scrollable contents at
+     * {@link #getInnerLeft()}/{@link #getInnerTop()}.
      * Called with the GL matrix already translated by {@code -scrollAmount()}.
-     * <p>在 {@link #getInnerLeft()}/{@link #getInnerTop()} 处绘制可滚动内容。
-     * 调用时 GL 矩阵已按 {@code -scrollAmount()} 平移。</p>
+     * <p>
+     * 在 {@link #getInnerLeft()}/{@link #getInnerTop()} 处绘制可滚动内容。
+     * 调用时 GL 矩阵已按 {@code -scrollAmount()} 平移。
+     * </p>
      */
     protected abstract void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks);
 

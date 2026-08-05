@@ -16,7 +16,7 @@ public interface ComponentPath {
     /**
      * @return the leaf (focused) component at the end of this path / 路径末端的焦点叶子组件
      */
-    GuiScreenEvent component();
+    GuiEventListener component();
 
     /**
      * Apply (or clear) focus along the whole path.
@@ -38,7 +38,7 @@ public interface ComponentPath {
      * Create a leaf path pointing at a single component.
      * <p>创建指向单个组件的叶子路径。</p>
      */
-    static ComponentPath leaf(final GuiScreenEvent guiScreenEvent) {
+    static ComponentPath leaf(final GuiEventListener guiScreenEvent) {
         return new Leaf(guiScreenEvent);
     }
 
@@ -58,14 +58,14 @@ public interface ComponentPath {
      */
     final class Leaf implements ComponentPath {
 
-        private final GuiScreenEvent guiScreenEvent;
+        private final GuiEventListener guiScreenEvent;
 
-        Leaf(final GuiScreenEvent guiScreenEvent) {
+        Leaf(final GuiEventListener guiScreenEvent) {
             this.guiScreenEvent = guiScreenEvent;
         }
 
         @Override
-        public GuiScreenEvent component() {
+        public GuiEventListener component() {
             return this.guiScreenEvent;
         }
 
@@ -90,7 +90,7 @@ public interface ComponentPath {
         }
 
         @Override
-        public GuiScreenEvent component() {
+        public GuiEventListener component() {
             return this.childPath.component();
         }
 
@@ -101,7 +101,7 @@ public interface ComponentPath {
                 this.parent.setFocused(this.childPath.component());
             } else {
                 this.childPath.applyFocus(false);
-                this.parent.setFocused((GuiScreenEvent) null);
+                this.parent.setFocused((GuiEventListener) null);
             }
         }
     }

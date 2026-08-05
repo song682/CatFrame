@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.ui.screens;
 
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
-import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
 import decok.dfcdvadstf.catframe.ui.components.Renderable;
 import decok.dfcdvadstf.catframe.ui.components.events.CatFrameInputScreen;
 import decok.dfcdvadstf.catframe.ui.components.events.ComponentPath;
@@ -27,7 +27,7 @@ import java.util.List;
  * {@code net.minecraft.client.gui.screens.Screen}（extends
  * {@code AbstractContainerEventHandler}）
  * 的「组件容器 + 焦点导航 + 事件分发」能力内联进来。<br>
- * 通过实现 {@link GuiScreenEvent} 与 {@link ContainerEventHandler}，本屏幕本身即是
+ * 通过实现 {@link GuiEventListener} 与 {@link ContainerEventHandler}，本屏幕本身即是
  * CatFrame 组件树的根容器；实现 {@link CatFrameInputScreen} 后，
  * {@code MixinGuiScreen} 会把 LWJGL2 拆分键盘事件路由到本屏幕
  * （{@link #getEventRoot()} 返回 {@code this}）。
@@ -39,7 +39,7 @@ import java.util.List;
  * high-version Minecraft
  * {@code Screen} (which extends {@code AbstractContainerEventHandler}). By
  * implementing
- * {@link GuiScreenEvent} and {@link ContainerEventHandler}, the screen itself is the
+ * {@link GuiEventListener} and {@link ContainerEventHandler}, the screen itself is the
  * root of the
  * CatFrame component tree; implementing {@link CatFrameInputScreen} lets
  * {@code MixinGuiScreen}
@@ -53,7 +53,7 @@ import java.util.List;
  * 在此重建组件（{@link #clearWidgets()} → {@link #init()} →
  * {@link #setInitialFocus()}），
  * 契合 1.7.10「在 initGui 中重建控件」的惯例。</li>
- * <li>{@link #init()} — 子类在此通过 {@link #addRenderableWidget(GuiScreenEvent)}
+ * <li>{@link #init()} — 子类在此通过 {@link #addRenderableWidget(GuiEventListener)}
  * 等添加组件。</li>
  * <li>{@link #updateScreen()} → {@link #tick()}；{@link #onGuiClosed()} →
  * {@link #removed()}。</li>
@@ -73,7 +73,7 @@ import java.util.List;
  * <strong>not</strong> forward to children, to avoid double dispatch.
  * </p>
  */
-public abstract class Screen extends GuiScreen implements GuiScreenEvent, ContainerEventHandler, CatFrameInputScreen {
+public abstract class Screen extends GuiScreen implements GuiEventListener, ContainerEventHandler, CatFrameInputScreen {
 
     /** Screen title / 界面标题 */
     protected final Text title;
@@ -81,13 +81,13 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
     /**
      * All interactive children (focusable / event targets) / 所有可交互子组件（可聚焦 / 事件目标）
      */
-    private final List<GuiScreenEvent> children = new ArrayList<>();
+    private final List<GuiEventListener> children = new ArrayList<>();
 
     /** Children that should be rendered each frame / 每帧应渲染的子组件 */
-    private final List<GuiScreenEvent> renderables = new ArrayList<>();
+    private final List<GuiEventListener> renderables = new ArrayList<>();
 
     @Nullable
-    private GuiScreenEvent focusedChild;
+    private GuiEventListener focusedChild;
     private boolean dragging;
 
     // ──── Construction ────
@@ -126,8 +126,8 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
     }
 
     /**
-     * 子类在此构建界面：通过 {@link #addRenderableWidget(GuiScreenEvent)} /
-     * {@link #addWidget(GuiScreenEvent)} / {@link #addRenderableOnly(GuiScreenEvent)} 注册组件。
+     * 子类在此构建界面：通过 {@link #addRenderableWidget(GuiEventListener)} /
+     * {@link #addWidget(GuiEventListener)} / {@link #addRenderableOnly(GuiEventListener)} 注册组件。
      * <p>
      * Subclasses build the UI here.
      * </p>
@@ -161,7 +161,7 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
      * 添加一个既参与渲染、又接收事件与焦点的组件。
      * </p>
      */
-    protected <T extends GuiScreenEvent> T addRenderableWidget(final T widget) {
+    protected <T extends GuiEventListener> T addRenderableWidget(final T widget) {
         this.renderables.add(widget);
         this.children.add(widget);
         return widget;
@@ -173,7 +173,7 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
      * 添加一个接收事件/焦点、但在别处渲染的组件。
      * </p>
      */
-    protected <T extends GuiScreenEvent> T addWidget(final T widget) {
+    protected <T extends GuiEventListener> T addWidget(final T widget) {
         this.children.add(widget);
         return widget;
     }
@@ -184,13 +184,13 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
      * 添加一个仅渲染的组件（不接收事件/焦点）。
      * </p>
      */
-    protected <T extends GuiScreenEvent> T addRenderableOnly(final T renderable) {
+    protected <T extends GuiEventListener> T addRenderableOnly(final T renderable) {
         this.renderables.add(renderable);
         return renderable;
     }
 
     /** Remove a previously registered component. / 移除一个已注册的组件。 */
-    protected void removeWidget(final GuiScreenEvent widget) {
+    protected void removeWidget(final GuiEventListener widget) {
         this.renderables.remove(widget);
         if (this.focusedChild == widget) {
             clearFocus();
@@ -205,7 +205,7 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
     }
 
     @Override
-    public List<? extends GuiScreenEvent> children() {
+    public List<? extends GuiEventListener> children() {
         return this.children;
     }
 
@@ -215,7 +215,7 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
     public void drawScreen(final int mouseX, final int mouseY, final float partialTicks) {
         renderBackground(mouseX, mouseY, partialTicks);
         for (int i = 0; i < this.renderables.size(); i++) {
-            final GuiScreenEvent renderable = this.renderables.get(i);
+            final GuiEventListener renderable = this.renderables.get(i);
             if (renderable.isVisible() && renderable instanceof Renderable) {
                 ((Renderable) renderable).extractRenderState(GuiGraphicsExtractor.getInstance(),
                         mouseX, mouseY, partialTicks);
@@ -241,7 +241,7 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
     /**
      * Overridden as {@code public} (widening the vanilla {@code protected}) to
      * satisfy
-     * {@link GuiScreenEvent#mouseClicked(int, int, int)}. Forwards to vanilla buttons
+     * {@link GuiEventListener#mouseClicked(int, int, int)}. Forwards to vanilla buttons
      * first, then
      * dispatches to CatFrame children.
      */
@@ -321,7 +321,7 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
 
     /**
      * Overridden as {@code public} to satisfy
-     * {@link GuiScreenEvent#keyTyped(char, int)}. Handles
+     * {@link GuiEventListener#keyTyped(char, int)}. Handles
      * <strong>only</strong> Esc-to-close and intentionally does not forward to
      * children — split
      * key events arrive via {@code ScreenKeyboardInput}. The
@@ -354,7 +354,7 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
 
     @Nullable
     @Override
-    public GuiScreenEvent getEventRoot() {
+    public GuiEventListener getEventRoot() {
         return this;
     }
 
@@ -417,7 +417,7 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
     }
 
     /** Move focus to the given target's resolved path. / 将焦点移动到给定目标解析出的路径。 */
-    protected void setInitialFocus(final GuiScreenEvent target) {
+    protected void setInitialFocus(final GuiEventListener target) {
         final ComponentPath path = target.nextFocusPath(new FocusNavigationEvent.TabNavigation(true));
         if (path != null) {
             clearFocus();
@@ -427,7 +427,7 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
 
     /** Clear the current focus. / 清除当前焦点。 */
     public void clearFocus() {
-        setFocused((GuiScreenEvent) null);
+        setFocused((GuiEventListener) null);
     }
 
     @Nullable
@@ -440,12 +440,12 @@ public abstract class Screen extends GuiScreen implements GuiScreenEvent, Contai
 
     @Nullable
     @Override
-    public GuiScreenEvent getFocused() {
+    public GuiEventListener getFocused() {
         return this.focusedChild;
     }
 
     @Override
-    public void setFocused(@Nullable final GuiScreenEvent focused) {
+    public void setFocused(@Nullable final GuiEventListener focused) {
         if (this.focusedChild == focused) {
             return;
         }

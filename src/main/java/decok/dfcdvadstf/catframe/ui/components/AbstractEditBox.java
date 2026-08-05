@@ -10,13 +10,17 @@ import net.minecraft.client.gui.GuiScreen;
 
 /**
  * <p>
- * 文本框组件 —— 基于 {@link AbstractTextAreaWidget}，对标高版本 Minecraft 的 {@code EditBox}。<br>
+ * 文本框组件 —— 基于 {@link AbstractTextAreaWidget}，对标高版本 Minecraft 的
+ * {@code EditBox}。<br>
  * 支持纹理背景（useVanilla 切换原版黑白框）、原版风格光标（末尾_内部|）或强制竖线光标。
  * </p>
  * <p>
- * Edit box component — based on {@link AbstractTextAreaWidget}, counterpart of the
- * high-version Minecraft {@code EditBox}. Supports textured background (useVanilla
- * toggles vanilla grey/black box), vanilla-style cursor (_ at end, | inside text),
+ * Edit box component — based on {@link AbstractTextAreaWidget}, counterpart of
+ * the
+ * high-version Minecraft {@code EditBox}. Supports textured background
+ * (useVanilla
+ * toggles vanilla grey/black box), vanilla-style cursor (_ at end, | inside
+ * text),
  * or forced vertical bar cursor.
  * </p>
  */
@@ -32,20 +36,28 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
 
     /**
      * If true, use CatFrame texture-based background; if false, solid colour.
-     * <p>为 true 时使用 CatFrame 纹理背景；false 时纯色。</p>
+     * <p>
+     * 为 true 时使用 CatFrame 纹理背景；false 时纯色。
+     * </p>
      */
     protected boolean useTextureBackground = true;
 
     /**
-     * If true, use vanilla grey/black box instead of CatFrame texture or solid colour.
-     * <p>为 true 时使用原版灰/黑框，替代 CatFrame 纹理或纯色。</p>
+     * If true, use vanilla grey/black box instead of CatFrame texture or solid
+     * colour.
+     * <p>
+     * 为 true 时使用原版灰/黑框，替代 CatFrame 纹理或纯色。
+     * </p>
      */
     protected boolean useVanillaTexture = false;
 
     /**
-     * If true, always draw vertical bar cursor (|). If false, match vanilla behaviour:
+     * If true, always draw vertical bar cursor (|). If false, match vanilla
+     * behaviour:
      * underscore (_) at end of text, vertical bar (|) when editing inside text.
-     * <p>为 true 时始终绘制竖线光标(|)。为 false 时匹配原版行为：末尾_，文字内部|。</p>
+     * <p>
+     * 为 true 时始终绘制竖线光标(|)。为 false 时匹配原版行为：末尾_，文字内部|。
+     * </p>
      */
     protected boolean forceVerticalCursor = false;
 
@@ -64,7 +76,9 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
 
     /**
      * If true, use vanilla grey/black text field background.
-     * <p>为 true 时使用原版灰/黑文本框背景。</p>
+     * <p>
+     * 为 true 时使用原版灰/黑文本框背景。
+     * </p>
      */
     public AbstractEditBox setUseVanillaTexture(boolean useVanilla) {
         this.useVanillaTexture = useVanilla;
@@ -72,8 +86,11 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
     }
 
     /**
-     * If true, always draw vertical bar cursor instead of vanilla underscore-at-end.
-     * <p>为 true 时始终绘制竖线光标，而非原版的末尾下划线。</p>
+     * If true, always draw vertical bar cursor instead of vanilla
+     * underscore-at-end.
+     * <p>
+     * 为 true 时始终绘制竖线光标，而非原版的末尾下划线。
+     * </p>
      */
     public AbstractEditBox setForceVerticalCursor(boolean force) {
         this.forceVerticalCursor = force;
@@ -124,13 +141,15 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
         super.mouseClicked(mouseX, mouseY, mouseButton);
         if (mouseButton == 0) {
             focused = isMouseOver(mouseX, mouseY);
-            if (focused) cursorCounter = 0;
+            if (focused)
+                cursorCounter = 0;
         }
     }
 
     @Override
     public void keyTyped(char typedChar, int keyCode) {
-        if (!focused) return;
+        if (!focused)
+            return;
 
         // Ctrl+A: select all
         if (keyCode == 30 && isCtrlKeyDown()) {
@@ -189,21 +208,26 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
         } else if (keyCode == 203) { // Left arrow
             if (cursorPosition > 0) {
                 cursorPosition--;
-                if (!GuiScreen.isShiftKeyDown()) selectionEnd = cursorPosition;
+                if (!GuiScreen.isShiftKeyDown())
+                    selectionEnd = cursorPosition;
             }
         } else if (keyCode == 205) { // Right arrow
             if (cursorPosition < text.length()) {
                 cursorPosition++;
-                if (!GuiScreen.isShiftKeyDown()) selectionEnd = cursorPosition;
+                if (!GuiScreen.isShiftKeyDown())
+                    selectionEnd = cursorPosition;
             }
         } else if (keyCode == 199) { // Home
             cursorPosition = 0;
-            if (!GuiScreen.isShiftKeyDown()) selectionEnd = cursorPosition;
+            if (!GuiScreen.isShiftKeyDown())
+                selectionEnd = cursorPosition;
         } else if (keyCode == 207) { // End
             cursorPosition = text.length();
-            if (!GuiScreen.isShiftKeyDown()) selectionEnd = cursorPosition;
+            if (!GuiScreen.isShiftKeyDown())
+                selectionEnd = cursorPosition;
         } else if (typedChar != 0 && text.length() < maxLength && ChatAllowedCharacters.isAllowedCharacter(typedChar)) {
-            if (selectionEnd != cursorPosition) deleteSelection();
+            if (selectionEnd != cursorPosition)
+                deleteSelection();
             text = text.substring(0, cursorPosition) + typedChar + text.substring(cursorPosition);
             cursorPosition++;
             selectionEnd = cursorPosition;
@@ -212,7 +236,8 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
     }
 
     private void deleteSelection() {
-        if (selectionEnd == cursorPosition) return;
+        if (selectionEnd == cursorPosition)
+            return;
         int start = Math.min(cursorPosition, selectionEnd);
         int end = Math.max(cursorPosition, selectionEnd);
         text = text.substring(0, start) + text.substring(end);
@@ -221,7 +246,8 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
     }
 
     private String getSelectedText() {
-        if (selectionEnd == cursorPosition) return "";
+        if (selectionEnd == cursorPosition)
+            return "";
         int start = Math.min(cursorPosition, selectionEnd);
         int end = Math.max(cursorPosition, selectionEnd);
         return text.substring(start, end);
@@ -243,7 +269,9 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
 
     /**
      * Called whenever the text content changes. Subclasses can override to react.
-     * <p>当文本内容变化时调用。子类可重写以响应变化。</p>
+     * <p>
+     * 当文本内容变化时调用。子类可重写以响应变化。
+     * </p>
      */
     protected void onTextChanged() {
     }
@@ -303,7 +331,7 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
         // Draw cursor (blinking)
         if (focused && (cursorCounter / 6) % 2 == 0) {
             int cursorX = textX + font.getStringWidth(clipped.substring(0,
-                Math.min(cursorPosition, clipped.length())));
+                    Math.min(cursorPosition, clipped.length())));
 
             boolean atEnd = cursorPosition >= text.length() && text.length() < maxLength;
             if (forceVerticalCursor || !atEnd) {
@@ -318,7 +346,8 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
 
     @Override
     protected int getInnerHeight() {
-        // Single-line box: content height equals the visible height, so it never scrolls.
+        // Single-line box: content height equals the visible height, so it never
+        // scrolls.
         // 单行文本框：内容高度等于可视高度，因此永不滚动。
         return height - totalInnerPadding();
     }
@@ -326,7 +355,9 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
     /**
      * Draw vanilla-style border + black fill background. When focused the border
      * is highlighted white, matching vanilla {@code EditBox}.
-     * <p>绘制原版风格边框 + 黑色填充背景。获得焦点时边框高亮为白色，与原版 {@code EditBox} 一致。</p>
+     * <p>
+     * 绘制原版风格边框 + 黑色填充背景。获得焦点时边框高亮为白色，与原版 {@code EditBox} 一致。
+     * </p>
      */
     private void drawVanillaBackground(boolean focused) {
         int borderColor = focused ? 0xFFFFFFFF : 0xFFA0A0A0;

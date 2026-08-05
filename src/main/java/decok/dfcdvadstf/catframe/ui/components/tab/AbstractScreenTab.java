@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components.tab;
 
 import decok.dfcdvadstf.catframe.ui.Text;
-import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.resources.I18n;
@@ -24,7 +24,7 @@ public abstract class AbstractScreenTab implements Tab {
     /**
      * 高版本风格组件列表。
      */
-    protected List<GuiScreenEvent> tabGuiScreenEvents = new ArrayList<>();
+    protected List<GuiEventListener> tabGuiScreenEvents = new ArrayList<>();
     protected boolean visible = true;
     protected int tabId;
     protected String tabNameKey;
@@ -143,7 +143,7 @@ public abstract class AbstractScreenTab implements Tab {
     /**
      * 注册一个高版本风格的 Component 到 Tab。
      */
-    protected void addComponent(GuiScreenEvent guiScreenEvent) {
+    protected void addComponent(GuiEventListener guiScreenEvent) {
         tabGuiScreenEvents.add(guiScreenEvent);
         tabWidgets.add(guiScreenEvent);
     }
@@ -157,20 +157,20 @@ public abstract class AbstractScreenTab implements Tab {
     @Override
     public void visitChildren(Consumer<Object> visitor) {
         for (Object widget : tabWidgets) {
-            if (!(widget instanceof GuiScreenEvent) || !tabGuiScreenEvents.contains(widget)) {
+            if (!(widget instanceof GuiEventListener) || !tabGuiScreenEvents.contains(widget)) {
                 visitor.accept(widget);
             }
         }
     }
 
     @Override
-    public void visitComponents(Consumer<GuiScreenEvent> visitor) {
-        for (GuiScreenEvent guiScreenEvent : tabGuiScreenEvents) {
+    public void visitComponents(Consumer<GuiEventListener> visitor) {
+        for (GuiEventListener guiScreenEvent : tabGuiScreenEvents) {
             visitor.accept(guiScreenEvent);
         }
         for (Object widget : tabWidgets) {
-            if (widget instanceof GuiScreenEvent && !tabGuiScreenEvents.contains(widget)) {
-                visitor.accept((GuiScreenEvent) widget);
+            if (widget instanceof GuiEventListener && !tabGuiScreenEvents.contains(widget)) {
+                visitor.accept((GuiEventListener) widget);
             }
         }
     }

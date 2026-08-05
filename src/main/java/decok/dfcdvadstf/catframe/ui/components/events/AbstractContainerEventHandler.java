@@ -23,7 +23,7 @@ import javax.annotation.Nullable;
 public abstract class AbstractContainerEventHandler extends AbstractComponent implements ContainerEventHandler {
 
     @Nullable
-    private GuiScreenEvent focusedChild;
+    private GuiEventListener focusedChild;
     private boolean dragging;
 
     public AbstractContainerEventHandler() {
@@ -49,12 +49,12 @@ public abstract class AbstractContainerEventHandler extends AbstractComponent im
 
     @Nullable
     @Override
-    public GuiScreenEvent getFocused() {
+    public GuiEventListener getFocused() {
         return focusedChild;
     }
 
     @Override
-    public void setFocused(@Nullable GuiScreenEvent focused) {
+    public void setFocused(@Nullable GuiEventListener focused) {
         if (this.focusedChild == focused) {
             return;
         }

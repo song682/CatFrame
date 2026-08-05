@@ -16,7 +16,8 @@ import java.util.function.Consumer;
  * 不负责渲染；对标高版本 Minecraft 的 {@code MultilineTextField}。
  * </p>
  * <p>
- * Multi-line text field — pure logic layer managing the value, cursor, selection
+ * Multi-line text field — pure logic layer managing the value, cursor,
+ * selection
  * and automatic line wrapping of multi-line text; rendering is left to the
  * widget. Counterpart of the high-version Minecraft {@code MultilineTextField}.
  * </p>
@@ -40,8 +41,10 @@ public class MultilineTextField {
     private int characterLimit = NO_LIMIT;
     private int lineLimit = NO_LIMIT;
     private final int width;
-    private Consumer<String> valueListener = s -> {};
-    private Runnable cursorListener = () -> {};
+    private Consumer<String> valueListener = s -> {
+    };
+    private Runnable cursorListener = () -> {
+    };
 
     public MultilineTextField(FontRenderer font, int width) {
         this.font = font;
@@ -111,7 +114,8 @@ public class MultilineTextField {
         if (!input.isEmpty() || this.hasSelection()) {
             String text = this.truncateInsertionText(filterText(input));
             StringView selected = this.getSelected();
-            String newValue = new StringBuilder(this.value).replace(selected.beginIndex, selected.endIndex, text).toString();
+            String newValue = new StringBuilder(this.value).replace(selected.beginIndex, selected.endIndex, text)
+                    .toString();
             if (!this.overflowsLineLimit(newValue)) {
                 this.value = newValue;
                 this.cursor = selected.beginIndex + text.length();
@@ -175,7 +179,9 @@ public class MultilineTextField {
 
     /**
      * Move the cursor absolutely, relatively, or from the end of the value.
-     * <p>以绝对、相对或从文本末尾的方式移动光标。</p>
+     * <p>
+     * 以绝对、相对或从文本末尾的方式移动光标。
+     * </p>
      */
     public void seekCursor(Whence whence, int cursor) {
         switch (whence) {
@@ -197,13 +203,18 @@ public class MultilineTextField {
 
     /**
      * Move the cursor to the same visual column on an adjacent line.
-     * <p>将光标移动到相邻行同一视觉列。</p>
+     * <p>
+     * 将光标移动到相邻行同一视觉列。
+     * </p>
      */
     public void seekCursorLine(int lineOffset) {
         if (lineOffset != 0) {
-            int oldCursorLeft = this.font.getStringWidth(this.value.substring(this.getCursorLineView().beginIndex, this.cursor)) + LINE_SEEK_PIXEL_BIAS;
+            int oldCursorLeft = this.font.getStringWidth(
+                    this.value.substring(this.getCursorLineView().beginIndex, this.cursor)) + LINE_SEEK_PIXEL_BIAS;
             StringView lineView = this.getCursorLineView(lineOffset);
-            int newCursor = this.font.trimStringToWidth(this.value.substring(lineView.beginIndex, lineView.endIndex), oldCursorLeft).length();
+            int newCursor = this.font
+                    .trimStringToWidth(this.value.substring(lineView.beginIndex, lineView.endIndex), oldCursorLeft)
+                    .length();
             this.seekCursor(Whence.ABSOLUTE, lineView.beginIndex + newCursor);
         }
     }
@@ -211,19 +222,24 @@ public class MultilineTextField {
     /**
      * Place the cursor at the text position under the given point (widget-local
      * coordinates, unscrolled).
-     * <p>将光标定位到给定点（组件局部、未滚动坐标）下的文本位置。</p>
+     * <p>
+     * 将光标定位到给定点（组件局部、未滚动坐标）下的文本位置。
+     * </p>
      */
     public void seekCursorToPoint(double x, double y) {
         int left = (int) Math.floor(x);
         int top = (int) Math.floor(y / this.font.FONT_HEIGHT);
         StringView lineView = this.displayLines.get(clamp(top, 0, this.displayLines.size() - 1));
-        int clickedColumn = this.font.trimStringToWidth(this.value.substring(lineView.beginIndex, lineView.endIndex), left).length();
+        int clickedColumn = this.font
+                .trimStringToWidth(this.value.substring(lineView.beginIndex, lineView.endIndex), left).length();
         this.seekCursor(Whence.ABSOLUTE, lineView.beginIndex + clickedColumn);
     }
 
     /**
      * Select the whole word at the cursor.
-     * <p>选中光标处的整个单词。</p>
+     * <p>
+     * 选中光标处的整个单词。
+     * </p>
      */
     public void selectWordAtCursor() {
         StringView wordView = this.getPreviousWord();
@@ -236,9 +252,12 @@ public class MultilineTextField {
 
     /**
      * Handle a merged key event (legacy CatFrame path). LWJGL2 key codes are
-     * mapped to the high-version key semantics of {@code MultilineTextField.keyPressed}.
-     * <p>处理合并式按键事件（CatFrame 旧路径）。将 LWJGL2 键码映射为高版本
-     * {@code MultilineTextField.keyPressed} 的按键语义。</p>
+     * mapped to the high-version key semantics of
+     * {@code MultilineTextField.keyPressed}.
+     * <p>
+     * 处理合并式按键事件（CatFrame 旧路径）。将 LWJGL2 键码映射为高版本
+     * {@code MultilineTextField.keyPressed} 的按键语义。
+     * </p>
      *
      * @return true if the event was consumed / 若事件被消费则返回 true
      */
@@ -411,7 +430,9 @@ public class MultilineTextField {
     /**
      * Wrap the value into display lines, honouring hard '\n' breaks and soft
      * width-based breaks. Format codes (§x) advance no pen width.
-     * <p>将文本按硬换行 '\n' 与宽度软换行拆成显示行。格式码（§x）不计宽度。</p>
+     * <p>
+     * 将文本按硬换行 '\n' 与宽度软换行拆成显示行。格式码（§x）不计宽度。
+     * </p>
      */
     private void reflowDisplayLines() {
         this.displayLines.clear();
@@ -446,7 +467,9 @@ public class MultilineTextField {
     /**
      * Count the wrapped display lines of the given text (same rules as
      * {@link #reflowDisplayLines()}).
-     * <p>统计给定文本的换行显示行数（规则与 {@link #reflowDisplayLines()} 一致）。</p>
+     * <p>
+     * 统计给定文本的换行显示行数（规则与 {@link #reflowDisplayLines()} 一致）。
+     * </p>
      */
     private int countDisplayLines(String text) {
         if (text.isEmpty()) {
@@ -502,7 +525,9 @@ public class MultilineTextField {
 
     /**
      * Filter out characters not allowed in chat, keeping line breaks.
-     * <p>过滤聊天不允许的字符，保留换行符。</p>
+     * <p>
+     * 过滤聊天不允许的字符，保留换行符。
+     * </p>
      */
     private static String filterText(String input) {
         StringBuilder filtered = new StringBuilder(input.length());
@@ -524,7 +549,9 @@ public class MultilineTextField {
     /**
      * A view over [beginIndex, endIndex) of the value — counterpart of the
      * high-version {@code StringView} record.
-     * <p>对文本值 [beginIndex, endIndex) 区间的视图 —— 对标高版本 {@code StringView} record。</p>
+     * <p>
+     * 对文本值 [beginIndex, endIndex) 区间的视图 —— 对标高版本 {@code StringView} record。
+     * </p>
      */
     public static final class StringView {
 
@@ -541,7 +568,9 @@ public class MultilineTextField {
 
     /**
      * Cursor movement base — counterpart of the high-version {@code Whence} enum.
-     * <p>光标移动基准 —— 对标高版本 {@code Whence} 枚举。</p>
+     * <p>
+     * 光标移动基准 —— 对标高版本 {@code Whence} 枚举。
+     * </p>
      */
     public enum Whence {
         ABSOLUTE, RELATIVE, END

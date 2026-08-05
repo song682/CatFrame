@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.overlay;
 
-import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
+import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
 
 /**
  * <p>
@@ -24,7 +24,7 @@ import decok.dfcdvadstf.catframe.ui.components.events.GuiScreenEvent;
  * OverlayManager.INSTANCE.register(myOverlay);
  * }</pre>
  */
-public interface Overlay extends GuiScreenEvent {
+public interface Overlay extends GuiEventListener {
 
     /**
      * The render context deciding where {@link OverlayManager} draws this overlay

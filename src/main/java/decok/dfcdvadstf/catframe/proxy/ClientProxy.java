@@ -4,6 +4,7 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.command.CommandTitle;
+import decok.dfcdvadstf.catframe.compact.CompactBase;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientOverlayHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
@@ -70,6 +71,10 @@ public class ClientProxy extends CommonProxy {
         TintRegistry.register(new LeavesInHandTintProvider());
         TintRegistry.register(new RedstoneWireTintProvider());
         ModelRenderRegistry.register(new LeavesGraphicsExtension());
+
+        if (CompactBase.isIMEBackportInstalled()) {
+
+        }
     }
 
     @Override

@@ -14,7 +14,7 @@ import javax.annotation.Nullable;
  * {@code GuiEventListener}.
  * </p>
  */
-public interface GuiScreenEvent extends ILayout {
+public interface GuiEventListener extends ILayout {
 
     // ──── Position / Size ────
 

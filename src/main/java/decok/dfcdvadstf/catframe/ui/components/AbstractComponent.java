@@ -216,10 +216,11 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
     }
 
     /**
-     * 旧渲染入口 —— 仅保留给既有子类；新组件请覆盖 {@link #renderWidget}。<br>
+     * @deprecated 旧渲染入口 —— 仅保留给既有子类；新组件请覆盖 {@link #renderWidget}。<br>
      * Legacy render entry — kept only for existing subclasses; new components
      * should override {@link #renderWidget} instead.
      */
+    @Deprecated
     protected void render(int mouseX, int mouseY, float partialTicks) {
     }
 

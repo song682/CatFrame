@@ -1,39 +1,26 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
-import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
-import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
- * 文本框组件 —— 基于 {@link AbstractComponent}，对标高版本 Minecraft 的 {@code EditBox}。<br>
+ * 文本框组件 —— 基于 {@link AbstractTextAreaWidget}，对标高版本 Minecraft 的 {@code EditBox}。<br>
  * 支持纹理背景（useVanilla 切换原版黑白框）、原版风格光标（末尾_内部|）或强制竖线光标。
  * </p>
  * <p>
- * Edit box component — based on {@link AbstractComponent}, counterpart of the
+ * Edit box component — based on {@link AbstractTextAreaWidget}, counterpart of the
  * high-version Minecraft {@code EditBox}. Supports textured background (useVanilla
  * toggles vanilla grey/black box), vanilla-style cursor (_ at end, | inside text),
  * or forced vertical bar cursor.
  * </p>
  */
-public abstract class AbstractEditBox extends AbstractComponent {
-
-    /** CatFrame custom text field textures / CatFrame 自定义文本框纹理 */
-    protected static final ResourceLocation TEXT_FIELD_TEXTURE =
-            new ResourceLocation(Tags.MODID, "textures/gui/widgets/text_field.png");
-    protected static final ResourceLocation TEXT_FIELD_HIGHLIGHTED_TEXTURE =
-            new ResourceLocation(Tags.MODID, "textures/gui/widgets/text_field_highlighted.png");
-
-    /** Text field default size from mcmeta / 文本框默认尺寸 */
-    protected static final int TEXT_FIELD_DEFAULT_W = 200;
-    protected static final int TEXT_FIELD_DEFAULT_H = 20;
-    protected static final int TEXT_FIELD_BORDER = 1;
+public abstract class AbstractEditBox extends AbstractTextAreaWidget {
 
     private Text message;
     private String text = "";
@@ -63,11 +50,13 @@ public abstract class AbstractEditBox extends AbstractComponent {
     protected boolean forceVerticalCursor = false;
 
     public AbstractEditBox(int x, int y, int width, int height) {
-        super(x, y, width, height);
+        // Scroll rate 4 mirrors vanilla MultiLineEditBox's (int)(9.0 / 2.0).
+        // 滚动量 4 对齐原版 MultiLineEditBox 的 (int)(9.0 / 2.0)。
+        super(x, y, width, height, ScrollbarSettings.defaultSettings(4));
     }
 
     public AbstractEditBox(int x, int y, int width, int height, Text message) {
-        super(x, y, width, height);
+        this(x, y, width, height);
         this.message = message;
     }
 
@@ -132,6 +121,7 @@ public abstract class AbstractEditBox extends AbstractComponent {
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
+        super.mouseClicked(mouseX, mouseY, mouseButton);
         if (mouseButton == 0) {
             focused = isMouseOver(mouseX, mouseY);
             if (focused) cursorCounter = 0;
@@ -269,23 +259,13 @@ public abstract class AbstractEditBox extends AbstractComponent {
     // ──── Rendering ────
 
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
-
-        FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-
-        // Update cursor counter
-        cursorCounter++;
-
+    protected void extractBackground(GuiGraphicsExtractor graphics) {
         boolean focused = isFocused();
 
-        // Draw background
         if (useVanillaTexture) {
             drawVanillaBackground(focused);
         } else if (useTextureBackground) {
-            ResourceLocation tex = focused ? TEXT_FIELD_HIGHLIGHTED_TEXTURE : TEXT_FIELD_TEXTURE;
-            TextureStretching.drawAutoNinePatch(tex, x, y, width, height,
-                    TEXT_FIELD_DEFAULT_W, TEXT_FIELD_DEFAULT_H, TEXT_FIELD_BORDER);
+            super.extractBackground(graphics);
         } else {
             int bgColor = focused ? 0xFF333366 : 0xFF333333;
             drawRect(x, y, x + width, y + height, bgColor);
@@ -296,6 +276,16 @@ public abstract class AbstractEditBox extends AbstractComponent {
             drawRect(x, y, x + 1, y + height, borderColor);
             drawRect(x + width - 1, y, x + width, y + height, borderColor);
         }
+    }
+
+    @Override
+    protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
+        FontRenderer font = Minecraft.getMinecraft().fontRenderer;
+
+        // Update cursor counter
+        cursorCounter++;
+
+        boolean focused = isFocused();
 
         // Draw text or hint
         String displayText = text;
@@ -305,8 +295,8 @@ public abstract class AbstractEditBox extends AbstractComponent {
             textColor = 0x888888;
         }
 
-        int textX = x + 4;
-        int textY = y + (height - font.FONT_HEIGHT) / 2;
+        int textX = getInnerLeft();
+        int textY = getY() + (height - font.FONT_HEIGHT) / 2;
         String clipped = font.trimStringToWidth(displayText, width - 8);
         font.drawStringWithShadow(clipped, textX, textY, textColor);
 
@@ -324,6 +314,13 @@ public abstract class AbstractEditBox extends AbstractComponent {
                 font.drawStringWithShadow("_", cursorX, textY, 0xFFFFFF);
             }
         }
+    }
+
+    @Override
+    protected int getInnerHeight() {
+        // Single-line box: content height equals the visible height, so it never scrolls.
+        // 单行文本框：内容高度等于可视高度，因此永不滚动。
+        return height - totalInnerPadding();
     }
 
     /**

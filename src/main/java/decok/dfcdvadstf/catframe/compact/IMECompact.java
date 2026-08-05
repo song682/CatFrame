@@ -23,7 +23,8 @@ import javax.annotation.Nullable;
  * </p>
  * <p>
  * IME Input Backport compat — hooks CatFrame's self-drawn text-area family
- * ({@link AbstractTextAreaWidget} and subclasses such as {@link AbstractEditBox}
+ * ({@link AbstractTextAreaWidget} and subclasses such as
+ * {@link AbstractEditBox}
  * and {@code MultilineEditBox}) into the IMEInputBackport input pipeline: a
  * focused text area inside any visible Overlay activates the IME, committed
  * text is inserted at the caret as a whole (the same path as a manual paste —

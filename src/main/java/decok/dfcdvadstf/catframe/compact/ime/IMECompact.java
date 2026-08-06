@@ -1,5 +1,6 @@
-package decok.dfcdvadstf.catframe.compact;
+package decok.dfcdvadstf.catframe.compact.ime;
 
+import decok.dfcdvadstf.catframe.compact.CompactBase;
 import decok.dfcdvadstf.catframe.ui.components.AbstractEditBox;
 import decok.dfcdvadstf.catframe.ui.components.AbstractTextAreaWidget;
 import decok.dfcdvadstf.catframe.ui.components.events.ContainerEventHandler;
@@ -122,14 +123,16 @@ public final class IMECompact implements IMECommitTarget {
     /**
      * 在 OverlayManager 的可见 Overlay 中沿焦点链查找聚焦的文本区域。
      * 组件坐标是布局解析后的屏幕绝对坐标（GUI 逻辑坐标），可直接用于锚点。
+     * 包可见：{@link IgIMECompact} 复用同一套查找逻辑。
      * Finds the focused text area by walking the focus chain of every visible
      * Overlay registered in OverlayManager. Component coordinates are
      * layout-resolved screen absolutes (GUI units), usable as anchors directly.
+     * Package-visible: {@link IgIMECompact} reuses the same lookup.
      *
      * @return 聚焦的文本区域；无则 null
      */
     @Nullable
-    private static AbstractTextAreaWidget findFocusedArea() {
+    static AbstractTextAreaWidget findFocusedArea() {
         OverlayManager manager = OverlayManager.INSTANCE;
         for (ScreenAnchor anchor : ScreenAnchor.values()) {
             for (Overlay overlay : manager.getOverlays(anchor)) {

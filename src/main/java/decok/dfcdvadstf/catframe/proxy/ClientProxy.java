@@ -5,7 +5,8 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.command.CommandTitle;
 import decok.dfcdvadstf.catframe.compact.CompactBase;
-import decok.dfcdvadstf.catframe.compact.IMECompact;
+import decok.dfcdvadstf.catframe.compact.ime.IgIMECompact;
+import decok.dfcdvadstf.catframe.compact.ime.IMECompact;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientOverlayHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
@@ -80,6 +81,18 @@ public class ClientProxy extends CommonProxy {
             // 将 CatFrame 文本框体系注册为 IME 提交目标。API 为 compileOnly，
             // 因此 IMECompact 仅在模组存在时才会被加载（及其 IMEInputAPI 引用被解析）。
             IMECompact.register();
+        }
+
+        if (CompactBase.isIGIMEInstalled()) {
+            // Bridge CatFrame's text-area family into the IngameIME pipeline
+            // (focus activation + caret sync). Its classes are compileOnly, so
+            // IgIMECompact is only ever loaded when the mod is present; its
+            // register() also refuses to run while IMEInputBackport is active
+            // to avoid double commits.
+            // 将 CatFrame 文本框体系桥接进 IngameIME 输入管线（焦点激活 + 光标同步）。
+            // 其类为 compileOnly，因此 IgIMECompact 仅在模组存在时才会被加载；
+            // register() 亦会在 IMEInputBackport 在场时拒绝注册，避免双重提交。
+            IgIMECompact.register();
         }
     }
 

@@ -24,18 +24,24 @@ import javax.annotation.Nullable;
  * </p>
  * <p>
  * IngameIME compat — bridges CatFrame's self-drawn text-area family
- * ({@link AbstractTextAreaWidget} and subclasses such as {@link AbstractEditBox}
- * and {@code MultilineEditBox}) into the IngameIME input pipeline: a focused text
- * area inside any visible Overlay drives IngameIME's {@code onControlFocus} into
- * its OpenedAuto state machine (focus activates the IME, blur deactivates it, the
- * manual Home toggle is left untouched), and the caret is synced every tick so the
+ * ({@link AbstractTextAreaWidget} and subclasses such as
+ * {@link AbstractEditBox}
+ * and {@code MultilineEditBox}) into the IngameIME input pipeline: a focused
+ * text
+ * area inside any visible Overlay drives IngameIME's {@code onControlFocus}
+ * into
+ * its OpenedAuto state machine (focus activates the IME, blur deactivates it,
+ * the
+ * manual Home toggle is left untouched), and the caret is synced every tick so
+ * the
  * pre-edit text / input-mode indicator follows the CatFrame text box.
  * </p>
  * <p>
  * 与 IMEInputBackport 互斥：当 IMEInputBackport 也在场时本层不注册，避免两个 IME
  * 同时激活导致同一段输入被提交两次（两者提交路径不同：IngameIME 走
  * {@code callKeyTyped}，IMEInputBackport 走 {@code IMECommitTarget}）。<br>
- * Mutually exclusive with IMEInputBackport: when it is present this layer does not
+ * Mutually exclusive with IMEInputBackport: when it is present this layer does
+ * not
  * register, so the two IMEs never activate together and double-commit the same
  * input (IngameIME commits via {@code callKeyTyped}, IMEInputBackport via
  * {@code IMECommitTarget}).

@@ -39,7 +39,8 @@ import java.util.List;
  * high-version Minecraft
  * {@code Screen} (which extends {@code AbstractContainerEventHandler}). By
  * implementing
- * {@link GuiEventListener} and {@link ContainerEventHandler}, the screen itself is the
+ * {@link GuiEventListener} and {@link ContainerEventHandler}, the screen itself
+ * is the
  * root of the
  * CatFrame component tree; implementing {@link CatFrameInputScreen} lets
  * {@code MixinGuiScreen}
@@ -127,7 +128,8 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
 
     /**
      * 子类在此构建界面：通过 {@link #addRenderableWidget(GuiEventListener)} /
-     * {@link #addWidget(GuiEventListener)} / {@link #addRenderableOnly(GuiEventListener)} 注册组件。
+     * {@link #addWidget(GuiEventListener)} /
+     * {@link #addRenderableOnly(GuiEventListener)} 注册组件。
      * <p>
      * Subclasses build the UI here.
      * </p>
@@ -241,7 +243,8 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
     /**
      * Overridden as {@code public} (widening the vanilla {@code protected}) to
      * satisfy
-     * {@link GuiEventListener#mouseClicked(int, int, int)}. Forwards to vanilla buttons
+     * {@link GuiEventListener#mouseClicked(int, int, int)}. Forwards to vanilla
+     * buttons
      * first, then
      * dispatches to CatFrame children.
      */
@@ -321,18 +324,32 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
 
     /**
      * Overridden as {@code public} to satisfy
-     * {@link GuiEventListener#keyTyped(char, int)}. Handles
-     * <strong>only</strong> Esc-to-close and intentionally does not forward to
-     * children — split
-     * key events arrive via {@code ScreenKeyboardInput}. The
-     * {@code mc.currentScreen == this}
-     * guard makes the bridge + vanilla double-invocation harmless.
+     * {@link GuiEventListener#keyTyped(char, int)}. Handles Esc-to-close and
+     * then forwards to the focused child via {@link #dispatchKeyTyped(char, int)}.
+     * <p>
+     * Split keyboard events ({@code keyPressed}/{@code charTyped}) are dispatched
+     * via {@code ScreenKeyboardInput} and forwarded to the focused child through
+     * {@link #keyPressed}/{@link #charTyped}. However, leaf components (edit boxes,
+     * buttons, etc.) only override {@code keyTyped} — they do not implement the
+     * split-method equivalents. Therefore the legacy {@code keyTyped} bridge at the
+     * end of {@code ScreenKeyboardInput.handleCurrentEvent} must reach them,
+     * and this is achieved by calling {@code dispatchKeyTyped} here.
+     * </p>
+     * <p>
+     * 处理 Esc 关闭后向当前焦点子组件转发按键事件。拆分键盘事件经
+     * {@code ScreenKeyboardInput} 派发后通过 {@link #keyPressed}/{@link #charTyped}
+     * 转发给焦点子组件，但叶子组件（文本框、按钮等）只覆写了 {@code keyTyped}，
+     * 未覆写拆分方法等价体，故 {@code ScreenKeyboardInput.handleCurrentEvent}
+     * 末尾的 legacy {@code keyTyped} 桥接必须能到达它们——此处调用
+     * {@code dispatchKeyTyped} 完成该转发。
+     * </p>
      */
     @Override
     public void keyTyped(final char typedChar, final int keyCode) {
         if (keyCode == Keyboard.KEY_ESCAPE && shouldCloseOnEsc() && this.mc.currentScreen == this) {
             onClose();
         }
+        dispatchKeyTyped(typedChar, keyCode);
     }
 
     @Override

@@ -3,12 +3,13 @@
   "plugin": "decok.dfcdvadstf.catframe.mixin.CatFrameMixinPlugin",
   "target": "@env(DEFAULT)",
   "package": "decok.dfcdvadstf.catframe.mixin",
+  "minVersion": "0.8.5",
   "refmap": "mixins.catframe.refmap.json",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "middle.MixinGuiScreen"
   ],
   "client": [
+    "middle.MixinGuiScreen",
     "middle.MixinGuiScreenEventBridge",
     "middle.MixinRenderBlocks",
     "middle.MixinWorldRenderer"

@@ -165,6 +165,8 @@ Overlay 系统、TabRegistry、TabBar 四状态纹理、九宫格拉伸（Textur
 
 **修复**：`Screen.keyTyped` 的 Esc 处理之后补 `dispatchKeyTyped(typedChar, keyCode)`（ContainerEventHandler 已有默认实现会转发给焦点组件）；并让叶子组件实现 `keyPressed/charTyped`，或在 `ContainerEventHandler.dispatchKeyPressed` 内做 keyTyped 桥接（二选一，保持单一输入通道）。
 
+后续：已经修复，以后轮无需处理这些问题。
+
 ### C3. 客户端专用 Mixin 未经侧过滤 → 专用服务器必然崩溃
 [mixins.catframe.json#L8-L15](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/resources/mixins.catframe.json) · [CatFrameMixinPlugin.java#L30-L36](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/mixin/CatFrameMixinPlugin.java) · [mixin.gradle#L18-L20](d:/GAMES/Minecraft/modss/project/CatFrame/mixin.gradle)
 
@@ -175,6 +177,8 @@ Overlay 系统、TabRegistry、TabBar 四状态纹理、九宫格拉伸（Textur
 **第二轮复验（2026-08-06）**：JSON 半修复（3 个已移入 client），但 `MixinGuiScreen` 仍在公共列表 + `getMixins()` 覆写仍在——**问题依旧，只是范围缩小到 MixinGuiScreen 一个**。
 
 **修复**：把 `MixinGuiScreen` 移入 JSON 的 `"client"` 列表；删除 `getMixins()` 覆写（或按 `MixinEnvironment.getSide()` 返回侧正确的子集）。
+
+后续：已经修复，以后轮无需处理这些问题。
 
 ---
 

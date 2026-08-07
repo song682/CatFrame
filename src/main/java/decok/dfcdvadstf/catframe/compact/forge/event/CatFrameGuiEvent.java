@@ -36,7 +36,6 @@ public class CatFrameGuiEvent extends Event {
 
     /**
      * The GuiScreen object generating this event.
-     * <p>产生本事件的 GuiScreen 实例。</p>
      */
     public final GuiScreen gui;
 
@@ -51,13 +50,6 @@ public class CatFrameGuiEvent extends Event {
      * {@code Keyboard.getEventKey()}/{@code getEventKeyState()}/{@code getEventCharacter()}.
      * Subscribers must <strong>not</strong> call {@code Keyboard.next()} themselves, or they
      * would steal subsequent events from vanilla.
-     * <p>
-     * 围绕打开中屏幕的<strong>单个</strong>键盘事件触发，处于原版
-     * {@code GuiScreen.handleInput()} 的 {@code while(Keyboard.next())} 循环内——
-     * LWJGL2 当前事件有效，订阅者可自由读取
-     * {@code Keyboard.getEventKey()}/{@code getEventKeyState()}/{@code getEventCharacter()}；
-     * 但<strong>禁止</strong>自行调用 {@code Keyboard.next()}，否则会偷走原版后续事件。
-     * </p>
      */
     public static class KeyboardInputEvent extends CatFrameGuiEvent {
 
@@ -73,17 +65,9 @@ public class CatFrameGuiEvent extends Event {
          * and {@code Minecraft.func_152348_aa()} (global key dispatch, e.g. screenshot) are
          * all suppressed. Cancellation affects only the current event, not the rest of the
          * loop. Intended e.g. for IMEs swallowing keys during composition.
-         * <p>
-         * 在屏幕处理当前键盘事件<strong>之前</strong>触发。取消本事件将整体跳过这一次
-         * {@code GuiScreen.handleKeyboardInput()}：原版 {@code keyTyped}（含 Esc 关屏）、
-         * CatFrame 拆分派发（{@code keyPressed}/{@code keyReleased}/{@code charTyped} 及
-         * Tab 焦点导航）、{@code Minecraft.func_152348_aa()}（截图等全局按键派发）均被压掉。
-         * 取消只作用于当前事件，不影响循环内后续按键。典型用途：输入法组合期间吞掉按键。
-         * </p>
          */
         @Cancelable
         public static class Pre extends KeyboardInputEvent {
-
             public Pre(GuiScreen gui) {
                 super(gui);
             }
@@ -93,15 +77,9 @@ public class CatFrameGuiEvent extends Event {
          * Fired <strong>after</strong> the screen processed (or, if {@link Pre} was canceled,
          * skipped) the current keyboard event — but only while {@code gui} is still
          * {@code Minecraft.currentScreen}: if handling closed or switched the screen
-         * (e.g. Esc), Post is not fired for the dead screen.
-         * <p>
-         * 在屏幕处理完（若 {@link Pre} 被取消则为跳过）当前键盘事件<strong>之后</strong>触发；
-         * 仅当 {@code gui} 仍是 {@code Minecraft.currentScreen} 时才发出——若处理过程中
-         * 发生关屏/换屏（如 Esc），不会对已失效的屏幕补发 Post。
-         * </p>
+         * (e.g. Esc), Post is not fired for the dead screen
          */
         public static class Post extends KeyboardInputEvent {
-
             public Post(GuiScreen gui) {
                 super(gui);
             }

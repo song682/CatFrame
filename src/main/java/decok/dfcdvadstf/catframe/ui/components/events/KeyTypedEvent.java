@@ -12,7 +12,7 @@ public class KeyTypedEvent {
     }
 
     public static boolean isControlKeyPressed(){
-        return Minecraft.isRunningOnMac ? isWhichKeyPressed(Keyboard.KEY_LCONTROL) || isWhichKeyPressed(Keyboard.KEY_LMETA) : isWhichKeyPressed(Keyboard.KEY_RCONTROL) || isWhichKeyPressed(Keyboard.KEY_RMETA);
+        return Minecraft.isRunningOnMac ? isWhichKeyPressed(Keyboard.KEY_LCONTROL) || isWhichKeyPressed(Keyboard.KEY_RCONTROL) : isWhichKeyPressed(Keyboard.KEY_LMETA) || isWhichKeyPressed(Keyboard.KEY_RMETA);
     }
 
     public static boolean isLControlKeyPressed(){
@@ -37,5 +37,9 @@ public class KeyTypedEvent {
 
     public static boolean isTabKeyPressed(){
         return isWhichKeyPressed(Keyboard.KEY_TAB);
+    }
+
+    public static boolean isEnterKeyPressed(){
+        return isWhichKeyPressed(Keyboard.KEY_RETURN);
     }
 }

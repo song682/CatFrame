@@ -26,72 +26,72 @@ import java.nio.FloatBuffer;
 import java.util.*;
 
 /**
- * GUI 渲染上下文管理器 — 对标 26.1.2 {@code GuiGraphics}。
+ * GUI Rendering Context Manager — Corresponding to 26.1.2 {@code GuiGraphics}.
  * <p>
- * 职责：在 GUI 上下文（物品栏、容器界面等）中管理物品渲染所需的 GL 状态，
- * 封装 {@code depth / lighting / alpha test / blend} 的显式设置与恢复，
- * 使 {@code UniformRenderPipeline.renderItemQuads} 保持纯粹的 quad 处理职责，
- * 不依赖调用方预设的 GL 环境。
+ * Responsibilities: Manage the GL state needed for item rendering in GUI contexts (inventory, container screens, etc.),
+ * encapsulate explicit settings and restorations of {@code depth / lighting / alpha test / blend},
+ * keep {@code UniformRenderPipeline.renderItemQuads} focused purely on quad processing,
+ * and avoid relying on any GL environment preset by the caller.
  *
- * <h3>与 26.1.2 的对应关系</h3>
+ * <h3>Relationship with 26.1.2</h3>
  * <ul>
- *   <li>26.1.2 的 {@code RenderPipelines.GUI_ITEM} 隐式管理全部 GL 状态 →
- *       本类在 1.7.10 GL 即时模式下显式管理</li>
- *   <li>26.1.2 的 {@code GuiGraphics.item()} 通过 {@code GuiItemRenderState} 提取渲染状态 →
- *       本类委托给 {@link IItemStateProvider#render}，并将渲染记录提交到 {@link GuiRenderState}</li>
- *   <li>26.1.2 的附魔光效由 render pipeline 的 glint shader 处理 →
- *       由本类 {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)} 实现，
- *       管线 {@code FeatureRenderDispatcher} 逐提交项驱动，覆盖全部物品阶段</li>
- *   <li>26.1.2 的 {@code GuiRenderState} 分层收集器 →
- *       独立的 {@link GuiRenderState} 完整实现</li>
+ * <li>26.1.2's {@code RenderPipelines.GUI_ITEM} implicitly manages all GL state →
+ * This class explicitly manages GL in 1.7.10 immediate mode</li>
+ * <li>26.1.2's {@code GuiGraphics.item()} extracts render state via {@code GuiItemRenderState} →
+ * This class delegates to {@link IItemStateProvider#render} and submits rendering records to {@link GuiRenderState}</li>
+ * <li>26.1.2's enchantment glint handled by the render pipeline's glint shader →
+ * Implemented by this class with {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)},
+ * with the pipeline's {@code FeatureRenderDispatcher} driving per submitted item, covering all item phases</li>
+ * <li>26.1.2's {@code GuiRenderState} layered collector →
+ * Fully implemented with a standalone {@link GuiRenderState}</li>
  * </ul>
  *
- * <h3>使用方式</h3>
+ * <h3>Usage</h3>
  * <pre>{@code
  * GuiGraphicsExtractor gui = GuiGraphicsExtractor.getInstance();
- * gui.resetForNewFrame();          // 帧开始（drawScreen HEAD）
- * gui.item(stack, x, y);           // 提取：快照矩阵 + 收集状态（不立即绘制）
- * gui.extractDeferredElements();   // 帧末（drawScreen RETURN）统一 flush 物品 + tooltip
+ * gui.resetForNewFrame(); // Start of frame (drawScreen HEAD)
+ * gui.item(stack, x, y); // Extract: snapshot matrix, collect state (doesn’t draw immediately)
+ * gui.extractDeferredElements(); // End of frame (drawScreen RETURN) flush all items and tooltips
  * }</pre>
  */
 public class GuiGraphicsExtractor {
 
     /**
-     * GL 状态保存掩码：覆盖 enable 位、纹理绑定、当前颜色。
-     * 不使用 GL_COLOR_BUFFER_BIT — 避免保存/恢复 framebuffer 颜色内容。
+     * GL state save mask: overwrites the enable bits, texture bindings, and current color.
+     * Does not use GL_COLOR_BUFFER_BIT — avoids saving/restoring the framebuffer color contents.
      */
     private static final int GL_SAVE_MASK =
             GL11.GL_ENABLE_BIT | GL11.GL_TEXTURE_BIT | GL11.GL_CURRENT_BIT;
 
-    /** 全局单例 — 1.7.10 没有每帧创建 GuiGraphics 的机制，用单例替代 */
+    /** Global singleton — 1.7.10 doesn't have a per-frame GuiGraphics creation mechanism, using a singleton instead */
     private static final GuiGraphicsExtractor INSTANCE = new GuiGraphicsExtractor();
 
     /**
-     * modelview 矩阵快照/恢复缓冲（客户端单线程复用）。
-     * <p>采集时 {@code glGetFloat} 写入后立即拷贝为 {@code float[16]}，flush 时再填回供 {@code glLoadMatrix}。</p>
+     * modelview matrix snapshot/restore buffer (reused by single-threaded client).
+     * <p>During capture, {@code glGetFloat} writes are immediately copied into {@code float[16]}, and during flush, they are filled back for {@code glLoadMatrix}.</p>
      */
     private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
 
     private final Minecraft mc;
 
-    /** 完整分层状态收集器（对标 26.1.2 GuiRenderState） */
+    /** Complete layered state collector (aligned with 26.1.2 GuiRenderState) */
     private final GuiRenderState renderState;
 
-    /** 延迟 tooltip — 对标 26.1.2 {@code GuiGraphics.deferredTooltip} */
+    /** Delayed tooltip — corresponds to 26.1.2 {@code GuiGraphics.deferredTooltip} */
     @Nullable
     private Runnable deferredTooltip;
 
     /**
-     * 帧内 PiP 提交队列 — 对标 26.1.2 {@code GuiRenderState} 收集的 PiP 状态。
-     * <p>3D 方块模型 / GUI 实体 / oversized 物品在采集阶段入队，帧末 flush 时按类型分派绘制。</p>
+     * In-frame PiP (Picture-in-Picture) submission queue — corresponds to the PiP state collected by 26.1.2 {@code GuiRenderState}.
+     * <p>3D block models / GUI entities / oversized items are queued during the collection phase and dispatched for rendering by type at the end of the frame flush.</p>
      */
     private final List<PictureInPictureRenderState> deferredPip = new ArrayList<>();
 
-    /** PiP 分派表：状态运行时类型 → 对应渲染器 — 对标 26.1.2 {@code PictureInPictureRenderer} 注册表。 */
+    /** PiP dispatch table: runtime type of state → corresponding renderer — corresponds to the 26.1.2 {@code PictureInPictureRenderer} registry. */
     private final Map<Class<? extends PictureInPictureRenderState>, PictureInPictureRenderer<?>> pipDispatchTable =
             new HashMap<>();
 
-    /** GUI 物品绘制回调实现 — 供 {@link OversizedItemPipRenderer} 复用本类的物品渲染逻辑。 */
+    /** GUI item drawing callback implementation — allows {@link OversizedItemPipRenderer} to reuse this class's item rendering logic. */
     private final ItemGuiDrawer itemDrawer = new ItemGuiDrawerImpl();
 
     public GuiGraphicsExtractor() {
@@ -109,7 +109,7 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 获取全局单例。
+     * Get the global singleton.
      */
     public static GuiGraphicsExtractor getInstance() {
         return INSTANCE;
@@ -118,26 +118,26 @@ public class GuiGraphicsExtractor {
     // ==================== 物品渲染 ====================
 
     /**
-     * 在 GUI 中渲染物品（无种子偏移）。
+     * Render items in the GUI (without seed offset).
      */
     public void item(ItemStack stack) {
         item(stack, 0, 0);
     }
 
     /**
-     * 在 GUI 中渲染物品（<b>延迟到帧末</b>）。
+     * Renders an item in the GUI (<b>deferred to the end of the frame</b>).
      * <p>
-     * 对标 LaterRenderer.md 路径一 / 26.1.2 {@code GuiGraphics.item()}：<b>提取阶段不绘制</b>，
-     * 仅快照当前 modelview 矩阵并将渲染状态收集到 {@link GuiRenderState} 树，
-     * 实际 GL 绘制推迟到 {@link #extractDeferredElements()}。
+     * Corresponds to LaterRenderer.md path 1 / 26.1.2 {@code GuiGraphics.item()}: <b>doesn't draw during the extraction phase</b>,
+     * it just snapshots the current modelview matrix and collects the render state into the {@link GuiRenderState} tree,
+     * and the actual GL drawing is deferred to {@link #extractDeferredElements()}.
      * <p>
-     * 与 {@code RenderCommandBuffers} 的<b>作用域内延迟</b>（begin→submit→endScope 均在同一 GL
-     * 上下文内 flush，无需矩阵快照）不同：<b>帧末延迟</b>的 flush 发生在 {@code drawScreen}
-     * 返回时，GL 上下文已切换，故必须在此快照 modelview 矩阵，帧末 {@code glLoadMatrix} 恢复。
+     * Unlike {@code RenderCommandBuffers} which <b>defers within a scope</b> (begin→submit→endScope flushes in the same GL
+     * context, no matrix snapshot needed), flushing at the <b>end of frame</b> happens after {@code drawScreen} returns,
+     * at which point the GL context has switched, so the modelview matrix must be snapshotted here and restored with {@code glLoadMatrix} at the end of the frame.
      *
-     * @param stack 待渲染的物品栈
-     * @param x     GUI 槽位 X 坐标（像素，仅用于分层/追踪）
-     * @param y     GUI 槽位 Y 坐标（像素，仅用于分层/追踪）
+     * @param stack The item stack to render
+     * @param x GUI slot X coordinate (pixels, only for layering/tracking)
+     * @param y GUI slot Y coordinate (pixels, only for layering/tracking)
      */
     public void item(ItemStack stack, int x, int y) {
         if (stack == null || stack.getItem() == null) return;
@@ -278,48 +278,48 @@ public class GuiGraphicsExtractor {
 
     // ==================== 附魔光效（统一 pass，由管线逐提交项驱动） ====================
 
-    /** 附魔光纹纹理 — 与原版 {@code RenderItem.RES_ITEM_GLINT} 一致 */
+    /** Enchantment glint texture — consistent with the original {@code RenderItem.RES_ITEM_GLINT} */
     private static final ResourceLocation ENCHANTMENT_GLINT =
             new ResourceLocation("textures/misc/enchanted_item_glint.png");
 
     /**
-     * 纹理矩阵 UV 缩放 — 对齐 26.1.2 {@code GlintTexturingStateShard(8.0F)}。
-     * 烘焙 UV 为图集坐标（单 sprite 跨度约 0.03），放大 8 倍后流纹跨度
-     * 与原版 [0,1] UV × 0.125 的视觉密度相当。
+     * Texture matrix UV scaling — aligns with 26.1.2 {@code GlintTexturingStateShard(8.0F)}.
+     * Baked UVs are atlas coordinates (single sprite span ~0.03), flow pattern span is multiplied by 8
+     * Equivalent in visual density to the original [0,1] UV × 0.125.
      */
     private static final float GLINT_UV_SCALE = 8.0F;
 
     /**
-     * 单周期流纹滚动幅度（scale 前坐标系）。
+     * Single-cycle glint scroll amplitude (coordinate system before scale).
      * <p>
-     * 纹理矩阵先 {@code scale(GLINT_UV_SCALE)} 再 {@code translate(scroll)}，
-     * 平移量会被 scale 放大 {@code GLINT_UV_SCALE} 倍；取 {@code 1/GLINT_UV_SCALE}
-     * 使每周期的有效滚动恰为 1 个纹理单位（周期末尾无缝回环），
-     * 与原版 1.7.10 {@code ItemRenderer}（scale 0.125 × scroll 8.0 = 1.0/周期）流速一致。
-     * 此前直接沿用幅度 8.0 叠加 scale 8 放大，实际流速是原版的 64 倍（闪动过快）。
+     * The texture matrix first {@code scale(GLINT_UV_SCALE)} then {@code translate(scroll)},
+     * so the translation gets amplified by {@code GLINT_UV_SCALE}; we use {@code 1/GLINT_UV_SCALE}
+     * to ensure each cycle scrolls exactly 1 texture unit (seamless loop at the end of the cycle),
+     * matching the flow speed of the original 1.7.10 {@code ItemRenderer} (scale 0.125 × scroll 8.0 = 1.0/cycle).
+     * Previously, just using amplitude 8.0 with scale 8 ended up making the glint 64× faster than intended (way too flickery).
      * Effective scroll per cycle = GLINT_UV_SCALE × amplitude = 1.0 texture unit,
      * matching vanilla glint flow speed (the old 8.0 amplitude ran 64× too fast).
      */
     private static final float GLINT_SCROLL_AMPLITUDE = 1.0F / GLINT_UV_SCALE;
 
     /**
-     * 判断提交项是否需要叠加附魔光效。
+     * Determine whether the submitted item needs to stack the enchantment glow effect.
      * <p>
-     * 仅物品阶段（GUI / 手持 / 掉落 / 展示框）适用；方块阶段
-     * （BLOCK_WORLD / BLOCK_GUI）无 foil 语义。
+     * Only applicable to item phases (GUI / hand-held / drop / display frame); block phases
+     * (BLOCK_WORLD / BLOCK_GUI) have no foil semantics.
      */
     public static boolean glintApplicable(RenderSubmit s) {
         return isItemGlintPhase(s.phase) && s.stack != null && hasFoil(s.stack);
     }
 
     /**
-     * 判断物品是否应显示附魔光效 — 对标 26.1.2 {@code ItemStack.hasFoil()}。
+     * Determines whether an item should display the enchantment glint — corresponds to 26.1.2 {@code ItemStack.hasFoil()}.
      * <p>
-     * 优先级：
+     * Priority:
      * <ol>
-     *   <li>若有 {@link DataComponents#ENCHANTMENT_GLINT} 组件，按组件值强制开关</li>
-     *   <li>否则走 {@link ItemStack#hasEffect(int)}（默认实现为 {@code isItemEnchanted()}，
-     *       但金苹果等物品会覆写为 {@code damage > 0}）</li>
+     * <li>If it has the {@link DataComponents#ENCHANTMENT_GLINT} component, toggle according to the component value</li>
+     * <li>Otherwise, use {@link ItemStack#hasEffect(int)} (default implementation is {@code isItemEnchanted()},
+     * but items like golden apples override it as {@code damage > 0})</li>
      * </ol>
      */
     public static boolean hasFoil(ItemStack stack) {
@@ -331,35 +331,34 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 渲染附魔光效：重放提交项的全部 quad 几何（含 solidColor 侧面），
-     * 以 glint 纹理 + 两层滚动纹理矩阵叠加绘制。
+     * Render enchantment glint: replay all quad geometry of the submitted item (including solidColor sides),
+     * and draw with the glint texture using two layers of scrolling texture matrices stacked.
      * <p>
-     * 背景：Forge 在 {@code RenderItem.renderItemAndEffectIntoGUI} 中将原版的
-     * GUI glint 补画禁用（{@code if (false && hasEffect())}，注释
-     * "modders must handle themselves"），且掉落物 / 手持的自定义
-     * {@code IItemRenderer} 分支同样绕开原版 glint pass。因此凡是被
-     * CatFrame 接管渲染的物品，附魔光效必须由本方法自行绘制。
+     * Background: Forge disables the original GUI glint in {@code RenderItem.renderItemAndEffectIntoGUI}
+     * ({@code if (false && hasEffect()}), with the comment "modders must handle themselves"),
+     * and custom {@code IItemRenderer} branches for dropped or held items also skip the original glint pass.
+     * So for any items whose rendering is taken over by CatFrame, the enchantment glint must be drawn by this method.
      * <p>
-     * 实现对齐两个原版参照：
+     * Implementation aligns with two vanilla references:
      * <ul>
-     *   <li><b>1.7.10 {@code ItemRenderer} 手持光效</b>：重绘同一份几何 +
-     *       {@code GL_TEXTURE} 矩阵两层滚动动画（周期 3000ms / 4873ms、旋转 -50°/+10°）、
-     *       {@code glDepthFunc(GL_EQUAL)} 精确叠加在已写入深度的模型片段上、
-     *       {@code glBlendFunc(GL_SRC_COLOR, GL_ONE)} 加色混合；</li>
-     *   <li><b>26.1.2 {@code GlintTexturingStateShard}</b>：glint 采样直接使用网格的
-     *       图集 UV，靠纹理矩阵放大（scale 8.0）取得合适的流纹跨度。</li>
+     * <li><b>1.7.10 {@code ItemRenderer} held item glint</b>: redraw the same geometry,
+     * {@code GL_TEXTURE} matrix two-layer scrolling animation (periods 3000ms / 4873ms, rotation -50°/10°),
+     * {@code glDepthFunc(GL_EQUAL)} to overlay precisely on model fragments with written depth,
+     * {@code glBlendFunc(GL_SRC_COLOR, GL_ONE)} additive blending;</li>
+     * <li><b>26.1.2 {@code GlintTexturingStateShard}</b>: glint sampling directly uses the mesh atlas UV,
+     * enlarged via texture matrix (scale 8.0) to get the right streak span.</li>
      * </ul>
      * <p>
-     * 调用时机：{@code FeatureRenderDispatcher} 逐提交项绘制完正常 pass 之后、
-     * {@code applyAfterPart()} 之前 —— 此时扩展链的 beforePart 状态（display 矩阵等）
-     * 仍然有效，{@link QuadWriter#writeGlintQuads} 重放几何可以得到与正常 pass
-     * 完全一致的顶点坐标，从而通过 {@code GL_EQUAL} 深度测试。
+     * Call timing: after {@code FeatureRenderDispatcher} has drawn the normal pass for each submitted item,
+     * but before {@code applyAfterPart()} — at this point, the beforePart state of the extension chain (like display matrix) is still valid,
+     * and {@link QuadWriter#writeGlintQuads} replaying geometry can get vertex coordinates identical to the normal pass,
+     * allowing {@code GL_EQUAL} depth testing.
      * <p>
-     * GL 状态经 {@code glPushAttrib} 全量保护（含纹理绑定），
-     * 调用方无需在本方法返回后重新绑定图集。
+     * GL state is fully protected via {@code glPushAttrib} (including texture bindings),
+     * so the caller doesn’t need to rebind the atlas after this method returns.
      *
-     * @param s 渲染提交项（须先通过 {@link #glintApplicable} 检查）
-     * @param t 共享 Tessellator 实例
+     * @param s The submitted item to render (must be checked via {@link #glintApplicable} first)
+     * @param t Shared Tessellator instance
      */
     public static void renderEnchantmentGlint(RenderSubmit s, Tessellator t) {
         // ENABLE_BIT: depth/blend/lighting/alpha test 开关位；DEPTH_BUFFER_BIT: depthFunc + depthMask；
@@ -409,7 +408,7 @@ public class GuiGraphicsExtractor {
         }
     }
 
-    /** 是否为持有 ItemStack 的物品渲染阶段（GUI / 手持 / 掉落 / 展示框）。 */
+    /** Whether it is the rendering phase of an item holding an ItemStack (GUI / Handheld / Dropped / Display Frame). */
     private static boolean isItemGlintPhase(RenderPhase phase) {
         return phase != null
                 && phase != RenderPhase.BLOCK_WORLD

@@ -13,13 +13,6 @@ import java.util.*;
 
 /**
  * <p>
- * Tab 容器条 —— 抽象基类。<br>
- * 子类必须提供 {@code barId}，并可自定义背景（纯色填充 + 可选贴图平铺，
- * 默认纯黑填充）。<br>
- * 外部模组在 {@code preInit} 中通过 {@link TabRegistry#registerTab} 注册
- * Tab 后，在 GUI 初始化时将注册的 Tab 装载到此 Bar 中。
- * </p>
- * <p>
  * Tab container bar — abstract base class.<br>
  * Subclasses must supply a {@code barId} and may customise the background
  * (solid colour fill + optional tiled texture; defaults to solid black).<br>
@@ -27,9 +20,7 @@ import java.util.*;
  * {@code preInit}, then the tabs are loaded into this Bar at GUI
  * initialisation.
  * </p>
- *
  * <p>
- * 此类还提供导航栏功能（按钮布局、绘制、输入处理），可直接在 GUI 屏幕中使用。<br>
  * This class also provides navigation bar features (button layout, rendering,
  * input handling)
  * that can be used directly in GUI screens.

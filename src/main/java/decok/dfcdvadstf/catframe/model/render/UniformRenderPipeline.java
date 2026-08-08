@@ -1,9 +1,10 @@
 package decok.dfcdvadstf.catframe.model.render;
 
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderTypeKey;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderCommandBuffers;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
-import decok.dfcdvadstf.catframe.model.render.pipeline.RenderType;
+import decok.dfcdvadstf.catframe.model.render.pipeline.RenderTypeRegistry;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
@@ -21,8 +22,8 @@ import javax.vecmath.Matrix4d;
  * <ul>
  *   <li>方块<b>世界</b>渲染（{@link RenderPhase#BLOCK_WORLD}）→ 内联即时写入当前 chunk
  *       Tessellator（原版 chunk 系统已完成批处理）；</li>
- *   <li>物品 / GUI 独立绘制路径 → 进入渲染作用域命令缓冲，按 {@link RenderType}
- *       排序批量 flush（solid→translucent、单次纹理绑定）。</li>
+ *   <li>物品 / GUI 独立绘制路径 → 进入渲染作用域命令缓冲，按注册表排序键
+ *       （{@link RenderTypeKey#sortKey()}，solid→translucent）批量 flush、单次纹理绑定。</li>
  * </ul>
  * <p>
  * 逐顶点写入循环已抽取到
@@ -77,7 +78,8 @@ public final class UniformRenderPipeline {
         boolean isGui = (phase == RenderPhase.BLOCK_GUI);
         // 方块渲染绑定 blocks atlas；GUI 恒开混合（对齐改造前 renderBlockQuads GUI 路径），
         // 世界渲染不透明。方块路径均不关闭面剔除（disableCull=false）。
-        RenderType type = isGui ? RenderType.BLOCK_ATLAS_TRANSLUCENT : RenderType.BLOCK_ATLAS_SOLID;
+        RenderTypeKey type = isGui
+                ? RenderTypeRegistry.BLOCK_ATLAS_TRANSLUCENT : RenderTypeRegistry.BLOCK_ATLAS_SOLID;
 
         RenderSubmit s = new RenderSubmit(
                 phase, part, type,
@@ -133,7 +135,7 @@ public final class UniformRenderPipeline {
 
         // 纹理图集选择：以烘焙期写入的 quad 标记为准（ModelJsonUnbakedAdapter →
         // BakedQuad.blockAtlas），渲染期零猜测。混合图集模型拆分为最多两次提交，
-        // 各自落入正确的 RenderType 分组（对标 26.1.2 per-quad itemRenderType）。
+        // 各自落入正确的注册表分组（对标 26.1.2 per-quad itemRenderType）。
         // 对标 26.1.2：ITEM_CUTOUT / ITEM_TRANSLUCENT 管线默认启用背面剔除，
         // builtin/generated 模型已带 north+south 双面（winding 对称），侧面 quad
         // 绕序对标 emitFaceFromCorners——启用 cull 后所有场景正确。
@@ -141,7 +143,7 @@ public final class UniformRenderPipeline {
         for (int i = 0; i < split.length; i++) {
             BlockStateModelPart sub = split[i];
             if (sub == null) continue;
-            RenderType type = RenderType.of(i == 0, blendRequired);
+            RenderTypeKey type = RenderTypeRegistry.of(i == 0, blendRequired);
             RenderSubmit s = new RenderSubmit(
                     phase, sub, type,
                     x, y, z, 0,

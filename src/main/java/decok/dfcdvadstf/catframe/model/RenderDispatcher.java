@@ -231,7 +231,7 @@ public class RenderDispatcher {
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             // 开渲染作用域：物品的多个子模型（双模型/composite/多层）在作用域内累积，
-            // endScope 时按 RenderType 排序批量 flush（solid→translucent、单次纹理绑定）。
+            // endScope 时按注册表分组排序批量 flush（solid→translucent、单次纹理绑定）。
             RenderCommandBuffers.beginScope();
             try {
                 itemModel.render(stack, RenderPhase.ITEM_GUI);

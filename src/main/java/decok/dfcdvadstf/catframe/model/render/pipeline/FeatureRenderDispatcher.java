@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.model.render.pipeline;
 
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderTypeKey;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
@@ -13,12 +14,12 @@ import java.util.Map;
 /**
  * 命令执行器 / 批量 flush，对标原版 26w+ 管线中的 {@code FeatureRenderDispatcher}。
  * <p>
- * 消费 {@link SubmitNodeStorage} 里累积的 {@link RenderSubmit}，按 {@link RenderType}
- * 分组（solid → translucent 顺序）执行绘制。
+ * 消费 {@link SubmitNodeStorage} 里累积的 {@link RenderSubmit}，按注册表排序快照
+ * （{@link RenderTypeKey#sortKey()} 升序，solid 先于 translucent）执行绘制。
  *
  * <h3>批处理与零回归的折中</h3>
- * <p>同一 {@link RenderType} 分组内<b>纹理绑定与 GL 状态（混合/剔除）只设置一次</b>，
- * 并按 solid→translucent 排序，从而减少纹理切换、修正半透明叠加顺序。
+ * <p>同一 {@link RenderTypeKey} 分组内<b>纹理绑定与 GL 状态（混合/剔除）只设置一次</b>，
+ * 并按排序键升序 flush，从而减少纹理切换、修正半透明叠加顺序。
  * <p>但每个 {@link RenderSubmit} 仍各自 {@code applyBeforePart → startDrawingQuads →
  * write → draw → applyAfterPart}，严格保留原逐部件生命周期：
  * <ul>
@@ -36,13 +37,13 @@ public final class FeatureRenderDispatcher {
 
     /**
      * 批量 flush 命令缓冲（用于物品 / GUI 独立绘制作用域）。
-     * 按 {@link RenderType} 声明顺序（solid 先于 translucent）遍历非空分组。
+     * 按注册表排序快照顺序（solid 先于 translucent）遍历非空分组。
      */
     public static void flushBatched(SubmitNodeStorage storage) {
-        for (Map.Entry<RenderType, List<RenderSubmit>> entry : storage.groups()) {
+        for (Map.Entry<RenderTypeKey, List<RenderSubmit>> entry : storage.groups()) {
             List<RenderSubmit> group = entry.getValue();
             if (group == null || group.isEmpty()) continue;
-            RenderType type = entry.getKey();
+            RenderTypeKey type = entry.getKey();
 
             Tessellator t = Tessellator.instance;
 

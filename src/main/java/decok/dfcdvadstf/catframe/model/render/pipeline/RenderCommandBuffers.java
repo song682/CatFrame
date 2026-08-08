@@ -13,7 +13,7 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
  *   <li><b>世界方块</b>（{@link RenderPhase#BLOCK_WORLD}）：永不进缓冲，直接
  *       {@link FeatureRenderDispatcher#flushInline(RenderSubmit)} 写入当前 chunk Tessellator。</li>
  *   <li><b>作用域内</b>：有活动作用域时累积到 {@link SubmitNodeStorage}，
- *       {@link #endScope()} 计数归零时按 RenderType 排序批量 flush。</li>
+ *       {@link #endScope()} 计数归零时按注册表排序键批量 flush。</li>
  *   <li><b>无作用域回退</b>：任何未被 {@link #beginScope()} 包裹的调用路径，
  *       即时以"单项作用域"批量 flush —— 与改造前单次 draw 行为完全一致，零回归。</li>
  * </ul>

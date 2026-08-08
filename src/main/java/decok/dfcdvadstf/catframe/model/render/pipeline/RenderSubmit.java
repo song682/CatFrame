@@ -29,8 +29,8 @@ public final class RenderSubmit implements RenderSubmitView {
     public final RenderPhase phase;
     /** 待渲染部件（提供 {@code getAllQuads()}）。 */
     public final BlockStateModelPart part;
-    /** 分组类型（图集 + 混合）。 */
-    public final RenderType type;
+    /** 分组类型（图集 + 混合），直接持注册表条目引用（submit 路径零查找）。 */
+    public final RenderTypeKey type;
 
     /** 方块坐标（物品阶段通常为 0）。 */
     public final int x, y, z;
@@ -64,10 +64,10 @@ public final class RenderSubmit implements RenderSubmitView {
 
     /** flush 时是否需要关闭面剔除（物品路径 true，方块路径 false）。 */
     public final boolean disableCull;
-    /** flush 时是否需要开启混合（与 {@link RenderType#blend()} 一致）。 */
+    /** flush 时是否需要开启混合（与 {@link RenderTypeKey#blend()} 一致）。 */
     public final boolean blend;
 
-    public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderType type,
+    public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
                         int x, int y, int z, int rotationDeg,
                         @Nullable Block block, @Nullable ItemStack stack,
                         @Nullable IBlockAccess world, int metadata,

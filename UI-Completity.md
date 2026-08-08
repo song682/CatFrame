@@ -566,6 +566,197 @@ Button、TabButton、TabBar、TabManager、ToastManager、SystemToast、ObjectSe
 
 ---
 
+## 八、GuiGraphicsExtractor 依赖图审查
+
+**审查日期**: 2026-08-08  
+**范围**: `GuiGraphicsExtractor.java` 的 import 依赖（13 个 CatFrame 类 + 5 个 Minecraft/LWJGL 类）+ 引用方（19 个文件），不含 GuiGraphicsExtractor 本身（其代码级审查见 S8/S9 及前次 10 项 findings）。
+
+### 8.1 依赖图概览
+
+```
+                     ┌─────────────────────────────────┐
+                     │   ClientScreenGraphicsHandler   │ ← Forge DrawScreenEvent Pre/Post 驱动
+                     │   ClientProxy (注册)             │
+                     └──────────────┬──────────────────┘
+                                    │ resetForNewFrame() / extractDeferredElements()
+                                    ▼
+  ┌─────────────────┐    ┌──────────────────────────┐
+  │  Screen.java    │───▶│                          │
+  │  OverlayManager │───▶│   GuiGraphicsExtractor   │◀── WidgetTooltipHolder
+  │  ~19 widgets    │───▶│   (UI 层单例)             │    (setTooltipForNextFrame)
+  │  (via Renderable│    │                          │
+  │   .extract-     │    └──┬───────┬───────┬───────┘
+  │   RenderState)  │       │       │       │
+  └─────────────────┘       │       │       │
+                            ▼       ▼       ▼
+                    ┌──────────┐ ┌──────┐ ┌──────────────┐
+                    │GuiRender │ │pip/  │ │tooltip/       │
+                    │State     │ │包 (7 │ │包             │
+                    │(Strata+  │ │文件) │ │               │
+                    │Node 树)  │ └──────┘ └──────────────┘
+                    └──────────┘
+                            ▲
+                            │ glintApplicable() / renderEnchantmentGlint() ← 反向静态调用
+                    ┌───────┴──────────┐
+                    │ FeatureRender    │  ← model/render 层
+                    │ Dispatcher       │
+                    └──────────────────┘
+```
+
+**关键依赖统计**：
+
+| 方向 | 文件数 | 说明 |
+|------|--------|------|
+| GuiGraphicsExtractor → 依赖 | 13 CatFrame + 5 外部 | GuiRenderState / pip / tooltip / model 等 |
+| 引用方 → GuiGraphicsExtractor | 19 | 所有 Renderable 实现 + 驱动层 + compact 层 |
+| 反向耦合（依赖方回调） | 1 | FeatureRenderDispatcher 调回静态方法 |
+
+---
+
+### 8.2 关键发现
+
+#### DC1. FeatureRenderDispatcher ↔ GuiGraphicsExtractor 双向静态耦合（architecture violation）
+
+[FeatureRenderDispatcher.java#L104-L106](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/model/render/pipeline/FeatureRenderDispatcher.java) · [GuiGraphicsExtractor.java#L311-L331](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/GuiGraphicsExtractor.java)
+
+- `GuiGraphicsExtractor`（UI 层）→ import `FeatureRenderDispatcher`（model/render 层）→ 正常方向
+- `FeatureRenderDispatcher`（model/render 层）→ 调 `GuiGraphicsExtractor.glintApplicable(s)` / `renderEnchantmentGlint(s, t)` → **反向静态调用**
+
+这构成**架构分层违反**：model/render 层依赖 UI 层。`glintApplicable` 包含附魔光效判定逻辑（`hasFoil` → `ItemStackComponents.get()` → NBT 桥接），`renderEnchantmentGlint` 包含完整的 GL 状态管理 + 双层滚动纹理矩阵 + quad 重放——这些都是**纯粹的渲染逻辑**，不属于 UI 提取器。
+
+**影响**：
+- 若 GuiGraphicsExtractor 被拆分/替换，FeatureRenderDispatcher 的光效通道断裂
+- 渲染管线单元测试无法隔离 UI 单例
+- 静态方法使 Mock/替换不可行
+
+**修复**：将 `glintApplicable()`、`hasFoil()`、`renderEnchantmentGlint()` 迁移到 `FeatureRenderDispatcher`（或新建 `GlintRenderer`），从 GuiGraphicsExtractor 移除这三个方法。FeatureRenderDispatcher 已持有所有必要上下文（RenderSubmit、Tessellator、RenderPhase）。
+
+---
+
+#### DC2. MATRIX_BUFFER 重复分配（memory + consistency risk）
+
+[GuiGraphicsExtractor.java#L73](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/GuiGraphicsExtractor.java) · [PipGl.java#L19](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/render/pip/PipGl.java)
+
+两个类各自持有 `FloatBuffer(16)` 用于 modelview 矩阵快照恢复，注释明确声明「独立以避免跨类可见性耦合」——但客户端单线程，两个 buffer 从不并发使用，浪费 64 bytes 直接缓冲内存。
+
+更深层问题：两块缓冲的语义**完全相同**（采集 → 存储 float[16] → 帧末 glLoadMatrix），分属两个类意味着：
+- 若一处改了矩阵行/列主序约定，另一处不会同步
+- 新人阅读代码需要理解"为什么有两个相同的 buffer"
+
+**修复**：二选一：A. 统一到 `PipGl.MATRIX_BUFFER` 并提升访问级别，GuiGraphicsExtractor 通过 `PipGl.restore()` 复用；B. 删除 `PipGl.MATRIX_BUFFER`，让 PiP 路径统一走 GuiGraphicsExtractor 的 buffer（目前两者并未共享同一矩阵实例，风险低但语义不干净）。推荐 A——PipGl 本就是为此设计的工具类。
+
+---
+
+#### DC3. ItemGuiDrawer 抽象反转（Dependency Inversion 的误用位置）
+
+[ItemGuiDrawer.java](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/render/pip/ItemGuiDrawer.java) · [OversizedItemPipRenderer.java](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/render/pip/OversizedItemPipRenderer.java)
+
+`ItemGuiDrawer` 接口定义在 pip 包，唯一实现者 `ItemGuiDrawerImpl`（私有内部类）在 `GuiGraphicsExtractor`。接口存在的理由是「避免 pip 包反向依赖 GuiGraphicsExtractor」——这确实是标准的依赖反转。
+
+**问题**：接口所属的 pip 包成了"契约定义者"，而实际渲染能力完全在 UI 层。`draw(ItemStack, float[], boolean)` 的语义（pose 矩阵恢复、allowOversized 溢出策略）是 `GuiGraphicsExtractor` 的内部逻辑，不应由 pip 包定义。
+
+**影响**：低——接口仅一个方法、一个调用方（`OversizedItemPipRenderer`），当前无实际危害。但若后续出现第二个实现者，pip 包的接口定义会成为事实标准，限制 UI 层重构。
+
+**修复**：将 `ItemGuiDrawer` 移入 `ui.render` 包（或 GuiGraphicsExtractor 自身作为 public 内部接口），保持依赖反转但让契约定义者更接近实现者（都是 ui 层）。
+
+---
+
+#### DC4. WidgetTooltipHolder → GuiGraphicsExtractor：TooltipComponent 参数静默丢弃（跨层数据丢失）
+
+[WidgetTooltipHolder.java#L95-L103](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/components/WidgetTooltipHolder.java) · [GuiGraphicsExtractor.java#L471](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/GuiGraphicsExtractor.java)
+
+调用链：
+```
+WidgetTooltipHolder.refreshTooltipForNextRenderPass()
+  → tooltip.getComponent()                    // e.g. Optional.of(BundleTooltip)
+  → GuiGraphicsExtractor.setTooltipForNextFrame(font, lines, component, positioner, ...)
+    → // TODO: 当 component 非空时，插入到第二行位置（如 BundleTooltip）← 静默忽略
+    → setTooltipForNextFrameInternal(font, components, ...)  // component 已丢失
+```
+
+`Tooltip.getComponent()` 返回的 `Optional<TooltipComponent>`（如 BundleTooltip 的物品格子预览）在 `setTooltipForNextFrame` 的 L471 被 TODO 注释跳过——传给内部方法时 component 参数不在签名中。WidgetTooltipHolder 正确采集了 component 但下游丢弃。
+
+**影响**：所有走 `WidgetTooltipHolder` 路径的 tooltip（CatFrame 组件悬停 tooltip），若 tooltip 包含 `TooltipComponent`（如 BundleTooltip），该组件静默消失。
+
+**修复**：`setTooltipForNextFrameInternal` 增加 `Optional<TooltipComponent>` 参数；在 `tooltip()` 渲染时按 26.1.2 规范插入到对应位置（BundleTooltip 在第二行）。
+
+---
+
+#### DC5. hasFoil() 的 NBT 依赖链与帧热路径
+
+[GuiGraphicsExtractor.java#L325-L331](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/GuiGraphicsExtractor.java) · [ItemStackComponents.java#L55-L82](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/core/component/predicates/ItemStackComponents.java)
+
+`hasFoil(stack)` → `ItemStackComponents.get(stack).get(DataComponents.ENCHANTMENT_GLINT)` → 懒初始化 `PatchedDataComponentMap`（含 NBT 解析 + ComponentMigration 迁移）。
+
+首次调用路径触发：IdentityHashMap 查找 → miss → `DataComponents.getDefaults()` → `stack.stackTagCompound` 读取 → `ComponentMigration.readFromNBT(tag)` → 逐个 `TypedDataComponent` 遍历 → `map.set()`。后续调用仅 IdentityHashMap.get()（O(1)）。
+
+`glintApplicable()` 在 **FeatureRenderDispatcher.flushBatched() 的每个 RenderSubmit 循环内部**被调用——即每个物品渲染 submit 都走一次 hasFoil。每帧 GUI 物品渲染量典型 10-100 个，首次缓存填充后开销可忽略。
+
+**影响**：低。缓存使重复调用 O(1)，但要注意：
+- `IdentityHashMap` 使用引用相等，同一个 ItemStack 的 copy() 创建新 key，触发重复 NBT 解析
+- 若忘记调 `ItemStackComponents.clearCache()`，世界切换后旧 ItemStack 实例残留
+
+**修复**：在 `ItemStackComponents.get()` 加最大缓存大小限制（如 LRU 1024 项），防止内存泄漏；或在 `hasFoil` 增加 `stack.hasEffect(0)` 短路（无附魔物品跳过组件查询）。
+
+---
+
+#### DC6. EntityPipRenderer 忽略 GuiEntityRenderState.scissorArea（抽象基类字段浪费）
+
+[EntityPipRenderer.java#L24-L77](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/render/pip/EntityPipRenderer.java) · [AbstractPipRenderState.java#L17-L18](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/render/pip/AbstractPipRenderState.java)
+
+`AbstractPipRenderState` 定义 `scissorArea` 字段（可为 null，表示不裁剪），`GuiEntityRenderState` 继承之。但 `EntityPipRenderer.prepare()` 完全没有读取 `state.scissorArea()`——实体 PiP 渲染永远不设 scissor。
+
+对比 `OversizedItemRenderState` 显式传 `null` 作为 scissor（语义明确"不裁剪"），GuiEntityRenderState 允许传入非 null scissor 但渲染器忽略，构成**契约漂移**——调用方认为传了 scissor 就会裁剪，实际不生效。
+
+**修复**：要么让 EntityPipRenderer 支持 scissor（`glEnable(GL_SCISSOR_TEST)` + `glScissor`），要么在 `GuiEntityRenderState` 构造器中强制 `scissorArea = null` 并文档化。
+
+---
+
+#### DC7. OversizedItemPipRenderer 单行空壳委托（不必要的间接层）
+
+[OversizedItemPipRenderer.java#L7-L24](d:/GAMES/Minecraft/modss/project/CatFrame/src/main/java/decok/dfcdvadstf/catframe/ui/render/pip/OversizedItemPipRenderer.java)
+
+实现 `PictureInPictureRenderer<OversizedItemRenderState>`，仅 4 行有效代码：
+```java
+public void prepare(OversizedItemRenderState state) {
+    drawer.draw(state.getStack(), state.poseMatrix(), true);
+}
+```
+
+与其他 PictureInPictureRenderer 实现对比：
+- `EntityPipRenderer.prepare()`: 66 行（矩阵恢复 + 实体旋转 + 光照 + 朝向保存恢复）
+- `OversizedItemPipRenderer.prepare()`: 1 行委托
+
+OversizedItemPipRenderer 不做任何 GL 状态管理、矩阵恢复、裁剪设置——这些都推给了 `ItemGuiDrawer` 实现（即 `GuiGraphicsExtractor.ItemGuiDrawerImpl`）。结果是 PiP 框架承诺的「prepare 完成 GL 隔离」在这里不成立，只能靠 drawer 实现保证。
+
+**影响**：若将来有人实现第二个 `ItemGuiDrawer` 并用于 `OversizedItemPipRenderer`，可能遗漏 GL 状态保护（因为 PiP 框架文档说"实现应自行完成 glPushAttrib..."，但 OversizedItemPipRenderer 自己不做，等于把契约转嫁给 drawer）。
+
+**修复**：让 `OversizedItemPipRenderer.prepare()` 至少做 `PipGl.restore()` + scissor（或无 scissor 的显式注释）等 PiP 基础设施，再委托 drawer 做模型渲染。
+
+---
+
+### 8.3 已在文档其他位置覆盖的 GuiGraphicsExtractor 问题
+
+以下问题在前次代码级审查中已识别，分散在文档各处——此处仅做交叉引用索引：
+
+| 编号 | 位置 | 简述 |
+|------|------|------|
+| S8 | 第六节 L471-472 | `GL_SAVE_MASK` 缺 `GL_COLOR_BUFFER_BIT` → blendFunc 泄漏 |
+| S9 | 第六节 L474-479 | `TooltipComponent` 参数 TODO 忽略 + 死代码清理 |
+| W9 | 第五节 L254-259 | Overlay 延迟管线优先级倒挂：flush(LOW) 先于 Overlay 渲染(LOWEST) |
+| — | 前次审查 C1 | `GL_SAVE_MASK` 同上（S8 已收录） |
+| — | 前次审查 C2 | `renderEnchantmentGlint` 异常时 `glMatrixMode` 不恢复 |
+| — | 前次审查 W1 | `deferredPip` 在 extractDeferredElements 后未清空 |
+| — | 前次审查 W2 | Depth buffer 在 PiP / Item passes 间未清除 |
+| — | 前次审查 W3 | Javadoc 缺失 PiP 路径（路径二） |
+| — | 前次审查 W4 | `MATRIX_BUFFER` 共享静态单例 |
+| — | 前次审查 W5 | `tooltip()` 缺少 font/positioner null 检查 |
+| — | 前次审查 S1 | `deferredTooltip` "first-writer-wins" 语义无明确 API |
+
+**注意**: 前次审查中的部分 Warning（如 W1/W2/W5）未被收录入 UI-Completity.md——建议择其高影响项补入第五节 Warnings 或此处 8.2 节。
+
+---
+
 ## 附：本次扫描范围与未覆盖说明
 
 - **扫描范围**：`src/main/java/decok/dfcdvadstf/catframe/ui/` 全部子包（components、components/events、components/tab、components/contextualbar、layout、toast、tooltip、navigation、overlay、screens 等）+ 相关 Mixin（MixinGuiScreen、MixinGuiScreenEventBridge）+ compact 层（ClientScreenGraphicsHandler、ClientOverlayHandler、IMECompact、GuiGraphicsExtractor）+ mixins.catframe.json / mixin.gradle。

@@ -13,10 +13,10 @@ import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 
 import javax.annotation.Nonnull;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Texture tracking and management extracted from {@link VanillaModelManager}.
@@ -31,7 +31,7 @@ public class VanillaTextureTracker {
 
     static final Set<String> pendingTextures = new LinkedHashSet<>();
     static final Set<String> pendingItemTextures = new LinkedHashSet<>();
-    public static final Map<String, IIcon> textureIcons = new HashMap<>();
+    public static final Map<String, IIcon> textureIcons = new ConcurrentHashMap<>();
 
     static void collectTexturesFromBlockstate(@Nonnull BlockstateJson bs) {
         if (bs.variants != null) {

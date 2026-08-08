@@ -131,21 +131,21 @@ public final class FeatureRenderDispatcher {
      * 世界渲染发生在原版 chunk 的 {@link Tessellator} 大批次内部（vanilla 已
      * {@code startDrawingQuads}，绑定 blocks atlas，并在 chunk 末尾统一 {@code draw}），
      * 因此本方法只写顶点到当前 Tessellator，<b>不</b> {@code startDrawingQuads}/{@code draw}、
-     * <b>不</b>改 GL 状态。行为等同改造前 {@code renderBlockQuads} 的 BLOCK_WORLD 路径。
+     * <b>不</b>绑定纹理、<b>不</b>改 GL 状态。行为等同改造前 {@code renderBlockQuads} 的
+     * BLOCK_WORLD 路径。
+     * <p>
+     * 注意：本方法可能从后台线程进入（如 Beddium 多线程区块编译），绑定纹理属
+     * GL 调用且此处本就冗余（vanilla 已绑定 blocks atlas），故刻意不在此绑定。
      */
     public static void flushInline(RenderSubmit s) {
-        // 与改造前一致：世界渲染硬编码绑定 blocks atlas
-        Minecraft.getMinecraft().getTextureManager().bindTexture(type(s).atlas());
+        // 不绑定纹理：vanilla 已绑定 blocks atlas，此处再 bind 属冗余，
+        // 且后台线程（Beddium 多线程区块编译）执行 GL 调用会破坏 GL 状态所有权。
         ModelRenderRegistry.applyBeforePart(s.part.getAllQuads(), s.phase, s.part);
         try {
             QuadWriter.writeBlockQuads(s, Tessellator.instance);
         } finally {
             ModelRenderRegistry.applyAfterPart();
         }
-    }
-
-    private static RenderType type(RenderSubmit s) {
-        return s.type != null ? s.type : RenderType.BLOCK_ATLAS_SOLID;
     }
 
     private static boolean isBlockPhase(RenderPhase phase) {

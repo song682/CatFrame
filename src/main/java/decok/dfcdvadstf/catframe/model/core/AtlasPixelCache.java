@@ -11,8 +11,8 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * GPU 侧纹理图集回读缓存 —— 替代 {@code MixinTextureMap} 的 CPU 帧数据保存机制。
@@ -44,7 +44,7 @@ public final class AtlasPixelCache {
      * prepareAnisotropicData），
      * 此时 getIconWidth() 返回物理存储尺寸，若直接用作切片宽会混入相邻 sprite 的像素。
      */
-    private static final Map<String, CachedSprite> spriteCache = new HashMap<>();
+    private static final Map<String, CachedSprite> spriteCache = new ConcurrentHashMap<>();
 
     /**
      * 按 UV 区域裁剪出的 sprite 像素切片（内容区域，不含各向异性过滤的填充边框）。

@@ -35,8 +35,14 @@ import java.util.List;
  */
 public final class GuiLightExtension implements IModelRenderExtension {
 
-    /** {@code true} 表示 {@code beforePart} 修改了 GL_LIGHTING 状态，{@code afterPart} 需要恢复 */
-    private boolean changedLighting = false;
+    /**
+     * 当前线程的 GL_LIGHTING 变更标记：{@code true} 表示 {@code beforePart} 修改了
+     * GL_LIGHTING 状态，{@code afterPart} 需要恢复。
+     *
+     * <p>线程局部（ThreadLocal）：渲染路径可从任意线程进入（如 Beddium 多线程区块编译），
+     * 实例字段跨线程共享会导致各线程的 beforePart/afterPart 状态互相覆盖。
+     */
+    private final ThreadLocal<Boolean> changedLighting = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     @Override
     @SuppressWarnings("deprecation")
@@ -45,10 +51,10 @@ public final class GuiLightExtension implements IModelRenderExtension {
         // 方块渲染：按模型 gui_light 字段决定
         boolean frontLight = needsFrontLighting(allQuads);
         if (frontLight) {
-            changedLighting = true;
+            changedLighting.set(Boolean.TRUE);
             GL11.glDisable(GL11.GL_LIGHTING);
         } else {
-            changedLighting = false;
+            changedLighting.set(Boolean.FALSE);
         }
     }
 
@@ -68,10 +74,10 @@ public final class GuiLightExtension implements IModelRenderExtension {
 
     @Override
     public void afterPart() {
-        if (changedLighting) {
+        if (Boolean.TRUE.equals(changedLighting.get())) {
             GL11.glEnable(GL11.GL_LIGHTING);
-            changedLighting = false;
         }
+        changedLighting.set(Boolean.FALSE);
     }
 
     /**

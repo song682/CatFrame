@@ -52,21 +52,26 @@ import java.util.List;
  */
 public final class DisplayTransformExtension implements IModelRenderExtension {
 
-    /** 当前 part 的 display transform 矩阵，由 beforePart 设置、afterPart 清空 */
-    private Matrix4d currentMatrix = null;
+    /**
+     * 当前 part 的 display transform 矩阵，由 beforePart 设置、afterPart 清空。
+     * 线程局部：渲染路径可从任意线程进入（如 Beddium 多线程区块编译），
+     * 实例字段跨线程共享会导致矩阵互相覆盖。
+     */
+    private final ThreadLocal<Matrix4d> currentMatrix = new ThreadLocal<>();
 
     // ====== 诊断日志：状态驱动（按 phase/key/dt 签名变更触发，不逐帧打印） ======
+    // 诊断记忆同样 ThreadLocal 化，避免跨线程竞态（各线程独立记忆上次状态）。
     private static final Logger LOGGER = LogManager.getLogger(DisplayTransformExtension.class);
-    private static RenderPhase lastDisplayPhase = null;
-    private static String lastDisplayKey = null;
-    private static String lastDtSig = null;
+    private static final ThreadLocal<RenderPhase> LAST_DISPLAY_PHASE = new ThreadLocal<>();
+    private static final ThreadLocal<String> LAST_DISPLAY_KEY = new ThreadLocal<>();
+    private static final ThreadLocal<String> LAST_DT_SIG = new ThreadLocal<>();
 
     @Override
     public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
         // 确定当前阶段对应的 display key
         String displayKey = phase.getDisplayKey();
         if (displayKey == null) {
-            currentMatrix = null;
+            currentMatrix.set(null);
             return;
         }
 
@@ -82,14 +87,17 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
                     dt.rotation != null ? java.util.Arrays.toString(dt.rotation) : "null",
                     dt.translation != null ? java.util.Arrays.toString(dt.translation) : "null",
                     dt.scale != null ? java.util.Arrays.toString(dt.scale) : "null") : "NULL";
-            boolean phaseChanged = (phase != lastDisplayPhase);
-            boolean keyChanged = (displayKey != null && !displayKey.equals(lastDisplayKey));
-            boolean dtChanged = !dtSig.equals(lastDtSig);
+            RenderPhase lastPhase = LAST_DISPLAY_PHASE.get();
+            String lastKey = LAST_DISPLAY_KEY.get();
+            String lastSig = LAST_DT_SIG.get();
+            boolean phaseChanged = (phase != lastPhase);
+            boolean keyChanged = (displayKey != null && !displayKey.equals(lastKey));
+            boolean dtChanged = !dtSig.equals(lastSig);
             boolean shouldLog = (phaseChanged || keyChanged || dtChanged);
             if (shouldLog) {
-                lastDisplayPhase = phase;
-                lastDisplayKey = displayKey;
-                lastDtSig = dtSig;
+                LAST_DISPLAY_PHASE.set(phase);
+                LAST_DISPLAY_KEY.set(displayKey);
+                LAST_DT_SIG.set(dtSig);
                 LOGGER.info(String.format("[DFXDBG] DisplayExt phase=%s key=%s dt=%s",
                         phase.name(), displayKey, dtSig));
             }
@@ -108,17 +116,17 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
         }
 
         // 计算 display transform 矩阵（向量空间）
-        currentMatrix = computeMatrix(dt);
+        currentMatrix.set(computeMatrix(dt));
     }
 
     @Override
     public void apply(RenderContext ctx) {
-        ctx.displayTransform = currentMatrix;
+        ctx.displayTransform = currentMatrix.get();
     }
 
     @Override
     public void afterPart() {
-        currentMatrix = null;
+        currentMatrix.remove();
     }
 
     /**

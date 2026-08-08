@@ -27,21 +27,28 @@ public final class TintRenderExtension implements IModelRenderExtension {
     /**
      * per-part 物品 tint 记忆缓存：同一次部件渲染内（一个 ItemStack 的所有 quad），
      * 每个 {@code tintIndex} 只解析一次，避免逐 quad 重复 {@code buildProperties} +
-     * 决策树求值 + NBT 读取。单例字段、仅客户端渲染线程访问；在 {@link #beforePart} 重置。
+     * 决策树求值 + NBT 读取。线程局部（ThreadLocal）：渲染路径可从任意线程进入
+     * （如 Beddium 多线程区块编译），各线程持有独立的记忆；在 {@link #beforePart} 重置。
      *
      * <p>Per-part item tint memo: within one part render (all quads of a single ItemStack)
      * each {@code tintIndex} is resolved once instead of per quad, avoiding repeated
-     * property-map build, decision-tree eval and NBT reads. Single-instance field, render
-     * thread only; reset in {@link #beforePart}.
+     * property-map build, decision-tree eval and NBT reads. Thread-local: the render path
+     * may enter from any thread (e.g. Beddium multithreaded chunk meshing), each thread
+     * keeps its own memo; reset in {@link #beforePart}.
      */
-    private final int[] itemTintCache = new int[MAX_CACHED_TINT];
-    private final boolean[] itemTintCached = new boolean[MAX_CACHED_TINT];
+    private final ThreadLocal<TintMemo> itemTintMemo = ThreadLocal.withInitial(TintMemo::new);
+
+    /** 单线程 per-part tint 记忆体：{@code cached[i]} 标记 {@code values[i]} 是否已解析。 */
+    private static final class TintMemo {
+        final int[] values = new int[MAX_CACHED_TINT];
+        final boolean[] cached = new boolean[MAX_CACHED_TINT];
+    }
 
     @Override
     public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
         // 新部件 = 新 ItemStack，清空上一部件的 tint 记忆。
         // New part = new ItemStack; drop the previous part's tint memo.
-        Arrays.fill(itemTintCached, false);
+        Arrays.fill(itemTintMemo.get().cached, false);
     }
 
     @Override
@@ -106,10 +113,11 @@ public final class TintRenderExtension implements IModelRenderExtension {
         if (idx < 0 || idx >= MAX_CACHED_TINT) {
             return TintRegistry.getItemTint(stack, idx);
         }
-        if (!itemTintCached[idx]) {
-            itemTintCache[idx] = TintRegistry.getItemTint(stack, idx);
-            itemTintCached[idx] = true;
+        TintMemo memo = itemTintMemo.get();
+        if (!memo.cached[idx]) {
+            memo.values[idx] = TintRegistry.getItemTint(stack, idx);
+            memo.cached[idx] = true;
         }
-        return itemTintCache[idx];
+        return memo.values[idx];
     }
 }

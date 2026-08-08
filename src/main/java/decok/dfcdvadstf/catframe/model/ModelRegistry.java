@@ -14,10 +14,9 @@ import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraftforge.client.MinecraftForgeClient;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Model registration API extracted from {@link VanillaModelManager}.
@@ -43,15 +42,15 @@ public class ModelRegistry {
     /** builtin/missing 单例 — 对标高版本 BuiltinMissingModel，任何物品无模型时的最终回退。 */
     private static final IItemStateProvider MISSING_MODEL = new ItemStateModel("builtin/missing");
 
-    public static final Map<Block, BlockStateModel> registeredBlockModels = new HashMap<>();
-    public static final Map<Block, Map<Integer, Integer>> registeredBlockRotations = new HashMap<>();
-    public static final Map<Item, IItemStateProvider> registeredItemModels = new HashMap<>();
-    public static final Set<Item> persistentItemModels = new HashSet<>();
+    public static final Map<Block, BlockStateModel> registeredBlockModels = new ConcurrentHashMap<>();
+    public static final Map<Block, Map<Integer, Integer>> registeredBlockRotations = new ConcurrentHashMap<>();
+    public static final Map<Item, IItemStateProvider> registeredItemModels = new ConcurrentHashMap<>();
+    public static final Set<Item> persistentItemModels = ConcurrentHashMap.newKeySet();
     /** items with {@code oversized_in_gui=true} — GUI 中允许模型几何溢出槽位（走 PiP 通道，不裁剪不钳制）。 */
-    public static final Set<Item> oversizedItems = new HashSet<>();
-    static final Set<Block> randomRotationBlocks = new HashSet<>();
-    static final Set<Block> autoOverlayBlocks = new HashSet<>();
-    static final Map<Block, CatStateDefinition<?>> blockStateDefinitions = new HashMap<>();
+    public static final Set<Item> oversizedItems = ConcurrentHashMap.newKeySet();
+    static final Set<Block> randomRotationBlocks = ConcurrentHashMap.newKeySet();
+    static final Set<Block> autoOverlayBlocks = ConcurrentHashMap.newKeySet();
+    static final Map<Block, CatStateDefinition<?>> blockStateDefinitions = new ConcurrentHashMap<>();
 
     /**
      * Public API: bake a model path into a BlockStateModelPart (with cache).
@@ -98,7 +97,7 @@ public class ModelRegistry {
          * Register a rotation for a block/metadata combination.
          */
         public static void registerBlockRotation(Block block, int metadata, int rotationDeg) {
-            registeredBlockRotations.computeIfAbsent(block, k -> new HashMap<>())
+            registeredBlockRotations.computeIfAbsent(block, k -> new ConcurrentHashMap<>())
                     .put(metadata, rotationDeg);
         }
 

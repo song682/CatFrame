@@ -7,8 +7,12 @@ import java.util.List;
 
 /**
  * 模组可注册的渲染扩展接口。每个被烘焙的 quad 在送进 Tessellator 之前，
- * 都会按注册顺序遍历所有扩展，每个扩展通过修改 {@link RenderContext} 字段
+ * 都会按优先级（同优先级按注册顺序）遍历所有扩展，每个扩展通过修改 {@link RenderContext} 字段
  * 来影响最终渲染（着色、亮度、是否剔除等）。
+ * <p>
+ * <b>线程安全约定（v0.5+）</b>：渲染路径可在任意线程进入（如 Beddium 多线程区块编译），
+ * 扩展实例不得持有跨线程共享的可变状态；per-part 临时数据请使用 ThreadLocal 或写入
+ * {@link RenderContext}。扩展链对单个扩展的异常做了隔离，不会拖死整场渲染。
  *
  * <h3>生命周期</h3>
  * <ol>

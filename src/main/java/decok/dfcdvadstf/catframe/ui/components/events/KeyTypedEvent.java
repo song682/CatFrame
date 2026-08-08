@@ -42,4 +42,12 @@ public class KeyTypedEvent {
     public static boolean isEnterKeyPressed(){
         return isWhichKeyPressed(Keyboard.KEY_RETURN);
     }
+
+    public static boolean isEscapeKeyPressed(){
+        return isWhichKeyPressed(Keyboard.KEY_ESCAPE);
+    }
+
+    public static boolean isSpaceKeyPressed(){
+        return isWhichKeyPressed(Keyboard.KEY_SPACE);
+    }
 }

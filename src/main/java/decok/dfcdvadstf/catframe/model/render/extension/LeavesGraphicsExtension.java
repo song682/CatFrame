@@ -11,10 +11,11 @@ import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.util.IIcon;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 渲染扩展：当 Minecraft 画质设为"流畅"时，将树叶方块的纹理替换为 {@code _opaque} 版本，
@@ -33,19 +34,19 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
 
     // ==================== 纹理映射：树叶方块 -> _opaque 纹理路径 ====================
     // key: 正常纹理路径（与模型 JSON 中一致），value: _opaque 纹理路径
-    private static final Map<String, String> TEXTURE_MAP = new HashMap<>();
+    private static final Map<String, String> TEXTURE_MAP = new ConcurrentHashMap<>();
 
     // 已解析的 _opaque IIcon 缓存：normalTexturePath -> opaqueIicon
-    private static final Map<String, IIcon> OPAQUE_ICONS = new HashMap<>();
+    private static final Map<String, IIcon> OPAQUE_ICONS = new ConcurrentHashMap<>();
 
     // 叶子方块集合（可动态扩展）
-    private static final List<Block> LEAF_BLOCKS = new ArrayList<>();
+    private static final List<Block> LEAF_BLOCKS = new CopyOnWriteArrayList<>();
 
     // 已注册标记
     private static boolean texturesRegistered = false;
 
     // [S5] 模组自定义树叶方块的纹理映射：Block -> (normalPath -> opaquePath)
-    private static final Map<Block, Map<String, String>> CUSTOM_LEAF_TEXTURES = new HashMap<>();
+    private static final Map<Block, Map<String, String>> CUSTOM_LEAF_TEXTURES = new ConcurrentHashMap<>();
 
     static {
         // ——— 纹理映射定义 ———

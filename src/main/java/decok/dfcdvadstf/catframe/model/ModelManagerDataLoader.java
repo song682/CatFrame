@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -52,10 +53,10 @@ public class ModelManagerDataLoader {
     public static final Map<String, Map<String, BlockstateJson>> loadedBlockstates = new HashMap<>();
     public static final Map<String, VanillaModelManager.ModelMappings> loadedMappings = new HashMap<>();
     static final List<Block> registeredStateBlocks = new ArrayList<>();
-    public static final Map<Block, BlockstateJson> stateBlockData = new HashMap<>();
+    public static final Map<Block, BlockstateJson> stateBlockData = new ConcurrentHashMap<>();
     static final Map<Block, IMetadataBlockstateRedirect> blockstateRedirects = new HashMap<>();
     public static final Map<Item, IItemStateProvider> interfaceItemStates = new LinkedHashMap<>();
-    public static final Map<String, Map<String, ItemStateNode>> loadedItemStates = new HashMap<>();
+    public static final Map<String, Map<String, ItemStateNode>> loadedItemStates = new ConcurrentHashMap<>();
     /** namespace → 声明 {@code oversized_in_gui=true} 的物品名集合。 */
     public static final Map<String, Set<String>> loadedOversizedItems = new HashMap<>();
 

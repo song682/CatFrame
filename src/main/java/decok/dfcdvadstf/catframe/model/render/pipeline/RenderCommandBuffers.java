@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render.pipeline;
 
-import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 
 /**
  * 渲染作用域门面，对标原版 26w+ 管线中"begin submit → 累积 → end flush"的提交作用域。

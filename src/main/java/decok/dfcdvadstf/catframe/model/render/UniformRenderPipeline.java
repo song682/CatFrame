@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render;
 
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderCommandBuffers;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderType;

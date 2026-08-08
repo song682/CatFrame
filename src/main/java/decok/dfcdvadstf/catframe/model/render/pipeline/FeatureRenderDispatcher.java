@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.model.render.pipeline;
 
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
-import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
@@ -25,7 +25,7 @@ import java.util.Map;
  *   <li>{@code GuiLightExtension} 在 {@code beforePart} 切换 {@code GL_LIGHTING}，
  *       必须在该部件 {@code draw()} 时生效、{@code afterPart} 恢复；</li>
  *   <li>{@code DisplayTransformExtension} 在 {@code beforePart} 计算 display 矩阵，
- *       在 {@code apply} 逐 quad 写入 {@link decok.dfcdvadstf.catframe.model.render.RenderContext#displayTransform}。</li>
+ *       在 {@code apply} 逐 quad 写入 {@link decok.dfcdvadstf.catframe.model.render.api.RenderContext#displayTransform}。</li>
  * </ul>
  * 逐部件 draw 与原单部件路径完全等价，仅共享纹理绑定并重排顺序，故零渲染回归。
  */

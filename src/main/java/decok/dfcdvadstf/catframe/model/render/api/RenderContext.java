@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.model.render;
+package decok.dfcdvadstf.catframe.model.render.api;
 
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import net.minecraft.block.Block;
@@ -10,7 +10,7 @@ import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
 
 /**
- * 一次 quad 渲染的上下文，扩展链 {@link ModelRenderRegistry#apply(RenderContext)}
+ * 一次 quad 渲染的上下文，扩展链 {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry#apply(RenderContext)}
  * 会按注册顺序遍历 {@link IModelRenderExtension}，每个扩展都可以读 / 改本对象。
  *
  * <h3>字段语义</h3>

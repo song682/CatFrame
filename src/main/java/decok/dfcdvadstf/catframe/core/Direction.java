@@ -6,7 +6,7 @@ import java.util.NoSuchElementException;
 
 /**
  * 六面方向枚举 —— 对齐高版本 {@code net.minecraft.core.Direction}，
- * 脱离 Forge {@code EnumFacing} 的依赖。
+ * 脱离 Forge {@code EnumFacing} 的依赖。更多的是将其改造为适应这个类现代的模型加载即以向量驱动的模型加载。
  *
  * <p>每个枚举值预计算了法向量（int step + {@link Vector3d}），
  * 并提供取反、顺时针旋转、按名称查找、最近方向等核心方法。

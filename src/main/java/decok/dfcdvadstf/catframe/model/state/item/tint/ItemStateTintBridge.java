@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.model.state.item.tint;
 
-import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.IItemTintProvider;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import net.minecraft.item.ItemStack;

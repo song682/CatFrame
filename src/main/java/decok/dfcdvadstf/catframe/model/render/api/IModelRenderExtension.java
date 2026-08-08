@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.model.render;
+package decok.dfcdvadstf.catframe.model.render.api;
 
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -29,7 +29,7 @@ import java.util.List;
  * <h3>常见用法示例</h3>
  * <pre>{@code
  * // 1. 让某种方块顶面叠加一层暖色（仅世界渲染）
- * ModelRenderRegistry.register(ctx -> {
+ * ModelRenderExtensions.register(ctx -> {
  *     if (ctx.phase != RenderPhase.BLOCK_WORLD) return;
  *     if (ctx.block != MyBlocks.LAVA_ROCK) return;
  *     if (ctx.quad.face != Direction.UP) return;
@@ -37,12 +37,12 @@ import java.util.List;
  * });
  *
  * // 2. 自定义阴影：所有手持物品亮度降一半
- * ModelRenderRegistry.register(ctx -> {
+ * ModelRenderExtensions.register(ctx -> {
  *     if (ctx.phase == RenderPhase.ITEM_HAND) ctx.brightnessOverride = 0x800080;
  * });
  *
  * // 3. 面剔除：当 quad 朝向北侧且北侧邻居是不透明方块时不渲染
- * ModelRenderRegistry.register(ctx -> {
+ * ModelRenderExtensions.register(ctx -> {
  *     if (ctx.phase != RenderPhase.BLOCK_WORLD) return;
  *     if (ctx.quad.face != Direction.NORTH) return;
  *     if (ctx.world.getBlock(ctx.x, ctx.y, ctx.z - 1).isOpaqueCube()) ctx.skip = true;

@@ -1,9 +1,9 @@
 package decok.dfcdvadstf.catframe.model.render.extension.ao;
 
-import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
+import decok.dfcdvadstf.catframe.model.render.api.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
-import decok.dfcdvadstf.catframe.model.render.RenderContext;
-import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 
 /**
  * 内建渲染扩展：处理 JSON element 中的 {@code "ambientocclusion"} 和 {@code "shade"} 字段。

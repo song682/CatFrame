@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.model.state.property;
 
-import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;

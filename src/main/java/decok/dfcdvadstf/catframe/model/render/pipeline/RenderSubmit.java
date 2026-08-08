@@ -1,6 +1,9 @@
 package decok.dfcdvadstf.catframe.model.render.pipeline;
 
-import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderSubmitView;
+import decok.dfcdvadstf.catframe.model.render.api.RenderTypeKey;
+import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
@@ -8,6 +11,7 @@ import net.minecraft.world.IBlockAccess;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
+import java.util.List;
 
 /**
  * 一次渲染提交的不可变数据快照，对标原版 26w+ 管线中的 {@code Submit} 命令 record。
@@ -19,7 +23,7 @@ import javax.vecmath.Matrix4d;
  * display transform 与 preTransform 已在 Java 侧逐顶点烘焙进坐标（向量空间），
  * 因此 flush 时无需 GL 矩阵快照 —— 作用域的 flush 恒发生在调用方已建立的 GL 矩阵上下文内。
  */
-public final class RenderSubmit {
+public final class RenderSubmit implements RenderSubmitView {
 
     /** 渲染阶段（决定 brightness/gui 分支等）。 */
     public final RenderPhase phase;
@@ -85,5 +89,82 @@ public final class RenderSubmit {
         this.transformation = transformation;
         this.disableCull = disableCull;
         this.blend = blend;
+    }
+
+    // ==================== RenderSubmitView（只读视图实现） ====================
+
+    @Override
+    public RenderPhase phase() {
+        return phase;
+    }
+
+    @Override
+    public RenderTypeKey type() {
+        return type;
+    }
+
+    @Override
+    public int x() {
+        return x;
+    }
+
+    @Override
+    public int y() {
+        return y;
+    }
+
+    @Override
+    public int z() {
+        return z;
+    }
+
+    @Override
+    public int rotationDeg() {
+        return rotationDeg;
+    }
+
+    @Override
+    public Block block() {
+        return block;
+    }
+
+    @Override
+    public ItemStack stack() {
+        return stack;
+    }
+
+    @Override
+    public IBlockAccess world() {
+        return world;
+    }
+
+    @Override
+    public int metadata() {
+        return metadata;
+    }
+
+    @Override
+    public boolean disableCull() {
+        return disableCull;
+    }
+
+    @Override
+    public boolean blend() {
+        return blend;
+    }
+
+    @Override
+    public List<BakedQuad> getAllQuads() {
+        return part.getAllQuads();
+    }
+
+    @Override
+    public Matrix4d preTransformCopy() {
+        return preTransform == null ? null : new Matrix4d(preTransform);
+    }
+
+    @Override
+    public Matrix4d transformationCopy() {
+        return transformation == null ? null : new Matrix4d(transformation);
     }
 }

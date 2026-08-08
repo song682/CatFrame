@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.model.render.extension.ao.light;
 
 import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.render.RenderContext;
+import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import net.minecraft.block.Block;
 import net.minecraft.world.IBlockAccess;
 

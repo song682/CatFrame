@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.model.render;
+package decok.dfcdvadstf.catframe.model.render.api;
 
 import javax.annotation.Nullable;
 

@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render;
 
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;

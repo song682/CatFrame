@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
-import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.property.CatItemProperties;
 import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyProvider;

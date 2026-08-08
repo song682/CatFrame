@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.model.state.item.tint;
 
 import decok.dfcdvadstf.catframe.core.component.predicates.DyedItemColor;
-import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import net.minecraft.item.ItemStack;
 
 /**

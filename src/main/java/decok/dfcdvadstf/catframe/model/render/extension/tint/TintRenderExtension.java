@@ -1,9 +1,9 @@
 package decok.dfcdvadstf.catframe.model.render.extension.tint;
 
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
-import decok.dfcdvadstf.catframe.model.render.RenderContext;
-import decok.dfcdvadstf.catframe.model.render.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.api.IModelRenderExtension;
+import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.item.ItemStack;
 

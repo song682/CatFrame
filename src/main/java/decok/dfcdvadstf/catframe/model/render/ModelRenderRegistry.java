@@ -3,6 +3,9 @@ package decok.dfcdvadstf.catframe.model.render;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.model.render.api.IModelRenderExtension;
+import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.FaceCullExtension;
@@ -16,7 +19,12 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * 通用模型渲染扩展注册中心。模组通过本类注册 {@link IModelRenderExtension}，
+ * 通用模型渲染扩展注册中心（内部实现）。
+ * <p>
+ * <b>对外入口</b>：外部模组请使用
+ * {@link decok.dfcdvadstf.catframe.model.render.api.ModelRenderExtensions} 门面注册扩展；
+ * 本类的注册面保留供内部（内建扩展懒加载）使用。
+ * 模组通过注册 {@link IModelRenderExtension}，
  * 即可对 CatFrame 烘焙出的每一个 quad 进行修改 / 剔除 / 染色 / 调亮等处理。
  *
  * <h3>调用时机</h3>

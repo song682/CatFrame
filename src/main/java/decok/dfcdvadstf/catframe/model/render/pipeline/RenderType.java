@@ -1,7 +1,10 @@
 package decok.dfcdvadstf.catframe.model.render.pipeline;
 
+import decok.dfcdvadstf.catframe.model.render.api.RenderTypeKey;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.ResourceLocation;
+
+import java.util.Locale;
 
 /**
  * 渲染分组类型，对标原版 26w+ 延迟渲染管线中的 render layer / render type。
@@ -16,8 +19,11 @@ import net.minecraft.util.ResourceLocation;
  * {@link RenderSubmit#disableCull} 携带（物品路径关剔除、方块路径保持），因为
  * 同一图集 + 混合分组下方块 GUI 与方块物品的剔除策略不同。flush 时按分组内提交项的
  * 剔除标志统一设置（作用域内提交项同质）。
+ * <p>
+ * <b>SPI 过渡态</b>：本 enum 实现 {@link RenderTypeKey}（排序键 = 声明序 0/1/2/3），
+ * 后续注册表化改造（RenderTypeRegistry）将取代 enum 定义，排序键语义保持不变。
  */
-public enum RenderType {
+public enum RenderType implements RenderTypeKey {
     /** 方块图集 · 不透明（方块世界内联、方块物品手持等）。 */
     BLOCK_ATLAS_SOLID(TextureMap.locationBlocksTexture, false),
     /** 物品图集 · 不透明（普通物品手持/展示等无混合场景）。 */
@@ -29,20 +35,39 @@ public enum RenderType {
 
     private final ResourceLocation atlas;
     private final boolean blend;
+    private final ResourceLocation id;
 
     RenderType(ResourceLocation atlas, boolean blend) {
         this.atlas = atlas;
         this.blend = blend;
+        this.id = new ResourceLocation("catframe", name().toLowerCase(Locale.ROOT));
     }
 
     /** 该分组绑定的纹理图集（blocks / items atlas）。 */
+    @Override
     public ResourceLocation atlas() {
         return atlas;
     }
 
     /** 该分组是否需要开启 alpha 混合（半透明）。 */
+    @Override
     public boolean blend() {
         return blend;
+    }
+
+    /** 分组稳定标识（{@code catframe:<name>}，注册表化后作为唯一注册键）。 */
+    @Override
+    public ResourceLocation id() {
+        return id;
+    }
+
+    /**
+     * 显式排序键 = 枚举声明序（0/1/2/3），注册表化后保持同一语义：
+     * 越小越先 flush，同键按注册顺序稳定排列。
+     */
+    @Override
+    public int sortKey() {
+        return ordinal();
     }
 
     /**

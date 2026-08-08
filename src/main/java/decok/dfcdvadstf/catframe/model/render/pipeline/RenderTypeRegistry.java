@@ -130,6 +130,14 @@ public final class RenderTypeRegistry {
     }
 
     /**
+     * 当前排序快照数组（只读约定：调用方不得修改数组或元素）。
+     * 供同包槽位仲裁（handler 认领）等需按索引对齐的只读场景使用。
+     */
+    static RenderTypeKey[] orderedSnapshot() {
+        return orderedSnapshot;
+    }
+
+    /**
      * 依据图集选择与混合需求解析内建分组（行为与改造前 {@code RenderType.of()} 一致）。
      *
      * @param blockAtlas  true=使用 blocks atlas，false=使用 items atlas

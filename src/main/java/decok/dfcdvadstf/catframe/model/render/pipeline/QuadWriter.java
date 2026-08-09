@@ -6,8 +6,11 @@ import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLighting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.IIcon;
+import net.minecraft.util.MathHelper;
 
 import javax.vecmath.Matrix4d;
 import javax.vecmath.Point3d;
@@ -191,8 +194,9 @@ public final class QuadWriter {
         // [方案B] 非 GUI 且非手持物品阶段（掉落 / 展示框）保留 GL_LIGHTING，
         // 改用逐面法线让 GL 计算方向光照，不再把 CardinalLighting 方向阴影烘焙进顶点色，
         // 避免“烘焙阴影 + GL 光照”双重着色导致的视角相关 bug。
-        // GUI 与手持阶段均维持烘焙阴影：手持对标 1.7.10 RenderItem 的
-        // glDisable(GL_LIGHTING) 语义（恒定亮度、不随外部光源变化）。
+        // GUI 与手持阶段均维持烘焙阴影：手持阶段不启用 GL_LIGHTING（避免双重着色），
+        // 但亮度（lightmap）取玩家位置的世界光照（见 handBrightness），
+        // 完全无外部光照时物品渲染为全黑，对标 1.7.10 ItemRenderer 的手持亮度语义。
         boolean glLit = !gui && !s.phase.isHandPhase();
         Matrix4d preTransform = s.preTransform;
         // 物品模型渲染变换（items JSON transformation 标签）：永远在 display 变换之后应用
@@ -201,7 +205,8 @@ public final class QuadWriter {
         Point3d tmpVec = new Point3d();
         Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
-        int baseBrightness = gui ? 255 : 15728880;
+        // 手持阶段亮度取玩家位置世界光照（无光时全黑），其余非 GUI 阶段保持全亮
+        int baseBrightness = gui ? 255 : (s.phase.isHandPhase() ? handBrightness() : 15728880);
         boolean hasSolidColor = false;
 
         for (BakedQuad q : allQuads) {
@@ -289,7 +294,8 @@ public final class QuadWriter {
         Point3d tmpVec = new Point3d();
         Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
-        int baseBrightness = gui ? 255 : 15728880;
+        // 手持阶段亮度取玩家位置世界光照（无光时全黑），其余非 GUI 阶段保持全亮
+        int baseBrightness = gui ? 255 : (s.phase.isHandPhase() ? handBrightness() : 15728880);
 
         for (BakedQuad q : allQuads) {
             if (q.solidColor == 0)
@@ -490,5 +496,30 @@ public final class QuadWriter {
         if (ay >= ax && ay >= az) return ny > 0 ? 1.0f : 0.5f; // 顶面最亮 / 底面最暗
         if (ax >= ay && ax >= az) return nx > 0 ? 0.6f : 0.8f; // 屏幕右侧暗 / 屏幕左侧亮
         return 0.8f; // 正对屏幕方向（南北面语义）
+    }
+
+    /**
+     * 手持阶段的基础亮度：取玩家所在位置的世界光照（天空光 + 方块光），
+     * 对标 1.7.10 {@code ItemRenderer.renderItemInFirstPerson} 的
+     * {@code getLightBrightnessForSkyBlocks(玩家坐标, 0)} 语义——完全无外部
+     * 光照时返回 0，手持物品渲染为全黑；玩家或世界上下文缺失时回退全亮兜底。
+     * 返回值与 {@link Tessellator#setBrightness} 的 packed 格式一致（sky<<20 | block<<4）。
+     * <p>
+     * Base brightness for hand-held phases: world light sampled at the player's
+     * position (same semantics as 1.7.10 {@code ItemRenderer}), so held items
+     * render fully black when no external light is available.
+     *
+     * @return packed brightness（15728880 = 全亮，0 = 全黑）
+     */
+    private static int handBrightness() {
+        Minecraft mc = Minecraft.getMinecraft();
+        EntityPlayer player = (mc != null) ? mc.thePlayer : null;
+        if (player == null || player.worldObj == null) {
+            return 15728880;
+        }
+        return player.worldObj.getLightBrightnessForSkyBlocks(
+                MathHelper.floor_double(player.posX),
+                MathHelper.floor_double(player.posY),
+                MathHelper.floor_double(player.posZ), 0);
     }
 }

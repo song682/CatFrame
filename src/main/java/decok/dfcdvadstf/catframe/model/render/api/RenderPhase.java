@@ -66,10 +66,12 @@ public enum RenderPhase {
     /**
      * 是否手持渲染阶段（第一人称 / 第三人称）。
      * <p>
-     * 手持阶段不应用 GL_LIGHTING（对标 1.7.10 {@code RenderItem} 物品路径的
-     * {@code glDisable(GL_LIGHTING)} 语义），物品恒定亮度、不随外部光源变化。
+     * 手持阶段不启用 GL_LIGHTING（避免与烘焙阴影双重着色，对标 1.7.10 物品路径的
+     * {@code glDisable(GL_LIGHTING)} 语义），但亮度（lightmap）取玩家位置的世界光照
+     * （见 {@code QuadWriter#handBrightness}），完全无外部光照时物品渲染为全黑。
      * Whether this phase renders an item held in hand (first/third person);
-     * hand phases skip GL_LIGHTING so held items ignore scene lighting.
+     * hand phases skip GL_LIGHTING, but their brightness comes from the world
+     * light at the player's position (black in fully dark areas).
      */
     public boolean isHandPhase() {
         return this == ITEM_HAND

@@ -1,10 +1,13 @@
 package decok.dfcdvadstf.catframe.model.render;
 
+import decok.dfcdvadstf.catframe.compact.itemphysic.ItemPhysicCompact;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
+import net.minecraft.client.renderer.entity.RenderItem;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -205,6 +208,22 @@ public class RenderJsonItemModel implements IItemRenderer {
         // ---- 计算反抵消预变换 ----
         // 将反抵消变换计算为 Matrix4d 矩阵，由管线在顶点提交时统一变换
         Matrix4d preTransform = computePreTransform(type, entity, stack);
+
+        // ---- ItemPhysic 兼容：掉落物物理旋转（仅 ItemPhysic 加载时生效） ----
+        // 保留 CatFrame 的 JSON 模型 + display.ground 自定义渲染，同时复刻
+        // ItemPhysic 的物理旋转动画（GL 旋转作用于当前矩阵，管线 flush 时生效）；
+        // 展示框（renderInFrame）与 Forge 数据缺失时不参与。
+        // ItemPhysic compat: replay its physical rotation while keeping CatFrame's
+        // JSON model + display.ground render (the GL rotation acts on the current
+        // matrix and takes effect when the pipeline flushes); item frames and
+        // missing Forge data are skipped.
+        if (type == ItemRenderType.ENTITY
+                && data != null && data.length > 1 && data[1] instanceof EntityItem
+                && !RenderItem.renderInFrame
+                && ItemPhysicCompact.isLoaded()) {
+            ItemPhysicCompact.applyRotation((EntityItem) data[1],
+                    stack.getItem() instanceof ItemBlock);
+        }
 
         // getRegisteredItemModel 只返回显式注册的物品模型（无方块 fallback）
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());

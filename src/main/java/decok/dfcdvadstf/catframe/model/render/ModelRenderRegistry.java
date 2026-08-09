@@ -7,6 +7,7 @@ import decok.dfcdvadstf.catframe.model.render.api.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.render.extension.BlockDestroyExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.FaceCullExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.GuiLightExtension;
@@ -48,6 +49,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *       为草方块/树叶/水/染色物品等提供生物群系或 NBT 染色。</li>
  *   <li>{@link DisplayTransformExtension}：处理 JSON model 中的 {@code "display"}，
  *       为 GUI 和手持渲染应用对应的 GL 变换（平移、旋转、缩放）。</li>
+ *   <li>{@link BlockDestroyExtension}：仅 BLOCK_DESTROY 阶段生效，
+ *       覆盖破坏图标（iconOverride）并强制全亮 + 白色顶点。</li>
  * </ul>
  *
  * <h3>优先级契约（v0.5+）</h3>
@@ -203,6 +206,7 @@ public final class ModelRenderRegistry {
         insertSorted(new GuiLightExtension(), p++);
         insertSorted(new TintRenderExtension(), p++);
         insertSorted(new DisplayTransformExtension(), p++);
+        insertSorted(BlockDestroyExtension.getInstance(), p++);
     }
 
     /**

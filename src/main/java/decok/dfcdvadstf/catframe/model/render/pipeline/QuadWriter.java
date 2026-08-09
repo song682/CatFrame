@@ -119,8 +119,31 @@ public final class QuadWriter {
                         vy = tmpVec.y;
                         vz = tmpVec.z;
                     }
-                    double U = icon.getInterpolatedU(q.up[i]);
-                    double V = icon.getInterpolatedV(q.vp[i]);
+                    // 破坏贴图 UV = 方块空间位置投影：贴图钉在方块空间、跨面连续，
+                    // 对齐原版 renderMin/Max*16 插值语义（顶点局部坐标 × 16）；
+                    // face 为 null 的 general quad 回退模型 UV。
+                    // Destroy-texture UV = block-space projection (vanilla
+                    // renderMin/Max*16 semantics); general quads fall back to model UV.
+                    double U, V;
+                    if (s.phase == RenderPhase.BLOCK_DESTROY) {
+                        Direction face = q.face;
+                        if (face == Direction.UP || face == Direction.DOWN) {
+                            U = icon.getInterpolatedU(vx * 16.0);
+                            V = icon.getInterpolatedV(vz * 16.0);
+                        } else if (face == Direction.NORTH || face == Direction.SOUTH) {
+                            U = icon.getInterpolatedU(vx * 16.0);
+                            V = icon.getInterpolatedV(vy * 16.0);
+                        } else if (face == Direction.WEST || face == Direction.EAST) {
+                            U = icon.getInterpolatedU(vz * 16.0);
+                            V = icon.getInterpolatedV(vy * 16.0);
+                        } else {
+                            U = icon.getInterpolatedU(q.up[i]);
+                            V = icon.getInterpolatedV(q.vp[i]);
+                        }
+                    } else {
+                        U = icon.getInterpolatedU(q.up[i]);
+                        V = icon.getInterpolatedV(q.vp[i]);
+                    }
                     t.addVertexWithUV(s.x + vx, s.y + vy, s.z + vz, U, V);
                 }
             }

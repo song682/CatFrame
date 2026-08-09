@@ -50,6 +50,19 @@ public enum RenderPhase {
      */
     ITEM_FIXED,
     /**
+     * 方块破坏贴花阶段（破坏动画覆盖层），仅由破坏渲染路径使用。
+     * <p>
+     * 运行于原版 {@code RenderGlobal.drawBlockDamageTexture} 的破坏批次 GL 上下文内
+     * （乘法混合 + polygon offset + blocks atlas 已由原版设置），本阶段只写顶点：
+     * <ul>
+     *   <li>内建扩展按 phase 门控天然失效：FaceCull（无剔除 → 全量 quads）、
+     *       AOCompute（无 AO）、Tint（无染色）、DisplayTransform（无 display 变换）；</li>
+     *   <li>{@link decok.dfcdvadstf.catframe.model.render.extension.BlockDestroyExtension}
+     *       仅在本阶段生效：覆盖破坏图标（iconOverride）、全亮、白色顶点。</li>
+     * </ul>
+     */
+    BLOCK_DESTROY,
+    /**
      * @deprecated 使用 {@link #ITEM_HAND_FIRST_PERSON} 或
      *             {@link #ITEM_HAND_THIRD_PERSON} 替代。
      */

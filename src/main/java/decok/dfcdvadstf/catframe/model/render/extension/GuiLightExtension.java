@@ -48,6 +48,15 @@ public final class GuiLightExtension implements IModelRenderExtension {
     @SuppressWarnings("deprecation")
     public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
 
+        // 破坏贴花阶段不管理 GL_LIGHTING：原版破坏批次（drawBlockDamageTexture）
+        // 的 GL 状态由外层统一管理，gui_light 对破坏贴图无意义。
+        // Destroy-texture pass: GL_LIGHTING is owned by the vanilla destroy batch,
+        // gui_light does not apply to the crack overlay.
+        if (phase == RenderPhase.BLOCK_DESTROY) {
+            changedLighting.set(Boolean.FALSE);
+            return;
+        }
+
         // 方块渲染：按模型 gui_light 字段决定
         boolean frontLight = needsFrontLighting(allQuads);
         if (frontLight) {

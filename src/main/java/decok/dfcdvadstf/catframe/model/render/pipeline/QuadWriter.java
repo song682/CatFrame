@@ -50,6 +50,7 @@ public final class QuadWriter {
             int baseBrightness = isGui ? 255
                     : (s.world != null ? s.block.getMixedBrightnessForBlock(s.world, s.x, s.y, s.z) : 0);
             // 方向阴影：世界与 GUI 一致，均按面方向取 CardinalLighting 系数。
+            // GUI 阶段会在扩展链后按屏幕空间方向重算（见下），此值作为后备。
             float baseShade = CardinalLighting.DEFAULT.byFace(q.face);
 
             // 创建上下文并运行扩展链
@@ -60,6 +61,13 @@ public final class QuadWriter {
             if (ctx.skip)
                 continue;
             hasVertices = true;
+
+            // GUI 阶段屏幕空间光照：方块类模型（gui_light="side"/null）按旋转后的
+            // 法线方向着色，明暗固定在屏幕上（顶 1.0 / 左 0.8 / 右 0.6 / 底 0.5），
+            // 不随 display.gui.rotation 变化；gui_light="front" 的 2D 物品保持全亮。
+            if (isGui && !"front".equals(ctx.quad.guiLight) && ctx.displayTransform != null) {
+                ctx.shade = guiScreenShade(q, ctx.displayTransform);
+            }
 
             // 提交到 Tessellator
             boolean hasVertexAO = ctx.aoBrightness[0] >= 0;
@@ -213,6 +221,13 @@ public final class QuadWriter {
             if (ctx.skip)
                 continue;
 
+            // GUI 阶段屏幕空间光照：方块类模型（gui_light="side"/null）按旋转后的
+            // 法线方向着色，明暗固定在屏幕上（顶 1.0 / 左 0.8 / 右 0.6 / 底 0.5），
+            // 不随 display.gui.rotation 变化；gui_light="front" 的 2D 物品保持全亮。
+            if (gui && !"front".equals(ctx.quad.guiLight) && ctx.displayTransform != null) {
+                ctx.shade = guiScreenShade(q, ctx.displayTransform);
+            }
+
             // 非 GUI 阶段：发送逐面法线（随 display / transformation / preTransform 旋转），供 GL_LIGHTING
             // 使用。
             if (glLit) {
@@ -287,6 +302,13 @@ public final class QuadWriter {
             if (ctx.skip)
                 continue;
 
+            // GUI 阶段屏幕空间光照：与 writeItemQuads 一致的屏幕空间方向着色
+            if (gui && !"front".equals(ctx.quad.guiLight) && ctx.displayTransform != null) {
+                ctx.shade = guiScreenShade(q, ctx.displayTransform);
+            }
+
+            // 非 GUI 阶段：发送逐面法线（随 display / transformation / preTransform 旋转），供 GL_LIGHTING
+            // 使用。
             if (glLit) {
                 writeQuadNormal(t, q, ctx.displayTransform, transformation, preTransform, tmpNormal);
             }
@@ -427,5 +449,46 @@ public final class QuadWriter {
         double y = m.m10 * v.x + m.m11 * v.y + m.m12 * v.z;
         double z = m.m20 * v.x + m.m21 * v.y + m.m22 * v.z;
         v.set(x, y, z);
+    }
+
+    /**
+     * 计算 GUI 阶段的屏幕空间方向光照（对标 1.7.10 {@code RenderItem} 方块分支的
+     * 视觉语义）：光照方向固定在屏幕上——顶部 1.0、屏幕左侧 0.8、屏幕右侧 0.6、
+     * 底部 0.5，不随 {@code display.gui.rotation} 的旋转角度变化。
+     * <p>
+     * 原理：将 quad 的模型空间面法线经 display 矩阵的旋转部分变换到世界/屏幕空间后，
+     * 按旋转后法线的主导轴向查表。这保证无论 GUI 视角角度如何，明暗分布始终是
+     * 「顶部最亮、下左面次之、下右面最暗」，避免模型空间 shade 随视角旋转导致的
+     * 左右亮度颠倒。
+     * <p>
+     * 仅用于 {@code gui_light="side"}（或 null）的方块类模型；{@code gui_light="front"}
+     * 的 2D 物品保持全亮（shade=1.0），不进入本方法。
+     * <p>
+     * Screen-space directional shading for GUI block models: the light is fixed
+     * on screen (top 1.0 / screen-left 0.8 / screen-right 0.6 / bottom 0.5)
+     * regardless of the display.gui.rotation angle.
+     */
+    private static float guiScreenShade(BakedQuad q, Matrix4d displayTransform) {
+        // 模型空间面法线（轴对齐单位向量），face 为 null（cross 等无向面）时按 UP 处理
+        double nx = 0, ny = 1, nz = 0;
+        if (q.face != null) {
+            nx = q.face.getStepX();
+            ny = q.face.getStepY();
+            nz = q.face.getStepZ();
+        }
+        // 经 display 矩阵旋转到屏幕/世界空间（忽略平移；GUI scale 通常均匀，
+        // 非均匀缩放下的方向偏差可接受）
+        if (displayTransform != null) {
+            double x = displayTransform.m00 * nx + displayTransform.m01 * ny + displayTransform.m02 * nz;
+            double y = displayTransform.m10 * nx + displayTransform.m11 * ny + displayTransform.m12 * nz;
+            double z = displayTransform.m20 * nx + displayTransform.m21 * ny + displayTransform.m22 * nz;
+            nx = x;
+            ny = y;
+            nz = z;
+        }
+        double ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+        if (ay >= ax && ay >= az) return ny > 0 ? 1.0f : 0.5f; // 顶面最亮 / 底面最暗
+        if (ax >= ay && ax >= az) return nx > 0 ? 0.6f : 0.8f; // 屏幕右侧暗 / 屏幕左侧亮
+        return 0.8f; // 正对屏幕方向（南北面语义）
     }
 }

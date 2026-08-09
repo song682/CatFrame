@@ -180,10 +180,12 @@ public final class QuadWriter {
     public static boolean writeItemQuads(RenderSubmit s, Tessellator t) {
         List<BakedQuad> allQuads = s.part.getAllQuads();
         boolean gui = (s.phase == RenderPhase.ITEM_GUI);
-        // [方案B] 非 GUI 物品阶段（手持 / 掉落 / 展示框）保留 GL_LIGHTING，
+        // [方案B] 非 GUI 且非手持物品阶段（掉落 / 展示框）保留 GL_LIGHTING，
         // 改用逐面法线让 GL 计算方向光照，不再把 CardinalLighting 方向阴影烘焙进顶点色，
-        // 避免“烘焙阴影 + GL 光照”双重着色导致的视角相关 bug。GUI 阶段维持烘焙阴影。
-        boolean glLit = !gui;
+        // 避免“烘焙阴影 + GL 光照”双重着色导致的视角相关 bug。
+        // GUI 与手持阶段均维持烘焙阴影：手持对标 1.7.10 RenderItem 的
+        // glDisable(GL_LIGHTING) 语义（恒定亮度、不随外部光源变化）。
+        boolean glLit = !gui && !s.phase.isHandPhase();
         Matrix4d preTransform = s.preTransform;
         // 物品模型渲染变换（items JSON transformation 标签）：永远在 display 变换之后应用
         // Per-model item transformation: always applied after the display transform
@@ -265,7 +267,8 @@ public final class QuadWriter {
     public static void writeSolidColorQuads(RenderSubmit s, Tessellator t) {
         List<BakedQuad> allQuads = s.part.getAllQuads();
         boolean gui = (s.phase == RenderPhase.ITEM_GUI);
-        boolean glLit = !gui;
+        // 与 writeItemQuads 一致：手持阶段不应用 GL_LIGHTING，走烘焙阴影分支
+        boolean glLit = !gui && !s.phase.isHandPhase();
         Matrix4d preTransform = s.preTransform;
         Matrix4d transformation = s.transformation;
         Point3d tmpVec = new Point3d();

@@ -187,9 +187,10 @@ public final class FeatureRenderDispatcher {
 
     /**
      * 是否为使用 GL_LIGHTING + 逐面法线的物品阶段（方案B）。
-     * 即除 GUI 外的所有物品阶段（手持 / 掉落 / 展示框）。
+     * 即除 GUI 与手持外的物品阶段（掉落 / 展示框）；手持阶段对标 1.7.10
+     * {@code RenderItem} 的 {@code glDisable(GL_LIGHTING)} 语义，不启用 GL 光照。
      */
     private static boolean isItemGlLitPhase(RenderPhase phase) {
-        return phase != null && !isBlockPhase(phase) && phase != RenderPhase.ITEM_GUI;
+        return phase != null && !isBlockPhase(phase) && phase != RenderPhase.ITEM_GUI && !phase.isHandPhase();
     }
 }

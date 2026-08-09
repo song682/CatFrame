@@ -324,6 +324,9 @@ public class JsonModelBake {
             // 否则玻璃板等依赖 cullface 的连接方块会出现东西方向错乱、剔除错误。
             q.face = recomputeFace(q);
             q.cullface = rotateCullface(q.cullface, rotY);
+            // 旋转后按新 face 重排顶点顺序（对齐 26.1.2 FaceBakery.recalculateWinding），
+            // 否则 AO 亮度会映射到错误的角（如树皮 S/N 亮度不对称）。
+            recalculateWinding(q);
             result.add(q);
         }
         return result;
@@ -360,6 +363,9 @@ public class JsonModelBake {
             // X 轴旋转会改变面朝向与遮挡方向，需要重新计算 face 并同步旋转 cullface
             q.face = recomputeFace(q);
             q.cullface = rotateCullface(q.cullface, rotX);
+            // 旋转后按新 face 重排顶点顺序（对齐 26.1.2 FaceBakery.recalculateWinding），
+            // 否则 AO 亮度会映射到错误的角（如横置原木木质部底部比顶部亮）。
+            recalculateWinding(q);
             result.add(q);
         }
         return result;
@@ -414,6 +420,76 @@ public class JsonModelBake {
         if (ay >= ax && ay >= az) return q.faceNormal.y > 0 ? Direction.UP : Direction.DOWN;
         if (ax >= ay && ax >= az) return q.faceNormal.x > 0 ? Direction.EAST : Direction.WEST;
         return q.faceNormal.z > 0 ? Direction.SOUTH : Direction.NORTH;
+    }
+
+    /**
+     * 旋转后重排顶点顺序（对齐 26.1.2 {@code FaceBakery.recalculateWinding}）。
+     * <p>
+     * X/Y 旋转会改变面朝向：{@code q.face} 已按新法线重算，但顶点数组仍保持旋转前
+     * 的约定顺序。AO 着色（AmbientVertexRemap）依赖「v0=左上角、从面外看逆时针」的
+     * FaceInfo 顶点约定，顺序错位会把角亮度写到错误位置——例如 UP 面经 x:90 旋转为
+     * SOUTH 后，原 v0（北-上）落到（南-下），导致横置原木木质部底部比顶部亮、
+     * 树皮 S/N 不对称。此方法按旋转后的 {@code q.face} 用 FaceInfo 选择器重排
+     * vertices/up/vp，UV 随顶点同步移动（与 26.1.2 行为一致）。
+     */
+    private static void recalculateWinding(BakedQuad q) {
+        Direction face = q.face;
+        if (face == null) return;
+        // FaceInfo 槽位选择器：{a轴, a轴取MAX, b轴, b轴取MAX}（0=x, 1=y, 2=z），
+        // 对齐 26.1.2 FaceInfo 顶点约定（v0=左上，从面外看逆时针）。
+        final int[][] sel;
+        switch (face) {
+            case DOWN:  sel = new int[][]{{0,0,2,1},{0,0,2,0},{0,1,2,0},{0,1,2,1}}; break;
+            case UP:    sel = new int[][]{{0,0,2,0},{0,0,2,1},{0,1,2,1},{0,1,2,0}}; break;
+            case NORTH: sel = new int[][]{{0,1,1,1},{0,1,1,0},{0,0,1,0},{0,0,1,1}}; break;
+            case SOUTH: sel = new int[][]{{0,0,1,1},{0,0,1,0},{0,1,1,0},{0,1,1,1}}; break;
+            case WEST:  sel = new int[][]{{1,1,2,0},{1,0,2,0},{1,0,2,1},{1,1,2,1}}; break;
+            default:    sel = new int[][]{{1,1,2,1},{1,0,2,1},{1,0,2,0},{1,1,2,0}}; break; // EAST
+        }
+        // 面内轴坐标范围中点作分档阈值（旋转后顶点为浮点值，取 (min+max)/2 更稳）
+        double midA = midCoord(q, sel[0][0]);
+        double midB = midCoord(q, sel[0][2]);
+        Vector3d[] nv = new Vector3d[4];
+        float[] nu = new float[4], nvp = new float[4];
+        for (int slot = 0; slot < 4; slot++) {
+            boolean wantA = sel[slot][1] == 1, wantB = sel[slot][3] == 1;
+            int aAxis = sel[slot][0], bAxis = sel[slot][2];
+            for (int src = 0; src < 4; src++) {
+                Vector3d v = q.vertices[src];
+                if (v == null) continue;
+                if ((coord(v, aAxis) > midA) == wantA && (coord(v, bAxis) > midB) == wantB) {
+                    nv[slot] = q.vertices[src];
+                    nu[slot] = q.up[src];
+                    nvp[slot] = q.vp[src];
+                    break;
+                }
+            }
+        }
+        System.arraycopy(nv, 0, q.vertices, 0, 4);
+        System.arraycopy(nu, 0, q.up, 0, 4);
+        System.arraycopy(nvp, 0, q.vp, 0, 4);
+    }
+
+    /** 取 quad 四顶点在指定轴上的坐标中点（(min+max)/2）。 */
+    private static double midCoord(BakedQuad q, int axis) {
+        double min = Double.MAX_VALUE, max = -Double.MAX_VALUE;
+        for (int i = 0; i < 4; i++) {
+            Vector3d v = q.vertices[i];
+            if (v == null) continue;
+            double c = coord(v, axis);
+            min = Math.min(min, c);
+            max = Math.max(max, c);
+        }
+        return (min + max) * 0.5;
+    }
+
+    /** 取向量的指定轴坐标（0=x, 1=y, 2=z）。 */
+    private static double coord(Vector3d v, int axis) {
+        switch (axis) {
+            case 0: return v.x;
+            case 1: return v.y;
+            default: return v.z;
+        }
     }
 
     /**

@@ -57,6 +57,16 @@ public final class GuiLightExtension implements IModelRenderExtension {
             return;
         }
 
+        // 手持阶段不应用 GL_LIGHTING（对标 1.7.10 RenderItem 物品路径的
+        // glDisable(GL_LIGHTING) 语义）：物品恒定亮度、不随外部光源变化，
+        // 即使 gui_light="side" 也强制关闭，避免手持物品受场景方向光照影响。
+        // Hand phases always disable GL_LIGHTING so held items ignore scene lighting.
+        if (phase.isHandPhase()) {
+            changedLighting.set(Boolean.TRUE);
+            GL11.glDisable(GL11.GL_LIGHTING);
+            return;
+        }
+
         // 方块渲染：按模型 gui_light 字段决定
         boolean frontLight = needsFrontLighting(allQuads);
         if (frontLight) {

@@ -64,6 +64,20 @@ public enum RenderPhase {
     ITEM_HAND;
 
     /**
+     * 是否手持渲染阶段（第一人称 / 第三人称）。
+     * <p>
+     * 手持阶段不应用 GL_LIGHTING（对标 1.7.10 {@code RenderItem} 物品路径的
+     * {@code glDisable(GL_LIGHTING)} 语义），物品恒定亮度、不随外部光源变化。
+     * Whether this phase renders an item held in hand (first/third person);
+     * hand phases skip GL_LIGHTING so held items ignore scene lighting.
+     */
+    public boolean isHandPhase() {
+        return this == ITEM_HAND
+                || this == ITEM_HAND_FIRST_PERSON
+                || this == ITEM_HAND_THIRD_PERSON;
+    }
+
+    /**
      * 将此渲染阶段映射到 JSON model 的 display 键名。
      * <p>
      * [S2] 当前 1.7.10 无副手系统，因此仅映射 righthand 变体。

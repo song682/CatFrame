@@ -1,71 +1,76 @@
 package decok.dfcdvadstf.catframe.model.render.extension;
 
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.render.api.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import net.minecraft.util.IIcon;
 
 /**
- * 破坏贴花扩展：仅在 {@link RenderPhase#BLOCK_DESTROY} 阶段生效。
+ * 渲染扩展：破坏贴花（destroy overlay）。
  * <p>
- * 运行于原版 {@code RenderGlobal.drawBlockDamageTexture} 的破坏批次内
- * （乘法混合、polygon offset、blocks atlas 绑定均由原版完成），本扩展负责
- * 把破坏图标覆盖到 quad 上，并按 26.1.2 语义强制全亮 + 白色顶点：
+ * 在 {@link RenderPhase#BLOCK_DESTROY} 阶段（即原版
+ * {@code RenderGlobal.drawBlockDamageTexture} 批次内）对每个 quad：
  * <ul>
- *   <li>{@link RenderContext#iconOverride} = 当前破坏阶段图标（destroy_stage_0~9）；</li>
- *   <li>{@link RenderContext#brightnessOverride} = 15728880（全亮）；</li>
- *   <li>{@link RenderContext#shade} = 1.0（无方向阴影）；</li>
- *   <li>{@link RenderContext#color} = 0xFFFFFF（防染色，Tint 对 BLOCK_DESTROY 本就 return）。</li>
+ *   <li>将 {@link RenderContext#iconOverride} 设为当前破坏阶段的
+ *       {@code destroy_stage_0~9} IIcon（由
+ *       {@link decok.dfcdvadstf.catframe.model.RenderDispatcher#renderBlockDestroy}
+ *       经 {@link #setCurrentIcon} 注入）；</li>
+ *   <li>强制全亮光照（15728880）、无方向阴影（shade=1.0）、纯白顶点色——
+ *       对标 26.1.2 {@code BlockFeatureRenderer} 的破坏覆盖层语义，
+ *       暗处破坏贴花依然清晰，裂缝效果纯靠贴图黑白像素与乘法混合呈现。</li>
  * </ul>
- * 其余内建扩展按 phase 门控天然失效：FaceCull 无剔除（全量 quads）、AOCompute 无 AO、
- * DisplayTransform 无 display 变换。
- *
- * <p>线程安全：破坏图标经静态方法写入 ThreadLocal（渲染可从任意线程进入），
- * 单次调用结束后在 {@link #afterPart()} 清除，防止脏值泄漏到后续渲染。
+ * <p>
+ * Destroy decal extension: in the BLOCK_DESTROY phase, overrides the quad icon
+ * with the current destroy-stage sprite and forces full brightness / white
+ * vertex color, matching the 26.1.2 BlockFeatureRenderer overlay semantics.
+ * <p>
+ * <b>线程安全</b>：{@link #CURRENT_ICON} 使用 ThreadLocal ——
+ * {@code renderBlockUsingTexture} 仅在主线程的 {@code drawBlockDamageTexture}
+ * 中被调用，且 set/clear 由调用方以 try/finally 包住同步的 flushInline，
+ * 无线程泄漏。
  */
-public class BlockDestroyExtension implements IModelRenderExtension {
+@SideOnly(Side.CLIENT)
+public final class BlockDestroyExtension implements IModelRenderExtension {
 
-    /** 全亮光照值（与原版 RenderHelper / 物品渲染一致）。 */
-    private static final int FULL_BRIGHTNESS = 15728880;
+    /** 当前线程正在渲染的破坏图标（destroy_stage_0~9 之一）。 */
+    private static final ThreadLocal<IIcon> CURRENT_ICON = new ThreadLocal<>();
 
-    /** 当前破坏阶段图标（主线程破坏批次每帧设置）。 */
-    private final ThreadLocal<IIcon> destroyIcon = new ThreadLocal<>();
+    public BlockDestroyExtension() {
+    }
 
     /**
-     * 设置当前破坏阶段图标（破坏渲染路径调用）。
-     * 图标来自原版 {@code RenderGlobal.destroyBlockIcons[progress]}（0~9）。
+     * 设置当前线程的破坏图标。必须在 flush 前调用、flush 后
+     * {@link #clearCurrentIcon()}（调用方以 try/finally 保证）。
      *
-     * @param icon 破坏阶段图标（destroy_stage_0~9），null 时后续 apply 不覆盖纹理
+     * @param icon 当前破坏阶段的 IIcon（null 安全，忽略）
      */
-    public static void setDestroyIcon(IIcon icon) {
-        INSTANCE.destroyIcon.set(icon);
+    public static void setCurrentIcon(IIcon icon) {
+        CURRENT_ICON.set(icon);
     }
-
-    private static final BlockDestroyExtension INSTANCE = new BlockDestroyExtension();
 
     /**
-     * 获取内建单例（供 ModelRenderRegistry 注册与静态图标传递共用同一实例）。
+     * 清除当前线程的破坏图标（flush 后调用）。
      */
-    public static BlockDestroyExtension getInstance() {
-        return INSTANCE;
-    }
-
-    private BlockDestroyExtension() {
+    public static void clearCurrentIcon() {
+        CURRENT_ICON.remove();
     }
 
     @Override
     public void apply(RenderContext ctx) {
+        // 仅破坏贴花阶段生效
+        // Only active during the destroy overlay phase
         if (ctx.phase != RenderPhase.BLOCK_DESTROY) return;
-        IIcon icon = destroyIcon.get();
-        if (icon != null) ctx.iconOverride = icon;
-        ctx.brightnessOverride = FULL_BRIGHTNESS;
+
+        IIcon icon = CURRENT_ICON.get();
+        if (icon != null) {
+            ctx.iconOverride = icon;
+        }
+        // 对标 26.1.2 BlockFeatureRenderer：全亮 + 纯白顶点色，暗处破坏贴花依然清晰
+        // Match 26.1.2 BlockFeatureRenderer: full light + white vertex color
+        ctx.brightnessOverride = 15728880;
         ctx.shade = 1.0f;
         ctx.color = 0xFFFFFF;
-    }
-
-    @Override
-    public void afterPart() {
-        // 清除 ThreadLocal，防止脏值泄漏到后续渲染批次
-        destroyIcon.remove();
     }
 }

@@ -52,28 +52,26 @@ public class MixinRenderBlocks {
     }
 
     /**
-     * Inject at the head of renderBlockUsingTexture to intercept the vanilla
-     * <b>destroy texture</b> pass ({@code RenderGlobal.drawBlockDamageTexture}).
+     * Inject at the head of renderBlockUsingTexture (vanilla destroy overlay path).
      * <p>
-     * Vanilla routes the destroy pass through {@code overrideBlockTexture}, which only
-     * reaches renderType-0 rendering — ISBRH handlers (mod blocks) and VMM-overridden
-     * vanilla blocks would otherwise be re-drawn with their normal texture (ghost block
-     * effect, no cracks). We intercept both groups and route them through
-     * {@link RenderDispatcher#renderBlockDestroy} (BLOCK_DESTROY phase + destroy icon),
-     * then cancel the vanilla path. Blocks outside the CatFrame pipeline keep vanilla
-     * behavior untouched.
+     * The vanilla 1.7.10 destroy pipeline passes the destroy-stage IIcon through
+     * {@code RenderBlocks.setOverrideBlockTexture}, but that mechanism never reaches
+     * ISBRH handlers — so CatFrame-owned blocks (VMM renderType-0 blocks and
+     * RenderJsonBlockModel ISBRH blocks) would be redrawn with their normal texture
+     * during breaking. Route them through {@link RenderDispatcher#renderBlockDestroy}
+     * instead, which reuses the block's own model geometry as the decal projection.
+     * Blocks without a CatFrame model fall through to the vanilla path untouched.
      * <p>
-     * 注入到 renderBlockUsingTexture 头部，接管原版破坏贴图批次
-     * （{@code RenderGlobal.drawBlockDamageTexture}）：模组 ISBRH 方块与 VMM 接管方块
-     * 走 {@link RenderDispatcher#renderBlockDestroy}（BLOCK_DESTROY 阶段 + 破坏图标），
-     * 其余方块保持原版行为。
+     * 拦截原版破坏贴图渲染入口：CatFrame 接管方块（VMM renderType-0 方块与
+     * RenderJsonBlockModel ISBRH 方块）改走 renderBlockDestroy；未接管方块放行原版。
      */
-    @Inject(method = "renderBlockUsingTexture(Lnet/minecraft/block/Block;IIILnet/minecraft/util/IIcon;)V",
-            at = @At("HEAD"), cancellable = true)
-    private void catframe$onRenderBlockUsingTexture(Block block, int x, int y, int z, IIcon icon, CallbackInfo ci) {
-        if (RenderJsonBlockModel.isRegistered(block) || ModelRegistry.hasModel(block)) {
-            RenderDispatcher.renderBlockDestroy(blockAccess, x, y, z, block, icon);
-            ci.cancel();
-        }
+    @Inject(method = "renderBlockUsingTexture", at = @At("HEAD"), cancellable = true)
+    private void catframe$onRenderBlockUsingTexture(Block block, int x, int y, int z,
+                                                    IIcon icon, CallbackInfo ci) {
+        // Blocks without a CatFrame model keep the vanilla override-texture path
+        if (!RenderJsonBlockModel.isRegistered(block) && !ModelRegistry.hasModel(block)) return;
+
+        RenderDispatcher.renderBlockDestroy(blockAccess, x, y, z, block, icon);
+        ci.cancel();
     }
 }

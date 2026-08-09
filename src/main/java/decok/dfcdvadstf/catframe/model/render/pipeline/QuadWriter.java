@@ -119,24 +119,27 @@ public final class QuadWriter {
                         vy = tmpVec.y;
                         vz = tmpVec.z;
                     }
-                    // 破坏贴图 UV = 方块空间位置投影：贴图钉在方块空间、跨面连续，
-                    // 对齐原版 renderMin/Max*16 插值语义（顶点局部坐标 × 16）；
-                    // face 为 null 的 general quad 回退模型 UV。
-                    // Destroy-texture UV = block-space projection (vanilla
-                    // renderMin/Max*16 semantics); general quads fall back to model UV.
                     double U, V;
                     if (s.phase == RenderPhase.BLOCK_DESTROY) {
-                        Direction face = q.face;
-                        if (face == Direction.UP || face == Direction.DOWN) {
+                        // 破坏贴图 UV = 方块空间位置投影（复刻 1.7.10 renderFace* 的
+                        // renderMin/Max*16 语义）：按面法向选择切向轴，旋转后顶点局部坐标 ×16
+                        // 插值 → 贴图钉在几何上、跨面连续（对齐 26.1.2 贴花语义）。
+                        // Destroy decal UVs: block-space position projection, mimicking the
+                        // vanilla renderMin/Max*16 semantics; the decal is pinned to the
+                        // geometry and stays continuous across faces.
+                        Direction f = q.face;
+                        if (f == Direction.DOWN || f == Direction.UP) {
                             U = icon.getInterpolatedU(vx * 16.0);
                             V = icon.getInterpolatedV(vz * 16.0);
-                        } else if (face == Direction.NORTH || face == Direction.SOUTH) {
+                        } else if (f == Direction.NORTH || f == Direction.SOUTH) {
                             U = icon.getInterpolatedU(vx * 16.0);
                             V = icon.getInterpolatedV(vy * 16.0);
-                        } else if (face == Direction.WEST || face == Direction.EAST) {
+                        } else if (f == Direction.WEST || f == Direction.EAST) {
                             U = icon.getInterpolatedU(vz * 16.0);
                             V = icon.getInterpolatedV(vy * 16.0);
                         } else {
+                            // face 为 null（cross 等无向 quad）兜底回退模型 UV
+                            // Fall back to baked model UVs for direction-less quads
                             U = icon.getInterpolatedU(q.up[i]);
                             V = icon.getInterpolatedV(q.vp[i]);
                         }

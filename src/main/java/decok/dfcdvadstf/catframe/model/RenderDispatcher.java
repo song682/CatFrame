@@ -36,38 +36,32 @@ import java.util.Map;
 public class RenderDispatcher {
 
     public static boolean renderBlock(IBlockAccess world, int x, int y, int z, Block block, RenderBlocks renderer) {
-        int[] rotation = new int[1];
-        BlockStateModelPart part = resolveBlockPart(world, x, y, z, block, rotation);
-        if (part == null) return false;
-        UniformRenderPipeline.renderBlockQuads(part, world, x, y, z, block, rotation[0]);
+        int metadata = world.getBlockMetadata(x, y, z);
+        ResolvedModel rm = resolveBlockModel(world, x, y, z, block, metadata);
+        if (rm == null) return false;
+        UniformRenderPipeline.renderBlockQuads(rm.part, world, x, y, z, block, rm.rot);
         return true;
     }
 
     /**
-     * 解析方块的世界渲染模型部件，供 {@link #renderBlock} 与 {@link #renderBlockDestroy} 共用
-     * （保证破坏贴图与方块世界形状完全一致）。三条解析路径按优先级依次尝试：
+     * 解析方块的世界渲染模型（{@link #renderBlock} 与 {@link #renderBlockDestroy} 共用）。
+     * <p>
+     * 精确保留改造前 renderBlock 三条路径的语义与顺序：
      * <ol>
-     *   <li>CatStateDefinition + IBlockStateProvider → variants/multipart
-     *       （旋转已在 bakeModel 中烘焙，rot=0）；</li>
-     *   <li>已注册 BlockStateModel → {@code collectParts} + rot
-     *       （randomRotation / registeredBlockRotations）；</li>
-     *   <li>IBlockStateProvider + stateBlockData → variants/multipart 动态解析（rot=0）。</li>
+     *   <li>CatStateDefinition 路径：命中即定 —— 解析失败直接返回 null，
+     *       不再尝试后续路径（对应改造前 {@code return renderStateWithCatBlockState(...)}
+     *       的直接 return 语义）；</li>
+     *   <li>registeredBlockModels 路径：collectParts 非空 → part + 旋转；</li>
+     *   <li>IBlockStateProvider 动态路径：variant / multipart 解析。</li>
      * </ol>
+     * Resolves the block's world-rendering model, shared by renderBlock and
+     * renderBlockDestroy; keeps the exact three-path semantics of the old renderBlock.
      *
-     * @param world       世界
-     * @param x           X 坐标
-     * @param y           Y 坐标
-     * @param z           Z 坐标
-     * @param block       方块
-     * @param rotationOut 输出 Y 轴旋转角度（0/90/180/270），无旋转时为 0
-     * @return 解析出的模型部件；无可用模型时返回 null
+     * @return 解析结果（part + Y 轴旋转），无模型返回 null
      */
-    private static BlockStateModelPart resolveBlockPart(IBlockAccess world, int x, int y, int z,
-                                                        Block block, int[] rotationOut) {
-        int metadata = world.getBlockMetadata(x, y, z);
-        rotationOut[0] = 0;
-
-        // --- New path: check CatStateDefinition first (v0.3.0) ---
+    private static ResolvedModel resolveBlockModel(IBlockAccess world, int x, int y, int z,
+                                                   Block block, int metadata) {
+        // --- Path 1: check CatStateDefinition first (v0.3.0) ---
         CatStateDefinition<?> stateDef = ModelRegistry.blockStateDefinitions.get(block);
         if (stateDef != null && block instanceof IBlockStateProvider) {
             IBlockStateProvider sp = (IBlockStateProvider) block;
@@ -76,13 +70,12 @@ public class RenderDispatcher {
                 // Use CatBlockState.toVariantKey() for matching
                 BlockstateJson bs = ModelManagerDataLoader.stateBlockData.get(block);
                 if (bs != null) {
-                    BlockStateModelPart part = resolveCatBlockStatePart(world, x, y, z, block, catState, bs);
-                    if (part != null && !part.isEmpty()) return part;
+                    return resolved(renderStateWithCatBlockState(world, x, y, z, block, catState, bs));
                 }
             }
         }
 
-        // --- New path: check registered BlockStateModel first ---
+        // --- Path 2: check registered BlockStateModel ---
         BlockStateModel stateModel = ModelRegistry.registeredBlockModels.get(block);
         if (stateModel != null) {
             BlockStateModelPart part = stateModel.collectParts(world, x, y, z, metadata);
@@ -98,66 +91,79 @@ public class RenderDispatcher {
                         if (r == null) r = rotMap.get(0);
                         if (r != null) rot = r;
                     }
-
                 }
-                rotationOut[0] = rot;
-                return part;
+                return new ResolvedModel(part, rot);
             }
         }
 
-        // Dynamic state-provider path: resolve variant at render time
+        // --- Path 3: dynamic state-provider ---
         if (block instanceof IBlockStateProvider && ModelManagerDataLoader.stateBlockData.containsKey(block)) {
-            return resolveStateProviderPart(world, x, y, z, block, metadata);
+            return resolved(renderStateProviderBlock(world, x, y, z, block, metadata));
         }
 
         return null;
     }
 
     /**
-     * 渲染方块破坏贴花（破坏动画覆盖层，destroy_stage_0~9）。
-     * <p>
-     * 由 Mixin 在 {@code RenderBlocks.renderBlockUsingTexture} 中接管调用，运行于原版
-     * {@code RenderGlobal.drawBlockDamageTexture} 的破坏批次 GL 上下文内（乘法混合、
-     * polygon offset、blocks atlas 绑定、alpha test 均由原版完成），本方法只向当前
-     * Tessellator 写入顶点：
-     * <ul>
-     *   <li>模型解析与 {@link #renderBlock} 完全一致（破坏贴图钉在方块自身模型上）；</li>
-     *   <li>{@link RenderPhase#BLOCK_DESTROY} 阶段 + {@link BlockDestroyExtension}
-     *       覆盖破坏图标并强制全亮 + 白色顶点（26.1.2 语义）；</li>
-     *   <li>{@link FeatureRenderDispatcher#flushInline} 内联写出，
-     *       不触碰 Tessellator / GL 状态。</li>
-     * </ul>
-     *
-     * @param world       世界
-     * @param x           X 坐标
-     * @param y           Y 坐标
-     * @param z           Z 坐标
-     * @param block       方块
-     * @param destroyIcon 当前破坏阶段图标（原版 {@code destroyBlockIcons[progress]}，0~9）
-     * @return 方块是否有可用模型并已提交渲染
+     * 包装解析结果：路径 1/3（blockstate / state-provider）的旋转已在烘焙期固定，rot 恒 0。
+     * Wraps a resolved part; paths 1/3 bake rotation at bake time, so rot is always 0.
      */
-    public static boolean renderBlockDestroy(IBlockAccess world, int x, int y, int z,
-                                             Block block, IIcon destroyIcon) {
-        int[] rotation = new int[1];
-        BlockStateModelPart part = resolveBlockPart(world, x, y, z, block, rotation);
-        if (part == null) return false;
-
-        BlockDestroyExtension.setDestroyIcon(destroyIcon);
-        RenderSubmit s = new RenderSubmit(RenderPhase.BLOCK_DESTROY, part,
-                RenderTypeRegistry.BLOCK_ATLAS_SOLID, x, y, z, rotation[0],
-                block, null, world, world.getBlockMetadata(x, y, z),
-                null, null, false, false);
-        FeatureRenderDispatcher.flushInline(s);
-        return true;
+    private static ResolvedModel resolved(BlockStateModelPart part) {
+        return part == null ? null : new ResolvedModel(part, 0);
     }
 
     /**
-     * 用 CatBlockState 的 variant key 解析 blockstate 模型部件（v0.3.0），
-     * 供世界渲染与破坏贴花共用；无匹配模型时返回 null。
+     * 渲染方块的破坏贴花（destroy overlay）。
+     * <p>
+     * 复用与 {@link #renderBlock} 完全相同的模型解析，但以
+     * {@link RenderPhase#BLOCK_DESTROY} 阶段提交：直接
+     * {@link FeatureRenderDispatcher#flushInline}（与 BLOCK_WORLD 内联语义一致，
+     * 只写顶点），绝不走 {@link RenderCommandBuffers#submit} —— 该路径对非
+     * BLOCK_WORLD 会进入 flushGroup（startDrawingQuads/draw/绑纹理），破坏原版
+     * {@code RenderGlobal.drawBlockDamageTexture} 已建立的 startDrawingQuads 批次上下文。
+     * <p>
+     * 破坏图标（destroy_stage_0~9）以 IIcon 形式注入
+     * {@link BlockDestroyExtension#setCurrentIcon}，由扩展链在 BLOCK_DESTROY 阶段
+     * 覆写到每个 quad；GL 状态（乘法混合 774/768、polygon offset、alpha test）
+     * 全部由原版 drawBlockDamageTexture 管理，本方法只写顶点。
+     * Renders the block's destroy decal overlay, reusing the exact model
+     * resolution of renderBlock but submitting under the BLOCK_DESTROY phase.
+     *
+     * @param world       世界
+     * @param x           方块 X 坐标
+     * @param y           方块 Y 坐标
+     * @param z           方块 Z 坐标
+     * @param block       方块实例
+     * @param destroyIcon 当前破坏阶段的 IIcon（destroy_stage_0~9）
      */
-    private static BlockStateModelPart resolveCatBlockStatePart(IBlockAccess world, int x, int y, int z,
-                                                                Block block, CatBlockState catState,
-                                                                BlockstateJson bs) {
+    public static void renderBlockDestroy(IBlockAccess world, int x, int y, int z,
+                                          Block block, IIcon destroyIcon) {
+        int metadata = world.getBlockMetadata(x, y, z);
+        ResolvedModel rm = resolveBlockModel(world, x, y, z, block, metadata);
+        if (rm == null) return;
+        RenderSubmit s = new RenderSubmit(RenderPhase.BLOCK_DESTROY, rm.part,
+                RenderTypeRegistry.BLOCK_ATLAS_DESTROY, x, y, z, rm.rot,
+                block, null, world, metadata, null, null, false, false);
+        BlockDestroyExtension.setCurrentIcon(destroyIcon);
+        try {
+            FeatureRenderDispatcher.flushInline(s);
+        } finally {
+            BlockDestroyExtension.clearCurrentIcon();
+        }
+    }
+
+    /**
+     * Resolve a block part using CatBlockState's variant key for blockstate matching (v0.3.0).
+     * <p>
+     * 改造自 renderStateWithCatBlockState：仅解析模型部件，不执行渲染
+     * （渲染由调用方按阶段提交）。Only resolves the model part; rendering is
+     * left to the caller (renderBlock / renderBlockDestroy).
+     *
+     * @return 解析出的部件；无可渲染模型返回 null
+     */
+    private static BlockStateModelPart renderStateWithCatBlockState(IBlockAccess world, int x, int y, int z,
+                                                                     Block block, CatBlockState catState,
+                                                                     BlockstateJson bs) {
         if (bs == null) return null;
 
         // One-shot variant key validation (identity-deduped inside): invalid
@@ -180,7 +186,9 @@ public class RenderDispatcher {
             // 走 BakedModelCache 缓存（线程安全 + 懒烘焙）
             String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
-            return (part == null || part.isEmpty()) ? null : part;
+            if (part == null || part.isEmpty()) return null;
+
+            return part;
 
         } else if (bs.multipart != null) {
             // Convert CatBlockState to property map for multipart condition matching
@@ -214,11 +222,16 @@ public class RenderDispatcher {
     }
 
     /**
-     * 用 IBlockStateProvider 的动态 variant 解析模型部件（供世界渲染与破坏贴花共用）；
-     * 无匹配模型时返回 null。
+     * Resolve a block part using IBlockStateProvider's dynamic variant resolution.
+     * Matches current block properties to blockstate variants or multipart conditions.
+     * <p>
+     * 改造自 renderStateProviderBlock：仅解析模型部件，不执行渲染
+     * （渲染由调用方按阶段提交）。Only resolves the model part; rendering is
+     * left to the caller (renderBlock / renderBlockDestroy).
+     *
+     * @return 解析出的部件；无可渲染模型返回 null
      */
-    private static BlockStateModelPart resolveStateProviderPart(IBlockAccess world, int x, int y, int z,
-                                                                Block block, int metadata) {
+    private static BlockStateModelPart renderStateProviderBlock(IBlockAccess world, int x, int y, int z, Block block, int metadata) {
         IBlockStateProvider provider = (IBlockStateProvider) block;
         BlockstateJson bs = ModelManagerDataLoader.stateBlockData.get(block);
         if (bs == null) return null;
@@ -243,7 +256,9 @@ public class RenderDispatcher {
             // [C1+W3] 走 BakedModelCache 缓存（线程安全 + 懒烘焙）
             String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
-            return (part == null || part.isEmpty()) ? null : part;
+            if (part == null || part.isEmpty()) return null;
+
+            return part;
 
         } else if (bs.multipart != null) {
             // Multipart: combine all matching parts
@@ -266,6 +281,20 @@ public class RenderDispatcher {
         }
 
         return null;
+    }
+
+    /**
+     * 模型解析结果：渲染部件 + Y 轴旋转角度。
+     * Model resolution result: the render part plus its Y-axis rotation.
+     */
+    private static final class ResolvedModel {
+        final BlockStateModelPart part;
+        final int rot;
+
+        ResolvedModel(BlockStateModelPart part, int rot) {
+            this.part = part;
+            this.rot = rot;
+        }
     }
 
     /**

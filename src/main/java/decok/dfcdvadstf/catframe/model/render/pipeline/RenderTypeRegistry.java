@@ -47,6 +47,8 @@ public final class RenderTypeRegistry {
     public static final int SORT_BLOCK_TRANSLUCENT = 2;
     /** 内建排序键：物品图集 · 半透明（3，最后 flush）。 */
     public static final int SORT_ITEM_TRANSLUCENT = 3;
+    /** 内建排序键：方块图集 · 破坏贴花（4；破坏渲染恒走 flushInline，不参与批处理排序）。 */
+    public static final int SORT_BLOCK_DESTROY = 4;
 
     /** 内建分组：方块图集 · 不透明（方块世界内联、方块物品手持等）。 */
     public static final RenderTypeKey BLOCK_ATLAS_SOLID;
@@ -56,6 +58,8 @@ public final class RenderTypeRegistry {
     public static final RenderTypeKey BLOCK_ATLAS_TRANSLUCENT;
     /** 内建分组：物品图集 · 半透明（物品 GUI/掉落/展示框）。 */
     public static final RenderTypeKey ITEM_ATLAS_TRANSLUCENT;
+    /** 内建分组：方块图集 · 破坏贴花（destroy overlay，对标 26.1.2 DESTROY_TYPES）。 */
+    public static final RenderTypeKey BLOCK_ATLAS_DESTROY;
 
     /** 注册条目存储（写路径并发安全；遍历只在重建快照时进行）。 */
     private static final CopyOnWriteArrayList<Entry> ENTRIES = new CopyOnWriteArrayList<>();
@@ -71,6 +75,11 @@ public final class RenderTypeRegistry {
                 "block_atlas_translucent", TextureMap.locationBlocksTexture, true, SORT_BLOCK_TRANSLUCENT);
         ITEM_ATLAS_TRANSLUCENT = register(
                 "item_atlas_translucent", TextureMap.locationItemsTexture, true, SORT_ITEM_TRANSLUCENT);
+        // 破坏贴花分组：乘法混合 GL 状态由原版 drawBlockDamageTexture 管理，blend 恒 false
+        // Destroy decal group: multiplicative blend state is owned by vanilla
+        // drawBlockDamageTexture, so blend stays false here.
+        BLOCK_ATLAS_DESTROY = register(
+                "block_atlas_destroy", TextureMap.locationBlocksTexture, false, SORT_BLOCK_DESTROY);
     }
 
     private RenderTypeRegistry() {

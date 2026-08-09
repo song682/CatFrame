@@ -123,20 +123,32 @@ public final class QuadWriter {
                     if (s.phase == RenderPhase.BLOCK_DESTROY) {
                         // 破坏贴图 UV = 方块空间位置投影（复刻 1.7.10 renderFace* 的
                         // renderMin/Max*16 语义）：按面法向选择切向轴，旋转后顶点局部坐标 ×16
-                        // 插值 → 贴图钉在几何上、跨面连续（对齐 26.1.2 贴花语义）。
+                        // 插值 → 贴图钉在几何上、绕方块一周连续（对齐 26.1.2 贴花语义）。
+                        // 垂直面 V 取 16 - y*16（原版顶部顶点 y=maxY → V(0)，底部 → V(16)），
+                        // 否则上下颠倒；NORTH/EAST 的 U 反向取 16 - x*16 / 16 - z*16，
+                        // 使贴图沿南→东→北→西环绕时 U 连续（贴纸环绕语义）。
                         // Destroy decal UVs: block-space position projection, mimicking the
                         // vanilla renderMin/Max*16 semantics; the decal is pinned to the
-                        // geometry and stays continuous across faces.
+                        // geometry and wraps continuously around the four vertical faces.
+                        // Vertical faces use V = 16 - y*16 (vanilla binds V(0) to the top
+                        // edge), and NORTH/EAST flip U so the texture wraps seamlessly
+                        // around the block perimeter.
                         Direction f = q.face;
                         if (f == Direction.DOWN || f == Direction.UP) {
                             U = icon.getInterpolatedU(vx * 16.0);
                             V = icon.getInterpolatedV(vz * 16.0);
-                        } else if (f == Direction.NORTH || f == Direction.SOUTH) {
+                        } else if (f == Direction.NORTH) {
+                            U = icon.getInterpolatedU(16.0 - vx * 16.0);
+                            V = icon.getInterpolatedV(16.0 - vy * 16.0);
+                        } else if (f == Direction.SOUTH) {
                             U = icon.getInterpolatedU(vx * 16.0);
-                            V = icon.getInterpolatedV(vy * 16.0);
-                        } else if (f == Direction.WEST || f == Direction.EAST) {
+                            V = icon.getInterpolatedV(16.0 - vy * 16.0);
+                        } else if (f == Direction.WEST) {
                             U = icon.getInterpolatedU(vz * 16.0);
-                            V = icon.getInterpolatedV(vy * 16.0);
+                            V = icon.getInterpolatedV(16.0 - vy * 16.0);
+                        } else if (f == Direction.EAST) {
+                            U = icon.getInterpolatedU(16.0 - vz * 16.0);
+                            V = icon.getInterpolatedV(16.0 - vy * 16.0);
                         } else {
                             // face 为 null（cross 等无向 quad）兜底回退模型 UV
                             // Fall back to baked model UVs for direction-less quads

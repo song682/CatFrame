@@ -5,7 +5,6 @@ import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import decok.dfcdvadstf.catframe.compact.CompactBase;
 import decok.dfcdvadstf.catframe.proxy.CommonProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,11 +28,6 @@ public class CatFrame {
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
-        // 不兼容模组检查：ItemPhysic 与 CatFrame 掉落物渲染接管互斥，检测到即崩溃
-        // Incompatible-mod check: ItemPhysic conflicts with CatFrame's dropped-item
-        // render takeover, crash immediately when detected
-        CompactBase.rejectItemPhysic();
-
         // Pre initialization logic
         logger = event.getModLog();
         config = new CatFrameConfig(event.getSuggestedConfigurationFile());

@@ -349,16 +349,19 @@ public final class QuadWriter {
     }
 
     /**
-     * 写入附魔光效（glint）quads —— 重放提交项的<b>全部</b>几何（含 solidColor 侧面），
+     * 写入附魔光效（glint）quads —— 重放提交项的<b>纹理</b>几何（跳过 solidColor 侧面），
      * 供 {@code GuiGraphicsExtractor.renderEnchantmentGlint} 以 glint 纹理 +
      * 滚动纹理矩阵叠加绘制。
-     * Write enchantment glint quads: replays ALL geometry (including solid-color
-     * side quads) so the glint covers the full model silhouette, for the glint
-     * overlay passes.
+     * Write enchantment glint quads: replays the textured geometry (skipping
+     * solid-color side quads) so the glint follows the opaque texel contour,
+     * for the glint overlay passes.
      * <p>
      * 与 {@link #writeItemQuads} 的差异：
      * <ul>
-     * <li><b>不跳过</b> {@code solidColor != 0} 的 quad —— 光效必须盖满模型轮廓；</li>
+     * <li><b>跳过</b> {@code solidColor != 0} 的 quad —— 侧面深度由正常 pass 第二遍
+     * 无纹理渲染以强制不透明 alpha 写入（无 alpha 裁剪），重放会使光效在侧面投影
+     * 覆盖的透明像素上出现（溢出）；光效只需贴合正常 pass 第一遍经 alpha test
+     * 裁剪后写入深度的纹理轮廓，对标原版 1.7.10 光效语义；</li>
      * <li>颜色强制为 glint 紫（对标原版 {@code RenderItem.renderEffect} 的
      * {@code (0.5, 0.25, 0.8)}；非 GUI 阶段对标 1.7.10 {@code ItemRenderer}
      * 手持光效乘 0.76）；</li>
@@ -387,6 +390,20 @@ public final class QuadWriter {
         float gr = 0.5f * k, gg = 0.25f * k, gb = 0.8f * k;
 
         for (BakedQuad q : allQuads) {
+            // 跳过 solidColor 侧面 quad：正常 pass 中侧面在第二遍无纹理渲染以强制
+            // 不透明 alpha 写入深度（无 alpha 裁剪），重放会使 GL_EQUAL 光效渲染在
+            // 侧面投影覆盖的透明像素上（手持旋转视角下侧面投影偏离正面轮廓，溢出明显）。
+            // 跳过使光效严格贴合正常 pass 第一遍（alpha test 裁剪后）写入深度的
+            // 不透明像素，保持与原版 1.7.10 相同的视觉行为。
+            // Skip solid-color side quads: their depth is written by the second
+            // untextured pass with forced-opaque alpha (no cutout), so replaying
+            // them would paint glint over transparent texels wherever the side
+            // projection overlaps them. Skipping confines glint to the opaque
+            // texels that survived the normal pass's alpha test, matching vanilla.
+            if (q.solidColor != 0) {
+                continue;
+            }
+
             // 运行扩展链：获取 displayTransform 并尊重 skip（与正常 pass 的可见性一致）
             // Run extension chain: obtain displayTransform and honor skip flag
             RenderContext ctx = new RenderContext(s.phase, q,

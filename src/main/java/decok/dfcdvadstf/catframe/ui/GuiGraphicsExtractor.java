@@ -331,8 +331,9 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * Render enchantment glint: replay all quad geometry of the submitted item (including solidColor sides),
-     * and draw with the glint texture using two layers of scrolling texture matrices stacked.
+     * Render enchantment glint: replay the textured quad geometry of the submitted item (solidColor side quads
+     * are skipped, keeping glint inside the opaque texel contour), and draw with the glint texture using two
+     * layers of scrolling texture matrices stacked.
      * <p>
      * Background: Forge disables the original GUI glint in {@code RenderItem.renderItemAndEffectIntoGUI}
      * ({@code if (false && hasEffect()}), with the comment "modders must handle themselves"),

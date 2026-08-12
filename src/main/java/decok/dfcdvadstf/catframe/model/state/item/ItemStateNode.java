@@ -434,9 +434,6 @@ public abstract class ItemStateNode {
                 case "minecraft:special":
                     throw new JsonParseException(
                             "minecraft:special is not yet supported (requires special renderer infrastructure)");
-                case "minecraft:bundle/selected_item":
-                    throw new JsonParseException(
-                            "minecraft:bundle/selected_item is not yet supported (requires bundle infrastructure)");
                 default:
                     throw new JsonParseException("Unknown ItemStateNode type: " + type);
             }

@@ -469,7 +469,7 @@ public class GuiGraphicsExtractor {
         for (String line : lines) {
             components.add(ClientTooltipComponent.create(line));
         }
-        // TODO: 当 component 非空时，插入到第二行位置（如 BundleTooltip）
+        // TODO: 当 component 非空时，插入到第二行位置
         setTooltipForNextFrameInternal(font, components, xo, yo, positioner, style, replaceExisting);
     }
 

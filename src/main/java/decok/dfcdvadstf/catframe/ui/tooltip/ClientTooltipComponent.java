@@ -45,7 +45,7 @@ public interface ClientTooltipComponent {
     }
 
     /**
-     * 渲染图像组件（如 Bundle 的物品格）。
+     * 渲染图像组件。
      */
     default void renderImage(FontRenderer font, int x, int y, int w, int h) {
     }

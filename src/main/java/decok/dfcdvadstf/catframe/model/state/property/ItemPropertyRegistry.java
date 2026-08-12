@@ -115,9 +115,6 @@ public class ItemPropertyRegistry {
             return carried != null && carried == stack;
         });
 
-        // bundle/has_selected_item — 1.7.10 无 bundle，占位返回 false
-        register("bundle/has_selected_item", (stack, phase) -> Boolean.FALSE);
-
         // custom_model_data 布尔形式：检查 NBT flags[index]（默认 index=0）
         register("custom_model_data_bool", (stack, phase) -> {
             if (stack == null) return Boolean.FALSE;
@@ -236,9 +233,6 @@ public class ItemPropertyRegistry {
             if (yaw < 0) yaw += 360.0f;
             return (int) (yaw / 360.0f * 10000);
         });
-
-        // bundle/fullness — 占位，返回 0
-        register("bundle/fullness", (stack, phase) -> 0);
 
         // crossbow/pull — 占位，返回 0
         register("crossbow/pull", (stack, phase) -> 0);

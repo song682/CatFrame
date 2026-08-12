@@ -23,7 +23,7 @@ public class Tooltip {
     /** 原始 tooltip 文本（支持 § 格式化） */
     private final String message;
 
-    /** 可选的 tooltip 图像/结构组件（如 BundleTooltip） */
+    /** 可选的 tooltip 图像/结构组件 */
     private final Optional<TooltipComponent> component;
 
     /** 可选的 tooltip 样式标识（对标 26.1.2 {@code Tooltip.style()}） */

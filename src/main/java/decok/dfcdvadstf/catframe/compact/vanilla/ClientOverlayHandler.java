@@ -9,6 +9,7 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.ui.components.toast.SimpleToast;
 import decok.dfcdvadstf.catframe.ui.components.toast.ToastOverlay;
 import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
+import decok.dfcdvadstf.catframe.Tags;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
@@ -71,7 +72,7 @@ public class ClientOverlayHandler {
         if (event.entity == Minecraft.getMinecraft().thePlayer && !welcomeShown) {
             welcomeShown = true;
             ToastOverlay.INSTANCE.getToastManager().addToast(new SimpleToast(
-                    I18n.format("toast.title"), I18n.format("toast.description")
+                    I18n.format("toast.title"), I18n.format("toast.description", Tags.VERSION)
             ).setShowSound(new ResourceLocation("random.orb")));
         }
     }

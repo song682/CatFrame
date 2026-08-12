@@ -10,8 +10,7 @@ import java.util.Set;
 
 public class CatFrameMixinPlugin implements IMixinConfigPlugin {
     @Override
-    public void onLoad(String mixinPackage) {
-    }
+    public void onLoad(String mixinPackage) {}
 
     @Override
     public String getRefMapperConfig() {
@@ -24,8 +23,7 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
     }
 
     @Override
-    public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {
-    }
+    public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {}
 
     /**
      * Return {@code null} to delegate mixin selection to the JSON configuration
@@ -43,12 +41,8 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
     }
 
     @Override
-    public void preApply(String s, ClassNode classNode, String s1, IMixinInfo iMixinInfo) {
-
-    }
+    public void preApply(String s, ClassNode classNode, String s1, IMixinInfo iMixinInfo) {}
 
     @Override
-    public void postApply(String s, ClassNode classNode, String s1, IMixinInfo iMixinInfo) {
-
-    }
+    public void postApply(String s, ClassNode classNode, String s1, IMixinInfo iMixinInfo) {}
 }

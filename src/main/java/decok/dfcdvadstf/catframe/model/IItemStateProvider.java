@@ -55,7 +55,7 @@ public interface IItemStateProvider {
     /**
      * 全局开关：是否由 CatFrame 接管此物品的渲染。
      * <p>
-     * 返回 {@code false} 时，CatFrame 不注册 Forge IItemRenderer，
+     * 返回 {@code false} 时，CatFrame 不注册 3 IItemRenderer，
      * 物品完全走原版渲染路径。
      *
      * @return {@code true} 接管（默认），{@code false} 让原版接管

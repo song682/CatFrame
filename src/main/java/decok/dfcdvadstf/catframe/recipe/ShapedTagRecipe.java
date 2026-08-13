@@ -14,20 +14,20 @@ import net.minecraftforge.oredict.OreDictionary;
 import java.util.*;
 
 /**
- * 有序 Tag 配方
+ * Shaped recipes with tags
  * 
- * 类似 Forge 的 ShapedOreRecipe，但使用 CatFrame Tag 系统而不是 OreDictionary
- * 支持 Tag 名称作为配方材料，实现更灵活的配方定义
+ * Similar to Forge's ShapedOreRecipe, but uses CatFrame Tag system instead of OreDictionary
+ * Supports Tag names as recipe ingredients, achieving more flexible recipe definitions
  * 
- * 使用示例：
+ * Usage example:
  * <pre>
- * // 使用 Tag 名称
+ * // Using Tag name
  * new ShapedTagRecipe(new ItemStack(Blocks.chest),
  *     "###", "# #", "###",
  *     '#', "catframe:planks"
  * );
  * 
- * // 使用 TagKey
+ * // Using TagKey
  * new ShapedTagRecipe(new ItemStack(Blocks.chest),
  *     "###", "# #", "###",
  *     '#', CatFrameItemTags.PLANKS
@@ -46,21 +46,21 @@ public class ShapedTagRecipe implements IRecipe {
     private boolean mirrored = true;
     
     /**
-     * 使用 Block 作为输出
+     * Using Block as output
      */
     public ShapedTagRecipe(Block result, Object... recipe) {
         this(new ItemStack(result), recipe);
     }
     
     /**
-     * 使用 Item 作为输出
+     * Using Item as output
      */
     public ShapedTagRecipe(Item result, Object... recipe) {
         this(new ItemStack(result), recipe);
     }
     
     /**
-     * 使用 ItemStack 作为输出
+     * Using ItemStack as output
      */
     public ShapedTagRecipe(ItemStack result, Object... recipe) {
         output = result.copy();
@@ -68,7 +68,7 @@ public class ShapedTagRecipe implements IRecipe {
         String shape = "";
         int idx = 0;
         
-        // 检查是否有 mirrored 参数
+        // Check for mirrored parameter
         if (recipe[idx] instanceof Boolean) {
             mirrored = (Boolean) recipe[idx];
             if (recipe[idx + 1] instanceof Object[]) {
@@ -78,7 +78,7 @@ public class ShapedTagRecipe implements IRecipe {
             }
         }
         
-        // 解析配方形状
+        // Parse recipe shape
         if (recipe[idx] instanceof String[]) {
             String[] parts = ((String[]) recipe[idx++]);
             
@@ -97,7 +97,7 @@ public class ShapedTagRecipe implements IRecipe {
             }
         }
         
-        // 验证形状
+        // Validate shape
         if (width * height != shape.length()) {
             String ret = "Invalid shaped tag recipe: ";
             for (Object tmp : recipe) {
@@ -107,7 +107,7 @@ public class ShapedTagRecipe implements IRecipe {
             throw new RuntimeException(ret);
         }
         
-        // 解析材料映射
+        // Parse ingredient mapping
         HashMap<Character, Object> itemMap = new HashMap<Character, Object>();
         
         for (; idx < recipe.length; idx += 2) {
@@ -117,7 +117,7 @@ public class ShapedTagRecipe implements IRecipe {
             itemMap.put(chr, parseIngredient(in));
         }
         
-        // 构建输入数组
+        // Build input array
         input = new Object[width * height];
         int x = 0;
         for (char chr : shape.toCharArray()) {
@@ -126,8 +126,8 @@ public class ShapedTagRecipe implements IRecipe {
     }
     
     /**
-     * 解析材料参数
-     * 支持：ItemStack、Item、Block、String（Tag/OreDict）、TagKey
+     * Parse ingredient parameters
+     * Support: ItemStack, Item, Block, String (Tag/OreDict), TagKey
      */
     private Object parseIngredient(Object ingredient) {
         if (ingredient instanceof ItemStack) {
@@ -152,7 +152,7 @@ public class ShapedTagRecipe implements IRecipe {
         if (ingredient instanceof String) {
             String str = (String) ingredient;
             
-            // 判断是否是 Tag 名称（包含 : 或者是已知的 Tag）
+            // Check if is a Tag name (contains : or is a known Tag)
             if (str.contains(":")) {
                 try {
                     ResourceLocation tagLocation = new ResourceLocation(str);
@@ -161,11 +161,11 @@ public class ShapedTagRecipe implements IRecipe {
                         return new ArrayList<Item>(tagItems);
                     }
                 } catch (Exception e) {
-                    // 不是有效的 ResourceLocation，尝试作为 OreDict
+                    // Not a valid ResourceLocation, try as OreDict
                 }
             }
             
-            // 作为 OreDict 名称（向后兼容）
+            // As OreDict name (backward compatibility)
             ArrayList<ItemStack> ores = OreDictionary.getOres(str);
             if (!ores.isEmpty()) {
                 return ores;

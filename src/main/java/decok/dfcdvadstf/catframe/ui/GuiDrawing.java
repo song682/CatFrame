@@ -15,9 +15,6 @@ import org.lwjgl.opengl.GL11;
  */
 public final class GuiDrawing {
 
-    private GuiDrawing() {
-    }
-
     /**
      * Draw a filled rectangle with a solid colour.
      * <p>使用纯色绘制填充矩形。</p>

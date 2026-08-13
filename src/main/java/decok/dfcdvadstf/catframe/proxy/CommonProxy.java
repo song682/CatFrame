@@ -4,6 +4,7 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
+import decok.dfcdvadstf.catframe.BingoPlushyItem;
 import decok.dfcdvadstf.catframe.BlueyPlushyItem;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.Tags;
@@ -17,6 +18,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 public class CommonProxy {
     protected BlueyPlushyItem blueyPlushy;
+    protected BingoPlushyItem bingoPlushy;
 
     public void preInit(FMLPreInitializationEvent event) {
         // load() is now triggered automatically by LanguageRegister.domain()
@@ -29,8 +31,11 @@ public class CommonProxy {
 
         if (CatFrame.config.enableBlueyPlushy) {
             blueyPlushy = new BlueyPlushyItem();
+            bingoPlushy = new BingoPlushyItem();
             GameRegistry.registerItem(blueyPlushy, "bluey_plushy");
+            GameRegistry.registerItem(bingoPlushy, "bingo_plushy");
             CatFrameTags.add(Tags.MODID, "plushy", blueyPlushy);
+            CatFrameTags.add(Tags.MODID, "plushy", bingoPlushy);
         }
     }
 

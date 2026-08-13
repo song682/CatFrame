@@ -38,7 +38,7 @@ import java.util.List;
  *
  * // 2. 自定义阴影：所有手持物品亮度降一半
  * ModelRenderExtensions.register(ctx -> {
- *     if (ctx.phase == RenderPhase.ITEM_HAND) ctx.brightnessOverride = 0x800080;
+ *     if (ctx.phase.isHandPhase()) ctx.brightnessOverride = 0x800080;
  * });
  *
  * // 3. 面剔除：当 quad 朝向北侧且北侧邻居是不透明方块时不渲染

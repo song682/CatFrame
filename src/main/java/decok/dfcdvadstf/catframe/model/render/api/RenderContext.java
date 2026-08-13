@@ -45,7 +45,7 @@ public final class RenderContext {
     public final ItemStack stack;
 
     /**
-     * [S1] 方块的 metadata 值，用于 BLOCK_GUI 阶段的染色等场景。
+     * [S1] 方块的 metadata 值，由渲染管线在提交时携带（历史上用于 GUI 方块染色）。
      * 默认为 0，由渲染管线在已知 metadata 时设置。
      */
     public int metadata = 0;

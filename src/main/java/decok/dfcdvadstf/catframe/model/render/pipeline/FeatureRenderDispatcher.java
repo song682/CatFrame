@@ -182,7 +182,7 @@ public final class FeatureRenderDispatcher {
     }
 
     private static boolean isBlockPhase(RenderPhase phase) {
-        return phase == RenderPhase.BLOCK_WORLD || phase == RenderPhase.BLOCK_GUI;
+        return phase == RenderPhase.BLOCK_WORLD;
     }
 
     /**

@@ -53,7 +53,7 @@ public interface RenderSubmitView {
     @Nullable
     IBlockAccess world();
 
-    /** 方块 metadata（用于 BLOCK_GUI 染色等）。 */
+    /** 方块 metadata（用于染色等场景）。 */
     int metadata();
 
     /** flush 时是否需要关闭面剔除（物品路径 true，方块路径 false）。 */

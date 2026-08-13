@@ -34,7 +34,7 @@ public final class RenderSubmit implements RenderSubmitView {
 
     /** 方块坐标（物品阶段通常为 0）。 */
     public final int x, y, z;
-    /** Y 轴旋转角度（方块世界/GUI 使用，0/90/180/270）。 */
+    /** Y 轴旋转角度（方块世界渲染使用，0/90/180/270）。 */
     public final int rotationDeg;
 
     /** 方块实例（物品阶段可为 null）。 */
@@ -46,7 +46,7 @@ public final class RenderSubmit implements RenderSubmitView {
     /** 世界访问（无世界上下文时为 null）。 */
     @Nullable
     public final IBlockAccess world;
-    /** 方块 metadata（用于 BLOCK_GUI 染色等）。 */
+    /** 方块 metadata（用于染色等场景）。 */
     public final int metadata;
 
     /** 预变换矩阵（反抵消），在 display transform 之后逐顶点应用，可为 null。 */

@@ -36,12 +36,11 @@ public final class QuadWriter {
     }
 
     /**
-     * 写入方块 quads（世界或 GUI）。迁移自原 {@code renderBlockQuads} 的 for-quad 循环。
+     * 写入方块 quads（世界 / 破坏贴图）。迁移自原 {@code renderBlockQuads} 的 for-quad 循环。
      *
      * @return 是否写入了任何顶点（供调用方决定是否 {@code t.draw()}）
      */
     public static boolean writeBlockQuads(RenderSubmit s, Tessellator t) {
-        boolean isGui = (s.phase == RenderPhase.BLOCK_GUI);
         List<BakedQuad> allQuads = s.part.getAllQuads();
 
         double a = Math.toRadians(s.rotationDeg);
@@ -50,10 +49,9 @@ public final class QuadWriter {
 
         boolean hasVertices = false;
         for (BakedQuad q : allQuads) {
-            int baseBrightness = isGui ? 255
-                    : (s.world != null ? s.block.getMixedBrightnessForBlock(s.world, s.x, s.y, s.z) : 0);
-            // 方向阴影：世界与 GUI 一致，均按面方向取 CardinalLighting 系数。
-            // GUI 阶段会在扩展链后按屏幕空间方向重算（见下），此值作为后备。
+            int baseBrightness = s.world != null
+                    ? s.block.getMixedBrightnessForBlock(s.world, s.x, s.y, s.z) : 0;
+            // 方向阴影：按面方向取 CardinalLighting 系数。
             float baseShade = CardinalLighting.DEFAULT.byFace(q.face);
 
             // 创建上下文并运行扩展链
@@ -65,17 +63,10 @@ public final class QuadWriter {
                 continue;
             hasVertices = true;
 
-            // GUI 阶段屏幕空间光照：方块类模型（gui_light="side"/null）按旋转后的
-            // 法线方向着色，明暗固定在屏幕上（顶 1.0 / 左 0.8 / 右 0.6 / 底 0.5），
-            // 不随 display.gui.rotation 变化；gui_light="front" 的 2D 物品保持全亮。
-            if (isGui && !"front".equals(ctx.quad.guiLight) && ctx.displayTransform != null) {
-                ctx.shade = guiScreenShade(q, ctx.displayTransform);
-            }
-
             // 提交到 Tessellator
             boolean hasVertexAO = ctx.aoBrightness[0] >= 0;
 
-            if (hasVertexAO && !isGui) {
+            if (hasVertexAO) {
                 for (int i = 0; i < 4; i++) {
                     t.setBrightness(ctx.aoBrightness[i]);
                     float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade * ctx.aoColorMul[i];
@@ -89,7 +80,7 @@ public final class QuadWriter {
                         vx = px * cos - pz * sin + 0.5;
                         vz = px * sin + pz * cos + 0.5;
                     }
-                    // 应用 display transform（仅 BLOCK_GUI 时有值）
+                    // 应用 display transform（方块阶段扩展链默认不设置，null 检查兜底）
                     if (ctx.displayTransform != null) {
                         tmpVec.set(vx, vy, vz);
                         ctx.displayTransform.transform(tmpVec);
@@ -107,14 +98,9 @@ public final class QuadWriter {
                 float cr = ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
                 float cg = ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
                 float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
+                t.setColorOpaque_F(cr, cg, cb);
 
                 IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
-                if (isGui) {
-                    // GUI 模式使用 RGBA 以正确处理纹理 alpha 通道
-                    t.setColorRGBA_F(cr, cg, cb, 1.0f);
-                } else {
-                    t.setColorOpaque_F(cr, cg, cb);
-                }
                 for (int i = 0; i < 4; i++) {
                     double vx = q.vx(i), vy = q.vy(i), vz = q.vz(i);
                     if (s.rotationDeg != 0) {
@@ -122,7 +108,7 @@ public final class QuadWriter {
                         vx = px * cos - pz * sin + 0.5;
                         vz = px * sin + pz * cos + 0.5;
                     }
-                    // 应用 display transform（仅 BLOCK_GUI 时有值）
+                    // 应用 display transform（方块阶段扩展链默认不设置，null 检查兜底）
                     if (ctx.displayTransform != null) {
                         tmpVec.set(vx, vy, vz);
                         ctx.displayTransform.transform(tmpVec);

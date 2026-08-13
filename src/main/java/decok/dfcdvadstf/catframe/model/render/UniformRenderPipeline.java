@@ -38,19 +38,19 @@ public final class UniformRenderPipeline {
     private UniformRenderPipeline() {
     }
 
-    // ==================== 方块世界/GUI 渲染 ====================
+    // ==================== 方块世界渲染 ====================
 
     /**
-     * 渲染方块的 quads（世界或 GUI）。构建 {@link RenderSubmit} 并提交至命令管线。
+     * 渲染方块的 quads（世界 / 破坏贴图）。构建 {@link RenderSubmit} 并提交至命令管线。
      *
      * @param part        渲染部件
-     * @param world       世界（GUI 时可传 null）
-     * @param x           方块 X（GUI 时为 0）
-     * @param y           方块 Y（GUI 时为 0）
-     * @param z           方块 Z（GUI 时为 0）
+     * @param world       世界
+     * @param x           方块 X
+     * @param y           方块 Y
+     * @param z           方块 Z
      * @param block       方块
      * @param rotationDeg Y 轴旋转角度（0/90/180/270）
-     * @param phase       渲染阶段（BLOCK_WORLD / BLOCK_GUI）
+     * @param phase       渲染阶段（BLOCK_WORLD / BLOCK_DESTROY）
      */
     public static void renderBlockQuads(BlockStateModelPart part,
                                         IBlockAccess world, int x, int y, int z,
@@ -60,7 +60,7 @@ public final class UniformRenderPipeline {
     }
 
     /**
-     * 渲染方块的 quads（带 metadata 支持，用于 BLOCK_GUI 染色等场景）。
+     * 渲染方块的 quads（带 metadata 支持，用于染色等场景）。
      * Display transform 已由 {@link BlockStateModelPart#getDisplay()} 持有，
      * 由 {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
      * 在扩展链中消费。
@@ -75,18 +75,13 @@ public final class UniformRenderPipeline {
                                         int metadata) {
         if (part == null) return;
 
-        boolean isGui = (phase == RenderPhase.BLOCK_GUI);
-        // 方块渲染绑定 blocks atlas；GUI 恒开混合（对齐改造前 renderBlockQuads GUI 路径），
-        // 世界渲染不透明。方块路径均不关闭面剔除（disableCull=false）。
-        RenderTypeKey type = isGui
-                ? RenderTypeRegistry.BLOCK_ATLAS_TRANSLUCENT : RenderTypeRegistry.BLOCK_ATLAS_SOLID;
-
+        // 方块渲染绑定 blocks atlas，世界渲染不透明、不关闭面剔除（disableCull=false）。
         RenderSubmit s = new RenderSubmit(
-                phase, part, type,
+                phase, part, RenderTypeRegistry.BLOCK_ATLAS_SOLID,
                 x, y, z, rotationDeg,
                 block, null, world, metadata,
                 null, null,
-                false, isGui);
+                false, false);
         RenderCommandBuffers.submit(s);
     }
 

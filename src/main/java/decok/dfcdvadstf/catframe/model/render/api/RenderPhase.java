@@ -19,17 +19,6 @@ public enum RenderPhase {
      */
     BLOCK_DESTROY,
     /**
-     * <p>
-     * 
-     * @deprecated 由于 Item Model 的加入，方块在 GUI 中渲染的场景越来越少。<br>
-     *             基本上切换到了物品渲染，此阶段已很少使用，仅保留向后兼容。<br>
-     *             使用 {@link #ITEM_GUI} 替代。
-     * </p>
-     *  方块在 GUI 中渲染（有 BlockAccess）。
-     */
-    @Deprecated
-    BLOCK_GUI,
-    /**
      * 物品在 GUI / 物品栏中渲染（有 ItemStack）。
      */
     ITEM_GUI,
@@ -55,13 +44,7 @@ public enum RenderPhase {
      * 物品在展示框（Item Frame）中渲染（有 ItemStack）。
      * 对应 JSON model 的 fixed。
      */
-    ITEM_FIXED,
-    /**
-     * @deprecated 使用 {@link #ITEM_HAND_FIRST_PERSON} 或
-     *             {@link #ITEM_HAND_THIRD_PERSON} 替代。
-     */
-    @Deprecated
-    ITEM_HAND;
+    ITEM_FIXED;
 
     /**
      * 是否手持渲染阶段（第一人称 / 第三人称）。
@@ -74,8 +57,7 @@ public enum RenderPhase {
      * light at the player's position (black in fully dark areas).
      */
     public boolean isHandPhase() {
-        return this == ITEM_HAND
-                || this == ITEM_HAND_FIRST_PERSON
+        return this == ITEM_HAND_FIRST_PERSON
                 || this == ITEM_HAND_THIRD_PERSON;
     }
 
@@ -90,9 +72,7 @@ public enum RenderPhase {
     public String getDisplayKey() {
         switch (this) {
             case ITEM_GUI:
-            case BLOCK_GUI:
                 return "gui";
-            case ITEM_HAND:
             case ITEM_HAND_FIRST_PERSON:
                 return "firstperson_righthand";
             case ITEM_HAND_THIRD_PERSON:

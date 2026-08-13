@@ -306,7 +306,7 @@ public class GuiGraphicsExtractor {
      * Determine whether the submitted item needs to stack the enchantment glow effect.
      * <p>
      * Only applicable to item phases (GUI / hand-held / drop / display frame); block phases
-     * (BLOCK_WORLD / BLOCK_GUI) have no foil semantics.
+     * (like BLOCK_WORLD) have no foil semantics.
      */
     public static boolean glintApplicable(RenderSubmit s) {
         return isItemGlintPhase(s.phase) && s.stack != null && hasFoil(s.stack);
@@ -412,8 +412,7 @@ public class GuiGraphicsExtractor {
     /** Whether it is the rendering phase of an item holding an ItemStack (GUI / Handheld / Dropped / Display Frame). */
     private static boolean isItemGlintPhase(RenderPhase phase) {
         return phase != null
-                && phase != RenderPhase.BLOCK_WORLD
-                && phase != RenderPhase.BLOCK_GUI;
+                && phase != RenderPhase.BLOCK_WORLD;
     }
 
     // ==================== 状态访问 ====================

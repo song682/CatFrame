@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.LoadingDotsText;
 import decok.dfcdvadstf.catframe.ui.Text;
 import net.minecraft.client.Minecraft;
@@ -22,7 +23,7 @@ import org.lwjgl.opengl.GL11;
  * <pre>{@code
  * WaitingPanel waiting = new WaitingPanel(Text.literal("Loading..."));
  * // In drawScreen:
- * waiting.render(mouseX, mouseY, partialTicks);
+ * waiting.extractRenderState(GuiGraphicsExtractor.getInstance(), mouseX, mouseY, partialTicks);
  * // In mouseClicked / keyTyped: do nothing (panel blocks input)
  * }</pre>
  */
@@ -69,10 +70,14 @@ public class WaitingPanel extends AbstractComponent {
 
     // ──── Rendering ────
 
+    /**
+     * 绘制全屏遮罩与居中面板 —— 可见性检查已由 {@link #extractRenderState}
+     * 在调用前处理。<br>
+     * Draws the full-screen overlay and centred panel — the visibility check is
+     * already handled by {@link #extractRenderState}.
+     */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
-
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         Minecraft mc = Minecraft.getMinecraft();
         ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
         int screenWidth = sr.getScaledWidth();

@@ -224,7 +224,7 @@ public abstract class SpriteIconedButton extends Button {
 
         @Override
         protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-            renderBackground(mouseX, mouseY, partialTicks);
+            renderBackground(graphics, mouseX, mouseY, partialTicks);
             int ix = x + (width - spriteWidth) / 2;
             int iy = y + (height - spriteHeight) / 2;
             extractSprite(graphics, ix, iy);
@@ -254,7 +254,7 @@ public abstract class SpriteIconedButton extends Button {
 
         @Override
         protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-            renderBackground(mouseX, mouseY, partialTicks);
+            renderBackground(graphics, mouseX, mouseY, partialTicks);
 
             // 文本布局：居中于按钮中心，可用区域为 [x+2, x+width-spriteWidth-4]。短文本时
             // 中心即落在可用区域内（与高版本 acceptScrolling 的静态居中一致）；超宽文本

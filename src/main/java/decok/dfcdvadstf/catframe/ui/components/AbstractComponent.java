@@ -204,24 +204,17 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
     }
 
     /**
-     * 子类绘制钩子 —— 新组件应覆盖此方法实现具体绘制。<br>
-     * Widget drawing hook — new components should override this to draw themselves.
+     * 子类绘制钩子 —— 所有组件通过覆盖此方法实现具体绘制。<br>
+     * Widget drawing hook — components should override this to draw themselves.
      * <p>
-     * 默认桥接到旧 {@link #render} 入口，保证既有子类（Button、TabButton 等）
-     * 无需改动即可继续渲染。
+     * 由 {@link #extractRenderState} 统一驱动：调用时可见性检查与悬停状态
+     * （含 tooltip 延迟泵动）均已完成，默认空实现。
+     * <br>Driven uniformly by {@link #extractRenderState}: by the time this is
+     * called the visibility check and hover-state refresh (including the tooltip
+     * delay pump) have already run. Defaults to a no-op.
      * </p>
      */
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-        render(mouseX, mouseY, partialTicks);
-    }
-
-    /**
-     * @deprecated 旧渲染入口 —— 仅保留给既有子类；新组件请覆盖 {@link #renderWidget}。<br>
-     * Legacy render entry — kept only for existing subclasses; new components
-     * should override {@link #renderWidget} instead.
-     */
-    @Deprecated
-    protected void render(int mouseX, int mouseY, float partialTicks) {
     }
 
     // ──── Equals / Hash ────

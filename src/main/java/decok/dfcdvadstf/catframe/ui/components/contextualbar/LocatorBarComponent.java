@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components.contextualbar;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.entity.EntityLivingBase;
@@ -19,10 +20,14 @@ public class LocatorBarComponent extends ContextualBarComponent {
     private static final ResourceLocation ICONS = new ResourceLocation("textures/gui/icons.png");
     private final Gui gui = new Gui();
 
+    /**
+     * 绘制定位器条与骑乘生命值 —— 可见性检查已由 {@link #extractRenderState}
+     * 在调用前处理。<br>
+     * Draws the locator bar and mount health — the visibility check is already
+     * handled by {@link #extractRenderState}.
+     */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
-
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null || mc.thePlayer.ridingEntity == null) return;
 

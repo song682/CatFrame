@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
@@ -95,7 +96,7 @@ public abstract class AbstractButton extends AbstractComponent.WithInactiveMessa
      * <p>If {@link #useVanillaTexture} is true, uses vanilla widgets texture.
      * Otherwise uses CatFrame custom textures with three-patch stretching.</p>
      */
-    protected void renderBackground(int mouseX, int mouseY, float partialTicks) {
+    protected void renderBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         if (useVanillaTexture) {
             renderVanillaBackground();
         } else {
@@ -141,12 +142,15 @@ public abstract class AbstractButton extends AbstractComponent.WithInactiveMessa
                 BUTTON_DEFAULT_W, BUTTON_DEFAULT_H, BUTTON_EDGE);
     }
 
+    /**
+     * 新渲染入口 —— 由 {@link #extractRenderState} 统一驱动，可见性与悬停状态
+     * 已在调用前处理，此处仅绘制背景。<br>
+     * New render entry — driven uniformly by {@link #extractRenderState}; visibility
+     * and hover state are already handled, so only the background is drawn here.
+     */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
-
-        updateHoverState(mouseX, mouseY);
-        renderBackground(mouseX, mouseY, partialTicks);
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
+        renderBackground(graphics, mouseX, mouseY, partialTicks);
     }
 
     @Override

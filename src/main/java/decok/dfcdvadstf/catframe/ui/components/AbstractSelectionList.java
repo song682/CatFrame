@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui.components;
 
 import com.google.common.collect.Lists;
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
 import net.minecraft.client.Minecraft;
 
@@ -245,17 +246,21 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     // ──── Rendering ────
 
+    /**
+     * 新渲染入口 —— 由 {@link #extractRenderState} 统一驱动，可见性检查已在
+     * 调用前处理；刷新悬停条目后依次绘制背景、裁剪区内条目、分隔线与滚动条。<br>
+     * New render entry — driven uniformly by {@link #extractRenderState}; the
+     * visibility check has already run. Refreshes the hovered entry, then draws
+     * the background, the clipped list items, separators and the scrollbar.
+     */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible)
-            return;
-
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         hovered = isMouseOver(mouseX, mouseY) ? getEntryAtPosition(mouseX, mouseY) : null;
 
-        renderBackground(mouseX, mouseY, partialTicks);
+        renderBackground(graphics, mouseX, mouseY, partialTicks);
 
         enableScissor();
-        renderListItems(mouseX, mouseY, partialTicks);
+        renderListItems(graphics, mouseX, mouseY, partialTicks);
         disableScissor();
 
         renderSeparators();
@@ -268,7 +273,7 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
      * 渲染列表背景。默认为深色填充。
      * </p>
      */
-    protected void renderBackground(int mouseX, int mouseY, float partialTicks) {
+    protected void renderBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         GuiDrawing.drawRect(getX(), getY(), getRight(), getBottom(), 0xFF000000);
     }
 
@@ -278,10 +283,10 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
      * 在裁剪区域内渲染可见的列表条目。
      * </p>
      */
-    protected void renderListItems(int mouseX, int mouseY, float partialTicks) {
+    protected void renderListItems(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         for (E child : children) {
             if (child.getY() + child.getHeight() >= getY() && child.getY() <= getBottom()) {
-                renderItem(child, mouseX, mouseY, partialTicks);
+                renderItem(graphics, child, mouseX, mouseY, partialTicks);
             }
         }
     }
@@ -292,7 +297,7 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
      * 渲染单个条目，包括选中高亮。
      * </p>
      */
-    protected void renderItem(E entry, int mouseX, int mouseY, float partialTicks) {
+    protected void renderItem(GuiGraphicsExtractor graphics, E entry, int mouseX, int mouseY, float partialTicks) {
         if (entriesCanBeSelected() && selected == entry) {
             int outlineColor = isFocused() ? 0xFFFFFFFF : 0xFF808000;
             renderSelection(entry, outlineColor);

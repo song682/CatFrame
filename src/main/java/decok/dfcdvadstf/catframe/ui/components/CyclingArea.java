@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
@@ -232,11 +233,14 @@ public class CyclingArea<T> extends AbstractComponent {
 
     // ──── Rendering ────
 
+    /**
+     * 绘制九宫格背景与当前值文本 —— 可见性与悬停状态已由
+     * {@link #extractRenderState} 在调用前处理。<br>
+     * Draws the nine-patch background and the current value text — visibility
+     * and hover state are already handled by {@link #extractRenderState}.
+     */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
-
-        updateHoverState(mouseX, mouseY);
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 
         // Draw textured background (nine-patch)

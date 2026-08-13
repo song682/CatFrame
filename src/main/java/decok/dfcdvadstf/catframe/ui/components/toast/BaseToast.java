@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.components.AbstractComponent;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
@@ -159,10 +160,14 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
         this.lastFullyVisibleForMs = fullyVisibleForMs;
     }
 
+    /**
+     * 绘制 Toast 背景与内容 —— 可见性检查已由 {@link #extractRenderState}
+     * 在调用前处理。<br>
+     * Draws the Toast background and content — the visibility check is already
+     * handled by {@link #extractRenderState}.
+     */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
-
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         renderBackground();
 
         renderContent(mc.fontRenderer, lastFullyVisibleForMs);

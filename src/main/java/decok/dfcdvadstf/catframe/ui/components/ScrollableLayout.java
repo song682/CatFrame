@@ -203,18 +203,23 @@ public class ScrollableLayout implements Layout {
             return childGuiScreenEvents;
         }
 
+        /**
+         * 新渲染入口 —— 由 {@link #extractRenderState} 统一驱动，可见性检查已在
+         * 调用前处理；重新收集子件后在裁剪区内逐个委托 Renderable 渲染，
+         * 最后绘制滚动条。<br>
+         * New render entry — driven uniformly by {@link #extractRenderState};
+         * the visibility check has already run. Re-collects children, delegates
+         * each Renderable inside the scissor clip, then draws the scrollbar.
+         */
         @Override
-        public void render(int mouseX, int mouseY, float partialTicks) {
-            if (!visible)
-                return;
-
+        protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
             // Re-collect children in case layout changed
             collectChildren();
 
             enableScissor();
             for (GuiEventListener child : childGuiScreenEvents) {
                 if (child instanceof Renderable) {
-                    ((Renderable) child).extractRenderState(GuiGraphicsExtractor.getInstance(),
+                    ((Renderable) child).extractRenderState(graphics,
                             mouseX, mouseY, partialTicks);
                 }
             }

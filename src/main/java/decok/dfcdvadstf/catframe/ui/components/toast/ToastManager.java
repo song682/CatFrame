@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.FontRenderer;
@@ -283,7 +284,10 @@ public class ToastManager {
             // Set the toast position for Component rendering
             toast.setX(0);
             toast.setY(0);
-            toast.render(mouseX, mouseY, 0);
+            // 统一经 Renderable 入口驱动 —— 与组件体系渲染链路一致。
+            // Driven through the unified Renderable entry, consistent with the
+            // component render pipeline.
+            toast.extractRenderState(GuiGraphicsExtractor.getInstance(), mouseX, mouseY, 0);
 
             GL11.glPopMatrix();
         }

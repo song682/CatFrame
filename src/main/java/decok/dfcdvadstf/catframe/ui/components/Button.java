@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -47,13 +48,15 @@ public class Button extends AbstractButton {
         }
     }
 
+    /**
+     * 绘制按钮背景与居中文本 —— 可见性与悬停状态已由
+     * {@link #extractRenderState} 在调用前处理。<br>
+     * Draws the button background and centred text — visibility and hover
+     * state are already handled by {@link #extractRenderState}.
+     */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible)
-            return;
-
-        updateHoverState(mouseX, mouseY);
-        renderBackground(mouseX, mouseY, partialTicks);
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
+        renderBackground(graphics, mouseX, mouseY, partialTicks);
 
         // Draw the button text
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;

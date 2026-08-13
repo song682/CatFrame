@@ -1,27 +1,29 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
+import decok.dfcdvadstf.catframe.ui.components.Renderable;
 import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
 import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
  * 高版本风格的 Toast 接口<br>
- * 现在继承 {@link GuiEventListener}，融入统一的组件体系。
+ * 继承 {@link GuiEventListener} 与 {@link Renderable}，融入统一的组件体系。
  * </p>
  * <p>
  * High-version style Toast interface.<br>
- * Now extends {@link GuiEventListener}, integrated into the unified component system.
+ * Extends {@link GuiEventListener} and {@link Renderable}, integrated into the unified component system.
  * </p>
  *
  * <p>
  * <strong>BREAKING CHANGE 注意:</strong>
- * {@code render()} 签名已从 {@code render(FontRenderer, long)} 变更为
- * {@code render(int mouseX, int mouseY, float partialTicks)}（Toast 自身的渲染契约，
- * 与组件体系 {@code Renderable} 解耦 —— Toast 由 {@code ToastManager} 独立驱动渲染）。
+ * 旧的 {@code render(int, int, float)} 渲染契约已移除，渲染入口统一为
+ * {@link Renderable#extractRenderState}（由 {@code ToastManager} 逐帧驱动）；
+ * 继承 {@code AbstractComponent} 的实现（如 {@code BaseToast}）应覆写
+ * {@code renderWidget} 完成具体绘制。
  * {@code FontRenderer} 需要通过 {@code Minecraft.getMinecraft().fontRenderer} 获取。
  * </p>
  */
-public interface Toast extends GuiEventListener {
+public interface Toast extends GuiEventListener, Renderable {
 
     /** Default Toast width / 默认 Toast 宽度 */
     int DEFAULT_WIDTH = 160;
@@ -47,14 +49,6 @@ public interface Toast extends GuiEventListener {
      * @param fullyVisibleForMs fully visible duration in ms / 完全可见的持续时间(毫秒)
      */
     void update(ToastManager manager, long fullyVisibleForMs);
-
-    /**
-     * Render the Toast content.
-     * <p>
-     * 渲染 Toast 内容。
-     * </p>
-     */
-    void render(int mouseX, int mouseY, float partialTicks);
 
     /**
      * Get the unique token for deduplication.

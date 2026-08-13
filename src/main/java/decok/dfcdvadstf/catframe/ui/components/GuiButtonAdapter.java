@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
@@ -43,9 +44,14 @@ public class GuiButtonAdapter extends AbstractComponent {
         delegate.yPosition = y;
     }
 
+    /**
+     * 委托原版 {@link GuiButton#drawButton} 完成绘制 —— 可见性检查已由
+     * {@link #extractRenderState} 在调用前处理。<br>
+     * Delegates drawing to vanilla {@link GuiButton#drawButton} — the visibility
+     * check is already handled by {@link #extractRenderState}.
+     */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         delegate.visible = true;
         delegate.drawButton(Minecraft.getMinecraft(), mouseX, mouseY);
     }

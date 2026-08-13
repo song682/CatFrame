@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Style;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.overlay.Overlay;
@@ -29,13 +30,13 @@ import javax.annotation.Nullable;
  * <p>
  * 本类作为 HUD 上下文（{@link OverlayContext#HUD}）的 {@link Overlay} 注册进
  * {@link OverlayManager}。宽高恒为 0，因此 {@link ScreenAnchor#CENTER} 解析出的
- * {@link #getX()}/{@link #getY()} 恰好是屏幕中心点；{@link #render(int, int, float)}
+ * {@link #getX()}/{@link #getY()} 恰好是屏幕中心点；{@link #renderWidget(GuiGraphicsExtractor, int, int, float)}
  * 以该点为原点做 GL 平移后再按缩放绘制两行文字（对齐原版 GuiIngame 的做法）。
  * </p>
  * <p>
  * Registered with {@link OverlayManager} as a {@link OverlayContext#HUD} overlay. Width and
  * height are both 0, so {@link ScreenAnchor#CENTER} resolves {@link #getX()}/{@link #getY()}
- * to the exact screen centre; {@link #render(int, int, float)} translates the GL origin there
+ * to the exact screen centre; {@link #renderWidget(GuiGraphicsExtractor, int, int, float)} translates the GL origin there
  * and draws both scaled lines, matching the vanilla GuiIngame approach.
  * </p>
  *
@@ -309,7 +310,7 @@ public class TitleOverlay extends AbstractComponent implements Overlay {
      * </p>
      */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         if (!isVisible()) {
             return;
         }

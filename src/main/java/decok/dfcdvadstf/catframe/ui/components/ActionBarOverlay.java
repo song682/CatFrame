@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.overlay.Overlay;
 import decok.dfcdvadstf.catframe.ui.overlay.OverlayContext;
@@ -30,14 +31,14 @@ import java.awt.*;
  * {@link OverlayManager#updateAll()} 推进倒计时，并在 {@code RenderGameOverlayEvent.Post}
  * 中调用 {@link OverlayManager#renderHud(float)} 完成绘制。位置由管理器按
  * {@link ScreenAnchor#BOTTOM_CENTER} 解析后写入 {@link #getX()}/{@link #getY()}，
- * 因此 {@link #render(int, int, float)} 直接在该坐标绘制。
+ * 因此 {@link #renderWidget(GuiGraphicsExtractor, int, int, float)} 直接在该坐标绘制。
  * </p>
  * <p>
  * Registered with {@link OverlayManager} as a {@link OverlayContext#HUD} overlay. The pure-Forge
  * {@code ClientOverlayHandler} advances the countdown via {@link OverlayManager#updateAll()} each
  * tick and draws it via {@link OverlayManager#renderHud(float)} from {@code RenderGameOverlayEvent}.
  * The manager resolves the {@link ScreenAnchor#BOTTOM_CENTER} position into {@link #getX()}/
- * {@link #getY()}, so {@link #render(int, int, float)} simply draws at those coordinates.
+ * {@link #getY()}, so {@link #renderWidget(GuiGraphicsExtractor, int, int, float)} simply draws at those coordinates.
  * </p>
  *
  * <h3>对照高版本 / Mapping to modern Minecraft</h3>
@@ -45,7 +46,7 @@ import java.awt.*;
  *   <li>{@code Gui.setOverlayMessage()} → {@link #setMessage(Text, boolean)}</li>
  *   <li>{@code overlayMessageTime = 60} → {@link #DISPLAY_TICKS}</li>
  *   <li>淡出 {@code alpha = t * 255 / 20} → {@link #FADE_TICKS}</li>
- *   <li>{@code Gui.extractOverlayMessage()} → {@link #render(int, int, float)}</li>
+ *   <li>{@code Gui.extractOverlayMessage()} → {@link #renderWidget(GuiGraphicsExtractor, int, int, float)}</li>
  * </ul>
  */
 public class ActionBarOverlay extends AbstractComponent implements Overlay {
@@ -178,7 +179,7 @@ public class ActionBarOverlay extends AbstractComponent implements Overlay {
      * 计算淡出透明度，选择纯白或 HSV 彩虹色。</p>
      */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         if (!isVisible()) {
             return;
         }

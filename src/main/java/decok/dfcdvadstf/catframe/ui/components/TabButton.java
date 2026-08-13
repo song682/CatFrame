@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.components.tab.Tab;
 import decok.dfcdvadstf.catframe.ui.components.tab.TabBar;
@@ -133,16 +134,20 @@ public class TabButton extends AbstractButton {
 
     // ──── Rendering ────
 
+    /**
+     * 绘制 Tab 背景与标题 —— 可见性与悬停状态已由 {@link #extractRenderState}
+     * 在调用前处理。<br>
+     * Draws the tab background and title — visibility and hover state are
+     * already handled by {@link #extractRenderState}.
+     */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
-        updateHoverState(mouseX, mouseY);
-        renderBackground(mouseX, mouseY, partialTicks);
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
+        renderBackground(graphics, mouseX, mouseY, partialTicks);
         renderTitle();
     }
 
     @Override
-    protected void renderBackground(int mouseX, int mouseY, float partialTicks) {
+    protected void renderBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         if (width <= 0 || height <= 0) return;
 
         ResourceLocation tex = getStateTexture();

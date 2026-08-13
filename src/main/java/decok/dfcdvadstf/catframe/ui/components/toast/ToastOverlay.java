@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.components.AbstractComponent;
 import decok.dfcdvadstf.catframe.ui.overlay.Overlay;
 import decok.dfcdvadstf.catframe.ui.overlay.OverlayContext;
@@ -99,7 +100,7 @@ public class ToastOverlay extends AbstractComponent implements Overlay {
      * 以保证基于毫秒的滑动动画流畅——与原版 {@code GuiToast.draw()} 内联更新的做法一致。</p>
      */
     @Override
-    public void render(int mouseX, int mouseY, float partialTicks) {
+    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         toastManager.update();
         toastManager.render();
     }

@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render.api;
 
+import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 
 /**

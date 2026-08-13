@@ -1,6 +1,8 @@
-package decok.dfcdvadstf.catframe.model.render.api;
+package decok.dfcdvadstf.catframe.model.render;
 
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
+import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 
 import java.util.List;

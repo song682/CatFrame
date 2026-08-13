@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render.extension.ao;
 
-import decok.dfcdvadstf.catframe.model.render.api.IModelRenderExtension;
+import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;

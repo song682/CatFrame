@@ -55,7 +55,7 @@ import java.util.Map;
 @SideOnly(Side.CLIENT)
 public class CatAtlas implements IAtlas, ITextureObject {
 
-    /** 图集 id（如 {@code minecraft:block}）。 */
+    /** 图集 id（如 {@code minecraft:blocks}）。 */
     private final String atlasId;
     /** 图集内 sprite 查找表：iconName → CatSprite。 */
     private final Map<String, CatSprite> sprites = new LinkedHashMap<>();
@@ -392,7 +392,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
 
     // ==================== IAtlas / ITextureObject 契约 ====================
 
-    /** 图集 id（如 {@code minecraft:block}），即 {@code IAtlas#getAtlasName()}。 */
+    /** 图集 id（如 {@code minecraft:blocks}），即 {@code IAtlas#getAtlasName()}。 */
     @Override
     public String getAtlasName() {
         return atlasId;

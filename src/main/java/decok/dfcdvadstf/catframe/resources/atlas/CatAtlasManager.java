@@ -63,10 +63,11 @@ import java.util.concurrent.ExecutionException;
 @SideOnly(Side.CLIENT)
 public final class CatAtlasManager {
 
-    /** blocks 图集 id（IAtlas.getAtlasName 语义）。 */
-    public static final String BLOCK_ATLAS_ID = "minecraft:block";
-    /** items 图集 id。 */
-    public static final String ITEM_ATLAS_ID = "minecraft:item";
+    /** blocks 图集 id（IAtlas.getAtlasName 语义；对齐 Wiki：原版定义文件
+     * {@code assets/minecraft/atlases/blocks.json} → 图集 id {@code minecraft:blocks}）。 */
+    public static final String BLOCK_ATLAS_ID = "minecraft:blocks";
+    /** items 图集 id（对齐 Wiki：{@code atlases/items.json} → {@code minecraft:items}）。 */
+    public static final String ITEM_ATLAS_ID = "minecraft:items";
     /** blocks 图集在 TextureManager 中的注册名（渲染层绑定用）。 */
     public static final ResourceLocation GL_BLOCK_ATLAS = new ResourceLocation("catframe", "atlas/blocks");
     /** items 图集在 TextureManager 中的注册名。 */

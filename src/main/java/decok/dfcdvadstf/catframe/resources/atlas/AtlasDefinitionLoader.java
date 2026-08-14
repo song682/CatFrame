@@ -15,9 +15,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 图集定义发现器 —— 枚举所有可达归档中的 {@code assets/<namespace>/atlas/<id>.json}
+ * 图集定义发现器 —— 枚举所有可达归档中的 {@code assets/<namespace>/atlases/<id>.json}
  * 并解码（命名空间驱动注册，设计文档确认决策）。
  * <p>
+ * 目录名与 Wiki 一致为复数 {@code atlases/}（原版定义文件即
+ * {@code assets/minecraft/atlases/blocks.json} → 图集 id {@code minecraft:blocks}）。
  * 枚举用 {@link ResourcePackEnumerator}（classpath + resourcepacks），同 id 定义
  * 跨资源包合并语义：内容一律经 {@code getResource} 读取（自动取最高优先级版本），
  * 故同 id 多次 put 的内容一致，天然满足「高优先级包覆盖同定义文件」的 Wiki 语义。
@@ -43,7 +45,7 @@ public final class AtlasDefinitionLoader {
         Map<String, List<AtlasSource>> defs = new LinkedHashMap<>();
         IResourceManager mgr = Minecraft.getMinecraft().getResourceManager();
         for (String path : ResourcePackEnumerator.listAssets("assets/")) {
-            // assets/<ns>/atlas/<id>.json（顶层，不递归子目录）
+            // assets/<ns>/atlases/<id>.json（顶层，不递归子目录）
             if (!path.endsWith(".json")) {
                 continue;
             }
@@ -55,7 +57,7 @@ public final class AtlasDefinitionLoader {
             }
             String ns = path.substring(s1 + 1, s2);
             String dir = path.substring(s2 + 1, s3);
-            if (!"atlas".equals(dir)) {
+            if (!"atlases".equals(dir)) {
                 continue;
             }
             String id = path.substring(s3 + 1, path.length() - ".json".length());
@@ -63,7 +65,7 @@ public final class AtlasDefinitionLoader {
                 continue;
             }
             String atlasId = ns + ":" + id;
-            ResourceLocation rl = new ResourceLocation(ns, "atlas/" + id + ".json");
+            ResourceLocation rl = new ResourceLocation(ns, "atlases/" + id + ".json");
             try {
                 IResource res = mgr.getResource(rl);
                 List<AtlasSource> sources = AtlasDecoder.decode(res.getInputStream());

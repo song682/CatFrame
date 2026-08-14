@@ -44,7 +44,7 @@ public class CatSprite implements IIcon {
     private final int contentWidth;
     /** 内容区域高度（像素）。 */
     private final int contentHeight;
-    /** 所属图集 id（如 {@code minecraft:block} / {@code minecraft:item}），供 TextureSlots 归类。 */
+    /** 所属图集 id（如 {@code minecraft:blocks} / {@code minecraft:items}），供 TextureSlots 归类。 */
     private final String atlasId;
 
     // ===== 缝合后写入（complete 一次性设置，之后不可变） =====
@@ -272,7 +272,7 @@ public class CatSprite implements IIcon {
         return framePixels != null ? framePixels[frameIndex] : pixels;
     }
 
-    /** 所属图集 id（如 {@code minecraft:block}）。 */
+    /** 所属图集 id（如 {@code minecraft:blocks}）。 */
     public String getAtlasId() {
         return atlasId;
     }

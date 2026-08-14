@@ -32,8 +32,10 @@ import java.util.Map;
  *   <li>{@code minecraft:directory} —— {@code source} 目录名、{@code prefix} sprite id 前缀；</li>
  *   <li>{@code minecraft:filter} —— {@code namespace} / {@code path} 正则（缺省匹配全部）；</li>
  *   <li>{@code minecraft:single} —— {@code resource} 源纹理、{@code sprite} 发布 id（可缺省）；</li>
- *   <li>{@code minecraft:unstitch} —— {@code resource} + {@code divisor_x/divisor_y/base_row/base_column/count}；</li>
- *   <li>{@code paletted_permutations} —— {@code textures} + {@code palette_key} + {@code permutations}。</li>
+ *   <li>{@code minecraft:unstitch} —— {@code resource} + {@code divisor_x/divisor_y} +
+ *       {@code regions}（每区域 {@code sprite/x/y/width/height}，块坐标，Wiki 格式）；</li>
+ *   <li>{@code paletted_permutations} —— {@code textures} + {@code palette_key} +
+ *       {@code permutations}（值 = 命名空间 ID）+ {@code separator}（缺省 {@code _}）。</li>
  * </ul>
  * 未知 type 或字段缺失 → warn + 跳过该源（不崩溃，定义文件整体仍可用）。
  *
@@ -102,10 +104,7 @@ public final class AtlasDecoder {
                     return new SingleSource(new ResourceLocation(require(o, "resource")),
                             o.has("sprite") ? rl(o, "sprite") : null);
                 case "unstitch":
-                    return new UnstitchSource(new ResourceLocation(require(o, "resource")),
-                            intOf(o, "divisor_x", 1), intOf(o, "divisor_y", 1),
-                            intOf(o, "base_row", 0), intOf(o, "base_column", 0),
-                            intOf(o, "count", 0));
+                    return parseUnstitch(o);
                 case "paletted_permutations":
                     return parsePaletted(o);
                 default:
@@ -118,6 +117,37 @@ public final class AtlasDecoder {
         }
     }
 
+    /**
+     * 解析 unstitch（Wiki 格式）：divisor_x/divisor_y 缺省 1；regions 至少一个元素，
+     * 每区域 sprite 必填（缺失跳过该区域），x/y/width/height 缺省 0/0/1/1。
+     */
+    private static UnstitchSource parseUnstitch(JsonObject o) {
+        ResourceLocation resource = new ResourceLocation(require(o, "resource"));
+        int divisorX = intOf(o, "divisor_x", 1);
+        int divisorY = intOf(o, "divisor_y", 1);
+        List<UnstitchSource.Region> regions = new ArrayList<>();
+        JsonElement regionsEl = o.get("regions");
+        if (regionsEl != null && regionsEl.isJsonArray()) {
+            for (JsonElement el : regionsEl.getAsJsonArray()) {
+                if (!el.isJsonObject()) {
+                    continue;
+                }
+                JsonObject ro = el.getAsJsonObject();
+                String sprite = str(ro, "sprite");
+                if (sprite == null || sprite.isEmpty()) {
+                    continue;
+                }
+                regions.add(new UnstitchSource.Region(new ResourceLocation(sprite),
+                        intOf(ro, "x", 0), intOf(ro, "y", 0),
+                        intOf(ro, "width", 1), intOf(ro, "height", 1)));
+            }
+        }
+        if (regions.isEmpty()) {
+            throw new IllegalArgumentException("unstitch requires at least one region");
+        }
+        return new UnstitchSource(resource, divisorX, divisorY, regions);
+    }
+
     private static PalettedPermutationsSource parsePaletted(JsonObject o) {
         JsonElement texEl = o.get("textures");
         List<ResourceLocation> bases = new ArrayList<>();
@@ -127,29 +157,20 @@ public final class AtlasDecoder {
             }
         }
         ResourceLocation key = new ResourceLocation(require(o, "palette_key"));
+        // Wiki 格式：permutations 的值直接是命名空间 ID（置换调色板纹理位置）
         Map<String, ResourceLocation> perms = new LinkedHashMap<>();
         JsonElement permsEl = o.get("permutations");
         if (permsEl != null && permsEl.isJsonObject()) {
             for (Map.Entry<String, JsonElement> en : permsEl.getAsJsonObject().entrySet()) {
-                JsonElement poEl = en.getValue();
-                if (poEl == null || !poEl.isJsonObject()) {
+                JsonElement v = en.getValue();
+                if (v == null || !v.isJsonPrimitive()) {
                     continue;
                 }
-                JsonObject po = poEl.getAsJsonObject();
-                JsonElement ptEl = po.get("textures");
-                if (ptEl == null || !ptEl.isJsonArray() || ptEl.getAsJsonArray().size() == 0) {
-                    continue;
-                }
-                JsonElement mapEl = ptEl.getAsJsonArray().get(0);
-                if (mapEl == null || !mapEl.isJsonObject()) {
-                    continue;
-                }
-                for (Map.Entry<String, JsonElement> me : mapEl.getAsJsonObject().entrySet()) {
-                    perms.put(en.getKey(), new ResourceLocation(me.getValue().getAsString()));
-                }
+                perms.put(en.getKey(), new ResourceLocation(v.getAsString()));
             }
         }
-        return new PalettedPermutationsSource(bases, key, perms);
+        String separator = str(o, "separator");
+        return new PalettedPermutationsSource(bases, key, perms, separator);
     }
 
     private static String str(JsonObject o, String key) {

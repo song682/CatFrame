@@ -2,8 +2,8 @@
     "sources": [
         {
             "type": "minecraft:directory",
-            "source": "items",
-            "prefix": "item/"
+            "source": "blocks",
+            "prefix": "block/"
         }
     ]
 }

@@ -8,6 +8,7 @@ import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
@@ -32,6 +33,20 @@ public class VanillaTextureTracker {
     static final Set<String> pendingTextures = new LinkedHashSet<>();
     static final Set<String> pendingItemTextures = new LinkedHashSet<>();
     public static final Map<String, IIcon> textureIcons = new ConcurrentHashMap<>();
+
+    /**
+     * 模型驱动的 block 纹理集合（跨包访问入口，供 CatAtlasManager 消费）。
+     */
+    public static Set<String> getPendingTextures() {
+        return pendingTextures;
+    }
+
+    /**
+     * 模型驱动的 item 纹理集合（跨包访问入口，供 CatAtlasManager 消费）。
+     */
+    public static Set<String> getPendingItemTextures() {
+        return pendingItemTextures;
+    }
 
     static void collectTexturesFromBlockstate(@Nonnull BlockstateJson bs) {
         if (bs.variants != null) {
@@ -175,6 +190,12 @@ public class VanillaTextureTracker {
                 blockCollected, blockMissed, itemCollected, itemMissed,
                 textureIcons.size());
 
+        // 发布自定义图集 sprite：必须置于原版 icon 收集循环之后（循环会用 vanilla sprite
+        // 覆盖 Pre 阶段产物）、烘焙屏障之前，保证烘焙永远读到 CatSprite UV。
+        // Publish CatAtlas sprites AFTER the vanilla collection loops (they would
+        // overwrite Pre-stage results) and BEFORE the bake barrier below.
+        CatAtlasManager.publish(textureIcons);
+
         // GPU 回读：在主线程一次性读取图集像素，供异步烘焙线程纯 CPU 读取
         AtlasPixelCache.readAtlas(map, blockIcons);
         if (itemMap != null && !itemIcons.isEmpty()) {
@@ -222,6 +243,11 @@ public class VanillaTextureTracker {
                 }
             }
         }
+        // 重新发布自定义图集 sprite：原版 item 收集循环会用 vanilla sprite 覆盖
+        // type-0 Post 发布的 CatSprite，此处幂等覆盖回去（烘焙屏障前）。
+        // Re-publish CatSprites: the vanilla item loop above overwrote them with
+        // vanilla sprites; this idempotent merge restores CatSprite UVs pre-barrier.
+        CatAtlasManager.publish(textureIcons);
         // GPU 回读 item atlas（此时 UV 是最终态，覆盖 onTextureStitchPost 时的早期数据）
         AtlasPixelCache.readAtlas(itemMap, itemIcons);
         // 不清理 pendingItemTextures —— 保留数据供多次 stitch 重新收集

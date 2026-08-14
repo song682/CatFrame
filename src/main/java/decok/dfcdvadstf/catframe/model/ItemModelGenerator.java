@@ -4,6 +4,7 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.core.AtlasPixelCache;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
+import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.IIcon;
 
@@ -48,25 +49,38 @@ public class ItemModelGenerator {
     public static List<JsonModelBake.BakedQuad> bakeSideFaces(IIcon icon, int tintIndex) {
         List<JsonModelBake.BakedQuad> quads = new ArrayList<>();
 
-        if (!(icon instanceof TextureAtlasSprite)) {
-            return quads;
-        }
-        TextureAtlasSprite sprite = (TextureAtlasSprite) icon;
+        // 像素源双分支：自定义图集 sprite（CatSprite）直接读 CPU 自有像素；
+        // 原版 sprite 走 AtlasPixelCache 的 UV 区域内容切片。两者均为内容尺寸网格。
+        // Pixel source: CatSprite reads its CPU-owned pixels directly; vanilla
+        // sprites use the AtlasPixelCache UV-region content slice. Both grids
+        // are content-sized.
+        int[] flatPixels;
+        int width, height;
+        if (icon instanceof CatSprite) {
+            CatSprite catSprite = (CatSprite) icon;
+            flatPixels = catSprite.getPixels();
+            width = catSprite.getIconWidth();
+            height = catSprite.getIconHeight();
+        } else if (icon instanceof TextureAtlasSprite) {
+            TextureAtlasSprite sprite = (TextureAtlasSprite) icon;
 
-        // 扫描网格以内容切片为准（AtlasPixelCache 按 sprite 的 UV 区域裁剪）：
-        // 开启各向异性过滤时 1.7.10 原版把物理存储扩为 (内容+16)x(内容+16)，
-        // getIconWidth() 返回物理存储尺寸（含填充边框），不能作为内容网格。
-        // Grid/scale are driven by the UV-region content slice, not by
-        // getIconWidth(), which reports the padded storage size under
-        // anisotropic filtering.
-        AtlasPixelCache.CachedSprite cached = AtlasPixelCache.getSprite(sprite.getIconName());
-        if (cached == null || cached.pixels.length < cached.width * cached.height) {
-            CatFrame.logger.debug("[ItemModelGenerator] no pixel data for sprite '{}'", sprite.getIconName());
+            // 扫描网格以内容切片为准（AtlasPixelCache 按 sprite 的 UV 区域裁剪）：
+            // 开启各向异性过滤时 1.7.10 原版把物理存储扩为 (内容+16)x(内容+16)，
+            // getIconWidth() 返回物理存储尺寸（含填充边框），不能作为内容网格。
+            // Grid/scale are driven by the UV-region content slice, not by
+            // getIconWidth(), which reports the padded storage size under
+            // anisotropic filtering.
+            AtlasPixelCache.CachedSprite cached = AtlasPixelCache.getSprite(sprite.getIconName());
+            if (cached == null || cached.pixels.length < cached.width * cached.height) {
+                CatFrame.logger.debug("[ItemModelGenerator] no pixel data for sprite '{}'", sprite.getIconName());
+                return quads;
+            }
+            flatPixels = cached.pixels;
+            width = cached.width;
+            height = cached.height;
+        } else {
             return quads;
         }
-        int[] flatPixels = cached.pixels;
-        int width = cached.width;
-        int height = cached.height;
 
         float xScale = 16.0F / width;
         float yScale = 16.0F / height;
@@ -87,28 +101,28 @@ public class ItemModelGenerator {
                 if (isTransparent(flatPixels, x, y - 1, width)) {
                     String key = "U" + x + "," + y;
                     if (emitted.add(key)) {
-                        bakeHorizontalEdge(quads, sprite, x, y, true, xScale, yScale, tintIndex, pixelARGB);
+                        bakeHorizontalEdge(quads, icon, x, y, true, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
                 // 下边：下方像素透明 → 生成 DOWN 面 quad
                 if (isTransparent(flatPixels, x, y + 1, width)) {
                     String key = "D" + x + "," + y;
                     if (emitted.add(key)) {
-                        bakeHorizontalEdge(quads, sprite, x, y, false, xScale, yScale, tintIndex, pixelARGB);
+                        bakeHorizontalEdge(quads, icon, x, y, false, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
                 // 左边：左侧像素透明 → 生成 WEST 面 quad（朝外绕序，见 bakeVerticalEdge 说明）
                 if (isTransparent(flatPixels, x - 1, y, width)) {
                     String key = "L" + x + "," + y;
                     if (emitted.add(key)) {
-                        bakeVerticalEdge(quads, sprite, x, y, true, xScale, yScale, tintIndex, pixelARGB);
+                        bakeVerticalEdge(quads, icon, x, y, true, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
                 // 右边：右侧像素透明 → 生成 EAST 面 quad（朝外绕序，见 bakeVerticalEdge 说明）
                 if (isTransparent(flatPixels, x + 1, y, width)) {
                     String key = "R" + x + "," + y;
                     if (emitted.add(key)) {
-                        bakeVerticalEdge(quads, sprite, x, y, false, xScale, yScale, tintIndex, pixelARGB);
+                        bakeVerticalEdge(quads, icon, x, y, false, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
             }
@@ -116,7 +130,7 @@ public class ItemModelGenerator {
 
         CatFrame.logger.info(
                 "[ItemModelGenerator] sprite '{}' content {}x{} (phys {}x{}): {} edge pixels → {} side quads",
-                sprite.getIconName(), width, height, sprite.getIconWidth(), sprite.getIconHeight(), emitted.size(),
+                icon.getIconName(), width, height, icon.getIconWidth(), icon.getIconHeight(), emitted.size(),
                 quads.size());
 
         return quads;
@@ -130,7 +144,7 @@ public class ItemModelGenerator {
      */
     private static void bakeHorizontalEdge(
             List<JsonModelBake.BakedQuad> quads,
-            TextureAtlasSprite sprite,
+            IIcon sprite,
             int x, int y, boolean isTop,
             float xScale, float yScale, int tintIndex, int pixelARGB) {
 
@@ -228,7 +242,7 @@ public class ItemModelGenerator {
      */
     private static void bakeVerticalEdge(
             List<JsonModelBake.BakedQuad> quads,
-            TextureAtlasSprite sprite,
+            IIcon sprite,
             int x, int y, boolean isLeft,
             float xScale, float yScale, int tintIndex, int pixelARGB) {
 

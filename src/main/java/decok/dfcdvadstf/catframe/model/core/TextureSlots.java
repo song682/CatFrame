@@ -3,6 +3,8 @@ package decok.dfcdvadstf.catframe.model.core;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
+import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
+import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -117,6 +119,12 @@ public class TextureSlots {
      * @return true=blocks 图集（含兜底），false=items 图集
      */
     public static boolean isBlockAtlas(@Nullable IIcon icon) {
+        // 0. 自定义图集 sprite：按所属图集 id 归类（设计文档预留的 custom stitching 钩子），
+        //    必须先于 instanceof TextureAtlasSprite 检查 —— 否则 CatSprite 恒被判为 blocks。
+        // Custom-atlas sprites are classified by their owning atlas id.
+        if (icon instanceof CatSprite) {
+            return CatAtlasManager.BLOCK_ATLAS_ID.equals(((CatSprite) icon).getAtlasId());
+        }
         if (!(icon instanceof TextureAtlasSprite)) return true;
         try {
             String name = icon.getIconName();

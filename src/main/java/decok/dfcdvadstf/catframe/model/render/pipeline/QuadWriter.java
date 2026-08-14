@@ -1,11 +1,13 @@
 package decok.dfcdvadstf.catframe.model.render.pipeline;
 
 import decok.dfcdvadstf.catframe.core.Direction;
+import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLighting;
+import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.player.EntityPlayer;
@@ -88,7 +90,7 @@ public final class QuadWriter {
                         vy = tmpVec.y;
                         vz = tmpVec.z;
                     }
-                    IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
+                    IIcon icon = resolveWorldIcon((ctx.iconOverride != null) ? ctx.iconOverride : q.icon);
                     double U = icon.getInterpolatedU(q.up[i]);
                     double V = icon.getInterpolatedV(q.vp[i]);
                     t.addVertexWithUV(s.x + vx, s.y + vy, s.z + vz, U, V);
@@ -100,7 +102,7 @@ public final class QuadWriter {
                 float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
                 t.setColorOpaque_F(cr, cg, cb);
 
-                IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
+                IIcon icon = resolveWorldIcon((ctx.iconOverride != null) ? ctx.iconOverride : q.icon);
                 for (int i = 0; i < 4; i++) {
                     double vx = q.vx(i), vy = q.vy(i), vz = q.vz(i);
                     if (s.rotationDeg != 0) {
@@ -161,6 +163,28 @@ public final class QuadWriter {
             }
         }
         return hasVertices;
+    }
+
+    /**
+     * 世界渲染的 icon 解析：CatSprite（CatAtlas 空间 UV）换回对应 vanilla sprite
+     * （原版图集空间 UV）。世界渲染（BLOCK_WORLD/BLOCK_DESTROY）走 flushInline 写入
+     * vanilla chunk Tessellator，批次绑定 vanilla blocks 图集（chunk 混批约束下无法
+     * 换绑 CatAtlas），若 quad 携带 CatSprite UV 会在原版图集上采样错位 → 模糊/空白。
+     * 查表无对应项（脏键等）时原样返回 CatSprite 兜底。
+     * <p>
+     * World rendering binds the vanilla blocks atlas (mixed batches make an atlas
+     * swap impossible), so CatSprite UVs are remapped to the vanilla sprite space
+     * through the snapshot table; unmatched keys fall back to the CatSprite.
+     */
+    private static IIcon resolveWorldIcon(IIcon icon) {
+        if (icon instanceof CatSprite) {
+            IIcon vanilla = VanillaTextureTracker.getVanillaIcons()
+                    .get(((CatSprite) icon).getTexturePath());
+            if (vanilla != null) {
+                return vanilla;
+            }
+        }
+        return icon;
     }
 
     /**

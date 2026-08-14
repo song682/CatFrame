@@ -35,8 +35,14 @@ import java.util.Map;
  * GL 期望 R,G,B,A 字节序 —— 上传时显式重排（与 {@code AtlasPixelCache} 回读的
  * RGBA→ARGB 方向相反，见其类注释）。
  * <p>
- * M1 仅上传 level-0，min filter 用 GL_LINEAR（无 mipmap）；M4 per-atlas mipmap
- * policy 落地时在此逐级上传 box-filter 生成的 mip 并切换 filter。
+ * <b>采样策略</b>（消除放大双线性模糊 + 缩小混叠）：
+ * <ul>
+ *   <li>level-0 全量上传，随后按全局 mip 级别逐级上传 CPU box-filter 生成的 mip
+ *       （padding 已按 mip 预留，无渗色）；</li>
+ *   <li>MIN_FILTER = GL_NEAREST_MIPMAP_LINEAR（有 mip 时），缩小场景清晰；</li>
+ *   <li>MAG_FILTER = GL_NEAREST —— 16×16 内容在 GUI/手持等放大场景下像素锐利，
+ *       不再被 GL_LINEAR 双线性插值抹平细节。</li>
+ * </ul>
  *
  * <p>CPU-assembled, GL-uploaded atlas; also serves as the registered
  * {@code ITextureObject} so render layers bind it via {@code catframe:atlas/<id>}.
@@ -117,7 +123,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
             }
         });
 
-        upload(atlasARGB);
+        upload(atlasARGB, mipLevel);
 
         this.sprites.clear();
         for (CatSprite sprite : sprites) {
@@ -163,10 +169,16 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * 上传 level-0（ARGB int[] → RGBA ByteBuffer → glTexImage2D）。
+     * 上传 level-0 与 box-filter mip 层级（ARGB int[] → RGBA ByteBuffer → glTexImage2D）。
+     * <p>
+     * 采样策略见类 JavaDoc：MIN 用 mipmap 线性（缩小清晰），MAG 用 NEAREST
+     * （放大像素锐利，消除 16×16 内容放大时的双线性插值模糊）。
      * 上传前后保存/恢复 glBindTexture，避免污染 Pre 阶段 vanilla GL 状态。
+     *
+     * @param atlasARGB level-0 图集像素（flat ARGB，row-major）
+     * @param mipLevel  全局 mip 级别（CatStitcher 布局用的同一值，padding 已预留）
      */
-    private void upload(int[] atlasARGB) {
+    private void upload(int[] atlasARGB, int mipLevel) {
         int prevBound = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         int prevUnpackAlignment = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         try {
@@ -175,27 +187,32 @@ public class CatAtlas implements IAtlas, ITextureObject {
             }
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, glTextureId);
 
-            // ARGB int[] → RGBA 字节序（与 AtlasPixelCache 回读方向相反）
-            int byteCount = atlasWidth * atlasHeight * 4;
-            if (uploadBuffer == null || uploadBuffer.capacity() < byteCount) {
-                uploadBuffer = BufferUtils.createByteBuffer(byteCount);
-            } else {
-                uploadBuffer.clear();
-            }
-            for (int argb : atlasARGB) {
-                uploadBuffer.put((byte) (argb >> 16 & 0xFF)); // R
-                uploadBuffer.put((byte) (argb >> 8 & 0xFF));  // G
-                uploadBuffer.put((byte) (argb & 0xFF));       // B
-                uploadBuffer.put((byte) (argb >> 24 & 0xFF)); // A
-            }
-            uploadBuffer.flip();
-
             GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
-            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA,
-                    atlasWidth, atlasHeight, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, uploadBuffer);
-            // M1 无 mipmap：线性过滤 + CLAMP（M4 per-atlas mipmap policy 在此切换 filter 并逐级上传）
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+            uploadLevel(0, atlasARGB, atlasWidth, atlasHeight);
+
+            // 逐级 box-filter 下采样（2×2 分离通道平均），上传 mip 1..mips；
+            // 层级数不超过 min(mipLevel, log2(图集尺寸))，尺寸按 GL 规范 floor/2。
+            int mips = Math.min(mipLevel, Integer.numberOfTrailingZeros(Math.max(atlasWidth, atlasHeight)));
+            if (mips > 0) {
+                int[] src = atlasARGB;
+                int w = atlasWidth, h = atlasHeight;
+                for (int level = 1; level <= mips; level++) {
+                    int nw = Math.max(1, w / 2), nh = Math.max(1, h / 2);
+                    src = boxFilter(src, w, h, nw, nh);
+                    uploadLevel(level, src, nw, nh);
+                    w = nw;
+                    h = nh;
+                }
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, mips);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_LINEAR);
+            } else {
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            }
+            // MAG=NEAREST：放大场景（GUI/手持/掉落/展示框）像素锐利，
+            // 消除 GL_LINEAR 在 16×16 内容放大时的双线性插值模糊。
+            // Magnification stays NEAREST so enlarged 16×16 sprites keep hard
+            // pixel edges instead of bilinear smearing.
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
         } finally {
@@ -206,13 +223,67 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
+     * 上传单个 mip 层级：ARGB int[] → RGBA ByteBuffer → glTexImage2D。
+     * 复用 grow-only 上传缓冲区。
+     */
+    private void uploadLevel(int level, int[] pixels, int w, int h) {
+        int byteCount = w * h * 4;
+        if (uploadBuffer == null || uploadBuffer.capacity() < byteCount) {
+            uploadBuffer = BufferUtils.createByteBuffer(byteCount);
+        } else {
+            uploadBuffer.clear();
+        }
+        for (int argb : pixels) {
+            uploadBuffer.put((byte) (argb >> 16 & 0xFF)); // R
+            uploadBuffer.put((byte) (argb >> 8 & 0xFF));  // G
+            uploadBuffer.put((byte) (argb & 0xFF));       // B
+            uploadBuffer.put((byte) (argb >> 24 & 0xFF)); // A
+        }
+        uploadBuffer.flip();
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA,
+                w, h, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, uploadBuffer);
+    }
+
+    /**
+     * 2×2 box filter 下采样（ARGB 各通道分离平均）。
+     * 目标尺寸按 GL mipmap 规范 floor/2；奇数边缘的不完整 2×2 块取左上像素直通
+     * （图集边缘为 padding 透明区，对视觉无影响）。
+     *
+     * @param src  源像素（尺寸 w×h）
+     * @param w    源宽度
+     * @param h    源高度
+     * @param nw   目标宽度（= max(1, w/2)）
+     * @param nh   目标高度（= max(1, h/2)）
+     * @return 目标像素（flat ARGB）
+     */
+    private static int[] boxFilter(int[] src, int w, int h, int nw, int nh) {
+        int[] dst = new int[nw * nh];
+        for (int y = 0; y < nh; y++) {
+            for (int x = 0; x < nw; x++) {
+                int sx = x * 2, sy = y * 2;
+                int a = src[sy * w + sx];
+                // 右/下边缘不足 2×2 时用像素自身填充（1×2 / 2×1 平均）
+                int b = (sx + 1 < w) ? src[sy * w + sx + 1] : a;
+                int c = (sy + 1 < h) ? src[(sy + 1) * w + sx] : a;
+                int d = (sx + 1 < w && sy + 1 < h) ? src[(sy + 1) * w + sx + 1] : a;
+                int ar = ((a >> 16 & 0xFF) + (b >> 16 & 0xFF) + (c >> 16 & 0xFF) + (d >> 16 & 0xFF)) >> 2;
+                int ag = ((a >> 8 & 0xFF) + (b >> 8 & 0xFF) + (c >> 8 & 0xFF) + (d >> 8 & 0xFF)) >> 2;
+                int ab = ((a & 0xFF) + (b & 0xFF) + (c & 0xFF) + (d & 0xFF)) >> 2;
+                int aa = ((a >> 24 & 0xFF) + (b >> 24 & 0xFF) + (c >> 24 & 0xFF) + (d >> 24 & 0xFF)) >> 2;
+                dst[y * nw + x] = (aa << 24) | (ar << 16) | (ag << 8) | ab;
+            }
+        }
+        return dst;
+    }
+
+    /**
      * 空图集兜底：上传 16×16 透明占位纹理，保证渲染层绑定到的 GL 对象有效。
      */
     private void uploadPlaceholder() {
         int[] pixels = new int[16 * 16];
         this.atlasWidth = 16;
         this.atlasHeight = 16;
-        upload(pixels);
+        upload(pixels, 0);
     }
 
     // ==================== IAtlas / ITextureObject 契约 ====================

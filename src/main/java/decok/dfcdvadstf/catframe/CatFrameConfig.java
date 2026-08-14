@@ -47,6 +47,6 @@ public class CatFrameConfig {
     public void Options(){
         enableBlueyPlushy = config.getBoolean("enableBlueyPlushy", "features", false, "Set to true to enable the Bluey plushy item.");
         welcomeToast = config.getBoolean("welcomeToast", "features", true, "Set to true to show the CatFrame welcome toast when joining a world.");
-        debugLogThingsEnabled = config.getBoolean("dev", "debugLogThingsEnabled", false, "Set to true to enable debug logging for the render system (Mixin logs, etc.).");
+        debugLogThingsEnabled = config.getBoolean("debugLogThingsEnabled", "dev", false, "Set to true to enable debug logging for the render system (Mixin logs, etc.).");
     }
 }

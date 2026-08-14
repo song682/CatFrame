@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.resources.atlas;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import net.minecraft.client.Minecraft;
 import net.minecraft.util.IIcon;
 
 /**
@@ -16,8 +17,10 @@ import net.minecraft.util.IIcon;
  *       {@link #complete(int, int, int, int, int)} 一次性写入，之后全字段不可变（烘焙线程并发只读安全）。</li>
  * </ul>
  * <p>
- * M3 动画里程碑预留：{@link #frameCount} / {@link #frameIndex} / {@link #frameTimeMs}
- * 字段已声明（M1 恒为单帧），帧状态机与逐帧区域重传届时落地。
+ * M3 动画里程碑已落地：多帧 sprite 的帧像素存于 {@link #framePixels}（null = 单帧），
+ * 帧推进由 {@link #updateAnimationTick()} 按客户端 tick 驱动（游戏暂停时跳过），
+ * 帧切换后由 {@link CatAtlas#updateAnimationRegion} 做区域 glTexSubImage2D 重传。
+ * 烘焙线程经 {@link #getPixels()} 读取<b>当前帧</b>，与图集区域更新保持同一可见帧。
  *
  * <p>CatFrame custom-atlas sprite implementing the vanilla {@code IIcon} contract.
  * Owns its pixels on the CPU side (flat ARGB int[]), reports the <em>content</em>
@@ -57,17 +60,23 @@ public class CatSprite implements IIcon {
     /** 所属图集高度（最终 2^n 尺寸）。 */
     private int atlasHeight;
 
-    // ===== M3 动画占位（M1 恒单帧，帧状态机后续里程碑落地） =====
+    // ===== M3 动画状态（单帧 sprite：framePixels = null，像素直存 pixels） =====
 
-    /** 动画帧总数（M1 恒为 1；M3 从 .mcmeta animation 解析）。 */
+    /** 动画帧像素（null = 单帧；多帧时每帧 flat ARGB，尺寸 = contentWidth × contentHeight）。 */
+    private final int[][] framePixels;
+    /** 动画帧总数（单帧恒为 1）。 */
     private final int frameCount;
-    /** 当前动画帧索引（M3 由 tick 驱动推进；volatile 供异步读取）。 */
+    /** 当前动画帧索引（tick 驱动推进；volatile 供异步烘焙线程读取）。 */
     private volatile int frameIndex;
-    /** 每帧持续时间（ms），长度 = frameCount（M3 使用；M1 为空数组）。 */
+    /** 每帧持续时间（ms），长度 = frameCount（单帧为空数组）。 */
     private final int[] frameTimeMs;
+    /** 上次动画 tick 的系统时间（ms，{@link Minecraft#getSystemTime}）。 */
+    private long lastAnimationTickMs;
+    /** 累积未消费的动画时间（ms），帧推进按它逐级扣减。 */
+    private long accumulatedAnimationMs;
 
     /**
-     * 构造一个内容 sprite。
+     * 构造一个内容 sprite（单帧）。
      *
      * @param texturePath   完整纹理路径（textureIcons 发布键）
      * @param name          icon 名称（resolveTextureName 结果）
@@ -78,18 +87,34 @@ public class CatSprite implements IIcon {
      */
     public CatSprite(String texturePath, String name, int[] pixels,
                      int contentWidth, int contentHeight, String atlasId) {
-        this(texturePath, name, pixels, contentWidth, contentHeight, atlasId,
+        this(texturePath, name, null, pixels, contentWidth, contentHeight, atlasId,
                 1, new int[0]);
     }
 
     /**
-     * 完整构造（M3 动画帧数据入口）。
+     * 完整构造（多帧动画入口，M3）。
+     * <p>
+     * 各帧尺寸必须等于 {@code contentWidth × contentHeight}；调用方（CatSpriteLoader）
+     * 负责把 .mcmeta 帧表展开为与帧一一对应的时长数组。
+     *
+     * @param framePixels 动画帧像素（长度 = 帧数，每帧 flat ARGB）；null 视为单帧
+     * @param frameTimeMs 每帧时长（ms），长度 = 帧数
      */
-    CatSprite(String texturePath, String name, int[] pixels,
-              int contentWidth, int contentHeight, String atlasId,
-              int frameCount, int[] frameTimeMs) {
+    CatSprite(String texturePath, String name, int[][] framePixels,
+              int contentWidth, int contentHeight, String atlasId, int[] frameTimeMs) {
+        this(texturePath, name, framePixels,
+                framePixels != null && framePixels.length > 0 ? framePixels[0] : null,
+                contentWidth, contentHeight, atlasId,
+                framePixels != null ? framePixels.length : 1, frameTimeMs);
+    }
+
+    /** 私有完整构造：单帧（framePixels=null）与多帧共用。 */
+    private CatSprite(String texturePath, String name, int[][] framePixels, int[] pixels,
+                      int contentWidth, int contentHeight, String atlasId,
+                      int frameCount, int[] frameTimeMs) {
         this.texturePath = texturePath;
         this.name = name;
+        this.framePixels = framePixels;
         this.pixels = pixels;
         this.contentWidth = contentWidth;
         this.contentHeight = contentHeight;
@@ -97,6 +122,8 @@ public class CatSprite implements IIcon {
         this.frameCount = frameCount;
         this.frameIndex = 0;
         this.frameTimeMs = frameTimeMs;
+        this.lastAnimationTickMs = 0;
+        this.accumulatedAnimationMs = 0;
     }
 
     /**
@@ -137,11 +164,38 @@ public class CatSprite implements IIcon {
     }
 
     /**
-     * M3 动画 tick 入口占位：推进 {@link #frameIndex} 并返回是否需要重传纹理区域。
-     * M1 恒单帧返回 false；M3 帧状态机落地后按帧间隔推进。
+     * 动画 tick 推进：按系统时间增量累积帧时长并推进 {@link #frameIndex}。
+     * <p>
+     * 帧切换后返回 true，调用方（CatAtlasManager → CatAtlas.updateAnimationRegion）
+     * 负责该 sprite 区域的 glTexSubImage2D 重传。时钟回拨或长时间卡顿（>1s）时
+     * 重置累积器避免跳帧风暴（此时返回 false，不触发重传）。
+     *
+     * @return 帧索引是否发生切换（需要重传图集区域）
      */
     public boolean updateAnimationTick() {
-        return false;
+        if (frameCount <= 1) {
+            return false;
+        }
+        long now = Minecraft.getSystemTime();
+        long delta = lastAnimationTickMs == 0 ? 0 : now - lastAnimationTickMs;
+        lastAnimationTickMs = now;
+        if (delta <= 0 || delta > 1000) {
+            // 首次 tick / 时钟回拨 / 长时间卡顿：仅记录基准，不推进帧
+            accumulatedAnimationMs = 0;
+            return false;
+        }
+        accumulatedAnimationMs += delta;
+        int old = frameIndex;
+        while (accumulatedAnimationMs >= frameTimeMs[frameIndex]) {
+            accumulatedAnimationMs -= frameTimeMs[frameIndex];
+            frameIndex = (frameIndex + 1) % frameCount;
+        }
+        return frameIndex != old;
+    }
+
+    /** 是否为多帧动画 sprite。 */
+    public boolean isAnimated() {
+        return framePixels != null;
     }
 
     // ==================== IIcon 契约 ====================
@@ -210,9 +264,12 @@ public class CatSprite implements IIcon {
         return texturePath;
     }
 
-    /** 内容像素（flat ARGB int[]，只读约定）。 */
+    /**
+     * 内容像素（flat ARGB int[]，只读约定）。
+     * 多帧 sprite 返回<b>当前帧</b>像素，与图集区域更新保持同一可见帧。
+     */
     public int[] getPixels() {
-        return pixels;
+        return framePixels != null ? framePixels[frameIndex] : pixels;
     }
 
     /** 所属图集 id（如 {@code minecraft:block}）。 */
@@ -240,9 +297,14 @@ public class CatSprite implements IIcon {
         return padding;
     }
 
-    /** 当前动画帧索引（M1 恒 0）。 */
+    /** 当前动画帧索引（单帧恒 0）。 */
     public int getFrameIndex() {
         return frameIndex;
+    }
+
+    /** 动画帧总数（单帧恒 1）。 */
+    public int getFrameCount() {
+        return frameCount;
     }
 
     @Override

@@ -43,6 +43,11 @@ import java.util.Map;
  *   <li>MAG_FILTER = GL_NEAREST —— 16×16 内容在 GUI/手持等放大场景下像素锐利，
  *       不再被 GL_LINEAR 双线性插值抹平细节。</li>
  * </ul>
+ * <p>
+ * <b>M3 动画区域重传</b>：level-0 像素保留于 {@link #atlasPixels}（CPU 侧），
+ * 动画 sprite 帧切换后由 {@link #updateAnimationRegion} 更新该区域并
+ * glTexSubImage2D 重传 level-0 区域，随后从 level-0 全量重建 mip 链 ——
+ * 相比原版整图重传，只动发生变化的区域（原生 CPU 像素优势）。
  *
  * <p>CPU-assembled, GL-uploaded atlas; also serves as the registered
  * {@code ITextureObject} so render layers bind it via {@code catframe:atlas/<id>}.
@@ -61,6 +66,12 @@ public class CatAtlas implements IAtlas, ITextureObject {
     private int atlasHeight;
     /** 上传缓冲区（grow-only 复用，避免每次 stitch 重新分配 direct buffer）。 */
     private ByteBuffer uploadBuffer;
+    /** 动画区域重传缓冲区（与 uploadBuffer 独立，避免 tick 期间互扰）。 */
+    private ByteBuffer regionBuffer;
+    /** level-0 图集像素（CPU 侧保留；M3 动画区域更新 + mip 重建的源）。 */
+    private int[] atlasPixels;
+    /** 全局 mip 级别（upload 时记录，动画区域更新后按它重建 mip 链）。 */
+    private int mipLevel;
 
     /**
      * @param atlasId 图集 id（{@code IAtlas#getAtlasName()} 即此值）
@@ -124,6 +135,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
         });
 
         upload(atlasARGB, mipLevel);
+        this.atlasPixels = atlasARGB;
 
         this.sprites.clear();
         for (CatSprite sprite : sprites) {
@@ -179,6 +191,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
      * @param mipLevel  全局 mip 级别（CatStitcher 布局用的同一值，padding 已预留）
      */
     private void upload(int[] atlasARGB, int mipLevel) {
+        this.mipLevel = mipLevel;
         int prevBound = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         int prevUnpackAlignment = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         try {
@@ -189,25 +202,8 @@ public class CatAtlas implements IAtlas, ITextureObject {
 
             GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
             uploadLevel(0, atlasARGB, atlasWidth, atlasHeight);
+            uploadMips(atlasARGB, mipLevel);
 
-            // 逐级 box-filter 下采样（2×2 分离通道平均），上传 mip 1..mips；
-            // 层级数不超过 min(mipLevel, log2(图集尺寸))，尺寸按 GL 规范 floor/2。
-            int mips = Math.min(mipLevel, Integer.numberOfTrailingZeros(Math.max(atlasWidth, atlasHeight)));
-            if (mips > 0) {
-                int[] src = atlasARGB;
-                int w = atlasWidth, h = atlasHeight;
-                for (int level = 1; level <= mips; level++) {
-                    int nw = Math.max(1, w / 2), nh = Math.max(1, h / 2);
-                    src = boxFilter(src, w, h, nw, nh);
-                    uploadLevel(level, src, nw, nh);
-                    w = nw;
-                    h = nh;
-                }
-                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, mips);
-                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_LINEAR);
-            } else {
-                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-            }
             // MAG=NEAREST：放大场景（GUI/手持/掉落/展示框）像素锐利，
             // 消除 GL_LINEAR 在 16×16 内容放大时的双线性插值模糊。
             // Magnification stays NEAREST so enlarged 16×16 sprites keep hard
@@ -219,6 +215,114 @@ public class CatAtlas implements IAtlas, ITextureObject {
             // 恢复调用方 GL 状态（绑定纹理与像素行对齐），避免污染 Pre 阶段后续原版缝合的 GL 状态
             GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, prevUnpackAlignment);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevBound);
+        }
+    }
+
+    /**
+     * 在已绑定纹理、已上传 level-0 的前提下生成并上传 box-filter mip 链与采样参数。
+     * <p>
+     * 逐级下采样（2×2 分离通道平均），上传 mip 1..mips；层级数不超过
+     * min(mipLevel, log2(图集尺寸))，尺寸按 GL 规范 floor/2。
+     */
+    private void uploadMips(int[] level0, int mipLevel) {
+        int mips = Math.min(mipLevel, Integer.numberOfTrailingZeros(Math.max(atlasWidth, atlasHeight)));
+        if (mips > 0) {
+            int[] src = level0;
+            int w = atlasWidth, h = atlasHeight;
+            for (int level = 1; level <= mips; level++) {
+                int nw = Math.max(1, w / 2), nh = Math.max(1, h / 2);
+                src = boxFilter(src, w, h, nw, nh);
+                uploadLevel(level, src, nw, nh);
+                w = nw;
+                h = nh;
+            }
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, mips);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_LINEAR);
+        } else {
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        }
+    }
+
+    /**
+     * M3 动画区域更新：把 sprite 当前帧像素写入图集区域并重传 level-0 区域，
+     * 然后从 {@link #atlasPixels} 全量重建 mip 链（mip 依赖 level-0 内容，无法局部更新）。
+     * <p>
+     * 由 CatAtlasManager.tickAnimations 在动画帧切换后调用（主线程）。
+     * 上传前后保存/恢复 GL 状态，不污染渲染循环。
+     *
+     * @param sprite 帧已推进的动画 sprite（图集内成员）
+     */
+    public void updateAnimationRegion(CatSprite sprite) {
+        if (atlasPixels == null || glTextureId == -1) {
+            return;
+        }
+        int pad = sprite.getPadding();
+        int x = sprite.getOriginX() + pad;
+        int y = sprite.getOriginY() + pad;
+        int w = sprite.getIconWidth();
+        int h = sprite.getIconHeight();
+        if (x < 0 || y < 0 || x + w > atlasWidth || y + h > atlasHeight) {
+            CatFrame.logger.warn("[CatAtlas] '{}' animation region {}x{} @({},{}) outside atlas {}x{}, skip",
+                    atlasId, w, h, x, y, atlasWidth, atlasHeight);
+            return;
+        }
+        int[] frame = sprite.getPixels();
+        int prevBound = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        int prevUnpackAlignment = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
+        try {
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, glTextureId);
+            GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
+            // CPU 侧同步：区域行拷贝入 level-0 像素（mip 重建的源）
+            for (int row = 0; row < h; row++) {
+                System.arraycopy(frame, row * w, atlasPixels, (y + row) * atlasWidth + x, w);
+            }
+            uploadRegion(x, y, w, h, frame);
+            rebuildMipsFromLevel0();
+        } finally {
+            GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, prevUnpackAlignment);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevBound);
+        }
+    }
+
+    /**
+     * glTexSubImage2D 重传 level-0 的单个区域（ARGB int[] → RGBA ByteBuffer）。
+     * 帧数据行宽 = 区域宽 w，GL 默认 UNPACK_ROW_LENGTH 即区域宽，无需额外设置。
+     */
+    private void uploadRegion(int x, int y, int w, int h, int[] pixels) {
+        int byteCount = w * h * 4;
+        if (regionBuffer == null || regionBuffer.capacity() < byteCount) {
+            regionBuffer = BufferUtils.createByteBuffer(byteCount);
+        } else {
+            regionBuffer.clear();
+        }
+        for (int argb : pixels) {
+            regionBuffer.put((byte) (argb >> 16 & 0xFF)); // R
+            regionBuffer.put((byte) (argb >> 8 & 0xFF));  // G
+            regionBuffer.put((byte) (argb & 0xFF));       // B
+            regionBuffer.put((byte) (argb >> 24 & 0xFF)); // A
+        }
+        regionBuffer.flip();
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, x, y, w, h,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, regionBuffer);
+    }
+
+    /**
+     * 从 {@link #atlasPixels}（level-0，已含最新帧）全量重建 mip 1..mips 并重传。
+     * 仅在存在 mip 链（mipLevel > 0）时执行；无 mip 的图集动画无需该步。
+     */
+    private void rebuildMipsFromLevel0() {
+        if (mipLevel <= 0) {
+            return;
+        }
+        int mips = Math.min(mipLevel, Integer.numberOfTrailingZeros(Math.max(atlasWidth, atlasHeight)));
+        int[] src = atlasPixels;
+        int w = atlasWidth, h = atlasHeight;
+        for (int level = 1; level <= mips; level++) {
+            int nw = Math.max(1, w / 2), nh = Math.max(1, h / 2);
+            src = boxFilter(src, w, h, nw, nh);
+            uploadLevel(level, src, nw, nh);
+            w = nw;
+            h = nh;
         }
     }
 

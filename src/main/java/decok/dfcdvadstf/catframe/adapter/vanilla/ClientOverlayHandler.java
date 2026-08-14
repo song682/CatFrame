@@ -6,6 +6,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
 import decok.dfcdvadstf.catframe.ui.components.toast.SimpleToast;
 import decok.dfcdvadstf.catframe.ui.components.toast.ToastOverlay;
 import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
@@ -79,7 +80,8 @@ public class ClientOverlayHandler {
 
     /**
      * Advance every registered overlay once per client tick while the game is not paused.
-     * <p>游戏未暂停时，每客户端 tick 推进一次所有已注册 Overlay。</p>
+     * <p>游戏未暂停时，每客户端 tick 推进一次所有已注册 Overlay，并驱动图集动画帧推进
+     * （{@code CatAtlasManager.tickAnimations}，动画 sprite 区域 glTexSubImage2D 重传）。</p>
      */
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
@@ -91,6 +93,7 @@ public class ClientOverlayHandler {
             return;
         }
         OverlayManager.INSTANCE.updateAll();
+        CatAtlasManager.tickAnimations();
     }
 
     /**

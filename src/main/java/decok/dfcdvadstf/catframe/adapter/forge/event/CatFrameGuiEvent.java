@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.compact.forge.event;
+package decok.dfcdvadstf.catframe.adapter.forge.event;
 
 import cpw.mods.fml.common.eventhandler.Cancelable;
 import cpw.mods.fml.common.eventhandler.Event;

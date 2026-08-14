@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.compact.vanilla.model;
+package decok.dfcdvadstf.catframe.adapter.vanilla.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

@@ -1,8 +1,8 @@
-package decok.dfcdvadstf.catframe.compact.forge.event;
+package decok.dfcdvadstf.catframe.adapter.forge.event;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.compact.forge.tags.OreDict2Tag;
+import decok.dfcdvadstf.catframe.adapter.forge.tags.OreDict2Tag;
 import net.minecraftforge.oredict.OreDictionary;
 
 public class ODorTag {

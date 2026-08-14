@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.compact.vanilla;
+package decok.dfcdvadstf.catframe.adapter.vanilla;
 
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;

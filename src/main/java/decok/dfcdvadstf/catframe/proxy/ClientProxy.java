@@ -4,14 +4,11 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.command.CommandTitle;
-import decok.dfcdvadstf.catframe.compact.CompactBase;
-import decok.dfcdvadstf.catframe.compact.ime.IgIMECompact;
-import decok.dfcdvadstf.catframe.compact.ime.IMECompact;
-import decok.dfcdvadstf.catframe.compact.vanilla.ClientOverlayHandler;
-import decok.dfcdvadstf.catframe.compact.vanilla.ClientScreenGraphicsHandler;
-import decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener;
-import decok.dfcdvadstf.catframe.compact.vanilla.model.ResourcePackModelDetector;
-import decok.dfcdvadstf.catframe.compact.vanilla.model.VanillaStateDefinitions;
+import decok.dfcdvadstf.catframe.adapter.vanilla.ClientOverlayHandler;
+import decok.dfcdvadstf.catframe.adapter.vanilla.ClientScreenGraphicsHandler;
+import decok.dfcdvadstf.catframe.adapter.vanilla.LanguageReloadListener;
+import decok.dfcdvadstf.catframe.adapter.vanilla.model.ResourcePackModelDetector;
+import decok.dfcdvadstf.catframe.adapter.vanilla.model.VanillaStateDefinitions;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
@@ -73,27 +70,6 @@ public class ClientProxy extends CommonProxy {
         TintRegistry.register(new LeavesInHandTintProvider());
         TintRegistry.register(new RedstoneWireTintProvider());
         ModelRenderRegistry.register(new LeavesGraphicsExtension());
-
-        if (CompactBase.isIMEBackportInstalled()) {
-            // Register CatFrame's text-area family as an IME commit target. The
-            // API is compileOnly, so IMECompact is only ever loaded (and its
-            // IMEInputAPI reference resolved) when the mod is present.
-            // 将 CatFrame 文本框体系注册为 IME 提交目标。API 为 compileOnly，
-            // 因此 IMECompact 仅在模组存在时才会被加载（及其 IMEInputAPI 引用被解析）。
-            IMECompact.register();
-        }
-
-        if (CompactBase.isIGIMEInstalled()) {
-            // Bridge CatFrame's text-area family into the IngameIME pipeline
-            // (focus activation + caret sync). Its classes are compileOnly, so
-            // IgIMECompact is only ever loaded when the mod is present; its
-            // register() also refuses to run while IMEInputBackport is active
-            // to avoid double commits.
-            // 将 CatFrame 文本框体系桥接进 IngameIME 输入管线（焦点激活 + 光标同步）。
-            // 其类为 compileOnly，因此 IgIMECompact 仅在模组存在时才会被加载；
-            // register() 亦会在 IMEInputBackport 在场时拒绝注册，避免双重提交。
-            IgIMECompact.register();
-        }
     }
 
     @Override

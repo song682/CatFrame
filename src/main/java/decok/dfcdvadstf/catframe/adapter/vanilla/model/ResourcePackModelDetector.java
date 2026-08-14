@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.compact.vanilla.model;
+package decok.dfcdvadstf.catframe.adapter.vanilla.model;
 
 import com.google.gson.JsonObject;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 解析为 {@link ModelJson} / {@link BlockstateJson} 供其他子系统查询。
  * <p>
  * 注册方式完全复用
- * {@link decok.dfcdvadstf.catframe.compact.vanilla.LanguageReloadListener}
+ * {@link decok.dfcdvadstf.catframe.adapter.vanilla.LanguageReloadListener}
  * 的延迟注册模式：资源管理器不可用时通过一次性 ClientTick 延迟注册。
  * <p>
  * 资源包覆盖生效链路（扫描 → 合并 → 重注册）：

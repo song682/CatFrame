@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.compact.forge.tags;
+package decok.dfcdvadstf.catframe.adapter.forge.tags;
 
 import decok.dfcdvadstf.catframe.tags.TagLoader;
 import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;

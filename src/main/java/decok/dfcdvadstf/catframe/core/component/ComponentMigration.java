@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.core.component;
 
-import decok.dfcdvadstf.catframe.compact.forge.tags.OreDict2Tag;
+import decok.dfcdvadstf.catframe.adapter.forge.tags.OreDict2Tag;
 import decok.dfcdvadstf.catframe.core.RegisteredComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.*;
 import net.minecraft.nbt.NBTTagCompound;

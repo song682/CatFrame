@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.mixin.middle;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import decok.dfcdvadstf.catframe.compact.forge.event.CatFrameGuiEvent;
+import decok.dfcdvadstf.catframe.adapter.forge.event.CatFrameGuiEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraftforge.common.MinecraftForge;

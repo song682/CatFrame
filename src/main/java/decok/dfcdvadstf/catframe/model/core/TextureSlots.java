@@ -206,10 +206,19 @@ public class TextureSlots {
     private static IIcon findIcon(String texturePath, @Nullable Map<String, IIcon> globalIconMap) {
         if (texturePath == null || texturePath.isEmpty()) return null;
 
-        // 1. 检查全局映射
+        // 1. 检查全局映射（先原键，再 iconName 别名键）：纹理引用格式差异（如带/不带
+        //    block/ 前缀）时若原键 miss，别名键仍能命中 CatSprite，避免第二级 fallback
+        //    到 vanilla sprite 造成 UV 空间错配（见 CatAtlasManager.publish 别名键）。
+        //    Alias lookup: prevents falling back to a vanilla sprite (vanilla UV
+        //    space) while render groups are bound to the CatAtlas.
         if (globalIconMap != null) {
             IIcon icon = globalIconMap.get(texturePath);
             if (icon != null) return icon;
+            String alias = resolveTextureName(texturePath);
+            if (alias != null && !alias.equals(texturePath)) {
+                icon = globalIconMap.get(alias);
+                if (icon != null) return icon;
+            }
         }
 
         // 2. 尝试 blocks 纹理图集

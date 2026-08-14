@@ -168,6 +168,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
      */
     private void upload(int[] atlasARGB) {
         int prevBound = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        int prevUnpackAlignment = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         try {
             if (glTextureId == -1) {
                 glTextureId = GL11.glGenTextures();
@@ -198,6 +199,8 @@ public class CatAtlas implements IAtlas, ITextureObject {
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
         } finally {
+            // 恢复调用方 GL 状态（绑定纹理与像素行对齐），避免污染 Pre 阶段后续原版缝合的 GL 状态
+            GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, prevUnpackAlignment);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevBound);
         }
     }

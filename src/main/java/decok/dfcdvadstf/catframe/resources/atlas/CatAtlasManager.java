@@ -108,8 +108,23 @@ public final class CatAtlasManager {
                                        ResourceLocation glName, int maxTextureSize) {
         try {
             List<CatSprite> sprites = new ArrayList<>(pending.size());
+            int missing = 0;
             for (String texturePath : pending) {
-                sprites.add(decodeSprite(texturePath, atlasId));
+                CatSprite sprite = decodeSprite(texturePath, atlasId);
+                if (sprite.isMissing()) {
+                    missing++;
+                }
+                sprites.add(sprite);
+            }
+            // 降级保护：decode 大面积失败（missing 过半）说明解码环境异常，整体跳过本图集
+            // （不注册、不换绑、不发布）→ 原版缝合路径兜底，画面保持原版正常，游戏不崩溃。
+            // Degrade guard: if most sprites failed to decode, skip the whole atlas
+            // so the vanilla stitch path and vanilla UV space stay in effect.
+            if (missing * 2 > pending.size()) {
+                CatFrame.logger.error(
+                        "[CatAtlas] atlas '{}' decode failed {}/{} sprites (>50%), skipping atlas (vanilla path fallback)",
+                        atlasId, missing, pending.size());
+                return;
             }
             CatAtlas atlas = new CatAtlas(atlasId);
             atlas.stitch(sprites, maxTextureSize);
@@ -165,18 +180,24 @@ public final class CatAtlasManager {
                 IResource res = Minecraft.getMinecraft().getResourceManager().getResource(rl);
                 BufferedImage image = ImageIO.read(res.getInputStream());
                 if (image == null) {
-                    continue; // 资源存在但非可解码图像
+                    // 资源存在但 ImageIO 无法解码（如非 PNG/JPG 内容），与 catch 分支同留诊断线索
+                    CatFrame.logger.debug("[CatAtlas] '{}' exists but ImageIO cannot decode it", rl);
+                    continue;
                 }
                 int w = image.getWidth();
                 int h = image.getHeight();
                 int[] pixels = image.getRGB(0, 0, w, h, null, 0, w);
                 return new CatSprite(texturePath, iconName, pixels, w, h, atlasId);
             } catch (IOException | RuntimeException ex) {
-                // 尝试下一个目录
+                // 诊断日志：历史上曾出现全部纹理静默解码失败（画面紫黑糊状），此处保留
+                // 异常详情（含完整 ResourceLocation）用于定位真实原因；FileNotFoundException
+                // 属正常缺失路径，其余异常类才是解码环境问题的线索。
+                CatFrame.logger.debug("[CatAtlas] decode '{}' via {} failed: {}: {}",
+                        texturePath, rl, ex.getClass().getSimpleName(), ex.getMessage());
             }
         }
-        CatFrame.logger.warn("[CatAtlas] texture '{}' not found for atlas '{}', using missing sprite",
-                texturePath, atlasId);
+        CatFrame.logger.warn("[CatAtlas] texture '{}' (iconName='{}') not found for atlas '{}', using missing sprite",
+                texturePath, iconName, atlasId);
         return CatSprite.missing(atlasId, texturePath);
     }
 
@@ -214,6 +235,17 @@ public final class CatAtlasManager {
             return;
         }
         textureIcons.putAll(spritesByTexturePath);
+        // 别名键：iconName（resolveTextureName 结果，如 "minecraft:stone"）也指向同一
+        // CatSprite，配合 TextureSlots.findIcon 的别名查询，防止纹理引用格式差异时
+        // 第二级 fallback 到 vanilla sprite（UV 原版图集空间）与换绑后的 CatAtlas 错配。
+        // Alias keys: iconName also maps to the same CatSprite so findIcon's alias
+        // lookup never falls back to a vanilla sprite in the vanilla UV space.
+        for (CatSprite sprite : spritesByTexturePath.values()) {
+            String iconName = sprite.getIconName();
+            if (iconName != null && !iconName.isEmpty()) {
+                textureIcons.put(iconName, sprite);
+            }
+        }
         CatFrame.logger.info("[CatAtlas] published {} CatSprites into textureIcons (size={})",
                 spritesByTexturePath.size(), textureIcons.size());
     }

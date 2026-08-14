@@ -2,8 +2,12 @@ package decok.dfcdvadstf.catframe.model.render.extension;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
+import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
+import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -263,8 +267,24 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
 
         // 获取 _opaque IIcon
         IIcon opaqueIcon = getOpaqueIcon(leafBlock, metadata);
-        if (opaqueIcon != null) {
+        if (opaqueIcon == null) return;
+
+        if (ctx.phase == RenderPhase.BLOCK_WORLD) {
+            // 世界阶段：绑定原版图集，vanilla _opaque sprite 直接可用（消除透明边缘）。
             ctx.iconOverride = opaqueIcon;
+            return;
+        }
+        // 物品阶段：渲染绑定 CatAtlas，vanilla sprite（原版图集 UV 空间）会导致采样错位
+        // （树叶物品贴 jukebox_top 症状）。优先换用 CatAtlas 中同名 CatSprite；CatAtlas
+        // 无此纹理时跳过 override，退回模型正常纹理（其 CatSprite 必有，UV 正确）。
+        // Item phases bind the CatAtlas: prefer the CatSprite twin of the _opaque
+        // texture; without one, skip the override so the normal model texture drives.
+        CatSprite catOpaque = CatAtlasManager.findSprite(opaqueIcon.getIconName());
+        if (catOpaque != null) {
+            ctx.iconOverride = catOpaque;
+        } else {
+            CatFrame.logger.debug("[LeavesGraphics] no CatSprite for '{}', skip override in phase {}",
+                    opaqueIcon.getIconName(), ctx.phase);
         }
     }
 }

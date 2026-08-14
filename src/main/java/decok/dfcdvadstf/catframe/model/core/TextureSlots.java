@@ -221,16 +221,33 @@ public class TextureSlots {
             }
         }
 
-        // 2. 尝试 blocks 纹理图集
+        // 2. 自定义图集（CatAtlas）兜底：按 iconName 反查当前周期的 CatSprite。
+        //    该查找独立于 globalIconMap（烘焙时 iconMap 可能为 null / 键缺失），
+        //    优先保证 quad 携带 CatFrame UV：物品渲染绑定 CatAtlas 时采样正确，
+        //    世界渲染由 resolveWorldIcon 把 CatSprite 换回 vanilla，两路径双正确。
+        //    CatAtlas fallback: prefer the CatSprite so item quads never carry
+        //    vanilla-atlas UVs; world rendering swaps it back via resolveWorldIcon.
+        String iconName = resolveTextureName(texturePath);
+        CatSprite catSprite = CatAtlasManager.findSprite(iconName);
+        if (catSprite != null) {
+            return catSprite;
+        }
+
+        // 3. 尝试 blocks 纹理图集
         try {
-            String iconName = resolveTextureName(texturePath);
             TextureMap blocksMap = Minecraft.getMinecraft().getTextureMapBlocks();
             IIcon icon = blocksMap.getAtlasSprite(iconName);
             if (icon != null && icon.getIconName() != null && !"missingno".equals(icon.getIconName())) {
+                // CatAtlas 与 globalIconMap 均无此纹理：返回 vanilla sprite 仅能保证
+                // 世界渲染正确（原版图集绑定）；物品渲染绑定 CatAtlas 时必然 UV 错位，
+                // warn 暴露以便定位纹理收集缺失（见 ItemBlock-ItemRender-UV-Mismatch-Diagnosis.md）。
+                CatFrame.logger.warn("[TextureSlots] '{}' resolved to vanilla sprite '{}' "
+                                + "(no CatSprite, no global icon): item rendering may sample the wrong UV space",
+                        texturePath, icon.getIconName());
                 return icon;
             }
 
-            // 3. 尝试 items 纹理图集
+            // 4. 尝试 items 纹理图集
             TextureMap itemsMap = (TextureMap) Minecraft.getMinecraft().getTextureManager()
                     .getTexture(TextureMap.locationItemsTexture);
             if (itemsMap != null) {
@@ -239,6 +256,9 @@ public class TextureSlots {
                     icon = itemsMap.getAtlasSprite(iconName);
                 }
                 if (icon != null && icon.getIconName() != null && !"missingno".equals(icon.getIconName())) {
+                    CatFrame.logger.warn("[TextureSlots] '{}' resolved to vanilla item sprite '{}' "
+                                    + "(no CatSprite, no global icon): item rendering may sample the wrong UV space",
+                            texturePath, icon.getIconName());
                     return icon;
                 }
             }

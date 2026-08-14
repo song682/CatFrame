@@ -31,8 +31,9 @@ import java.util.Map;
  */
 public class BakedModelCache {
 
-    /** 全局单例 */
-    public static final BakedModelCache INSTANCE = new BakedModelCache(2048);
+    /** 全局单例（容量覆盖一次 reload 的全部预烘焙结果：2652 任务 / 约 2636 成功，
+     *  留余量避免 LRU 驱逐导致渲染时懒烘焙 —— 见 ItemBlock-ItemRender-UV-Mismatch-Diagnosis.md）。 */
+    public static final BakedModelCache INSTANCE = new BakedModelCache(3200);
 
     private final int maxSize;
     private final LoadingCache<String, Optional<BlockStateModelPart>> cache;

@@ -4,7 +4,7 @@
         "property": "catframe:meta",
         "fallback": {
             "type": "minecraft:model",
-            "model": "minecraft:block/log"
+            "model": "minecraft:block/oak_log"
         },
         "cases": [
             {

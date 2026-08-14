@@ -16,6 +16,8 @@ import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
+import javax.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -82,6 +84,9 @@ public final class CatAtlasManager {
     private static final Map<String, CatAtlas> atlases = new LinkedHashMap<>();
     /** 发布映射：完整纹理路径 → CatSprite（publish 时合并进 textureIcons）。 */
     private static final Map<String, CatSprite> spritesByTexturePath = new ConcurrentHashMap<>();
+    /** icon 名称（resolveTextureName 剥前缀结果，如 {@code minecraft:stone}）→ CatSprite，
+     *  供 {@link #findSprite} 反查（烘焙侧防 vanilla sprite 泄漏）。 */
+    private static final Map<String, CatSprite> spritesByIconName = new ConcurrentHashMap<>();
 
     /**
      * 触发全量重建缝合（TextureStitchEvent.Pre type 0 调用）。
@@ -92,6 +97,7 @@ public final class CatAtlasManager {
     public static void stitch() {
         release();
         spritesByTexturePath.clear();
+        spritesByIconName.clear();
 
         // 硬上限：min(GL_MAX_TEXTURE_SIZE, 16384)（主线程 GL 上下文读取）
         int maxTextureSize = Math.min(GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE), MAX_ATLAS_SIZE);
@@ -147,6 +153,7 @@ public final class CatAtlasManager {
 
             for (CatSprite sprite : atlas.getSprites().values()) {
                 spritesByTexturePath.put(sprite.getTexturePath(), sprite);
+                spritesByIconName.put(sprite.getIconName(), sprite);
             }
             atlases.put(atlasId, atlas);
         } catch (RuntimeException e) {
@@ -326,6 +333,22 @@ public final class CatAtlasManager {
         }
         CatFrame.logger.info("[CatAtlas] published {} CatSprites into textureIcons (size={})",
                 spritesByTexturePath.size(), textureIcons.size());
+    }
+
+    /**
+     * 按 icon 名称（resolveTextureName 剥前缀结果，如 {@code minecraft:stone}）查找
+     * 当前 stitch 周期的 CatSprite；未缝合或不存在时返回 null。
+     * <p>
+     * 供烘焙/渲染侧在 {@code globalIconMap} 未命中时优先取 CatSprite，防止降级到
+     * vanilla sprite（原版图集 UV 空间）与物品渲染的 CatAtlas 绑定错配。
+     *
+     * <p>Lookup by stripped icon name so baking never falls back to a vanilla
+     * sprite (vanilla atlas UV space) while item rendering binds the CatAtlas.
+     */
+    @Nullable
+    public static CatSprite findSprite(String iconName) {
+        if (iconName == null) return null;
+        return spritesByIconName.get(iconName);
     }
 
     /**

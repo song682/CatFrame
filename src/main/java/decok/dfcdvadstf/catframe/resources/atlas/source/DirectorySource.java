@@ -20,7 +20,7 @@ import java.util.Set;
  * 枚举不可用时返回空列表（模型驱动引用兜底）。
  * <p>
  * 定义 JSON 示例：
- * <pre>{@code {"type": "minecraft:directory", "source": "items", "prefix": "item/"}}</pre>
+ * <pre>{@code {"type": "minecraft:directory", "source": "items", "prefix": "items/"}}</pre>
  *
  * <p>Scans {@code textures/<source>/} under every namespace and emits one
  * sprite ref per PNG, id = {@code ns:prefix+basename}.
@@ -30,7 +30,9 @@ public final class DirectorySource implements AtlasSource {
 
     /** 纹理目录名（1.7.10 复数，如 {@code "items"}）。 */
     private final String source;
-    /** sprite id 前缀（如 {@code "item/"}，单数与模型引用格式一致）。 */
+    /** sprite id 前缀（如 {@code "items/"}，与 1.7.10 模型引用格式一致 —— Wiki 语义：
+     * 前缀直接拼在命名空间 ID 路径最前面，{@code source="items"} + {@code prefix="items/"}
+     * 对 {@code textures/items/apple.png} 产出 {@code minecraft:items/apple}）。 */
     private final String prefix;
 
     public DirectorySource(String source, String prefix) {

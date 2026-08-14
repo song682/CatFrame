@@ -23,8 +23,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 图集定义解析器 —— 解析 {@code assets/<namespace>/atlas/<id>.json}（Wiki 兼容格式，
- * 对标 26.1.2 {@code SpriteSourceList} 的 JSON 形态）。
+ * 图集定义解析器 —— 解析 {@code assets/<namespace>/atlases/<id>.json}（Wiki 兼容格式，
+ * 复数 {@code atlases/} 目录，对标 26.1.2 {@code SpriteSourceList} 的 JSON 形态）。
  * <p>
  * 根元素 {@code sources} 为数组；每个 source 以 {@code type} 键区分
  * （带 namespace 的 type id，如 {@code "minecraft:directory"}），其余字段为参数：

@@ -17,17 +17,17 @@
         "east":  { "uv": [ 0, 14, 16, 16 ], "texture": "#side" }
       }
     },
-    {   "__comment": "Front torch (output side, sunken in compare mode per 1.7.10 RenderBlocks)",
+    {   "__comment": "Front torch (output side, raised in subtract mode per 1.7.10 RenderBlocks)",
       "from": [ 7, 2, 2 ],
-      "to": [ 9, 4, 4 ],
+      "to": [ 9, 7, 4 ],
       "shade": false,
       "faces": {
         "down":  { "uv": [ 7, 6, 9, 8 ], "texture": "#front_torch" },
         "up":    { "uv": [ 7, 6, 9, 8 ], "texture": "#front_torch" },
-        "north": { "uv": [ 7, 6, 9, 8 ], "texture": "#front_torch" },
-        "south": { "uv": [ 7, 6, 9, 8 ], "texture": "#front_torch" },
-        "west":  { "uv": [ 7, 6, 9, 8 ], "texture": "#front_torch" },
-        "east":  { "uv": [ 7, 6, 9, 8 ], "texture": "#front_torch" }
+        "north": { "uv": [ 7, 6, 9, 13 ], "texture": "#front_torch" },
+        "south": { "uv": [ 7, 6, 9, 13 ], "texture": "#front_torch" },
+        "west":  { "uv": [ 7, 6, 9, 13 ], "texture": "#front_torch" },
+        "east":  { "uv": [ 7, 6, 9, 13 ], "texture": "#front_torch" }
       }
     },
     {   "__comment": "Back torch left (input side)",

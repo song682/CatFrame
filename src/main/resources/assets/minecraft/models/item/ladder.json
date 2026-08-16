@@ -1,6 +1,6 @@
 {
     "parent": "minecraft:item/generated",
     "textures": {
-        "layer0": "minecraft:block/ladder"
+        "layer0": "minecraft:blocks/ladder"
     }
 }

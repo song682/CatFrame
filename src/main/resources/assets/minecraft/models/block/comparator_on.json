@@ -3,7 +3,7 @@
   "textures": {
     "top": "minecraft:blocks/comparator_on",
     "side": "minecraft:blocks/stone_slab_side",
-    "front_torch": "minecraft:blocks/redstone_torch_on",
-    "back_torch": "minecraft:blocks/redstone_torch_off"
+    "front_torch": "minecraft:blocks/redstone_torch_off",
+    "back_torch": "minecraft:blocks/redstone_torch_on"
   }
 }

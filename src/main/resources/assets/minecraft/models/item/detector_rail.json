@@ -1,6 +1,6 @@
 {
     "parent": "minecraft:item/generated",
     "textures": {
-        "layer0": "minecraft:block/rail_detector"
+        "layer0": "minecraft:blocks/rail_detector"
     }
 }

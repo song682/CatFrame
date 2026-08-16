@@ -311,7 +311,16 @@ public class ItemPropertyRegistry {
     }
 
     /**
-     * 计算玩家当前物品的使用进度（归一化到 0-10000）。
+     * 计算玩家当前物品的已使用 tick 数（原始 elapsed ticks）。
+     * <p>
+     * Computes the raw elapsed use ticks of the player's item-in-use, matching
+     * the modern (1.21.4+) {@code use_duration} property semantics; normalization
+     * is left to the JSON-side {@code scale} (bow: 0.05, full draw = 20 ticks).
+     * <p>
+     * 与 1.21.4+ 原版 {@code use_duration} 语义一致，归一化由 JSON 侧
+     * {@code scale} 完成（弓：scale 0.05，满弓 20 tick → 1.0）。
+     * 1.7.10 中 {@code itemInUseCount} 从 maxItemUseDuration 递减，
+     * 故 elapsed = maxDuration - remaining。
      */
     private static int computeUseDuration(EntityPlayer player) {
         ItemStack usingItem = player.getItemInUse();
@@ -319,7 +328,6 @@ public class ItemPropertyRegistry {
         int maxDuration = usingItem.getMaxItemUseDuration();
         if (maxDuration <= 0) return 0;
         int remaining = player.getItemInUseCount();
-        int elapsed = Math.max(0, maxDuration - remaining);
-        return Math.min(10000, (int) ((long) elapsed * 10000L / maxDuration));
+        return Math.max(0, maxDuration - remaining);
     }
 }

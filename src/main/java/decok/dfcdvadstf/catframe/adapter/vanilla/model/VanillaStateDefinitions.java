@@ -709,25 +709,35 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.unpowered_repeater).states(unpoweredDef).register();
         }
 
-        // ==================== 比较器（facing+mode） ====================
+        // ==================== 比较器（facing+mode+powered） ====================
 
         private static void registerComparators() {
-                // comparator: facing={north,east,south,west}+mode={compare,subtract}
-                // meta&3=facing, (meta&4)!=0→subtract
-                CatStateDefinition.MetaCodec comparatorCodec = meta -> new Comparable<?>[] {
+                // comparator: facing={north,east,south,west}+mode={compare,subtract}+powered
+                // meta&3=facing, (meta&4)!=0→subtract, (meta&8)!=0→powered(lit)
+                // 1.7.10 点亮状态存于 meta bit 8 且方块保持 unpowered_comparator；
+                // powered_comparator 实例恒按点亮渲染（isRepeaterPowered）。
+                // The lit state lives in meta bit 8 while the block stays
+                // unpowered_comparator; the powered_comparator instance always
+                // renders lit (isRepeaterPowered).
+                CatStateDefinition.MetaCodec unpoweredCodec = meta -> new Comparable<?>[] {
                                 DIODE_FACING.getValues().get(meta & 3),
-                                (meta & 4) != 0 ? "subtract" : "compare" };
+                                (meta & 4) != 0 ? "subtract" : "compare",
+                                (meta & 8) != 0 ? "true" : "false" };
+                CatStateDefinition.MetaCodec poweredCodec = meta -> new Comparable<?>[] {
+                                DIODE_FACING.getValues().get(meta & 3),
+                                (meta & 4) != 0 ? "subtract" : "compare",
+                                "true" };
 
                 CatStateDefinition<Block> poweredDef = new CatStateDefinition.Builder<Block>(Blocks.powered_comparator)
-                                .add(DIODE_FACING, COMPARATOR_MODE)
-                                .metaCodec(comparatorCodec)
+                                .add(DIODE_FACING, COMPARATOR_MODE, POWERED)
+                                .metaCodec(poweredCodec)
                                 .create();
                 CatModels.register(Blocks.powered_comparator).states(poweredDef).register();
 
                 CatStateDefinition<Block> unpoweredDef = new CatStateDefinition.Builder<Block>(
                                 Blocks.unpowered_comparator)
-                                .add(DIODE_FACING, COMPARATOR_MODE)
-                                .metaCodec(comparatorCodec)
+                                .add(DIODE_FACING, COMPARATOR_MODE, POWERED)
+                                .metaCodec(unpoweredCodec)
                                 .create();
                 CatModels.register(Blocks.unpowered_comparator).states(unpoweredDef).register();
         }

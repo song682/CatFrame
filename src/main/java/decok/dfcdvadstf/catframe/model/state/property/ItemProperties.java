@@ -43,8 +43,8 @@ public class ItemProperties {
     /** 物品最大 damage 值（耐久度）。 */
     public static final IntegerProperty MAX_DAMAGE = IntegerProperty.create("max_damage", 0, 32767);
 
-    /** 使用持续时间（归一化进度 0-10000，其中 10000 = 完全使用）。用于 range_dispatch 决策树节点。 */
-    public static final IntegerProperty USE_DURATION = IntegerProperty.create("use_duration", 0, 10000);
+    /** 已使用 tick 数（elapsed use ticks，与 1.21.4+ 原版 use_duration 语义一致）。用于 range_dispatch 决策树节点。 */
+    public static final IntegerProperty USE_DURATION = IntegerProperty.create("use_duration", 0, 72000);
 
     /**
      * 当前渲染阶段。用于 display context 模型切换（如望远镜/Bluey 玩偶）。
@@ -103,11 +103,13 @@ public class ItemProperties {
     }
 
     /**
-     * 计算玩家当前物品的使用进度（归一化到 0-10000）。
+     * 计算玩家当前物品的已使用 tick 数（原始 elapsed ticks）。
+     * <p>
+     * Computes the raw elapsed use ticks of the player's item-in-use.
      * <p>
      * 1.7.10 中 {@code EntityPlayer.itemInUseCount} 是剩余使用 tick（递减），
-     * 实际进度 = (maxItemUseDuration - itemInUseCount) / maxItemUseDuration。
-     * 乘以 10000 转换为整数范围，便于 range_dispatch 节点使用。
+     * 已使用 tick = maxItemUseDuration - itemInUseCount；
+     * 归一化由 JSON 侧 {@code scale} 完成。
      */
     private static int computeUseDuration(EntityPlayer player) {
         ItemStack usingItem = player.getItemInUse();
@@ -115,8 +117,6 @@ public class ItemProperties {
         int maxDuration = usingItem.getMaxItemUseDuration();
         if (maxDuration <= 0) return 0;
         int remaining = player.getItemInUseCount();
-        int elapsed = Math.max(0, maxDuration - remaining);
-        // 归一化到 0-10000
-        return Math.min(10000, (int) ((long) elapsed * 10000L / maxDuration));
+        return Math.max(0, maxDuration - remaining);
     }
 }

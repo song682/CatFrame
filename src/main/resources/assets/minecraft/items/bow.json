@@ -9,7 +9,7 @@
     "on_true": {
       "type": "minecraft:range_dispatch",
       "property": "minecraft:use_duration",
-      "scale": 0.0001,
+      "scale": 0.05,
       "fallback": {
         "type": "minecraft:model",
         "model": "minecraft:item/bow_pulling_0"

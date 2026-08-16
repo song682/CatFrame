@@ -1,7 +1,6 @@
 package decok.dfcdvadstf.catframe.model.core;
 
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
 import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
@@ -201,22 +200,28 @@ public class TextureSlots {
 
     /**
      * 根据纹理路径查找 IIcon。
-     * 搜索顺序：globalIconMap → CatAtlas 当前周期 → 原版 blocks/items 图集 → missingno。
+     * 搜索顺序：globalIconMap（仅接受 CatSprite）→ CatAtlas 当前周期 → missingno。
      * <p>
-     * 缺失语义与原版一致：<b>纹理找不着 → 返回 missingno</b>（紫黑格），不返回 null、
-     * 不透明、不做任何兼容纠正 —— 数据驱动定义是唯一权威，未命中的引用即纹理错误。
+     * 纹理表 = 数据驱动发布表（atlas 定义 JSON 的产出）；<b>查表未命中 → 直接返回
+     * missingno（紫黑格）</b>，不返回 null、不透明、不做任何兼容纠正，也<b>不查原版图集</b>
+     * —— vanilla sprite 的 UV 是原版图集空间，物品渲染绑定 CatAtlas 时采样必然错乱；
+     * 世界渲染由 QuadWriter.resolveWorldIcon 经 vanillaIcons 快照独立换回原版 UV。
      */
     @Nullable
     private static IIcon findIcon(String texturePath, @Nullable Map<String, IIcon> globalIconMap) {
         if (texturePath == null || texturePath.isEmpty()) return null;
 
-        // 1. 全局映射：publish 产物（数据驱动键 → CatSprite）+ 原版收集循环的 vanilla sprite。
-        //    找到什么返回什么（含 missingno —— 原版语义，不再拦截跳过）。
-        //    The global map holds both CatSprites (data-driven keys) and vanilla
-        //    sprites; whatever is stored wins, missingno included (vanilla semantics).
+        // 1. 全局映射：只接受 CatFrame 数据驱动产物（CatSprite，含解码失败的 missing
+        //    sprite —— 紫黑格，UV 属 CatAtlas 空间）。原版收集循环残留的 vanilla 值
+        //    （missingImage / 加载失败的空 sprite）必须跳过：它们携带原版图集 UV，
+        //    在 CatAtlas 上采样会得到错乱纹理而非 missingno。
+        //    Only CatFrame data-driven sprites satisfy the lookup; leftover vanilla
+        //    values are skipped because their UVs belong to the vanilla atlas space.
         if (globalIconMap != null) {
             IIcon icon = globalIconMap.get(texturePath);
-            if (icon != null) return icon;
+            if (icon instanceof CatSprite) {
+                return icon;
+            }
         }
 
         // 2. CatAtlas 当前周期反查（烘焙时 iconMap 可能为 null / 键缺失）：
@@ -229,41 +234,10 @@ public class TextureSlots {
             return catSprite;
         }
 
-        // 3. 原版 blocks/items 图集（1.7.10 basePath 键查询；getAtlasSprite 找不到
-        //    返回原版 missingImage，继续走最终兜底）
-        String baseKey = VanillaModelManager.Utilities.toVanillaBaseKey(texturePath);
-        try {
-            TextureMap blocksMap = Minecraft.getMinecraft().getTextureMapBlocks();
-            IIcon icon = blocksMap.getAtlasSprite(baseKey);
-            if (icon != null && icon.getIconName() != null && !"missingno".equals(icon.getIconName())) {
-                // CatAtlas 与 globalIconMap 均无此纹理（定义外引用）：返回 vanilla sprite
-                // 仅能保证世界渲染正确（原版图集绑定）；物品渲染绑定 CatAtlas 时必然 UV
-                // 错位，warn 暴露以便定位定义缺失。
-                CatFrame.logger.warn("[TextureSlots] texture error: '{}' resolved to vanilla sprite '{}' "
-                                + "(not in CatFrame atlas definitions): item rendering may sample the wrong UV space",
-                        texturePath, icon.getIconName());
-                return icon;
-            }
-
-            TextureMap itemsMap = (TextureMap) Minecraft.getMinecraft().getTextureManager()
-                    .getTexture(TextureMap.locationItemsTexture);
-            if (itemsMap != null) {
-                icon = itemsMap.getAtlasSprite(baseKey);
-                if (icon != null && icon.getIconName() != null && !"missingno".equals(icon.getIconName())) {
-                    CatFrame.logger.warn("[TextureSlots] texture error: '{}' resolved to vanilla item sprite '{}' "
-                                    + "(not in CatFrame atlas definitions): item rendering may sample the wrong UV space",
-                            texturePath, icon.getIconName());
-                    return icon;
-                }
-            }
-        } catch (Exception e) {
-            CatFrame.logger.debug("[TextureSlots] error resolving icon for '{}': {}", texturePath, e.getMessage());
-        }
-
-        // 4. 最终兜底：missingno（所属图集的 built-in missing sprite；图集未构建时原版
-        //    missingImage）—— 与原版 "找不到 → missingno" 语义一致，永不透明消失。
-        //    Final fallback: missingno, matching the vanilla missing semantics.
-        CatFrame.logger.warn("[TextureSlots] texture error: '{}' not found anywhere, using missingno", texturePath);
+        // 3. 最终兜底：missingno（所属图集的 built-in missing sprite，CatAtlas 空间紫黑格；
+        //    图集未构建时原版 missingImage —— 此时渲染组未换绑，原版 UV 空间正确）。
+        //    Final fallback: missingno (CatAtlas-space purple-black square).
+        CatFrame.logger.warn("[TextureSlots] texture error: '{}' not found in texture table, using missingno", texturePath);
         return CatAtlasManager.getMissingIcon(texturePath);
     }
 

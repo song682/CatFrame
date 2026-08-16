@@ -57,8 +57,12 @@ public class CatAtlas implements IAtlas, ITextureObject {
 
     /** 图集 id（如 {@code minecraft:blocks}）。 */
     private final String atlasId;
-    /** 图集内 sprite 查找表：iconName → CatSprite。 */
+    /** 图集内 sprite 查找表：texturePath（发布键）→ CatSprite。
+     *  键用发布键而非 iconName —— missing sprite 的 iconName 恒为 "missingno"，
+     *  用 iconName 会让多个缺失 sprite 互相覆盖；发布键唯一。 */
     private final Map<String, CatSprite> sprites = new LinkedHashMap<>();
+    /** 本图集的 built-in missing sprite（紫黑格；stitch 时记录，图集恒含一个，供缺失查找兜底）。 */
+    private CatSprite missingSprite;
     /** GL 纹理对象 id（-1 = 未分配）。 */
     private int glTextureId = -1;
     /** 最终图集尺寸（2^n）。 */
@@ -138,8 +142,12 @@ public class CatAtlas implements IAtlas, ITextureObject {
         this.atlasPixels = atlasARGB;
 
         this.sprites.clear();
+        this.missingSprite = null;
         for (CatSprite sprite : sprites) {
-            this.sprites.put(sprite.getIconName(), sprite);
+            this.sprites.put(sprite.getTexturePath(), sprite);
+            if (sprite.isMissing()) {
+                this.missingSprite = sprite;
+            }
         }
 
         CatFrame.logger.info("[CatAtlas] '{}' stitched: atlas {}x{} | sprites={} | padding={}",
@@ -430,12 +438,17 @@ public class CatAtlas implements IAtlas, ITextureObject {
 
     // ==================== 查找 ====================
 
-    /** 按 icon 名称查找 sprite。 */
-    public CatSprite getSprite(String iconName) {
-        return sprites.get(iconName);
+    /** 按发布键（texturePath）查找 sprite。 */
+    public CatSprite getSprite(String texturePath) {
+        return sprites.get(texturePath);
     }
 
-    /** 图集内全部 sprite（iconName → CatSprite，只读约定）。 */
+    /** 本图集的 built-in missing sprite（缺失查找最终兜底；stitch 后恒非 null）。 */
+    public CatSprite getMissingSprite() {
+        return missingSprite;
+    }
+
+    /** 图集内全部 sprite（texturePath → CatSprite，只读约定）。 */
     public Map<String, CatSprite> getSprites() {
         return Collections.unmodifiableMap(sprites);
     }

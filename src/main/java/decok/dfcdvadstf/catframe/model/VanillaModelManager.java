@@ -73,11 +73,13 @@ public class VanillaModelManager {
          * {@code TextureMap} 的 basePath 注册/查询键（如 {@code minecraft:block/ladder}
          * → {@code ladder}；原版加载时拼 {@code textures/blocks/ladder.png}）。
          * <p>
-         * 仅用于原版图集（vanilla atlas）的键变换 —— CatAtlas 内部身份由
-         * {@code CatSpriteLoader.resolveActualPath} 数据驱动解析决定，不再走写死前缀映射。
+         * 仅用于原版图集（vanilla atlas）的键变换 —— CatFrame 数据驱动图集键是完整
+         * 纹理路径（定义 JSON 产出的 sprite id），由 {@code CatAtlasManager} 独立管理，
+         * 与本方法无关。
          *
          * <p>Vanilla-atlas base-path key: strips namespace and the block/blocks/
-         * item/items prefixes. CatAtlas identity is data-driven instead.
+         * item/items prefixes. The data-driven CatAtlas identity is managed
+         * separately by {@code CatAtlasManager}.
          */
         public static String toVanillaBaseKey(String texturePath) {
             if (texturePath == null) return null;

@@ -13,29 +13,26 @@ import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.util.ResourceLocation;
 
-import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 图集 sprite 解码器（对标 26.1.2 {@code SpriteResourceLoader}，适配 1.7.10）。
  * <p>
  * 职责：
  * <ul>
- *   <li>按 {@link ResourceLocation} 读取 PNG（1.7.10 复数目录优先：{@code textures/blocks|items/}
- *       优先，单数目录回退；ImageIO 解码，与 1.7.10 原版 TextureMap 一致）；</li>
+ *   <li>按 {@link ResourceLocation} 直读 PNG（路径 = 数据驱动定义产出的 sprite id
+ *       投影，即 {@code textures/<path>.png}，不做任何单复数目录回退；ImageIO 解码，
+ *       与 1.7.10 原版 TextureMap 一致）；</li>
  *   <li>读取同名 {@code .png.mcmeta} 解析 mojang 格式动画（{@code animation.frametime} 单位 =
  *       tick × 50ms；{@code frames} 支持 int 索引与 {@code {index, time}} 对象；缺省 = 逐行帧），
  *       帧数 = height / width（mojang 约定帧为正方形）；</li>
  *   <li>像素经 {@link PixelTransform} 逐帧应用（unstitch 裁剪 / paletted 关键色替换）；
  *       transform 后各帧尺寸不一致时降级为单帧（transform 第 1 帧结果）；</li>
- *   <li>产出 {@link CatSprite}（单帧或动画多帧）；任何失败返回 null，调用方用 missing 兜底。</li>
+ *   <li>产出 {@link CatSprite}（单帧或动画多帧）；任何失败返回 null，调用方用 missing 兜底
+ *       （找不到纹理 → missingno，与原版缺失语义一致）。</li>
  * </ul>
  * 运行于 {@link RenderExecutors} 并行池；失败语义按 Wiki：纹理缺失/解码失败 → 调用方记录为
  * 错误 sprite（missing），不崩溃。
@@ -49,9 +46,6 @@ public final class CatSpriteLoader {
     private static final Gson GSON = new Gson();
     /** 每 tick 时长（ms）；mojang frametime 单位 = tick。 */
     private static final int TICK_MS = 50;
-    /** 数据驱动解析缓存：texturePath → 实际资源相对路径（textures/ 内）；空串 = 负缓存（不存在）。
-     *  同一 stitch 周期内资源不变，stitch 重建时经 {@link #clearCache()} 清空。 */
-    private static final Map<String, String> actualPathCache = new ConcurrentHashMap<>();
 
     private CatSpriteLoader() {
     }
@@ -59,124 +53,43 @@ public final class CatSpriteLoader {
     /**
      * 解码一个 sprite。
      *
-     * @param resource  源纹理位置（如 {@code minecraft:block/stone}；纹理文件在
-     *                  {@code textures/<path>.png}，1.7.10 复数目录自动回退）
+     * @param resource  源纹理位置（数据驱动定义产出的 sprite id，如 {@code minecraft:blocks/ladder}；
+     *                  纹理文件恒在 {@code textures/<path>.png}，不做目录回退）
      * @param spriteId  发布键（完整纹理路径格式 {@code ns:path}，如
-     *                  {@code minecraft:block/stone} 或 unstitch 产物 {@code ..._3}）
+     *                  {@code minecraft:blocks/ladder} 或 unstitch 产物 {@code ..._3}）
      * @param atlasId   所属图集 id（透传给 CatSprite）
      * @param transform 像素变换（可为 null）
      * @return CatSprite（单帧或多帧）；失败返回 null
      */
     public static CatSprite load(ResourceLocation resource, String spriteId, String atlasId,
                                  PixelTransform transform) {
-        // icon 名称 = 发布键本身（合并键已是数据驱动解析结果，如 "minecraft:blocks/ladder"）。
-        // The icon name is the publish key itself; merge keys are already the
-        // data-driven resolution result, so no hard-coded prefix stripping here.
+        // icon 名称 = 发布键本身（数据驱动键，如 "minecraft:blocks/ladder"），无前缀改写。
+        // The icon name is the publish key itself; the data-driven key is used
+        // verbatim, with no prefix rewriting or directory fallback.
         String iconName = spriteId;
         IResourceManager mgr = Minecraft.getMinecraft().getResourceManager();
-        for (ResourceLocation rl : candidateLocations(resource)) {
-            try {
-                IResource res = mgr.getResource(rl);
-                BufferedImage image = ImageIO.read(res.getInputStream());
-                if (image == null) {
-                    // 资源存在但 ImageIO 无法解码（如非 PNG/JPG 内容），继续尝试下一个候选
-                    CatFrame.logger.debug("[SpriteLoader] '{}' exists but ImageIO cannot decode it", rl);
-                    continue;
-                }
-                int w = image.getWidth();
-                int h = image.getHeight();
-                int[] pixels = image.getRGB(0, 0, w, h, null, 0, w);
-                // 动画元数据：与 PNG 同目录同名 .png.mcmeta（mojang 格式）
-                int[] frameTimes = readAnimation(mgr, metaLocation(rl), w, h);
-                return buildSprite(spriteId, iconName, pixels, w, h, atlasId, frameTimes, transform);
-            } catch (IOException | RuntimeException ex) {
-                // FileNotFoundException 属正常缺失路径（继续回退）；其余异常类是解码环境问题的线索
-                CatFrame.logger.debug("[SpriteLoader] decode '{}' via {} failed: {}: {}",
-                        spriteId, rl, ex.getClass().getSimpleName(), ex.getMessage());
-            }
-        }
-        CatFrame.logger.warn("[SpriteLoader] '{}' (icon='{}') not found for atlas '{}'",
-                spriteId, iconName, atlasId);
-        return null;
-    }
-
-    /**
-     * 数据驱动解析：探测纹理路径实际指向的 PNG（候选回退），返回真实资源相对路径。
-     * <p>
-     * 由候选列表 {@link #candidateLocations} 承担 block/item 单数 → 1.7.10 复数目录的
-     * 回退，代码不再写死前缀映射 —— 存在性由资源层探测决定。返回形如
-     * {@code minecraft:blocks/ladder}（textures/ 目录内相对路径，带 namespace）；
-     * 全部候选未命中返回 null。结果按 stitch 周期缓存（{@link #clearCache()} 清空）。
-     *
-     * <p>Data-driven resolution: probes candidate PNG locations and returns the
-     * actual resource path (namespace + path under {@code textures/}); null when
-     * no candidate exists. The candidate fallback list owns the singular/plural
-     * directory mapping, not hard-coded prefix rules.
-     *
-     * @param texturePath 纹理引用（如 {@code minecraft:block/ladder}）
-     * @return 实际资源相对路径（如 {@code minecraft:blocks/ladder}）；不存在返回 null
-     */
-    @Nullable
-    public static String resolveActualPath(String texturePath) {
-        if (texturePath == null || texturePath.isEmpty()) {
-            return null;
-        }
-        if (actualPathCache.containsKey(texturePath)) {
-            String v = actualPathCache.get(texturePath);
-            return v.isEmpty() ? null : v;
-        }
-        ResourceLocation rl;
+        ResourceLocation rl = new ResourceLocation(resource.getResourceDomain(),
+                "textures/" + resource.getResourcePath() + ".png");
         try {
-            rl = new ResourceLocation(texturePath);
-        } catch (RuntimeException e) {
-            return null;
-        }
-        IResourceManager mgr = Minecraft.getMinecraft().getResourceManager();
-        for (ResourceLocation cand : candidateLocations(rl)) {
-            try {
-                mgr.getResource(cand);
-                String p = cand.getResourcePath();
-                String relative = p.endsWith(".png") ? p.substring(0, p.length() - 4) : p;
-                if (relative.startsWith("textures/")) {
-                    relative = relative.substring("textures/".length());
-                }
-                String actual = cand.getResourceDomain() + ":" + relative;
-                actualPathCache.put(texturePath, actual);
-                return actual;
-            } catch (IOException | RuntimeException ignored) {
-                // 候选未命中属正常缺失路径，继续下一个候选
+            IResource res = mgr.getResource(rl);
+            BufferedImage image = ImageIO.read(res.getInputStream());
+            if (image == null) {
+                // 资源存在但 ImageIO 无法解码（如非 PNG/JPG 内容）→ 缺失语义，调用方用 missing 兜底
+                CatFrame.logger.warn("[SpriteLoader] '{}' exists but ImageIO cannot decode it", rl);
+                return null;
             }
+            int w = image.getWidth();
+            int h = image.getHeight();
+            int[] pixels = image.getRGB(0, 0, w, h, null, 0, w);
+            // 动画元数据：与 PNG 同目录同名 .png.mcmeta（mojang 格式）
+            int[] frameTimes = readAnimation(mgr, metaLocation(rl), w, h);
+            return buildSprite(spriteId, iconName, pixels, w, h, atlasId, frameTimes, transform);
+        } catch (IOException | RuntimeException ex) {
+            // 纹理不存在/解码失败 → 纹理错误，调用方用 missing（missingno）兜底
+            CatFrame.logger.warn("[SpriteLoader] texture error: '{}' not found / failed to decode ({}: {})",
+                    spriteId, ex.getClass().getSimpleName(), ex.getMessage());
         }
-        actualPathCache.put(texturePath, ""); // 负缓存
         return null;
-    }
-
-    /**
-     * 清空数据驱动解析缓存（每次 stitch 重建前调用，资源可能已变更）。
-     */
-    public static void clearCache() {
-        actualPathCache.clear();
-    }
-
-    /**
-     * 候选纹理位置：直接路径优先，block/item 单数前缀回退到 1.7.10 复数目录。
-     * <ul>
-     *   <li>{@code textures/<path>.png}（现代逻辑路径）；</li>
-     *   <li>{@code textures/blocks/<name>.png} / {@code textures/items/<name>.png}
-     *       （1.7.10 复数目录，path 以 block/ item/ 开头时追加）。</li>
-     * </ul>
-     */
-    private static List<ResourceLocation> candidateLocations(ResourceLocation rl) {
-        List<ResourceLocation> out = new ArrayList<>(2);
-        String ns = rl.getResourceDomain();
-        String path = rl.getResourcePath();
-        out.add(new ResourceLocation(ns, "textures/" + path + ".png"));
-        if (path.startsWith("block/")) {
-            out.add(new ResourceLocation(ns, "textures/blocks/" + path.substring("block/".length()) + ".png"));
-        } else if (path.startsWith("item/")) {
-            out.add(new ResourceLocation(ns, "textures/items/" + path.substring("item/".length()) + ".png"));
-        }
-        return out;
     }
 
     /** PNG 位置 → 同名 .mcmeta 位置（同命名空间同目录）。 */

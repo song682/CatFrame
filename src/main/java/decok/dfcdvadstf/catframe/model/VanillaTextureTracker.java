@@ -9,7 +9,6 @@ import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
-import decok.dfcdvadstf.catframe.resources.atlas.CatSpriteLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
@@ -32,29 +31,19 @@ public class VanillaTextureTracker {
     // ==================== 纹理追踪注册表 ====================
 
     /**
-     * 原版图集注册/查询键：数据驱动解析纹理实际位置（{@code CatSpriteLoader.resolveActualPath}），
-     * 再从实际路径反推 1.7.10 basePath 键（去 {@code blocks/} / {@code items/} 前缀）；
-     * 解析失败时回退轻量前缀剥离（{@code toVanillaBaseKey}），保证缺失纹理的 missingno 语义不变。
+     * 原版图集注册/查询键：直接做 1.7.10 basePath 键变换（剥离 namespace 与
+     * {@code blocks/} / {@code items/} / 单数前缀，见 {@code toVanillaBaseKey}）。
      * <p>
-     * 单复数差异在数据驱动解析层被吸收（两个格式解析到同一实际 PNG → 同一键）。
+     * 仅服务于原版图集（vanilla TextureMap）路径 —— 1.7.10 原版键语义即 basePath
+     * （如 {@code minecraft:blocks/ladder} → {@code ladder}）；CatFrame 数据驱动
+     * 图集键是完整纹理路径，由 {@code CatAtlasManager} 独立管理，与本方法无关。
      *
-     * <p>Vanilla-atlas registry/query key: resolves the actual PNG location
-     * data-driven, then derives the 1.7.10 base-path key from it.
+     * <p>Vanilla-atlas registry/query key: the plain 1.7.10 base-path key.
      *
      * @param itemAtlas true = items 图集（textures/items/），false = blocks 图集
      */
     public static String toVanillaKey(String texturePath, boolean itemAtlas) {
         if (texturePath == null) return null;
-        String actual = CatSpriteLoader.resolveActualPath(texturePath);
-        if (actual != null) {
-            String prefix = itemAtlas ? "items/" : "blocks/";
-            int colon = actual.indexOf(':');
-            String path = colon >= 0 ? actual.substring(colon + 1) : actual;
-            if (path.startsWith(prefix)) {
-                return path.substring(prefix.length());
-            }
-            return path;
-        }
         return VanillaModelManager.Utilities.toVanillaBaseKey(texturePath);
     }
 

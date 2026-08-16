@@ -74,12 +74,13 @@ public class TextureSlots {
                     continue;
                 }
 
-                // 查找 IIcon
+                // 查找 IIcon：findIcon 对非空引用恒返回有效 icon（缺失时 = missingno），
+                // null 仅可能来自空路径引用（防御性跳过）
                 IIcon icon = findIcon(value, globalIconMap);
                 if (icon != null) {
                     result.put(key, icon);
                 } else {
-                    CatFrame.logger.warn("[TextureSlots] icon not found for '{}': {} (fallback to missingno)", key, value);
+                    CatFrame.logger.warn("[TextureSlots] texture error: empty reference for '{}', slot skipped", key);
                 }
             }
         }
@@ -200,60 +201,57 @@ public class TextureSlots {
 
     /**
      * 根据纹理路径查找 IIcon。
-     * 搜索顺序：globalIconMap → blocks 纹理图集 → items 纹理图集。
+     * 搜索顺序：globalIconMap → CatAtlas 当前周期 → 原版 blocks/items 图集 → missingno。
+     * <p>
+     * 缺失语义与原版一致：<b>纹理找不着 → 返回 missingno</b>（紫黑格），不返回 null、
+     * 不透明、不做任何兼容纠正 —— 数据驱动定义是唯一权威，未命中的引用即纹理错误。
      */
     @Nullable
     private static IIcon findIcon(String texturePath, @Nullable Map<String, IIcon> globalIconMap) {
         if (texturePath == null || texturePath.isEmpty()) return null;
 
-        // 1. 全局映射：publish 已把合并键与全部原始引用格式都指向 CatSprite，
-        //    任意拼写（block/ladder 或 blocks/ladder）直接命中，无需别名查询。
-        //    The publish map covers both canonical and every original spelling,
-        //    so the literal reference hits directly without aliasing.
+        // 1. 全局映射：publish 产物（数据驱动键 → CatSprite）+ 原版收集循环的 vanilla sprite。
+        //    找到什么返回什么（含 missingno —— 原版语义，不再拦截跳过）。
+        //    The global map holds both CatSprites (data-driven keys) and vanilla
+        //    sprites; whatever is stored wins, missingno included (vanilla semantics).
         if (globalIconMap != null) {
-            // 收集循环可能把 vanilla missingImage 残留在部分键上（publish 未覆盖的
-            // 格式）。missingno 值不得拦截查询：跳过它继续走 CatAtlas 兜底，避免
-            // 单复数引用竞争把物品渲染成透明（消失）。
-            // A leftover vanilla missingImage must not satisfy the lookup — skip
-            // it so the CatAtlas fallback can win.
             IIcon icon = globalIconMap.get(texturePath);
-            if (icon != null && !"missingno".equals(icon.getIconName())) return icon;
+            if (icon != null) return icon;
         }
 
-        // 2. 自定义图集（CatAtlas）兜底：按原始引用格式反查当前周期的 CatSprite。
-        //    该查找独立于 globalIconMap（烘焙时 iconMap 可能为 null / 键缺失），
-        //    优先保证 quad 携带 CatFrame UV：物品渲染绑定 CatAtlas 时采样正确，
+        // 2. CatAtlas 当前周期反查（烘焙时 iconMap 可能为 null / 键缺失）：
+        //    保证 quad 携带 CatFrame UV —— 物品渲染绑定 CatAtlas 时采样正确，
         //    世界渲染由 resolveWorldIcon 把 CatSprite 换回 vanilla，两路径双正确。
         //    CatAtlas fallback: prefer the CatSprite so item quads never carry
         //    vanilla-atlas UVs; world rendering swaps it back via resolveWorldIcon.
-        CatSprite catSprite = CatAtlasManager.findByTexturePath(texturePath);
+        CatSprite catSprite = CatAtlasManager.findSprite(texturePath);
         if (catSprite != null) {
             return catSprite;
         }
 
-        // 3. 尝试原版 blocks/items 图集（1.7.10 basePath 键查询）
+        // 3. 原版 blocks/items 图集（1.7.10 basePath 键查询；getAtlasSprite 找不到
+        //    返回原版 missingImage，继续走最终兜底）
         String baseKey = VanillaModelManager.Utilities.toVanillaBaseKey(texturePath);
         try {
             TextureMap blocksMap = Minecraft.getMinecraft().getTextureMapBlocks();
             IIcon icon = blocksMap.getAtlasSprite(baseKey);
             if (icon != null && icon.getIconName() != null && !"missingno".equals(icon.getIconName())) {
-                // CatAtlas 与 globalIconMap 均无此纹理：返回 vanilla sprite 仅能保证
-                // 世界渲染正确（原版图集绑定）；物品渲染绑定 CatAtlas 时必然 UV 错位，
-                // warn 暴露以便定位纹理收集缺失（见 ItemBlock-ItemRender-UV-Mismatch-Diagnosis.md）。
-                CatFrame.logger.warn("[TextureSlots] '{}' resolved to vanilla sprite '{}' "
-                                + "(no CatSprite, no global icon): item rendering may sample the wrong UV space",
+                // CatAtlas 与 globalIconMap 均无此纹理（定义外引用）：返回 vanilla sprite
+                // 仅能保证世界渲染正确（原版图集绑定）；物品渲染绑定 CatAtlas 时必然 UV
+                // 错位，warn 暴露以便定位定义缺失。
+                CatFrame.logger.warn("[TextureSlots] texture error: '{}' resolved to vanilla sprite '{}' "
+                                + "(not in CatFrame atlas definitions): item rendering may sample the wrong UV space",
                         texturePath, icon.getIconName());
                 return icon;
             }
 
-            // 4. 尝试 items 纹理图集
             TextureMap itemsMap = (TextureMap) Minecraft.getMinecraft().getTextureManager()
                     .getTexture(TextureMap.locationItemsTexture);
             if (itemsMap != null) {
                 icon = itemsMap.getAtlasSprite(baseKey);
                 if (icon != null && icon.getIconName() != null && !"missingno".equals(icon.getIconName())) {
-                    CatFrame.logger.warn("[TextureSlots] '{}' resolved to vanilla item sprite '{}' "
-                                    + "(no CatSprite, no global icon): item rendering may sample the wrong UV space",
+                    CatFrame.logger.warn("[TextureSlots] texture error: '{}' resolved to vanilla item sprite '{}' "
+                                    + "(not in CatFrame atlas definitions): item rendering may sample the wrong UV space",
                             texturePath, icon.getIconName());
                     return icon;
                 }
@@ -262,7 +260,11 @@ public class TextureSlots {
             CatFrame.logger.debug("[TextureSlots] error resolving icon for '{}': {}", texturePath, e.getMessage());
         }
 
-        return null;
+        // 4. 最终兜底：missingno（所属图集的 built-in missing sprite；图集未构建时原版
+        //    missingImage）—— 与原版 "找不到 → missingno" 语义一致，永不透明消失。
+        //    Final fallback: missingno, matching the vanilla missing semantics.
+        CatFrame.logger.warn("[TextureSlots] texture error: '{}' not found anywhere, using missingno", texturePath);
+        return CatAtlasManager.getMissingIcon(texturePath);
     }
 
     // ==================== Object ====================

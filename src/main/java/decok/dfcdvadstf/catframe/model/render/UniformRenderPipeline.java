@@ -20,8 +20,11 @@ import javax.vecmath.Matrix4d;
  * 而是把每次渲染调用<b>构建为不可变 {@link RenderSubmit} 命令</b>并交给
  * {@link RenderCommandBuffers#submit(RenderSubmit)}：
  * <ul>
- *   <li>方块<b>世界</b>渲染（{@link RenderPhase#BLOCK_WORLD}）→ 内联即时写入当前 chunk
- *       Tessellator（原版 chunk 系统已完成批处理）；</li>
+ *   <li>方块<b>世界</b>渲染（{@link RenderPhase#BLOCK_WORLD}）→ 收集到
+ *       {@link decok.dfcdvadstf.catframe.model.render.pipeline.WorldRenderBuffer}，
+ *       在 {@code RenderWorldEvent.Post} 时由
+ *       {@link decok.dfcdvadstf.catframe.model.render.pipeline.FeatureRenderDispatcher#flushWorld}
+ *       绑定 CatAtlas 合并批次绘制（不再内联写入 vanilla chunk Tessellator）；</li>
  *   <li>物品 / GUI 独立绘制路径 → 进入渲染作用域命令缓冲，按注册表排序键
  *       （{@link RenderTypeKey#sortKey()}，solid→translucent）批量 flush、单次纹理绑定。</li>
  * </ul>

@@ -9,9 +9,11 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderTypeKey;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.entity.Entity;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -224,11 +226,22 @@ public final class FeatureRenderDispatcher {
     /**
      * 内建世界组级 flush：合并批次 + 纹理绑定 + GL 状态一次性设置，
      * 以 {@code PushAttrib} 隔离（enable 位 / 混合函数 / alpha 函数 / 多边形 / 纹理绑定）。
+     * <p>
+     * <b>半透明排序（W1）</b>：blend 组在写批次前按相机距离<b>远 → 近</b>排序
+     * （画家算法，近者后画、覆盖远者）—— 合并批次不再保留提交顺序，弥补
+     * vanilla 逐 quad 排序（{@code getVertexState} 的 QuadComparator）在 CatAtlas
+     * 后期批次路径上不生效的缺口；不透明组由深度测试保证遮挡，保持提交顺序零开销。
+     * 排序粒度为提交项（方块）级，方块内 quad 仍保持提交顺序（同方块深度相近，可接受）。
      */
     private static void flushWorldGroup(RenderTypeKey type, List<RenderSubmit> group) {
         Tessellator t = Tessellator.instance;
         boolean disableCull = group.get(0).disableCull;
         boolean blend = type.blend();
+
+        // W1 透明排序：仅 blend 组按相机距离降序（远→近）重排；稳定排序保持同距离提交顺序
+        if (blend) {
+            sortTranslucentGroup(group);
+        }
 
         GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT
                 | GL11.GL_POLYGON_BIT | GL11.GL_TEXTURE_BIT);
@@ -262,6 +275,37 @@ public final class FeatureRenderDispatcher {
         } finally {
             GL11.glPopAttrib();
         }
+    }
+
+    /**
+     * W1 半透明排序：按相机（渲染视角实体）眼睛位置到提交项方块中心的距离降序重排。
+     * {@link List#sort} 为稳定排序（TimSort）—— 距离相同的提交项保持提交顺序。
+     * 排序只在 {@code RenderWorldEvent.Post} 的 flushWorldGroup 内执行（主线程），
+     * 且仅作用于世界收集的 BLOCK_WORLD 提交项，不影响物品 / GUI 作用域路径。
+     */
+    private static void sortTranslucentGroup(List<RenderSubmit> group) {
+        Entity view = Minecraft.getMinecraft().renderViewEntity;
+        if (view == null || group.size() < 2) {
+            return;
+        }
+        final double cx = view.posX;
+        final double cy = view.posY + view.getEyeHeight();
+        final double cz = view.posZ;
+        group.sort(new Comparator<RenderSubmit>() {
+            @Override
+            public int compare(RenderSubmit a, RenderSubmit b) {
+                // 远 → 近（降序）：远的先画，近的叠加覆盖
+                return Double.compare(distSq(b, cx, cy, cz), distSq(a, cx, cy, cz));
+            }
+        });
+    }
+
+    /** 提交项方块中心到眼睛位置的平方距离。 */
+    private static double distSq(RenderSubmit s, double cx, double cy, double cz) {
+        double dx = (s.x + 0.5D) - cx;
+        double dy = (s.y + 0.5D) - cy;
+        double dz = (s.z + 0.5D) - cz;
+        return dx * dx + dy * dy + dz * dz;
     }
 
     private static boolean isBlockPhase(RenderPhase phase) {

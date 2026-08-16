@@ -1,6 +1,6 @@
 {
     "model": {
         "type": "minecraft:model",
-        "model": "minecraft:item/writable_book"
+        "model": "minecraft:item/book_and_quill"
     }
 }

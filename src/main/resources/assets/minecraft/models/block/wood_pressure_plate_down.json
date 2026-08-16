@@ -1,6 +1,6 @@
 {
     "parent": "minecraft:block/pressure_plate_down",
     "textures": {
-        "texture": "minecraft:blocks/plank_oak"
+        "texture": "minecraft:blocks/planks_oak"
     }
 }

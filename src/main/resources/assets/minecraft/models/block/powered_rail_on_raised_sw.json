@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/template_rail_raised_sw",
   "textures": {
-    "rail": "minecraft:block/powered_rail_on"
+    "rail": "minecraft:blocks/rail_golden_powered"
   }
 }

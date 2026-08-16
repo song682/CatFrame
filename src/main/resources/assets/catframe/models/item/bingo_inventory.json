@@ -1,6 +1,6 @@
 {
     "parent": "minecraft:item/generated",
     "textures": {
-		"layer0": "catframe:item/bingo_pixelized_inventory"
+		"layer0": "catframe:items/bingo_pixelized_inventory"
 	}
 }

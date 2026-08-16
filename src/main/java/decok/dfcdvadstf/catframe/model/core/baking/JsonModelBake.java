@@ -47,24 +47,47 @@ public class JsonModelBake {
         C[idx(1, 0, 1)] = new Vector3d(x1, y0, z1);
         C[idx(0, 1, 1)] = new Vector3d(x0, y1, z1);
         C[idx(1, 1, 1)] = new Vector3d(x1, y1, z1);
-        // 归一化旋转格式：兼容 x/y/z 字段（高版本 Blockbench 格式）→ angle/axis
-        if (e.rotation != null && e.rotation.angle == 0f && e.rotation.axis == null) {
-            if (e.rotation.x != 0f) {
-                e.rotation.angle = e.rotation.x;
-                e.rotation.axis = "x";
-            } else if (e.rotation.y != 0f) {
-                e.rotation.angle = e.rotation.y;
-                e.rotation.axis = "y";
-            } else if (e.rotation.z != 0f) {
-                e.rotation.angle = e.rotation.z;
-                e.rotation.axis = "z";
+        // 归一化旋转格式：兼容 x/y/z 字段（高版本 Blockbench 格式）→ angle/axis。
+        // [FIX] 只读取到局部变量，绝不写回共享的 e.rotation：ModelResolver 缓存使同一个
+        //     Element 被多个烘焙线程并发复用，就地改写会造成竞态——先写 angle 后写 axis，
+        //     其他线程恰好读到 "angle!=0 但 axis==null" 的中间态，跳过归一化直奔下方
+        //     axis.charAt(0) → NullPointerException；异步管线 fail-fast 聚合随即把整轮
+        //     烘焙结果作废，导致物品模型消失。并发改写还会让其他线程读到半改状态，
+        //     烤出错误几何（贴图错乱）。改为局部变量后彻底无竞态、无副作用。
+        // [FIX] Normalize rotation into LOCAL variables only; never mutate the shared
+        //     e.rotation. ModelResolver caches a single Element reused by all concurrent
+        //     bake threads, so in-place writes race (angle written before axis), letting
+        //     another thread observe "angle!=0 but axis==null", skip normalization and NPE
+        //     at axis.charAt(0); the fail-fast aggregate then discards the whole bake round
+        //     (item models vanish). Concurrent writes can also hand other threads a
+        //     half-updated rotation, producing corrupted geometry (garbled textures).
+        float rotAngle = 0f;
+        String rotAxis = null;
+        boolean rotRescale = false;
+        float[] rotOrigin = null;
+        if (e.rotation != null) {
+            rotAngle = e.rotation.angle;
+            rotAxis = e.rotation.axis;
+            rotRescale = e.rotation.rescale;
+            rotOrigin = e.rotation.origin;
+            if (rotAngle == 0f && rotAxis == null) {
+                if (e.rotation.x != 0f) {
+                    rotAngle = e.rotation.x;
+                    rotAxis = "x";
+                } else if (e.rotation.y != 0f) {
+                    rotAngle = e.rotation.y;
+                    rotAxis = "y";
+                } else if (e.rotation.z != 0f) {
+                    rotAngle = e.rotation.z;
+                    rotAxis = "z";
+                }
             }
         }
 
-        if (e.rotation != null && e.rotation.angle != 0) {
-            char ax = Character.toLowerCase(e.rotation.axis.charAt(0));
-            float ang = e.rotation.angle;
-            float[] o = e.rotation.origin;
+        if (rotAngle != 0 && rotAxis != null) {
+            char ax = Character.toLowerCase(rotAxis.charAt(0));
+            float ang = rotAngle;
+            float[] o = rotOrigin;
             // [C6] origin 空值兜底（Blockbench 导出可能不含 origin）
             if (o == null) o = new float[]{8f, 8f, 8f};
             boolean originIsZero = (o.length >= 3 && o[0] == 0f && o[1] == 0f && o[2] == 0f);
@@ -75,7 +98,7 @@ public class JsonModelBake {
             // [W4] rescale：旋转前沿各局部坐标轴应用非均匀缩放，
             // 使旋转后的最大投影分量恢复至原始大小，补偿旋转造成的视觉收缩。
             // 对齐 26.1 CuboidRotation.computeRescale 语义：rotation × scale。
-            if (e.rotation.rescale) {
+            if (rotRescale) {
                 double[] rescaleS = computeRescaleFactors(ax, ang);
                 double ox = oxPx / 16.0, oy = oyPx / 16.0, oz = ozPx / 16.0;
                 for (int i = 0; i < 8; i++) {

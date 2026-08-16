@@ -184,7 +184,21 @@ public class AsyncBakePipeline {
                 @Override
                 public BakeResult call() {
                     String cacheKey = BakedModelCache.buildKey(task.modelPath, task.rotX, task.rotY);
-                    BlockStateModelPart part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.iconMap);
+                    BlockStateModelPart part;
+                    try {
+                        part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.iconMap);
+                    } catch (Throwable t) {
+                        // [FIX] 单任务失败隔离：任何一个模型抛异常都不得经由 fail-fast 聚合
+                        //     拖垮整轮烘焙（否则整批物品模型被作废 → 物品消失）。失败模型
+                        //     返回 null 部件，applyResults 跳过、渲染时懒烘焙兜底重试。
+                        // [FIX] Per-task isolation: a single model throwing must not fail the
+                        //     fail-fast aggregate and discard the whole round (item models would
+                        //     vanish). A failed model yields a null part; applyResults skips it
+                        //     and the render path lazily retries it.
+                        CatFrame.logger.error("[AsyncBake] bake task failed for '{}' @{}@{}: {}",
+                                task.modelPath, task.rotX, task.rotY, t.toString());
+                        part = null;
+                    }
                     return new BakeResult(cacheKey, part);
                 }
             });
@@ -282,7 +296,17 @@ public class AsyncBakePipeline {
                 @Override
                 public BakeResult call() {
                     String cacheKey = BakedModelCache.buildKey(task.modelPath, task.rotX, task.rotY);
-                    BlockStateModelPart part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.iconMap);
+                    BlockStateModelPart part;
+                    try {
+                        part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.iconMap);
+                    } catch (Throwable t) {
+                        // [FIX] 单任务失败隔离（见阻塞路径同名注释）：不得拖垮整轮烘焙。
+                        // [FIX] Per-task isolation (see blocking path): one bad model must not
+                        //     fail the fail-fast aggregate and discard the whole bake round.
+                        CatFrame.logger.error("[AsyncBake] bake task failed for '{}' @{}@{}: {}",
+                                task.modelPath, task.rotX, task.rotY, t.toString());
+                        part = null;
+                    }
                     return new BakeResult(cacheKey, part);
                 }
             });

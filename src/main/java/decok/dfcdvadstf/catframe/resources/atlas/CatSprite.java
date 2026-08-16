@@ -137,7 +137,9 @@ public class CatSprite implements IIcon {
         int[] pixels = new int[MISSING_SIZE * MISSING_SIZE];
         for (int y = 0; y < MISSING_SIZE; y++) {
             for (int x = 0; x < MISSING_SIZE; x++) {
-                boolean black = ((x >> 1) + (y >> 1)) % 2 == 0;
+                // 2×2 格（每格 8×8）：左上/右下紫，右上/左下黑，与原版 missingno 一致
+                // 2x2 cells of 8x8 px: magenta top-left/bottom-right, black otherwise
+                boolean black = ((x >> 3) + (y >> 3)) % 2 != 0;
                 pixels[y * MISSING_SIZE + x] = black ? 0xFF000000 : 0xFFFF00FF;
             }
         }

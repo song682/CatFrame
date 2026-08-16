@@ -12,6 +12,7 @@
     "middle.MixinGuiScreen",
     "middle.MixinGuiScreenEventBridge",
     "middle.MixinRenderBlocks",
+    "middle.MixinTessellator",
     "middle.MixinWorldRenderer"
   ],
   "server": []

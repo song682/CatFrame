@@ -285,12 +285,15 @@ artifacts {
 if (project.include_license.toBoolean()){
     jar {
         from file("./LICENSE")
+        from file("./LICENSE-Assets")
     }
     deobfJar {
         from file("./LICENSE")
+        from file("./LICENSE-Assets")
     }
     sourcesJar {
         from file("./LICENSE")
+        from file("./LICENSE-Assets")
     }
 }
 

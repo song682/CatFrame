@@ -153,7 +153,19 @@ public final class CatAtlasManager {
 
             for (CatSprite sprite : atlas.getSprites().values()) {
                 spritesByTexturePath.put(sprite.getTexturePath(), sprite);
-                spritesByIconName.put(sprite.getIconName(), sprite);
+                // 反查表键必须用归一化名（resolveTextureName 结果）：missing sprite 的
+                // getIconName() 恒为 "missingno"，直接用它做键会让所有缺失纹理共用
+                // 同一个键，findSprite(归一化名) 永远 miss。
+                // The reverse-lookup key must be the normalized name: a missing sprite
+                // always reports getIconName() == "missingno", which would collapse
+                // every failed decode onto one key and break findSprite(normalized).
+                String iconName = VanillaModelManager.Utilities.resolveTextureName(sprite.getTexturePath());
+                if (iconName == null || iconName.isEmpty()) {
+                    iconName = sprite.getIconName();
+                }
+                if (iconName != null && !iconName.isEmpty()) {
+                    spritesByIconName.put(iconName, sprite);
+                }
             }
             atlases.put(atlasId, atlas);
         } catch (RuntimeException e) {
@@ -326,7 +338,16 @@ public final class CatAtlasManager {
         // Alias keys: iconName also maps to the same CatSprite so findIcon's alias
         // lookup never falls back to a vanilla sprite in the vanilla UV space.
         for (CatSprite sprite : spritesByTexturePath.values()) {
-            String iconName = sprite.getIconName();
+            // 别名键必须用归一化名而非 getIconName()：missing sprite 的
+            // getIconName() 恒为 "missingno"，会污染该键且让归一化键缺失，
+            // 导致 findIcon 的别名查询对解码失败物品永远 miss（物品透明/消失）。
+            // Alias keys must use the normalized name, not getIconName(): a missing
+            // sprite reports "missingno", which pollutes that key and leaves the
+            // normalized key absent — findIcon's alias lookup would always miss.
+            String iconName = VanillaModelManager.Utilities.resolveTextureName(sprite.getTexturePath());
+            if (iconName == null || iconName.isEmpty()) {
+                iconName = sprite.getIconName();
+            }
             if (iconName != null && !iconName.isEmpty()) {
                 textureIcons.put(iconName, sprite);
             }

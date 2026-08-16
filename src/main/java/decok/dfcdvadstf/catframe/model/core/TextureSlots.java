@@ -212,12 +212,18 @@ public class TextureSlots {
         //    Alias lookup: prevents falling back to a vanilla sprite (vanilla UV
         //    space) while render groups are bound to the CatAtlas.
         if (globalIconMap != null) {
+            // 收集循环可能把 vanilla missingImage 残留在“败者格式”键上（publish 只覆盖
+            // mergeRefs 竞争胜者的格式）。missingno 值不得拦截查询：跳过它继续走别名键
+            // 与 CatAtlas 兜底，避免单复数引用竞争把物品渲染成透明（消失）。
+            // A leftover vanilla missingImage (collection loop wrote it for the losing
+            // key format, publish never overwrote it) must not satisfy the lookup —
+            // skip it so the alias key / CatAtlas fallback can win.
             IIcon icon = globalIconMap.get(texturePath);
-            if (icon != null) return icon;
+            if (icon != null && !"missingno".equals(icon.getIconName())) return icon;
             String alias = resolveTextureName(texturePath);
             if (alias != null && !alias.equals(texturePath)) {
                 icon = globalIconMap.get(alias);
-                if (icon != null) return icon;
+                if (icon != null && !"missingno".equals(icon.getIconName())) return icon;
             }
         }
 

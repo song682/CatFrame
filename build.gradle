@@ -95,17 +95,7 @@ dependencies {
     runtimeOnly "maven.modrinth:codechickencore-unofficial:${project.cc_version}"
     runtimeOnly "maven.modrinth:codechickenlib-unofficial:${project.cc_version}"
 
-    compileOnly 'com.github.song682:IMEInputBackport:v1.3'
-    // IngameIME has no usable JitPack artifact (all versions fail to build there),
-    // so the local dev jar in lib/ is the only reliable source. It must stay
-    // compileOnly: as a full mod jar (@Mod + mixin config) it would otherwise land
-    // on the dev runtime classpath and collide with the copy installed in mods/.
-    // IngameIME 无可用 JitPack 构件（该仓库全版本构建失败），lib/ 下的本地 dev jar
-    // 是唯一可靠来源；但必须保持 compileOnly——它是完整 mod jar（含 @Mod 与 mixin
-    // 配置），若进运行时 classpath 会与 mods/ 里实际安装的副本冲突。
-    compileOnly files('lib/IngameIME-1.7.10-2.0.10-dev.jar')
-
-    implementation fileTree(dir: 'lib', includes: ['*.jar'], excludes: ['IngameIME-1.7.10-2.0.10-dev.jar'])
+    implementation fileTree(dir: 'lib', includes: ['*.jar'])
 }
 
 def dependenciesList = []

@@ -308,6 +308,15 @@ public class ModelResolver {
      * <p>
      * 解析纹理变量引用（例如 #all → 实际纹理路径）。
      * 以 '#' 开头的纹理值表示引用另一个纹理键。
+     * <p>
+     * 命名空间 fallback：无命名空间的纹理引用（如 {@code "blocks/dirt"}）
+     * 自动补全为 {@code minecraft:blocks/dirt} —— 与 {@link net.minecraft.util.ResourceLocation}
+     * 的默认命名空间语义一致。图集发布表的键是全限定键，若不补全，这类引用
+     * 会因字面未命中而直接落回 missingno。
+     * <p>
+     * Namespace fallback: unqualified texture references default to the
+     * {@code minecraft} namespace (ResourceLocation semantics); without this
+     * they miss the fully-qualified publication keys and render missingno.
      */
     public static void resolveTextureVariables(ModelJson model) {
         if (model.textures == null) return;
@@ -356,6 +365,16 @@ public class ModelResolver {
                 }
                 value = refValue;
             }
+
+            // 命名空间 fallback：无 ':' 的纹理路径视为 minecraft 命名空间
+            // （MISSINGNO 等内置值本身带 namespace，不受影响）
+            // Unqualified texture path -> default to the minecraft namespace
+            if (!value.startsWith("#") && value.indexOf(':') < 0) {
+                CatFrame.logger.debug("[ModelResolver] texture '{}' has no namespace, defaulting to minecraft:{}",
+                        value, value);
+                value = "minecraft:" + value;
+            }
+
             resolved.put(key, value);
         }
         model.textures = resolved;

@@ -36,7 +36,7 @@ public class CatSprite implements IIcon {
 
     /** 发布键：完整纹理路径（如 {@code minecraft:block/stone}），即 textureIcons 的键。 */
     private final String texturePath;
-    /** icon 名称：{@code VanillaModelManager.Utilities.resolveTextureName} 的结果（如 {@code minecraft:stone}）。 */
+    /** icon 名称：发布键本身（合并键已是数据驱动解析结果，如 {@code minecraft:blocks/ladder}）。 */
     private final String name;
     /** 内容像素（flat ARGB int[]，row-major，大小 = contentWidth × contentHeight）。 */
     private final int[] pixels;
@@ -79,7 +79,7 @@ public class CatSprite implements IIcon {
      * 构造一个内容 sprite（单帧）。
      *
      * @param texturePath   完整纹理路径（textureIcons 发布键）
-     * @param name          icon 名称（resolveTextureName 结果）
+     * @param name          icon 名称（发布键本身，数据驱动解析结果）
      * @param pixels        内容像素（flat ARGB，调用方拥有，不再被修改）
      * @param contentWidth  内容宽度
      * @param contentHeight 内容高度

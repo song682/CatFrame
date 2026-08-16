@@ -4,7 +4,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.core.async.RenderExecutors;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderTypeRegistry;
@@ -49,8 +48,8 @@ import java.util.concurrent.ExecutionException;
  * <p>
  * <b>M2 合并规则</b>（设计文档确认）：模型驱动引用（pending 集合）先入且去重，
  * 定义驱动源（directory/filter/single/unstitch/paletted_permutations）随后补全 ——
- * 同 iconName 冲突时模型胜（模型是渲染权威）；filter 仅作用于定义驱动集合；
- * 定义驱动 sprite 的 iconName 以 {@code resolveTextureName}（剥 prefix）对齐。
+ * 同合并键冲突时模型胜（模型是渲染权威）；filter 仅作用于定义驱动集合；
+ * 合并键 = 数据驱动解析出的实际资源路径（{@code CatSpriteLoader.resolveActualPath}）。
  * <p>
  * <b>失败降级</b>：任一图集构建失败（含 {@code CatStitchException} 超限）→ 捕获并
  * error 日志，该图集不发布、不换绑 —— 原版缝合路径整体兜底，游戏不崩溃。
@@ -84,7 +83,7 @@ public final class CatAtlasManager {
     private static final Map<String, CatAtlas> atlases = new LinkedHashMap<>();
     /** 发布映射：完整纹理路径 → CatSprite（publish 时合并进 textureIcons）。 */
     private static final Map<String, CatSprite> spritesByTexturePath = new ConcurrentHashMap<>();
-    /** icon 名称（resolveTextureName 剥前缀结果，如 {@code minecraft:stone}）→ CatSprite，
+    /** 合并键（数据驱动解析出的实际资源路径，如 {@code minecraft:blocks/ladder}）→ CatSprite，
      *  供 {@link #findSprite} 反查（烘焙侧防 vanilla sprite 泄漏）。 */
     private static final Map<String, CatSprite> spritesByIconName = new ConcurrentHashMap<>();
 
@@ -98,6 +97,8 @@ public final class CatAtlasManager {
         release();
         spritesByTexturePath.clear();
         spritesByIconName.clear();
+        // 数据驱动解析缓存随 stitch 重建清空（资源可能已变更）
+        CatSpriteLoader.clearCache();
 
         // 硬上限：min(GL_MAX_TEXTURE_SIZE, 16384)（主线程 GL 上下文读取）
         int maxTextureSize = Math.min(GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE), MAX_ATLAS_SIZE);
@@ -125,7 +126,8 @@ public final class CatAtlasManager {
                                        ResourceLocation glName, int maxTextureSize,
                                        Map<String, List<AtlasSource>> defs) {
         try {
-            List<SpriteRef> refs = mergeRefs(pending, atlasId, defs);
+            MergeResult result = mergeRefs(pending, atlasId, defs);
+            List<SpriteRef> refs = result.refs;
             List<CatSprite> sprites = decodeAll(refs, atlasId);
             int missing = 0;
             for (CatSprite sprite : sprites) {
@@ -152,19 +154,27 @@ public final class CatAtlasManager {
             rebindRenderGroups(atlasId);
 
             for (CatSprite sprite : atlas.getSprites().values()) {
-                spritesByTexturePath.put(sprite.getTexturePath(), sprite);
-                // 反查表键必须用归一化名（resolveTextureName 结果）：missing sprite 的
-                // getIconName() 恒为 "missingno"，直接用它做键会让所有缺失纹理共用
-                // 同一个键，findSprite(归一化名) 永远 miss。
-                // The reverse-lookup key must be the normalized name: a missing sprite
-                // always reports getIconName() == "missingno", which would collapse
-                // every failed decode onto one key and break findSprite(normalized).
-                String iconName = VanillaModelManager.Utilities.resolveTextureName(sprite.getTexturePath());
-                if (iconName == null || iconName.isEmpty()) {
-                    iconName = sprite.getIconName();
+                // 反查表键 = 合并键（数据驱动解析出的实际资源路径，如
+                // "minecraft:blocks/ladder"）：missing sprite 的 getIconName() 恒为
+                // "missingno"，直接用它做键会让所有缺失纹理共用同一个键，findSprite 永远 miss。
+                // The reverse-lookup key is the merge key (the data-driven actual
+                // resource path); a missing sprite always reports "missingno", which
+                // would collapse every failed decode onto one key.
+                spritesByIconName.put(sprite.getTexturePath(), sprite);
+            }
+            // 双键发布：合并键（canonical）+ 全部原始引用格式 → 同一 CatSprite。
+            // 模型引用的字面值（如 "minecraft:block/ladder" 与 "minecraft:blocks/ladder"）
+            // 都能直接命中，findIcon 无需别名查询。
+            // Publish both the canonical merge key and every original reference
+            // format to the same CatSprite, so findIcon hits without aliasing.
+            for (Map.Entry<String, List<String>> e : result.canonicalToOriginals.entrySet()) {
+                CatSprite sprite = spritesByIconName.get(e.getKey());
+                if (sprite == null) {
+                    continue;
                 }
-                if (iconName != null && !iconName.isEmpty()) {
-                    spritesByIconName.put(iconName, sprite);
+                spritesByTexturePath.put(e.getKey(), sprite);
+                for (String original : e.getValue()) {
+                    spritesByTexturePath.put(original, sprite);
                 }
             }
             atlases.put(atlasId, atlas);
@@ -177,25 +187,28 @@ public final class CatAtlasManager {
     /**
      * M2 合并规则：模型驱动权威 + 定义驱动补全（设计文档确认）。
      * <p>
-     * 合并键 = iconName（{@code resolveTextureName} 剥前缀结果，如 {@code minecraft:stone}）：
+     * 合并键 = 数据驱动解析出的实际资源路径（{@code CatSpriteLoader.resolveActualPath}，
+     * 如 {@code minecraft:blocks/ladder}）：同一 PNG 的不同引用格式（{@code block/} 与
+     * {@code blocks/}）自然合并，无需写死前缀映射；解析失败（纹理不存在）→ 用原始引用做键。
      * <ol>
-     *   <li>模型驱动引用（pending）先入，重复 iconName 忽略后者（集合已去重，防御性）；</li>
+     *   <li>模型驱动引用（pending）先入，重复合并键忽略后者（集合已去重，防御性）；</li>
      *   <li>定义驱动源按序产出 SpriteRef：filter（仅作用于定义驱动集合）命中 → 跳过；
-     *       与已有 iconName 冲突 → warn + 跳过（模型/先入者胜）；否则追加。</li>
+     *       与已有合并键冲突 → warn + 跳过（模型/先入者胜）；否则追加。</li>
      * </ol>
+     * 同时产出 canonicalToOriginals（合并键 → 全部原始引用格式），供发布阶段双键映射。
      * 定义驱动 sprite 的图集归属即当前图集（atlas/{id}.json 的 id）；SpriteRef 的
      * atlasId 覆盖字段仅 debug 记录（CatFrame 渲染分组只绑定 blocks/items 两个图集）。
      */
-    private static List<SpriteRef> mergeRefs(Collection<String> pending, String atlasId,
-                                             Map<String, List<AtlasSource>> defs) {
+    private static MergeResult mergeRefs(Collection<String> pending, String atlasId,
+                                         Map<String, List<AtlasSource>> defs) {
         LinkedHashMap<String, SpriteRef> merged = new LinkedHashMap<>();
-        // 1) 模型驱动先入（权威）：texturePath → SpriteRef（resource = spriteId）
+        Map<String, List<String>> canonicalToOriginals = new LinkedHashMap<>();
+        // 1) 模型驱动先入（权威）：texturePath → 数据驱动键 → SpriteRef（resource = 键）
         for (String texturePath : pending) {
-            String icon = VanillaModelManager.Utilities.resolveTextureName(texturePath);
-            if (icon == null || icon.isEmpty()) {
-                continue;
-            }
-            merged.putIfAbsent(icon, SpriteRef.of(new ResourceLocation(texturePath)));
+            String canonical = CatSpriteLoader.resolveActualPath(texturePath);
+            String key = canonical != null ? canonical : texturePath;
+            merged.putIfAbsent(key, SpriteRef.of(new ResourceLocation(key)));
+            canonicalToOriginals.computeIfAbsent(key, k -> new ArrayList<>()).add(texturePath);
         }
         // 2) 定义驱动补全：filter 移除 + 重复警告 + 先入者胜
         List<AtlasSource> sources = defs.get(atlasId);
@@ -214,14 +227,12 @@ public final class CatAtlasManager {
                     if (isFiltered(sources, spriteId)) {
                         continue; // filter 仅作用于定义驱动集合（模型引用是渲染必需）
                     }
-                    String icon = VanillaModelManager.Utilities.resolveTextureName(spriteId);
-                    if (icon == null || icon.isEmpty()) {
-                        icon = spriteId;
-                    }
-                    if (merged.containsKey(icon)) {
+                    String canonical = CatSpriteLoader.resolveActualPath(spriteId);
+                    String key = canonical != null ? canonical : spriteId;
+                    if (merged.containsKey(key)) {
                         CatFrame.logger.warn(
                                 "[CatAtlas] duplicate sprite '{}' in atlas '{}': model/earlier entry wins, definition entry skipped",
-                                icon, atlasId);
+                                key, atlasId);
                         continue;
                     }
                     if (ref.atlasId() != null && !atlasId.equals(ref.atlasId().toString())) {
@@ -229,11 +240,23 @@ public final class CatAtlasManager {
                                         + "kept in current atlas (CatFrame binds only blocks/items)",
                                 spriteId, ref.atlasId(), atlasId);
                     }
-                    merged.put(icon, ref);
+                    merged.put(key, ref);
+                    canonicalToOriginals.computeIfAbsent(key, k -> new ArrayList<>()).add(spriteId);
                 }
             }
         }
-        return new ArrayList<>(merged.values());
+        return new MergeResult(new ArrayList<>(merged.values()), canonicalToOriginals);
+    }
+
+    /** mergeRefs 的合并产物：去重后的 SpriteRef 列表 + 合并键到原始引用格式的映射。 */
+    private static final class MergeResult {
+        final List<SpriteRef> refs;
+        final Map<String, List<String>> canonicalToOriginals;
+
+        MergeResult(List<SpriteRef> refs, Map<String, List<String>> canonicalToOriginals) {
+            this.refs = refs;
+            this.canonicalToOriginals = canonicalToOriginals;
+        }
     }
 
     /** 定义驱动集合中是否被任一 filter 源命中移除。 */
@@ -331,45 +354,42 @@ public final class CatAtlasManager {
         if (spritesByTexturePath.isEmpty()) {
             return;
         }
+        // 发布映射已含双键（canonical + 全部原始引用格式），直接合并即可保证
+        // findIcon 对任意引用格式都命中 CatSprite，无需额外别名键。
+        // Both the canonical key and every original reference format are already
+        // in the publish map, so findIcon hits for any reference spelling.
         textureIcons.putAll(spritesByTexturePath);
-        // 别名键：iconName（resolveTextureName 结果，如 "minecraft:stone"）也指向同一
-        // CatSprite，配合 TextureSlots.findIcon 的别名查询，防止纹理引用格式差异时
-        // 第二级 fallback 到 vanilla sprite（UV 原版图集空间）与换绑后的 CatAtlas 错配。
-        // Alias keys: iconName also maps to the same CatSprite so findIcon's alias
-        // lookup never falls back to a vanilla sprite in the vanilla UV space.
-        for (CatSprite sprite : spritesByTexturePath.values()) {
-            // 别名键必须用归一化名而非 getIconName()：missing sprite 的
-            // getIconName() 恒为 "missingno"，会污染该键且让归一化键缺失，
-            // 导致 findIcon 的别名查询对解码失败物品永远 miss（物品透明/消失）。
-            // Alias keys must use the normalized name, not getIconName(): a missing
-            // sprite reports "missingno", which pollutes that key and leaves the
-            // normalized key absent — findIcon's alias lookup would always miss.
-            String iconName = VanillaModelManager.Utilities.resolveTextureName(sprite.getTexturePath());
-            if (iconName == null || iconName.isEmpty()) {
-                iconName = sprite.getIconName();
-            }
-            if (iconName != null && !iconName.isEmpty()) {
-                textureIcons.put(iconName, sprite);
-            }
-        }
         CatFrame.logger.info("[CatAtlas] published {} CatSprites into textureIcons (size={})",
                 spritesByTexturePath.size(), textureIcons.size());
     }
 
     /**
-     * 按 icon 名称（resolveTextureName 剥前缀结果，如 {@code minecraft:stone}）查找
+     * 按合并键（数据驱动解析出的实际资源路径，如 {@code minecraft:blocks/ladder}）查找
      * 当前 stitch 周期的 CatSprite；未缝合或不存在时返回 null。
      * <p>
      * 供烘焙/渲染侧在 {@code globalIconMap} 未命中时优先取 CatSprite，防止降级到
      * vanilla sprite（原版图集 UV 空间）与物品渲染的 CatAtlas 绑定错配。
      *
-     * <p>Lookup by stripped icon name so baking never falls back to a vanilla
-     * sprite (vanilla atlas UV space) while item rendering binds the CatAtlas.
+     * <p>Lookup by merge key so baking never falls back to a vanilla sprite
+     * (vanilla atlas UV space) while item rendering binds the CatAtlas.
      */
     @Nullable
     public static CatSprite findSprite(String iconName) {
         if (iconName == null) return null;
         return spritesByIconName.get(iconName);
+    }
+
+    /**
+     * 按原始引用格式（模型/决策树里的字面值，如 {@code minecraft:block/ladder}）直接反查
+     * CatSprite；发布映射覆盖全部原始格式（含定义驱动 spriteId），未缝合时返回 null。
+     *
+     * <p>Lookup by the literal reference spelling; the publish map covers every
+     * original format.
+     */
+    @Nullable
+    public static CatSprite findByTexturePath(String texturePath) {
+        if (texturePath == null) return null;
+        return spritesByTexturePath.get(texturePath);
     }
 
     /**

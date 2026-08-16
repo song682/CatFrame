@@ -206,43 +206,36 @@ public class TextureSlots {
     private static IIcon findIcon(String texturePath, @Nullable Map<String, IIcon> globalIconMap) {
         if (texturePath == null || texturePath.isEmpty()) return null;
 
-        // 1. 检查全局映射（先原键，再 iconName 别名键）：纹理引用格式差异（如带/不带
-        //    block/ 前缀）时若原键 miss，别名键仍能命中 CatSprite，避免第二级 fallback
-        //    到 vanilla sprite 造成 UV 空间错配（见 CatAtlasManager.publish 别名键）。
-        //    Alias lookup: prevents falling back to a vanilla sprite (vanilla UV
-        //    space) while render groups are bound to the CatAtlas.
+        // 1. 全局映射：publish 已把合并键与全部原始引用格式都指向 CatSprite，
+        //    任意拼写（block/ladder 或 blocks/ladder）直接命中，无需别名查询。
+        //    The publish map covers both canonical and every original spelling,
+        //    so the literal reference hits directly without aliasing.
         if (globalIconMap != null) {
-            // 收集循环可能把 vanilla missingImage 残留在“败者格式”键上（publish 只覆盖
-            // mergeRefs 竞争胜者的格式）。missingno 值不得拦截查询：跳过它继续走别名键
-            // 与 CatAtlas 兜底，避免单复数引用竞争把物品渲染成透明（消失）。
-            // A leftover vanilla missingImage (collection loop wrote it for the losing
-            // key format, publish never overwrote it) must not satisfy the lookup —
-            // skip it so the alias key / CatAtlas fallback can win.
+            // 收集循环可能把 vanilla missingImage 残留在部分键上（publish 未覆盖的
+            // 格式）。missingno 值不得拦截查询：跳过它继续走 CatAtlas 兜底，避免
+            // 单复数引用竞争把物品渲染成透明（消失）。
+            // A leftover vanilla missingImage must not satisfy the lookup — skip
+            // it so the CatAtlas fallback can win.
             IIcon icon = globalIconMap.get(texturePath);
             if (icon != null && !"missingno".equals(icon.getIconName())) return icon;
-            String alias = resolveTextureName(texturePath);
-            if (alias != null && !alias.equals(texturePath)) {
-                icon = globalIconMap.get(alias);
-                if (icon != null && !"missingno".equals(icon.getIconName())) return icon;
-            }
         }
 
-        // 2. 自定义图集（CatAtlas）兜底：按 iconName 反查当前周期的 CatSprite。
+        // 2. 自定义图集（CatAtlas）兜底：按原始引用格式反查当前周期的 CatSprite。
         //    该查找独立于 globalIconMap（烘焙时 iconMap 可能为 null / 键缺失），
         //    优先保证 quad 携带 CatFrame UV：物品渲染绑定 CatAtlas 时采样正确，
         //    世界渲染由 resolveWorldIcon 把 CatSprite 换回 vanilla，两路径双正确。
         //    CatAtlas fallback: prefer the CatSprite so item quads never carry
         //    vanilla-atlas UVs; world rendering swaps it back via resolveWorldIcon.
-        String iconName = resolveTextureName(texturePath);
-        CatSprite catSprite = CatAtlasManager.findSprite(iconName);
+        CatSprite catSprite = CatAtlasManager.findByTexturePath(texturePath);
         if (catSprite != null) {
             return catSprite;
         }
 
-        // 3. 尝试 blocks 纹理图集
+        // 3. 尝试原版 blocks/items 图集（1.7.10 basePath 键查询）
+        String baseKey = VanillaModelManager.Utilities.toVanillaBaseKey(texturePath);
         try {
             TextureMap blocksMap = Minecraft.getMinecraft().getTextureMapBlocks();
-            IIcon icon = blocksMap.getAtlasSprite(iconName);
+            IIcon icon = blocksMap.getAtlasSprite(baseKey);
             if (icon != null && icon.getIconName() != null && !"missingno".equals(icon.getIconName())) {
                 // CatAtlas 与 globalIconMap 均无此纹理：返回 vanilla sprite 仅能保证
                 // 世界渲染正确（原版图集绑定）；物品渲染绑定 CatAtlas 时必然 UV 错位，
@@ -257,10 +250,7 @@ public class TextureSlots {
             TextureMap itemsMap = (TextureMap) Minecraft.getMinecraft().getTextureManager()
                     .getTexture(TextureMap.locationItemsTexture);
             if (itemsMap != null) {
-                icon = itemsMap.getAtlasSprite(texturePath);
-                if (icon == null) {
-                    icon = itemsMap.getAtlasSprite(iconName);
-                }
+                icon = itemsMap.getAtlasSprite(baseKey);
                 if (icon != null && icon.getIconName() != null && !"missingno".equals(icon.getIconName())) {
                     CatFrame.logger.warn("[TextureSlots] '{}' resolved to vanilla item sprite '{}' "
                                     + "(no CatSprite, no global icon): item rendering may sample the wrong UV space",
@@ -273,14 +263,6 @@ public class TextureSlots {
         }
 
         return null;
-    }
-
-    /**
-     * 将纹理路径解析为图集可识别的名称。
-     * 去除 "blocks/"、"items/"、"block/"、"item/" 前缀，保留 namespace。
-     */
-    private static String resolveTextureName(String texturePath) {
-        return VanillaModelManager.Utilities.resolveTextureName(texturePath);
     }
 
     // ==================== Object ====================

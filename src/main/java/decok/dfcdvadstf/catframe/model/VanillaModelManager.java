@@ -68,17 +68,24 @@ public class VanillaModelManager {
 
     public static class Utilities {
 
-        public static String resolveTextureName(String texturePath) {
+        /**
+         * 原版图集查询键：剥 namespace 与 block/blocks/item/items 前缀，生成 1.7.10
+         * {@code TextureMap} 的 basePath 注册/查询键（如 {@code minecraft:block/ladder}
+         * → {@code ladder}；原版加载时拼 {@code textures/blocks/ladder.png}）。
+         * <p>
+         * 仅用于原版图集（vanilla atlas）的键变换 —— CatAtlas 内部身份由
+         * {@code CatSpriteLoader.resolveActualPath} 数据驱动解析决定，不再走写死前缀映射。
+         *
+         * <p>Vanilla-atlas base-path key: strips namespace and the block/blocks/
+         * item/items prefixes. CatAtlas identity is data-driven instead.
+         */
+        public static String toVanillaBaseKey(String texturePath) {
             if (texturePath == null) return null;
-
-            String namespace = "";
             String pathPart = texturePath;
-
-            if (texturePath.contains(":")) {
-                namespace = texturePath.substring(0, texturePath.indexOf(':') + 1);
-                pathPart = texturePath.substring(texturePath.indexOf(':') + 1);
+            int colon = texturePath.indexOf(':');
+            if (colon >= 0) {
+                pathPart = texturePath.substring(colon + 1);
             }
-
             if (pathPart.startsWith("blocks/")) {
                 pathPart = pathPart.substring("blocks/".length());
             } else if (pathPart.startsWith("items/")) {
@@ -88,8 +95,7 @@ public class VanillaModelManager {
             } else if (pathPart.startsWith("item/")) {
                 pathPart = pathPart.substring("item/".length());
             }
-
-            return namespace + pathPart;
+            return pathPart;
         }
 
         @Nullable

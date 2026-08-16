@@ -7,19 +7,21 @@ import com.google.gson.JsonObject;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.resources.atlas.source.PixelTransform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.util.ResourceLocation;
 
+import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 图集 sprite 解码器（对标 26.1.2 {@code SpriteResourceLoader}，适配 1.7.10）。
@@ -47,6 +49,9 @@ public final class CatSpriteLoader {
     private static final Gson GSON = new Gson();
     /** 每 tick 时长（ms）；mojang frametime 单位 = tick。 */
     private static final int TICK_MS = 50;
+    /** 数据驱动解析缓存：texturePath → 实际资源相对路径（textures/ 内）；空串 = 负缓存（不存在）。
+     *  同一 stitch 周期内资源不变，stitch 重建时经 {@link #clearCache()} 清空。 */
+    private static final Map<String, String> actualPathCache = new ConcurrentHashMap<>();
 
     private CatSpriteLoader() {
     }
@@ -64,10 +69,10 @@ public final class CatSpriteLoader {
      */
     public static CatSprite load(ResourceLocation resource, String spriteId, String atlasId,
                                  PixelTransform transform) {
-        String iconName = VanillaModelManager.Utilities.resolveTextureName(spriteId);
-        if (iconName == null || iconName.isEmpty()) {
-            iconName = spriteId;
-        }
+        // icon 名称 = 发布键本身（合并键已是数据驱动解析结果，如 "minecraft:blocks/ladder"）。
+        // The icon name is the publish key itself; merge keys are already the
+        // data-driven resolution result, so no hard-coded prefix stripping here.
+        String iconName = spriteId;
         IResourceManager mgr = Minecraft.getMinecraft().getResourceManager();
         for (ResourceLocation rl : candidateLocations(resource)) {
             try {
@@ -93,6 +98,64 @@ public final class CatSpriteLoader {
         CatFrame.logger.warn("[SpriteLoader] '{}' (icon='{}') not found for atlas '{}'",
                 spriteId, iconName, atlasId);
         return null;
+    }
+
+    /**
+     * 数据驱动解析：探测纹理路径实际指向的 PNG（候选回退），返回真实资源相对路径。
+     * <p>
+     * 由候选列表 {@link #candidateLocations} 承担 block/item 单数 → 1.7.10 复数目录的
+     * 回退，代码不再写死前缀映射 —— 存在性由资源层探测决定。返回形如
+     * {@code minecraft:blocks/ladder}（textures/ 目录内相对路径，带 namespace）；
+     * 全部候选未命中返回 null。结果按 stitch 周期缓存（{@link #clearCache()} 清空）。
+     *
+     * <p>Data-driven resolution: probes candidate PNG locations and returns the
+     * actual resource path (namespace + path under {@code textures/}); null when
+     * no candidate exists. The candidate fallback list owns the singular/plural
+     * directory mapping, not hard-coded prefix rules.
+     *
+     * @param texturePath 纹理引用（如 {@code minecraft:block/ladder}）
+     * @return 实际资源相对路径（如 {@code minecraft:blocks/ladder}）；不存在返回 null
+     */
+    @Nullable
+    public static String resolveActualPath(String texturePath) {
+        if (texturePath == null || texturePath.isEmpty()) {
+            return null;
+        }
+        if (actualPathCache.containsKey(texturePath)) {
+            String v = actualPathCache.get(texturePath);
+            return v.isEmpty() ? null : v;
+        }
+        ResourceLocation rl;
+        try {
+            rl = new ResourceLocation(texturePath);
+        } catch (RuntimeException e) {
+            return null;
+        }
+        IResourceManager mgr = Minecraft.getMinecraft().getResourceManager();
+        for (ResourceLocation cand : candidateLocations(rl)) {
+            try {
+                mgr.getResource(cand);
+                String p = cand.getResourcePath();
+                String relative = p.endsWith(".png") ? p.substring(0, p.length() - 4) : p;
+                if (relative.startsWith("textures/")) {
+                    relative = relative.substring("textures/".length());
+                }
+                String actual = cand.getResourceDomain() + ":" + relative;
+                actualPathCache.put(texturePath, actual);
+                return actual;
+            } catch (IOException | RuntimeException ignored) {
+                // 候选未命中属正常缺失路径，继续下一个候选
+            }
+        }
+        actualPathCache.put(texturePath, ""); // 负缓存
+        return null;
+    }
+
+    /**
+     * 清空数据驱动解析缓存（每次 stitch 重建前调用，资源可能已变更）。
+     */
+    public static void clearCache() {
+        actualPathCache.clear();
     }
 
     /**

@@ -6,6 +6,7 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
+import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
 import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
 import net.minecraft.block.Block;
@@ -110,7 +111,7 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
         if (texturesRegistered) return;
         texturesRegistered = true;
         for (String opaquePath : TEXTURE_MAP.values()) {
-            String iconName = resolveOpaqueName(opaquePath);
+            String iconName = VanillaTextureTracker.toVanillaKey(opaquePath, false);
             if (iconName != null && !iconName.isEmpty()) {
                 map.registerIcon(iconName);
             }
@@ -124,7 +125,7 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
         OPAQUE_ICONS.clear();
         for (Map.Entry<String, String> entry : TEXTURE_MAP.entrySet()) {
             String normalPath = entry.getKey();
-            String iconName = resolveOpaqueName(entry.getValue());
+            String iconName = VanillaTextureTracker.toVanillaKey(entry.getValue(), false);
             if (iconName != null) {
                 IIcon icon = map.getAtlasSprite(iconName);
                 if (icon != null) {
@@ -152,29 +153,6 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
         if (normalTex == null) return null;
 
         return OPAQUE_ICONS.get(normalTex);
-    }
-
-    /**
-     * 将纹理路径转换为在 TextureMap 中注册的图标名。
-     * 逻辑与 {@code VanillaModelManager.resolveTextureName} 一致。
-     */
-    private static String resolveOpaqueName(String texturePath) {
-        if (texturePath == null) return null;
-        String pathPart = texturePath;
-        if (texturePath.contains(":")) {
-            String namespace = texturePath.substring(0, texturePath.indexOf(':'));
-            pathPart = texturePath.substring(texturePath.indexOf(':') + 1);
-        }
-        if (pathPart.startsWith("blocks/")) {
-            pathPart = pathPart.substring("blocks/".length());
-        } else if (pathPart.startsWith("items/")) {
-            pathPart = pathPart.substring("items/".length());
-        } else if (pathPart.startsWith("block/")) {
-            pathPart = pathPart.substring("block/".length());
-        } else if (pathPart.startsWith("item/")) {
-            pathPart = pathPart.substring("item/".length());
-        }
-        return pathPart;
     }
 
     /**

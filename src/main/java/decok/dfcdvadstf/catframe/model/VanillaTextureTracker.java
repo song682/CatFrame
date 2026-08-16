@@ -9,6 +9,7 @@ import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
+import decok.dfcdvadstf.catframe.resources.atlas.CatSpriteLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
@@ -29,6 +30,33 @@ import java.util.concurrent.ConcurrentHashMap;
 public class VanillaTextureTracker {
 
     // ==================== 纹理追踪注册表 ====================
+
+    /**
+     * 原版图集注册/查询键：数据驱动解析纹理实际位置（{@code CatSpriteLoader.resolveActualPath}），
+     * 再从实际路径反推 1.7.10 basePath 键（去 {@code blocks/} / {@code items/} 前缀）；
+     * 解析失败时回退轻量前缀剥离（{@code toVanillaBaseKey}），保证缺失纹理的 missingno 语义不变。
+     * <p>
+     * 单复数差异在数据驱动解析层被吸收（两个格式解析到同一实际 PNG → 同一键）。
+     *
+     * <p>Vanilla-atlas registry/query key: resolves the actual PNG location
+     * data-driven, then derives the 1.7.10 base-path key from it.
+     *
+     * @param itemAtlas true = items 图集（textures/items/），false = blocks 图集
+     */
+    public static String toVanillaKey(String texturePath, boolean itemAtlas) {
+        if (texturePath == null) return null;
+        String actual = CatSpriteLoader.resolveActualPath(texturePath);
+        if (actual != null) {
+            String prefix = itemAtlas ? "items/" : "blocks/";
+            int colon = actual.indexOf(':');
+            String path = colon >= 0 ? actual.substring(colon + 1) : actual;
+            if (path.startsWith(prefix)) {
+                return path.substring(prefix.length());
+            }
+            return path;
+        }
+        return VanillaModelManager.Utilities.toVanillaBaseKey(texturePath);
+    }
 
     static final Set<String> pendingTextures = new LinkedHashSet<>();
     static final Set<String> pendingItemTextures = new LinkedHashSet<>();
@@ -126,7 +154,7 @@ public class VanillaTextureTracker {
      */
     public static void registerTextures(TextureMap map) {
         for (String texturePath : pendingTextures) {
-            String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
+            String iconName = toVanillaKey(texturePath, false);
             if (iconName != null && !iconName.isEmpty()) {
                 map.registerIcon(iconName);
             }
@@ -139,7 +167,7 @@ public class VanillaTextureTracker {
      */
     public static void registerItemTextures(TextureMap map) {
         for (String texturePath : pendingItemTextures) {
-            String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
+            String iconName = toVanillaKey(texturePath, true);
             if (iconName != null && !iconName.isEmpty()) {
                 map.registerIcon(iconName);
             }
@@ -166,7 +194,7 @@ public class VanillaTextureTracker {
         java.util.List<IIcon> blockIcons = new java.util.ArrayList<>();
         // Block atlas icons
         for (String texturePath : pendingTextures) {
-            String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
+            String iconName = toVanillaKey(texturePath, false);
             if (iconName != null) {
                 IIcon icon = map.getAtlasSprite(iconName);
                 if (icon != null) {
@@ -188,7 +216,7 @@ public class VanillaTextureTracker {
                         .getTexture(TextureMap.locationItemsTexture);
         if (itemMap != null) {
             for (String texturePath : pendingItemTextures) {
-                String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
+                String iconName = toVanillaKey(texturePath, true);
                 if (iconName != null) {
                     IIcon icon = itemMap.getAtlasSprite(iconName);
                     if (icon != null) {
@@ -251,7 +279,7 @@ public class VanillaTextureTracker {
         // 更新 item 纹理的 IIcon 引用（item atlas 此时已缝合完成）
         java.util.List<IIcon> itemIcons = new java.util.ArrayList<>();
         for (String texturePath : pendingItemTextures) {
-            String iconName = VanillaModelManager.Utilities.resolveTextureName(texturePath);
+            String iconName = toVanillaKey(texturePath, true);
             if (iconName != null) {
                 IIcon icon = itemMap.getAtlasSprite(iconName);
                 if (icon != null) {

@@ -1,7 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render.pipeline;
 
 import decok.dfcdvadstf.catframe.core.Direction;
-import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
@@ -39,6 +38,11 @@ public final class QuadWriter {
 
     /**
      * 写入方块 quads（世界 / 破坏贴图）。迁移自原 {@code renderBlockQuads} 的 for-quad 循环。
+     * <p>
+     * 世界渲染（BLOCK_WORLD）由 {@code RenderWorldEvent.Post} 批次绑定 CatAtlas 绘制，
+     * quad 携带的 CatSprite（CatAtlas 空间 UV）直接采样；破坏贴花（BLOCK_DESTROY）仍由
+     * {@code flushInline} 写入 vanilla destroy 批次（绑定原版 blocks 图集），其
+     * iconOverride 为原版 destroy_stage_N（原版图集空间），与批次绑定一致。
      *
      * @return 是否写入了任何顶点（供调用方决定是否 {@code t.draw()}）
      */
@@ -63,6 +67,18 @@ public final class QuadWriter {
             ModelRenderRegistry.apply(ctx);
             if (ctx.skip)
                 continue;
+
+            // 世界渲染绑定 CatAtlas：quad 携带的 CatSprite（CatAtlas 空间 UV）直接采样，
+            // 纹理表未命中的引用已在烘焙期解析为 CatAtlas missing（紫黑格）；
+            // iconOverride（破坏贴花注入的 vanilla destroy_stage_N）属原版图集空间，
+            // 与破坏批次（flushInline）绑定的原版 blocks 图集一致。
+            // World rendering samples CatSprite UVs directly against the CatAtlas;
+            // the destroy overlay icon belongs to the vanilla atlas bound by its batch.
+            IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
+            if (icon == null) {
+                // 防御：无 icon 的 quad（如 solidColor 侧面）跳过
+                continue;
+            }
             hasVertices = true;
 
             // 提交到 Tessellator
@@ -90,7 +106,6 @@ public final class QuadWriter {
                         vy = tmpVec.y;
                         vz = tmpVec.z;
                     }
-                    IIcon icon = resolveWorldIcon((ctx.iconOverride != null) ? ctx.iconOverride : q.icon);
                     double U = icon.getInterpolatedU(q.up[i]);
                     double V = icon.getInterpolatedV(q.vp[i]);
                     t.addVertexWithUV(s.x + vx, s.y + vy, s.z + vz, U, V);
@@ -102,7 +117,6 @@ public final class QuadWriter {
                 float cb = (ctx.color & 0xFF) / 255.0f * ctx.shade;
                 t.setColorOpaque_F(cr, cg, cb);
 
-                IIcon icon = resolveWorldIcon((ctx.iconOverride != null) ? ctx.iconOverride : q.icon);
                 for (int i = 0; i < 4; i++) {
                     double vx = q.vx(i), vy = q.vy(i), vz = q.vz(i);
                     if (s.rotationDeg != 0) {
@@ -163,28 +177,6 @@ public final class QuadWriter {
             }
         }
         return hasVertices;
-    }
-
-    /**
-     * 世界渲染的 icon 解析：CatSprite（CatAtlas 空间 UV）换回对应 vanilla sprite
-     * （原版图集空间 UV）。世界渲染（BLOCK_WORLD/BLOCK_DESTROY）走 flushInline 写入
-     * vanilla chunk Tessellator，批次绑定 vanilla blocks 图集（chunk 混批约束下无法
-     * 换绑 CatAtlas），若 quad 携带 CatSprite UV 会在原版图集上采样错位 → 模糊/空白。
-     * 查表无对应项（脏键等）时原样返回 CatSprite 兜底。
-     * <p>
-     * World rendering binds the vanilla blocks atlas (mixed batches make an atlas
-     * swap impossible), so CatSprite UVs are remapped to the vanilla sprite space
-     * through the snapshot table; unmatched keys fall back to the CatSprite.
-     */
-    private static IIcon resolveWorldIcon(IIcon icon) {
-        if (icon instanceof CatSprite) {
-            IIcon vanilla = VanillaTextureTracker.getVanillaIcons()
-                    .get(((CatSprite) icon).getTexturePath());
-            if (vanilla != null) {
-                return vanilla;
-            }
-        }
-        return icon;
     }
 
     /**

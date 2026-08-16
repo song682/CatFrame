@@ -7,6 +7,7 @@ import decok.dfcdvadstf.catframe.command.CommandTitle;
 import decok.dfcdvadstf.catframe.adapter.vanilla.ClientOverlayHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.LanguageReloadListener;
+import decok.dfcdvadstf.catframe.adapter.vanilla.WorldRenderHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.ResourcePackModelDetector;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.VanillaStateDefinitions;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
@@ -40,6 +41,12 @@ public class ClientProxy extends CommonProxy {
         // and the centred Title as HUD-context overlays and the Toast system as a
         // BOTH-context overlay (HUD + any open screen, main menu included).
         MinecraftForge.EVENT_BUS.register(new ClientOverlayHandler());
+
+        // Flush CatFrame world blocks after the vanilla world pass, bound to the
+        // CatAtlas (the single texture source): table misses already resolved to the
+        // CatAtlas missing square during baking.
+        MinecraftForge.EVENT_BUS.register(new WorldRenderHandler());
+
         OverlayManager.INSTANCE.register(ActionBarOverlay.INSTANCE);
         OverlayManager.INSTANCE.register(TitleOverlay.INSTANCE);
         OverlayManager.INSTANCE.register(ToastOverlay.INSTANCE);

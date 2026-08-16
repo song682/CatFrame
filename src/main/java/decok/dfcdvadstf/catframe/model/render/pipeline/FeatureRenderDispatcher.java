@@ -156,13 +156,12 @@ public final class FeatureRenderDispatcher {
     }
 
     /**
-     * 内联 flush（用于 {@link RenderPhase#BLOCK_WORLD}）。
+     * 内联 flush（用于 {@link RenderPhase#BLOCK_DESTROY}）。
      * <p>
-     * 世界渲染发生在原版 chunk 的 {@link Tessellator} 大批次内部（vanilla 已
-     * {@code startDrawingQuads}，绑定 blocks atlas，并在 chunk 末尾统一 {@code draw}），
-     * 因此本方法只写顶点到当前 Tessellator，<b>不</b> {@code startDrawingQuads}/{@code draw}、
-     * <b>不</b>绑定纹理、<b>不</b>改 GL 状态。行为等同改造前 {@code renderBlockQuads} 的
-     * BLOCK_WORLD 路径。
+     * 破坏贴花发生在原版 {@code drawBlockDamageTexture} 的 startDrawingQuads 批次内部
+     * （vanilla 已绑定 blocks atlas，GL 状态由其统一管理），因此本方法只写顶点到当前
+     * Tessellator，<b>不</b> {@code startDrawingQuads}/{@code draw}、<b>不</b>绑定纹理、
+     * <b>不</b>改 GL 状态。破坏图标（destroy_stage_N）属原版图集空间，与批次绑定一致。
      * <p>
      * <b>永不 consult 分组认领 handler</b>（契约措辞：inline 提交不可认领）—— 世界几何体须经
      * 收集端改道（如渲染作用域）后，在执行端作用域内才可被认领。
@@ -178,6 +177,90 @@ public final class FeatureRenderDispatcher {
             QuadWriter.writeBlockQuads(s, Tessellator.instance);
         } finally {
             ModelRenderRegistry.applyAfterPart();
+        }
+    }
+
+    /**
+     * 世界方块批量 flush（{@link WorldRenderBuffer} 在 {@code RenderWorldEvent.Post}
+     * 时调用）：BLOCK_WORLD 提交按渲染组合并到单个 Tessellator 批次，绑定 CatAtlas
+     * （block_atlas_solid/translucent 已 rebind 到 catframe:atlas/blocks）绘制，
+     * quad 携带的 CatSprite（CatAtlas 空间 UV）直接采样 —— 世界渲染与物品渲染共用
+     * 同一纹理表语义，未命中的引用显示 CatAtlas missing 紫黑格。
+     * <p>
+     * 与 {@link #flushBatched} 的差异：世界几何<b>不</b>逐提交项 draw —— 所有提交项共享
+     * 一次 {@code startDrawingQuads/draw}（每帧仅 solid + translucent 两个 draw call）；
+     * 每部件仍调用 {@code applyBeforePart/applyAfterPart}（tint memo、display 矩阵等
+     * 部件级状态必须成对重置），扩展链语义与内联路径逐字节一致。
+     * <p>
+     * GL 状态以 {@code PushAttrib/PopAttrib} 隔离：SOLID 组启用 alpha test
+     * （{@code GREATER 0.5}，剔除透明像素，对标 vanilla 层语义）、TRANSLUCENT 组启用
+     * 标准混合；组后恢复现场，不影响 vanilla 后续绘制（雨雪等）。深度测试/深度写入
+     * 保持 vanilla 世界渲染遗留状态（depth buffer 已有全部几何，遮挡关系正确）。
+     * <p>
+     * World batch flush: one startDrawingQuads/draw per render group, bound to the
+     * CatAtlas; per-part lifecycle is preserved; GL state is isolated via push/pop.
+     */
+    public static void flushWorld(SubmitNodeStorage storage) {
+        for (Map.Entry<RenderTypeKey, List<RenderSubmit>> entry : storage.groups()) {
+            List<RenderSubmit> group = entry.getValue();
+            if (group == null || group.isEmpty()) continue;
+            RenderTypeKey type = entry.getKey();
+
+            // 认领路径与 flushBatched 一致：外部模组（如 OIT）可整组接管世界批次。
+            IRenderGroupHandler handler = RenderGroupHandlerRegistry.handlerFor(type);
+            if (handler != null) {
+                try {
+                    handler.flush(new ArrayList<RenderSubmitView>(group));
+                    continue;
+                } catch (Throwable t) {
+                    CatFrame.logger.warn("[FeatureRenderDispatcher] group handler {} failed for {}: {}",
+                            handler.getClass().getName(), type.id(), t.toString(), t);
+                }
+            }
+            flushWorldGroup(type, group);
+        }
+    }
+
+    /**
+     * 内建世界组级 flush：合并批次 + 纹理绑定 + GL 状态一次性设置，
+     * 以 {@code PushAttrib} 隔离（enable 位 / 混合函数 / alpha 函数 / 多边形 / 纹理绑定）。
+     */
+    private static void flushWorldGroup(RenderTypeKey type, List<RenderSubmit> group) {
+        Tessellator t = Tessellator.instance;
+        boolean disableCull = group.get(0).disableCull;
+        boolean blend = type.blend();
+
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT
+                | GL11.GL_POLYGON_BIT | GL11.GL_TEXTURE_BIT);
+        try {
+            Minecraft.getMinecraft().getTextureManager().bindTexture(type.atlas());
+            if (disableCull) {
+                GL11.glDisable(GL11.GL_CULL_FACE);
+            }
+            if (blend) {
+                GL11.glEnable(GL11.GL_BLEND);
+                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                GL11.glDisable(GL11.GL_ALPHA_TEST);
+            } else {
+                GL11.glDisable(GL11.GL_BLEND);
+                GL11.glEnable(GL11.GL_ALPHA_TEST);
+                GL11.glAlphaFunc(GL11.GL_GREATER, 0.5F);
+            }
+
+            // 合并批次：所有提交项写同一 Tessellator，一次 draw
+            t.startDrawingQuads();
+            for (RenderSubmit s : group) {
+                ModelRenderRegistry.applyBeforePart(s.part.getAllQuads(), s.phase, s.part);
+                try {
+                    QuadWriter.writeBlockQuads(s, t);
+                } finally {
+                    ModelRenderRegistry.applyAfterPart();
+                }
+            }
+            // 恒 draw：即使无顶点，draw() 也会安全复位 Tessellator 的 isDrawing 状态
+            t.draw();
+        } finally {
+            GL11.glPopAttrib();
         }
     }
 

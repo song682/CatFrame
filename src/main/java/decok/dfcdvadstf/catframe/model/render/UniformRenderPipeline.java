@@ -75,9 +75,17 @@ public final class UniformRenderPipeline {
                                         int metadata) {
         if (part == null) return;
 
-        // 方块渲染绑定 blocks atlas，世界渲染不透明、不关闭面剔除（disableCull=false）。
+        // 世界渲染绑定 CatAtlas：按半透明性选择渲染组（与 vanilla 分层语义一致）——
+        // getRenderBlockPass()==1 的方块走 TRANSLUCENT 组（混合开启），其余走 SOLID 组
+        // （alpha test 剔除透明像素）。不透明、不关闭面剔除（disableCull=false）。
+        // World rendering binds the CatAtlas: translucent blocks go to the translucent
+        // group (blending on), everything else to the solid group (alpha-test).
+        boolean translucent = block != null && block.getRenderBlockPass() == 1;
+        RenderTypeKey type = translucent
+                ? RenderTypeRegistry.BLOCK_ATLAS_TRANSLUCENT
+                : RenderTypeRegistry.BLOCK_ATLAS_SOLID;
         RenderSubmit s = new RenderSubmit(
-                phase, part, RenderTypeRegistry.BLOCK_ATLAS_SOLID,
+                phase, part, type,
                 x, y, z, rotationDeg,
                 block, null, world, metadata,
                 null, null,

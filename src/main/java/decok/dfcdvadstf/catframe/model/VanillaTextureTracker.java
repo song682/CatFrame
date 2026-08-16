@@ -59,7 +59,8 @@ public class VanillaTextureTracker {
     static final Map<String, IIcon> vanillaIcons = new ConcurrentHashMap<>();
 
     /**
-     * 原版 sprite 快照表（世界渲染 UV 回退用，跨包访问入口）。
+     * 原版 sprite 快照表（跨包访问入口；CatAtlas 为唯一纹理源后不再被渲染路径消费，
+     * 保留为兼容快照供外部查询）。
      */
     public static Map<String, IIcon> getVanillaIcons() {
         return vanillaIcons;

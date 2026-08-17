@@ -13,7 +13,7 @@ import java.util.List;
  * <p>Thrown when atlas packing overflows the texture size limit; carries the
  * full list of sprites that could not be placed for a debuggable crash.
  */
-public class CatStitchException extends RuntimeException {
+public class TextureStitchException extends RuntimeException {
 
     /** 当前无法放置的 sprite icon 名。 */
     private final String currentName;
@@ -26,9 +26,9 @@ public class CatStitchException extends RuntimeException {
     private final int maxWidth;
     private final int maxHeight;
 
-    public CatStitchException(String currentName, List<String> unplacedNames,
-                              int usedWidth, int usedHeight,
-                              int maxWidth, int maxHeight) {
+    public TextureStitchException(String currentName, List<String> unplacedNames,
+                                  int usedWidth, int usedHeight,
+                                  int maxWidth, int maxHeight) {
         super(buildMessage(currentName, unplacedNames, usedWidth, usedHeight, maxWidth, maxHeight));
         this.currentName = currentName;
         this.unplacedNames = Collections.unmodifiableList(unplacedNames);

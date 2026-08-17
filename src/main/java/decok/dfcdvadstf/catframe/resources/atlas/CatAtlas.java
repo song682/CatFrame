@@ -3,7 +3,7 @@ package decok.dfcdvadstf.catframe.resources.atlas;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.resources.atlas.layout.CatStitcher;
+import decok.dfcdvadstf.catframe.resources.atlas.layout.TextureStitcher;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.renderer.texture.ITextureObject;
@@ -23,7 +23,7 @@ import java.util.Map;
  * <p>
  * 职责（对标 26.1.2 {@code TextureAtlas}，适配 1.7.10 无 GPU blit 管线）：
  * <ul>
- *   <li>用 {@link CatStitcher} 布局 sprite（排序 → 区域分割 → 2^n 扩展）；</li>
+ *   <li>用 {@link TextureStitcher} 布局 sprite（排序 → 区域分割 → 2^n 扩展）；</li>
  *   <li>主线程一次性组装 ARGB int[] 图集缓冲区（padding 区域清为透明）并转 RGBA
  *       ByteBuffer，单次 {@code glTexImage2D} 上传 level-0；</li>
  *   <li>上传成功后回调 {@link CatSprite#complete} 写入 UV 数据；</li>
@@ -106,7 +106,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
         CatFrame.logger.info("[CatAtlas] '{}' stitching {} sprites | mip={} aniso={}",
                 atlasId, sprites.size(), mipLevel, anisotropyBit);
 
-        CatStitcher stitcher = new CatStitcher(maxTextureSize, maxTextureSize, mipLevel, anisotropyBit);
+        TextureStitcher stitcher = new TextureStitcher(maxTextureSize, maxTextureSize, mipLevel, anisotropyBit);
         for (CatSprite sprite : sprites) {
             stitcher.registerSprite(sprite);
         }

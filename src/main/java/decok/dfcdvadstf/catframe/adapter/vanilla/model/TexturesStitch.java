@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.adapter.vanilla.model;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
@@ -25,12 +26,22 @@ public class TexturesStitch {
             // 产物在 Post 阶段由 VanillaTextureTracker 发布进 textureIcons。
             // Custom atlas stitch: consumes the model-driven pending sets, runs layout
             // + upload + registration; publication into textureIcons happens in Post.
+            // [Hot Update 撤回方案] 开关关闭时 stitch() 内部自行短路（原版后端）。
             CatAtlasManager.stitch();
+            // [Hot Update 撤回方案] 原版后端：定义驱动收集结果喂入原版 blocks 图集。
+            // Vanilla backend: feed the definition-driven collection into the map.
+            if (!CatFrameConfig.catAtlasBackend) {
+                CatAtlasManager.registerDefinedSprites(event.map);
+            }
             // Register vanilla model textures before atlas is stitched
             VanillaTextureTracker.registerTextures(event.map);
             // Register _opaque leaf textures
             LeavesGraphicsExtension.registerTextures(event.map);
         } else if (event.map.getTextureType() == 1) {
+            // [Hot Update 撤回方案] 原版后端：定义驱动收集结果喂入原版 items 图集。
+            if (!CatFrameConfig.catAtlasBackend) {
+                CatAtlasManager.registerDefinedSprites(event.map);
+            }
             // Register item textures on the item atlas
             VanillaTextureTracker.registerItemTextures(event.map);
         }

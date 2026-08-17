@@ -6,7 +6,6 @@ import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLighting;
-import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.player.EntityPlayer;
@@ -43,6 +42,10 @@ public final class QuadWriter {
      * quad 携带的 CatSprite（CatAtlas 空间 UV）直接采样；破坏贴花（BLOCK_DESTROY）仍由
      * {@code flushInline} 写入 vanilla destroy 批次（绑定原版 blocks 图集），其
      * iconOverride 为原版 destroy_stage_N（原版图集空间），与批次绑定一致。
+     * <p>
+     * [Hot Update 撤回方案] 原版后端（默认）：BLOCK_WORLD 由 {@code flushInline} 内联写入
+     * chunk 批次（绑定原版 blocks 图集），烘焙期 quad 携带的即 vanilla IIcon（原版空间
+     * UV），本方法逐顶点逻辑无需分支，两种后端共用同一写入循环。
      *
      * @return 是否写入了任何顶点（供调用方决定是否 {@code t.draw()}）
      */
@@ -72,6 +75,8 @@ public final class QuadWriter {
             // 纹理表未命中的引用已在烘焙期解析为 CatAtlas missing（紫黑格）；
             // iconOverride（破坏贴花注入的 vanilla destroy_stage_N）属原版图集空间，
             // 与破坏批次（flushInline）绑定的原版 blocks 图集一致。
+            // [Hot Update 撤回方案] 原版后端（默认）：quad 携带 vanilla IIcon（原版空间
+            // UV），与 chunk 批次绑定的原版 blocks 图集一致，同一无分支写入循环适用。
             // World rendering samples CatSprite UVs directly against the CatAtlas;
             // the destroy overlay icon belongs to the vanilla atlas bound by its batch.
             IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;

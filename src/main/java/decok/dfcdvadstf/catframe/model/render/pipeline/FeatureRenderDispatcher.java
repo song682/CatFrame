@@ -160,6 +160,10 @@ public final class FeatureRenderDispatcher {
     /**
      * 内联 flush（用于 {@link RenderPhase#BLOCK_DESTROY}）。
      * <p>
+     * [Hot Update 撤回方案] 原版后端（默认）下亦承接 {@link RenderPhase#BLOCK_WORLD}：
+     * 世界方块在 chunk 编译时内联写入原版批次（quad 携带原版图集 UV，批次绑定
+     * 原版 blocks 图集），两者共用同一“只写顶点、不碰 GL 状态”契约。
+     * <p>
      * 破坏贴花发生在原版 {@code drawBlockDamageTexture} 的 startDrawingQuads 批次内部
      * （vanilla 已绑定 blocks atlas，GL 状态由其统一管理），因此本方法只写顶点到当前
      * Tessellator，<b>不</b> {@code startDrawingQuads}/{@code draw}、<b>不</b>绑定纹理、

@@ -50,6 +50,13 @@ public class VanillaTextureTracker {
     static final Set<String> pendingTextures = new LinkedHashSet<>();
     static final Set<String> pendingItemTextures = new LinkedHashSet<>();
     public static final Map<String, IIcon> textureIcons = new ConcurrentHashMap<>();
+    // [Hot Update 撤回方案] 原版后端诊断补偿：本轮 stitch 周期内 CatFrame 注册进原版
+    // TextureMap 的键（模型驱动 + 定义驱动），Post 阶段与上传结果对比逐条 warn，
+    // 找回 CatAtlas 时代的查表可诊断性（原版 missing 是静默的）。
+    // Registered-key tracking for the vanilla backend: compared against the
+    // upload results at Post so missing textures are reported explicitly.
+    static final Set<String> registeredBlockKeys = new LinkedHashSet<>();
+    static final Set<String> registeredItemKeys = new LinkedHashSet<>();
     // vanilla sprite 快照表：texturePath → 原版收集循环的 vanilla IIcon（publish 前快照）。
     // 世界渲染（BLOCK_WORLD/BLOCK_DESTROY）绑定 vanilla blocks 图集（chunk 混批约束下
     // 无法换绑 CatAtlas），QuadWriter 用本表把 CatSprite（CatAtlas 空间 UV）换回原版
@@ -143,10 +150,12 @@ public class VanillaTextureTracker {
      * Call during TextureStitchEvent.Pre when getTextureType() == 0.
      */
     public static void registerTextures(TextureMap map) {
+        registeredBlockKeys.clear(); // 每轮 stitch 重建诊断键集合
         for (String texturePath : pendingTextures) {
             String iconName = toVanillaKey(texturePath, false);
             if (iconName != null && !iconName.isEmpty()) {
                 map.registerIcon(iconName);
+                registeredBlockKeys.add(iconName);
             }
         }
     }
@@ -156,11 +165,49 @@ public class VanillaTextureTracker {
      * Call during TextureStitchEvent.Pre when getTextureType() == 1.
      */
     public static void registerItemTextures(TextureMap map) {
+        registeredItemKeys.clear(); // 每轮 stitch 重建诊断键集合
         for (String texturePath : pendingItemTextures) {
             String iconName = toVanillaKey(texturePath, true);
             if (iconName != null && !iconName.isEmpty()) {
                 map.registerIcon(iconName);
+                registeredItemKeys.add(iconName);
             }
+        }
+    }
+
+    /**
+     * [Hot Update 撤回方案] 登记一个已注册进原版图集的键（供 Post 诊断补偿对比）。
+     * 由 {@code CatAtlasManager.registerDefinedSprites}（定义驱动输出端）与
+     * {@link #registerTextures}/{@link #registerItemTextures}（模型驱动）共同写入。
+     */
+    public static void trackRegisteredKey(String key, boolean itemAtlas) {
+        if (key == null || key.isEmpty()) return;
+        (itemAtlas ? registeredItemKeys : registeredBlockKeys).add(key);
+    }
+
+    /**
+     * [Hot Update 撤回方案] 诊断补偿：把本轮注册键集合与图集上传结果对比，
+     * 未成功上传（{@code getAtlasSprite} 回落到 missingImage 实例）逐条 warn。
+     * 原版缝合对加载失败的 sprite 是静默 copyFrom(missingImage)，本方法把
+     * Stage 5 查表语义的可诊断性在原版后端上找回来。
+     * <p>
+     * Diagnostic compensation: registered keys whose sprite fell back to the
+     * missing image are reported one by one (vanilla fails silently).
+     */
+    static void verifyUploaded(TextureMap map, Set<String> keys, String what) {
+        if (keys.isEmpty()) return;
+        net.minecraft.client.renderer.texture.TextureAtlasSprite missing = map.getAtlasSprite("missingno");
+        int missed = 0;
+        for (String key : keys) {
+            if (map.getAtlasSprite(key) == missing) {
+                missed++;
+                CatFrame.logger.warn("[VTT-diag] texture error: registered '{}' not uploaded to {} atlas, "
+                        + "renders missingno (file missing or decode failed)", key, what);
+            }
+        }
+        if (missed == 0) {
+            CatFrame.logger.info("[VTT-diag] {} atlas: all {} registered keys uploaded successfully",
+                    what, keys.size());
         }
     }
 
@@ -225,6 +272,9 @@ public class VanillaTextureTracker {
                 blockCollected, blockMissed, itemCollected, itemMissed,
                 textureIcons.size());
 
+        // [Hot Update 撤回方案] 诊断补偿：注册键 vs 上传结果对比（blocks 图集）
+        verifyUploaded(map, registeredBlockKeys, "blocks");
+
         // 发布自定义图集 sprite：必须置于原版 icon 收集循环之后（循环会用 vanilla sprite
         // 覆盖 Pre 阶段产物）、烘焙屏障之前，保证烘焙永远读到 CatSprite UV。
         // Publish CatAtlas sprites AFTER the vanilla collection loops (they would
@@ -279,6 +329,8 @@ public class VanillaTextureTracker {
                 }
             }
         }
+        // [Hot Update 撤回方案] 诊断补偿：注册键 vs 上传结果对比（items 图集）
+        verifyUploaded(itemMap, registeredItemKeys, "items");
         // 重新发布自定义图集 sprite：原版 item 收集循环会用 vanilla sprite 覆盖
         // type-0 Post 发布的 CatSprite，此处幂等覆盖回去（烘焙屏障前）。
         // Re-publish CatSprites: the vanilla item loop above overwrote them with

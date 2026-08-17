@@ -1,23 +1,25 @@
 package decok.dfcdvadstf.catframe.model.render.pipeline;
 
+import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 
 /**
- * 渲染作用域门面，对标原版 26w+ 管线中"begin submit → 累积 → end flush"的提交作用域。
+ * 渲染作用域门面，对标原版 26w+ 管线中“begin submit → 累积 → end flush”的提交作用域。
  * <p>
  * 以 {@link ThreadLocal} 持有当前活动的 {@link SubmitNodeStorage}（客户端渲染单线程），
  * 支持可重入嵌套（composite / dual 模型多次进入 render）。
  *
  * <h3>三种提交路径</h3>
  * <ul>
- *   <li><b>世界方块</b>（{@link RenderPhase#BLOCK_WORLD}）：收集到
- *       {@link WorldRenderBuffer}，在 {@code RenderWorldEvent.Post} 时绑定 CatAtlas
- *       批量绘制（不再内联写入 vanilla chunk Tessellator —— 该批次绑定原版图集，
- *       CatSprite 的 CatAtlas UV 会采样错位）。</li>
+ *   <li><b>世界方块</b>（{@link RenderPhase#BLOCK_WORLD}）：CatAtlas 后端（实验性开关）
+ *       收集到 {@link WorldRenderBuffer}，在 {@code RenderWorldEvent.Post} 时绑定 CatAtlas
+ *       批量绘制；原版后端（默认）则经 {@link FeatureRenderDispatcher#flushInline} 内联
+ *       写入当前 chunk Tessellator（批次绑定原版 blocks 图集，quad 携带原版 UV，
+ *       无 GL 调用，天然兼容 Beddium 多线程区块编译）。</li>
  *   <li><b>作用域内</b>：有活动作用域时累积到 {@link SubmitNodeStorage}，
  *       {@link #endScope()} 计数归零时按注册表排序键批量 flush。</li>
  *   <li><b>无作用域回退</b>：任何未被 {@link #beginScope()} 包裹的调用路径，
- *       即时以"单项作用域"批量 flush —— 与改造前单次 draw 行为完全一致，零回归。</li>
+ *       即时以“单项作用域”批量 flush —— 与改造前单次 draw 行为完全一致，零回归。</li>
  * </ul>
  */
 public final class RenderCommandBuffers {
@@ -73,10 +75,18 @@ public final class RenderCommandBuffers {
      * @param s 不可变渲染快照
      */
     public static void submit(RenderSubmit s) {
-        // 世界方块渲染：收集到世界缓冲（可能从后台线程进入，缓冲内部加锁），
+        // 世界方块渲染：CatAtlas 后端收集到世界缓冲（可能从后台线程进入，缓冲内部加锁），
         // 由 RenderWorldEvent.Post 时 flushWorld 绑定 CatAtlas 批量绘制。
+        // [Hot Update 撤回方案] 原版后端（默认）：内联写入当前 chunk Tessellator ——
+        // 不绑纹理（vanilla 已绑 blocks 图集）、不改 GL 状态，quad 携带原版图集 UV，
+        // 天然兼容 Beddium 后台线程（见 FeatureRenderDispatcher.flushInline）。
+        // Vanilla backend routes BLOCK_WORLD straight into the chunk batch.
         if (s.phase == RenderPhase.BLOCK_WORLD) {
-            WorldRenderBuffer.submit(s);
+            if (CatFrameConfig.catAtlasBackend) {
+                WorldRenderBuffer.submit(s);
+            } else {
+                FeatureRenderDispatcher.flushInline(s);
+            }
             return;
         }
 

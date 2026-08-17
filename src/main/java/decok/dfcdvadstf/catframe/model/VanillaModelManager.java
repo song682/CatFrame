@@ -80,14 +80,20 @@ public class VanillaModelManager {
          * <p>Vanilla-atlas base-path key: strips namespace and the block/blocks/
          * item/items prefixes. The data-driven CatAtlas identity is managed
          * separately by {@code CatAtlasManager}.
+         *
+         * <p>[Hot Update 撤回方案] 键策略收敛：namespace 剥离仅对 minecraft 生效
+         * （扁平键与 {@code block.registerBlockIcons()} 幂等重合，OptiFine CTM 按名字
+         * 匹配分毫不差）；其他命名空间保留为 {@code modid:name}（{@code ResourceLocation}
+         * 解析 domain，落到 {@code modid:textures/blocks/<name>.png}），跨 mod 永不撞键。
+         * Key strategy: the namespace is stripped only for minecraft (flat keys stay
+         * idempotent with vanilla registration and OptiFine CTM name matching);
+         * other namespaces keep {@code modid:name} to avoid cross-mod collisions.
          */
         public static String toVanillaBaseKey(String texturePath) {
             if (texturePath == null) return null;
-            String pathPart = texturePath;
             int colon = texturePath.indexOf(':');
-            if (colon >= 0) {
-                pathPart = texturePath.substring(colon + 1);
-            }
+            String namespace = colon >= 0 ? texturePath.substring(0, colon) : "minecraft";
+            String pathPart = colon >= 0 ? texturePath.substring(colon + 1) : texturePath;
             if (pathPart.startsWith("blocks/")) {
                 pathPart = pathPart.substring("blocks/".length());
             } else if (pathPart.startsWith("items/")) {
@@ -97,7 +103,9 @@ public class VanillaModelManager {
             } else if (pathPart.startsWith("item/")) {
                 pathPart = pathPart.substring("item/".length());
             }
-            return pathPart;
+            // minecraft → 扁平键；其余命名空间 → "modid:name"（跨 mod 不撞键）
+            // minecraft → flat key; other namespaces → "modid:name" (collision-free)
+            return "minecraft".equals(namespace) ? pathPart : namespace + ":" + pathPart;
         }
 
         @Nullable

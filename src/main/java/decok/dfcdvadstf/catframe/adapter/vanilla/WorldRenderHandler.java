@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.adapter.vanilla;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.model.render.pipeline.WorldRenderBuffer;
 import net.minecraftforge.client.event.RenderWorldEvent;
 
@@ -21,6 +22,13 @@ public class WorldRenderHandler {
 
     @SubscribeEvent
     public void onRenderWorldPost(RenderWorldEvent.Post event) {
+        // [Hot Update 撤回方案] 原版后端（默认）：BLOCK_WORLD 已在 chunk 编译时内联
+        // 写入原版批次，缓冲恒为空 —— 门控防开关切换遗留数据被 Post 路径绘制。
+        // Vanilla backend: world quads were already written inline during chunk
+        // builds; the gate prevents any leftover buffer from being flushed here.
+        if (!CatFrameConfig.catAtlasBackend) {
+            return;
+        }
         WorldRenderBuffer.flushAndClear();
     }
 }

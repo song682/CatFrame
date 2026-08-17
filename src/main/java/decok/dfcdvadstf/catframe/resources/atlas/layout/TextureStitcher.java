@@ -21,14 +21,14 @@ import java.util.List;
  *   <li>padding：{@code 1 << mipLevel << clamp(anisotropyBit - 1, 0, 4)} 每 sprite 单边，
  *       防止 mipmap 采样在相邻 sprite 间渗色。</li>
  * </ul>
- * 纯 CPU 布局，不触碰 GL。容量不足时抛 {@link CatStitchException}（携带全部未放置 sprite 清单）。
+ * 纯 CPU 布局，不触碰 GL。容量不足时抛 {@link TextureStitchException}（携带全部未放置 sprite 清单）。
  *
  * <p>Direct port of the 26.1.2 {@code Stitcher}: height-desc → width-desc → name
  * sort, recursive region splitting, short-edge-first power-of-two expansion.
  * Pure CPU layout with no GL access.
  */
 @SideOnly(Side.CLIENT)
-public class CatStitcher {
+public class TextureStitcher {
 
     /** 排序比较器：高度降序 → 宽度降序 → 名称（与 26.1.2 HOLDER_COMPARATOR 一致）。 */
     private static final Comparator<Holder> HOLDER_COMPARATOR = Comparator
@@ -54,7 +54,7 @@ public class CatStitcher {
      * @param mipLevel      全局 mip 级别（决定 padding 与最小纹素对齐）
      * @param anisotropyBit 各向异性过滤级别（1 = 关闭）
      */
-    public CatStitcher(int maxWidth, int maxHeight, int mipLevel, int anisotropyBit) {
+    public TextureStitcher(int maxWidth, int maxHeight, int mipLevel, int anisotropyBit) {
         this.maxWidth = maxWidth;
         this.maxHeight = maxHeight;
         this.mipLevel = mipLevel;
@@ -88,7 +88,7 @@ public class CatStitcher {
     }
 
     /**
-     * 执行布局。任一个 holder 无法放入（任一轴将超过上限）时抛 {@link CatStitchException}，
+     * 执行布局。任一个 holder 无法放入（任一轴将超过上限）时抛 {@link TextureStitchException}，
      * 异常携带全部未放置 sprite 清单。
      */
     public void stitch() {
@@ -101,7 +101,7 @@ public class CatStitcher {
                 for (Holder h : holders) {
                     unplaced.add(h.sprite.getIconName());
                 }
-                throw new CatStitchException(holder.sprite.getIconName(), unplaced,
+                throw new TextureStitchException(holder.sprite.getIconName(), unplaced,
                         this.storageX, this.storageY, this.maxWidth, this.maxHeight);
             }
         }

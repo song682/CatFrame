@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.core.async.RenderExecutors;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderTypeRegistry;
@@ -11,6 +12,7 @@ import decok.dfcdvadstf.catframe.resources.atlas.source.AtlasSource;
 import decok.dfcdvadstf.catframe.resources.atlas.source.FilterSource;
 import decok.dfcdvadstf.catframe.resources.atlas.source.SpriteRef;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
@@ -99,6 +101,15 @@ public final class CatAtlasManager {
     public static void stitch() {
         release();
         sprites.clear();
+
+        // [Hot Update 撤回方案] 开关关闭（原版后端）时自研缝合整体短路：
+        // 定义驱动收集改由 registerDefinedSprites 喂入原版 TextureMap。
+        // Experimental switch off: vanilla backend feeds the definitions into
+        // the vanilla TextureMap instead of the self-stitched atlas.
+        if (!CatFrameConfig.catAtlasBackend) {
+            CatFrame.logger.info("[CatAtlas] catAtlasBackend=false (vanilla backend), self-stitch skipped");
+            return;
+        }
 
         // 硬上限：min(GL_MAX_TEXTURE_SIZE, 16384)（主线程 GL 上下文读取）
         int maxTextureSize = Math.min(GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE), MAX_ATLAS_SIZE);
@@ -350,9 +361,61 @@ public final class CatAtlasManager {
         if (sprites.isEmpty()) {
             return;
         }
+        // [Hot Update 撤回方案] 原版后端下 sprites 恒为空（stitch 短路），
+        // 上方早退即天然短路；此处再加显式门控防开关切换中途的意外发布。
+        // Vanilla backend: sprites is always empty (stitch is short-circuited);
+        // the explicit gate guards against mid-switch accidental publication.
+        if (!CatFrameConfig.catAtlasBackend) {
+            return;
+        }
         textureIcons.putAll(sprites);
         CatFrame.logger.info("[CatAtlas] published {} CatSprites into textureIcons (size={})",
                 sprites.size(), textureIcons.size());
+    }
+
+    /**
+     * [Hot Update 撤回方案] 原版后端输出端：把图集定义（{@code atlases/<id>.json}
+     * sources）的产物 sprite id 经键变换后 {@code registerIcon} 进原版
+     * {@link TextureMap}，由原版缝合器完成布局 + 上传。在
+     * {@code TextureStitchEvent.Pre}（type 0 → blocks 图集定义，type 1 → items 图集定义）
+     * 调用，早于原版 {@code loadTextureAtlas} 的 sprite 加载循环。
+     * <p>
+     * 仅可表达<b>素引用</b>（spriteId == resource 且无像素变换）；带 unstitch /
+     * paletted_permutations 等像素变换或多图集目标的定义产物原版无法表达，
+     * 记日志挂起（待切回 CatAtlas 后端时恢复）。
+     * <p>
+     * Vanilla-backend output: definition-driven sprite ids are key-transformed
+     * and registered into the vanilla TextureMap at stitch Pre; refs carrying
+     * pixel transforms cannot be expressed by vanilla stitching and are parked
+     * with a log until the CatAtlas backend is re-enabled.
+     *
+     * @param map 当前缝合中的原版图集（type 0 blocks / type 1 items）
+     */
+    public static void registerDefinedSprites(TextureMap map) {
+        boolean itemAtlas = map.getTextureType() == 1;
+        String atlasId = itemAtlas ? ITEM_ATLAS_ID : BLOCK_ATLAS_ID;
+        Map<String, List<AtlasSource>> defs = AtlasDefinitionLoader.loadAll();
+        List<SpriteRef> refs = collectRefs(atlasId, defs);
+        int registered = 0, parked = 0;
+        for (SpriteRef ref : refs) {
+            // 像素变换 / 重命名引用原版缝合无法表达 → 记日志挂起
+            // Transform/rename refs are parked: vanilla stitching cannot express them
+            if (ref.transform() != null || !ref.resource().equals(ref.spriteId())) {
+                parked++;
+                CatFrame.logger.info("[CatAtlas] vanilla backend: '{}' parked (requires CatAtlas backend: transform={})",
+                        ref.spriteId(), ref.transform() != null);
+                continue;
+            }
+            String key = VanillaTextureTracker.toVanillaKey(ref.spriteId().toString(), itemAtlas);
+            if (key == null || key.isEmpty()) {
+                continue;
+            }
+            map.registerIcon(key);
+            VanillaTextureTracker.trackRegisteredKey(key, itemAtlas);
+            registered++;
+        }
+        CatFrame.logger.info("[CatAtlas] vanilla backend feed: atlas='{}' registered={} parked={}",
+                atlasId, registered, parked);
     }
 
     /**

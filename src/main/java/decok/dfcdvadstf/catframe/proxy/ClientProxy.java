@@ -17,6 +17,7 @@ import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesInHandTintPro
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.RedstoneWireTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
+import decok.dfcdvadstf.catframe.ui.UiTextureAtlasManager;
 import decok.dfcdvadstf.catframe.ui.components.ActionBarOverlay;
 import decok.dfcdvadstf.catframe.ui.components.TitleOverlay;
 import decok.dfcdvadstf.catframe.ui.components.toast.ToastOverlay;
@@ -48,6 +49,9 @@ public class ClientProxy extends CommonProxy {
         // [渲染三域架构] WorldRenderHandler 已退役：原版后端下 BLOCK_WORLD 在 chunk
         // 编译时内联写入原版批次，Post 路径无消费者。
         MinecraftForge.EVENT_BUS.register(new GuiTextureStitchHandler());
+        // [渲染三域架构] UI 图集本体：订阅 GuiTextureStitchEvent 三阶段（Pre 收集/
+        // On 缝合上传/Post 发布查表），驱动 catframe:ui 自建 GUI 图集。
+        MinecraftForge.EVENT_BUS.register(new UiTextureAtlasManager());
 
         OverlayManager.INSTANCE.register(ActionBarOverlay.INSTANCE);
         OverlayManager.INSTANCE.register(TitleOverlay.INSTANCE);

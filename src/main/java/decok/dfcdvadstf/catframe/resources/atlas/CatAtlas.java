@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * CatFrame 自研纹理图集实现 —— CPU 组装 + OpenGL 上传 + sprite 查找。
+ * CatFrame 纹理图集实现 —— CPU 组装 + OpenGL 上传 + sprite 查找。
  * <p>
  * 职责（对标 26.1.2 {@code TextureAtlas}，适配 1.7.10 无 GPU blit 管线）：
  * <ul>
@@ -30,6 +30,12 @@ import java.util.Map;
  *   <li>同时实现 {@link ITextureObject}，可经 TextureManager 以
  *       {@code catframe:atlas/<id>} 注册，渲染层绑定零结构改动。</li>
  * </ul>
+ * <p>
+ * [渲染三域架构] 本类现为<b>纯 UI 图集工具</b>（CatAtlas blocks/items 自研缝合链已退役）：
+ * 由 {@code UiTextureAtlasManager} 驱动缝合 {@code catframe:ui} 图集。构造参数
+ * {@code mipmapEnabled} 控制是否生成 mip 链：UI 域红线 = <b>无 mipmap</b>（GUI 素材
+ * 1:1 正交绘制，mip 无收益且引入渗色风险），传 {@code false}；旧 blocks/items 时代
+ * 的 mip 路径保留为通用能力（mipLevel 0 时全链路自动短路）。
  * <p>
  * <b>通道转换</b>：本地像素为 Java int ARGB（bits 24-31=A, 16-23=R, 8-15=G, 0-7=B），
  * GL 期望 R,G,B,A 字节序 —— 上传时显式重排（与 {@code AtlasPixelCache} 回读的
@@ -55,8 +61,10 @@ import java.util.Map;
 @SideOnly(Side.CLIENT)
 public class CatAtlas implements IAtlas, ITextureObject {
 
-    /** 图集 id（如 {@code minecraft:blocks}）。 */
+    /** 图集 id（如 {@code minecraft:blocks} / {@code catframe:ui}）。 */
     private final String atlasId;
+    /** 是否生成 mip 链（UI 域恒 false：无 mipmap 红线；false 时 mip 相关链路全部短路）。 */
+    private final boolean mipmapEnabled;
     /** 图集内 sprite 查找表：texturePath（发布键）→ CatSprite。
      *  键用发布键而非 iconName —— missing sprite 的 iconName 恒为 "missingno"，
      *  用 iconName 会让多个缺失 sprite 互相覆盖；发布键唯一。 */
@@ -78,10 +86,12 @@ public class CatAtlas implements IAtlas, ITextureObject {
     private int mipLevel;
 
     /**
-     * @param atlasId 图集 id（{@code IAtlas#getAtlasName()} 即此值）
+     * @param atlasId       图集 id（{@code IAtlas#getAtlasName()} 即此值）
+     * @param mipmapEnabled 是否生成 mip 链；UI 图集（{@code catframe:ui}）传 false（无 mipmap 红线）
      */
-    public CatAtlas(String atlasId) {
+    public CatAtlas(String atlasId, boolean mipmapEnabled) {
         this.atlasId = atlasId;
+        this.mipmapEnabled = mipmapEnabled;
     }
 
     /**
@@ -101,7 +111,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
             return;
         }
 
-        int mipLevel = computeGlobalMipLevel(sprites);
+        int mipLevel = mipmapEnabled ? computeGlobalMipLevel(sprites) : 0;
         int anisotropyBit = Minecraft.getMinecraft().gameSettings.anisotropicFiltering;
         CatFrame.logger.info("[CatAtlas] '{}' stitching {} sprites | mip={} aniso={}",
                 atlasId, sprites.size(), mipLevel, anisotropyBit);

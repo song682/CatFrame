@@ -4,8 +4,6 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
-import decok.dfcdvadstf.catframe.resources.atlas.source.AtlasSource;
-import decok.dfcdvadstf.catframe.resources.atlas.source.FilterSource;
 import decok.dfcdvadstf.catframe.resources.atlas.source.SpriteRef;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -13,8 +11,6 @@ import net.minecraft.util.IIcon;
 
 import javax.annotation.Nullable;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -81,8 +77,8 @@ public final class CatAtlasManager {
     public static void registerDefinedSprites(TextureMap map) {
         boolean itemAtlas = map.getTextureType() == 1;
         String atlasId = itemAtlas ? ITEM_ATLAS_ID : BLOCK_ATLAS_ID;
-        Map<String, List<AtlasSource>> defs = AtlasDefinitionLoader.loadAll();
-        List<SpriteRef> refs = collectRefs(atlasId, defs);
+        // [渲染三域架构] 定义驱动收集已提取为共用件（AtlasDefinitionLoader.collectRefs）
+        List<SpriteRef> refs = AtlasDefinitionLoader.collectRefs(atlasId);
         int registered = 0, parked = 0;
         for (SpriteRef ref : refs) {
             // 像素变换 / 重命名引用原版缝合无法表达 → 记日志挂起
@@ -103,62 +99,6 @@ public final class CatAtlasManager {
         }
         CatFrame.logger.info("[CatAtlas] vanilla backend feed: atlas='{}' registered={} parked={}",
                 atlasId, registered, parked);
-    }
-
-    /**
-     * 定义驱动收集：atlas JSON 的 sources 按序产出 sprite ref，id 原样采用（数据驱动键）。
-     * <ol>
-     *   <li>filter 源命中 → 移除（仅作用于定义驱动集合）；</li>
-     *   <li>重复 sprite id → warn + 跳过（先入者胜，同 pack 覆盖语义）；</li>
-     *   <li>SpriteRef 的 atlasId 覆盖字段仅 debug 记录（原版输出端只消费 blocks/items
-     *       两个图集的定义，其余 atlas id 由各自消费方处理）。</li>
-     * </ol>
-     */
-    private static List<SpriteRef> collectRefs(String atlasId, Map<String, List<AtlasSource>> defs) {
-        LinkedHashMap<String, SpriteRef> merged = new LinkedHashMap<>();
-        List<AtlasSource> sources = defs.get(atlasId);
-        if (sources != null) {
-            for (AtlasSource source : sources) {
-                List<SpriteRef> refs;
-                try {
-                    refs = source.list(Minecraft.getMinecraft().getResourceManager());
-                } catch (RuntimeException e) {
-                    CatFrame.logger.warn("[CatAtlas] source '{}' in atlas '{}' failed, skipping: {}",
-                            source.type(), atlasId, e.getMessage());
-                    continue;
-                }
-                for (SpriteRef ref : refs) {
-                    String spriteId = ref.spriteId().toString();
-                    if (isFiltered(sources, spriteId)) {
-                        continue;
-                    }
-                    if (merged.containsKey(spriteId)) {
-                        CatFrame.logger.warn(
-                                "[CatAtlas] duplicate sprite '{}' in atlas '{}': earlier entry wins, later skipped",
-                                spriteId, atlasId);
-                        continue;
-                    }
-                    if (ref.atlasId() != null && !atlasId.equals(ref.atlasId().toString())) {
-                        CatFrame.logger.debug("[CatAtlas] sprite '{}' targets atlas '{}' != current '{}', "
-                                        + "kept in current atlas (CatFrame feeds vanilla blocks/items only)",
-                                spriteId, ref.atlasId(), atlasId);
-                    }
-                    merged.put(spriteId, ref);
-                }
-            }
-        }
-        return new ArrayList<>(merged.values());
-    }
-
-    /** 定义驱动集合中是否被任一 filter 源命中移除。 */
-    private static boolean isFiltered(List<AtlasSource> sources, String spriteId) {
-        for (AtlasSource source : sources) {
-            if (source instanceof FilterSource && source.shouldRemove(spriteId)) {
-                CatFrame.logger.debug("[CatAtlas] filter removed '{}'", spriteId);
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

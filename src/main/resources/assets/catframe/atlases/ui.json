@@ -1,0 +1,34 @@
+{
+    "sources": [
+        {
+            "type": "minecraft:directory",
+            "source": "gui/seperator",
+            "prefix": "gui/seperator/"
+        },
+        {
+            "type": "minecraft:directory",
+            "source": "gui/tabs",
+            "prefix": "gui/tabs/"
+        },
+        {
+            "type": "minecraft:directory",
+            "source": "gui/toast",
+            "prefix": "gui/toast/"
+        },
+        {
+            "type": "minecraft:directory",
+            "source": "gui/toast/icons",
+            "prefix": "gui/toast/icons/"
+        },
+        {
+            "type": "minecraft:directory",
+            "source": "gui/tooltips",
+            "prefix": "gui/tooltips/"
+        },
+        {
+            "type": "minecraft:directory",
+            "source": "gui/widgets",
+            "prefix": "gui/widgets/"
+        }
+    ]
+}

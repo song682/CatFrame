@@ -6,6 +6,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.ui.UiTextureAtlasManager;
 import decok.dfcdvadstf.catframe.ui.components.toast.SimpleToast;
 import decok.dfcdvadstf.catframe.ui.components.toast.ToastOverlay;
 import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
@@ -91,6 +92,8 @@ public class ClientOverlayHandler {
             return;
         }
         OverlayManager.INSTANCE.updateAll();
+        // [渲染三域架构] UI 图集动画 tick（CatAtlas 区域重传；素材静态时零开销）
+        UiTextureAtlasManager.tickAnimations();
     }
 
     /**

@@ -9,13 +9,18 @@ import net.minecraftforge.client.event.RenderWorldEvent;
 
 /**
  * 世界渲染后期处理器：在 {@code RenderWorldEvent.Post}（vanilla 全部 chunk 批次
- * 绘制完成后、雾状态仍有效时）批量 flush CatFrame 方块 —— 绑定 CatAtlas 绘制，
- * quad 携带的 CatSprite（CatAtlas 空间 UV）直接采样；纹理表未命中的引用已在
- * 烘焙期解析为 CatAtlas missing（紫黑格）。
+ * 绘制完成后、雾状态仍有效时）处理 CatFrame 世界方块的收尾绘制。
  * <p>
- * Flushes the buffered CatFrame world blocks after the vanilla world pass, bound
- * to the CatAtlas; table misses were already resolved to the CatAtlas missing
- * square during baking.
+ * [Hot Update 撤回方案] 默认原版后端（{@code catAtlasBackend=false}）：BLOCK_WORLD
+ * 已在 chunk 编译时内联写入原版批次，此处直接返回；仅当实验性 CatAtlas 后端开启时，
+ * 才在此批量 flush WorldRenderBuffer（绑定 CatAtlas，quad 携带的 CatSprite 空间 UV
+ * 直接采样，纹理表未命中引用已在烘焙期解析为 CatAtlas missing 紫黑格）。
+ * <p>
+ * World pass post processor: final flush of CatFrame world blocks after the vanilla
+ * chunk pass. With the default vanilla backend the quads are already written inline
+ * during chunk builds, so this handler is a no-op; with the experimental CatAtlas
+ * backend it flushes the buffered world quads bound to the CatAtlas (CatSprite UVs,
+ * table misses resolved to the missing square during baking).
  */
 @SideOnly(Side.CLIENT)
 public class WorldRenderHandler {

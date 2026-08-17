@@ -252,11 +252,11 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
             ctx.iconOverride = opaqueIcon;
             return;
         }
-        // 物品阶段：渲染绑定 CatAtlas，vanilla sprite（原版图集 UV 空间）会导致采样错位
-        // （树叶物品贴 jukebox_top 症状）。优先换用 CatAtlas 中同名 CatSprite；CatAtlas
-        // 无此纹理时跳过 override，退回模型正常纹理（其 CatSprite 必有，UV 正确）。
-        // Item phases bind the CatAtlas: prefer the CatSprite twin of the _opaque
-        // texture; without one, skip the override so the normal model texture drives.
+        // [渲染三域架构] CatAtlas 已退役：findSprite 恒返回 null，物品阶段恒跳过
+        // override，退回模型正常纹理（quad 携带原版图集空间 UV，与 flushBatched 绑定的
+        // 原版图集一致，无采样错位）。CatSprite 换绑逻辑保留仅为 findSprite 契约存续。
+        // CatAtlas retired: findSprite is always null, so item phases skip the
+        // override and the normal model texture (vanilla-atlas UV space) drives.
         CatSprite catOpaque = CatAtlasManager.findSprite(opaqueIcon.getIconName());
         if (catOpaque != null) {
             ctx.iconOverride = catOpaque;

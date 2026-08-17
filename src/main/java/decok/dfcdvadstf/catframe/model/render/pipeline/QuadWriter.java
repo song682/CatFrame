@@ -38,14 +38,11 @@ public final class QuadWriter {
     /**
      * 写入方块 quads（世界 / 破坏贴图）。迁移自原 {@code renderBlockQuads} 的 for-quad 循环。
      * <p>
-     * 世界渲染（BLOCK_WORLD）由 {@code RenderWorldEvent.Post} 批次绑定 CatAtlas 绘制，
-     * quad 携带的 CatSprite（CatAtlas 空间 UV）直接采样；破坏贴花（BLOCK_DESTROY）仍由
-     * {@code flushInline} 写入 vanilla destroy 批次（绑定原版 blocks 图集），其
-     * iconOverride 为原版 destroy_stage_N（原版图集空间），与批次绑定一致。
-     * <p>
-     * [Hot Update 撤回方案] 原版后端（默认）：BLOCK_WORLD 由 {@code flushInline} 内联写入
+     * [渲染三域架构] 原版后端唯一路径：BLOCK_WORLD 由 {@code flushInline} 内联写入
      * chunk 批次（绑定原版 blocks 图集），烘焙期 quad 携带的即 vanilla IIcon（原版空间
-     * UV），本方法逐顶点逻辑无需分支，两种后端共用同一写入循环。
+     * UV）；破坏贴花（BLOCK_DESTROY）同由 {@code flushInline} 写入 vanilla destroy 批次
+     * （同样绑定原版 blocks 图集），其 iconOverride 为原版 destroy_stage_N，与批次
+     * 绑定一致。两者共用同一无分支写入循环。
      *
      * @return 是否写入了任何顶点（供调用方决定是否 {@code t.draw()}）
      */
@@ -71,14 +68,12 @@ public final class QuadWriter {
             if (ctx.skip)
                 continue;
 
-            // 世界渲染绑定 CatAtlas：quad 携带的 CatSprite（CatAtlas 空间 UV）直接采样，
-            // 纹理表未命中的引用已在烘焙期解析为 CatAtlas missing（紫黑格）；
-            // iconOverride（破坏贴花注入的 vanilla destroy_stage_N）属原版图集空间，
-            // 与破坏批次（flushInline）绑定的原版 blocks 图集一致。
-            // [Hot Update 撤回方案] 原版后端（默认）：quad 携带 vanilla IIcon（原版空间
-            // UV），与 chunk 批次绑定的原版 blocks 图集一致，同一无分支写入循环适用。
-            // World rendering samples CatSprite UVs directly against the CatAtlas;
-            // the destroy overlay icon belongs to the vanilla atlas bound by its batch.
+            // [渲染三域架构] 原版后端唯一路径：quad 携带 vanilla IIcon（原版空间 UV），
+            // 与 BLOCK_WORLD chunk 批次 / BLOCK_DESTROY destroy 批次绑定的原版 blocks
+            // 图集一致；iconOverride（破坏贴花注入的 vanilla destroy_stage_N）同属
+            // 原版图集空间。同一无分支写入循环适用。
+            // Vanilla backend only: quad icons live in the vanilla atlas space bound
+            // by both chunk batches and the destroy batch.
             IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
             if (icon == null) {
                 // 防御：无 icon 的 quad（如 solidColor 侧面）跳过

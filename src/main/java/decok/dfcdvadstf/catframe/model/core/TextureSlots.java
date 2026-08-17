@@ -201,61 +201,29 @@ public class TextureSlots {
 
     /**
      * 根据纹理路径查找 IIcon。
-     * 搜索顺序：globalIconMap（仅接受 CatSprite）→ CatAtlas 当前周期 → missingno。
      * <p>
-     * 纹理表 = 数据驱动发布表（atlas 定义 JSON 的产出）；<b>查表未命中 → 直接返回
-     * missingno（紫黑格）</b>，不返回 null、不透明、不做任何兼容纠正，也<b>不查原版图集</b>
-     * —— vanilla sprite 的 UV 是原版图集空间，物品渲染绑定 CatAtlas 时采样必然错乱；
-     * 世界渲染由 QuadWriter.resolveWorldIcon 经 vanillaIcons 快照独立换回原版 UV。
-     * <p>
-     * [Hot Update 撤回方案] 原版后端（默认）语义：textureIcons 直持 vanilla IIcon，
+     * [渲染三域架构] 原版后端语义（唯一路径）：textureIcons 直持 vanilla IIcon，
      * 全部渲染路径（物品作用域 / 世界 chunk 批次）均绑原版图集，UV 空间全局一致 ——
-     * 查表接受任意非空 icon，未命中仍回 missingno（原版空间紫黑格）。
+     * 查表接受任意非空 icon；<b>查表未命中 → 直接返回 missingno（紫黑格）</b>，
+     * 不返回 null、不透明、不做任何兼容纠正。
      * Vanilla backend: globalIconMap holds vanilla IIcons and every render path
-     * binds the vanilla atlases, so any non-null icon is accepted.
+     * binds the vanilla atlases, so any non-null icon is accepted; misses resolve
+     * to missingno (purple-black square).
      */
     @Nullable
     private static IIcon findIcon(String texturePath, @Nullable Map<String, IIcon> globalIconMap) {
         if (texturePath == null || texturePath.isEmpty()) return null;
 
-        // [Hot Update 撤回方案] 原版后端：接受 globalIconMap 中的任意非空 icon
-        // （vanilla IIcon，原版图集 UV；所有渲染路径同绑原版图集，无错配风险）。
-        // Vanilla backend: accept any non-null icon from the map.
-        if (!CatFrameConfig.catAtlasBackend) {
-            IIcon icon = globalIconMap != null ? globalIconMap.get(texturePath) : null;
-            if (icon != null) {
-                return icon;
-            }
-            CatFrame.logger.warn("[TextureSlots] texture error: '{}' not found in texture table, using missingno", texturePath);
-            return CatAtlasManager.getMissingIcon(texturePath);
+        // 接受 globalIconMap 中的任意非空 icon（vanilla IIcon，原版图集 UV；
+        // 所有渲染路径同绑原版图集，无错配风险）。
+        // Accept any non-null icon from the map (vanilla atlas UV space).
+        IIcon icon = globalIconMap != null ? globalIconMap.get(texturePath) : null;
+        if (icon != null) {
+            return icon;
         }
 
-        // 1. 全局映射：只接受 CatFrame 数据驱动产物（CatSprite，含解码失败的 missing
-        //    sprite —— 紫黑格，UV 属 CatAtlas 空间）。原版收集循环残留的 vanilla 值
-        //    （missingImage / 加载失败的空 sprite）必须跳过：它们携带原版图集 UV，
-        //    在 CatAtlas 上采样会得到错乱纹理而非 missingno。
-        //    Only CatFrame data-driven sprites satisfy the lookup; leftover vanilla
-        //    values are skipped because their UVs belong to the vanilla atlas space.
-        if (globalIconMap != null) {
-            IIcon icon = globalIconMap.get(texturePath);
-            if (icon instanceof CatSprite) {
-                return icon;
-            }
-        }
-
-        // 2. CatAtlas 当前周期反查（烘焙时 iconMap 可能为 null / 键缺失）：
-        //    保证 quad 携带 CatFrame UV —— 物品渲染绑定 CatAtlas 时采样正确，
-        //    世界渲染由 resolveWorldIcon 把 CatSprite 换回 vanilla，两路径双正确。
-        //    CatAtlas fallback: prefer the CatSprite so item quads never carry
-        //    vanilla-atlas UVs; world rendering swaps it back via resolveWorldIcon.
-        CatSprite catSprite = CatAtlasManager.findSprite(texturePath);
-        if (catSprite != null) {
-            return catSprite;
-        }
-
-        // 3. 最终兜底：missingno（所属图集的 built-in missing sprite，CatAtlas 空间紫黑格；
-        //    图集未构建时原版 missingImage —— 此时渲染组未换绑，原版 UV 空间正确）。
-        //    Final fallback: missingno (CatAtlas-space purple-black square).
+        // 最终兜底：missingno（原版空间紫黑格）。
+        // Final fallback: missingno (vanilla-space purple-black square).
         CatFrame.logger.warn("[TextureSlots] texture error: '{}' not found in texture table, using missingno", texturePath);
         return CatAtlasManager.getMissingIcon(texturePath);
     }

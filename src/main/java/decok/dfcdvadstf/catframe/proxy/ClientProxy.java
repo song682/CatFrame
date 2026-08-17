@@ -7,7 +7,7 @@ import decok.dfcdvadstf.catframe.command.CommandTitle;
 import decok.dfcdvadstf.catframe.adapter.vanilla.ClientOverlayHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.LanguageReloadListener;
-import decok.dfcdvadstf.catframe.adapter.vanilla.WorldRenderHandler;
+import decok.dfcdvadstf.catframe.adapter.vanilla.model.GuiTextureStitchHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.ResourcePackModelDetector;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.VanillaStateDefinitions;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
@@ -45,7 +45,9 @@ public class ClientProxy extends CommonProxy {
         // Flush CatFrame world blocks after the vanilla world pass, bound to the
         // CatAtlas (the single texture source): table misses already resolved to the
         // CatAtlas missing square during baking.
-        MinecraftForge.EVENT_BUS.register(new WorldRenderHandler());
+        // [渲染三域架构] WorldRenderHandler 已退役：原版后端下 BLOCK_WORLD 在 chunk
+        // 编译时内联写入原版批次，Post 路径无消费者。
+        MinecraftForge.EVENT_BUS.register(new GuiTextureStitchHandler());
 
         OverlayManager.INSTANCE.register(ActionBarOverlay.INSTANCE);
         OverlayManager.INSTANCE.register(TitleOverlay.INSTANCE);

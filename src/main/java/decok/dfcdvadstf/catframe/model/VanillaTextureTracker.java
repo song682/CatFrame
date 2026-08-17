@@ -8,7 +8,6 @@ import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
-import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
@@ -57,17 +56,16 @@ public class VanillaTextureTracker {
     // upload results at Post so missing textures are reported explicitly.
     static final Set<String> registeredBlockKeys = new LinkedHashSet<>();
     static final Set<String> registeredItemKeys = new LinkedHashSet<>();
-    // vanilla sprite 快照表：texturePath → 原版收集循环的 vanilla IIcon（publish 前快照）。
-    // 世界渲染（BLOCK_WORLD/BLOCK_DESTROY）绑定 vanilla blocks 图集（chunk 混批约束下
-    // 无法换绑 CatAtlas），QuadWriter 用本表把 CatSprite（CatAtlas 空间 UV）换回原版
-    // sprite（原版空间 UV），避免 quad 在原版图集上采样错位 → 模糊/空白。
-    // Vanilla sprite snapshot: CatSprite UVs (CatAtlas space) are remapped back to
-    // the vanilla sprite space because world batches bind the vanilla blocks atlas.
+    // vanilla sprite 快照表：texturePath → 原版收集循环的 vanilla IIcon。
+    // [渲染三域架构] CatAtlas 退役后不再被渲染路径消费（QuadWriter 直接使用 quad
+    // 携带的原版空间 IIcon），保留为兼容快照供诊断查询（见 getVanillaIcons）。
+    // Vanilla sprite snapshot table: kept for diagnostic queries after the
+    // CatAtlas retirement; the render path consumes vanilla-space icons directly.
     static final Map<String, IIcon> vanillaIcons = new ConcurrentHashMap<>();
 
     /**
-     * 原版 sprite 快照表（跨包访问入口；CatAtlas 为唯一纹理源后不再被渲染路径消费，
-     * 保留为兼容快照供外部查询）。
+     * 原版 sprite 快照表（跨包访问入口；CatAtlas 退役后渲染路径不再消费，保留为兼容
+     * 快照供外部诊断查询）。
      */
     public static Map<String, IIcon> getVanillaIcons() {
         return vanillaIcons;
@@ -279,7 +277,7 @@ public class VanillaTextureTracker {
         // 覆盖 Pre 阶段产物）、烘焙屏障之前，保证烘焙永远读到 CatSprite UV。
         // Publish CatAtlas sprites AFTER the vanilla collection loops (they would
         // overwrite Pre-stage results) and BEFORE the bake barrier below.
-        CatAtlasManager.publish(textureIcons);
+        // [渲染三域架构] CatAtlas 自研缝合已退役，无自定义 sprite 可发布。
 
         // GPU 回读：在主线程一次性读取图集像素，供异步烘焙线程纯 CPU 读取
         AtlasPixelCache.readAtlas(map, blockIcons);
@@ -331,11 +329,7 @@ public class VanillaTextureTracker {
         }
         // [Hot Update 撤回方案] 诊断补偿：注册键 vs 上传结果对比（items 图集）
         verifyUploaded(itemMap, registeredItemKeys, "items");
-        // 重新发布自定义图集 sprite：原版 item 收集循环会用 vanilla sprite 覆盖
-        // type-0 Post 发布的 CatSprite，此处幂等覆盖回去（烘焙屏障前）。
-        // Re-publish CatSprites: the vanilla item loop above overwrote them with
-        // vanilla sprites; this idempotent merge restores CatSprite UVs pre-barrier.
-        CatAtlasManager.publish(textureIcons);
+        // [渲染三域架构] CatAtlas 自研缝合已退役，无自定义 sprite 可重新发布。
         // GPU 回读 item atlas（此时 UV 是最终态，覆盖 onTextureStitchPost 时的早期数据）
         AtlasPixelCache.readAtlas(itemMap, itemIcons);
         // 不清理 pendingItemTextures —— 保留数据供多次 stitch 重新收集

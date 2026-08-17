@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.adapter.vanilla.model;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
@@ -22,26 +21,18 @@ public class TexturesStitch {
             // 在平台同步点做增量模型发现：第一次方块图集缝合在全体 preInit 之后，
             // 第二次（refreshResources）在整个 FML 生命周期之后 —— 迟到的注册在此补票。
             ModelManagerDataLoader.init();
-            // 自研图集缝合：消费模型驱动纹理集合（pending*），完成布局 + 上传 + 注册，
-            // 产物在 Post 阶段由 VanillaTextureTracker 发布进 textureIcons。
-            // Custom atlas stitch: consumes the model-driven pending sets, runs layout
-            // + upload + registration; publication into textureIcons happens in Post.
-            // [Hot Update 撤回方案] 开关关闭时 stitch() 内部自行短路（原版后端）。
-            CatAtlasManager.stitch();
-            // [Hot Update 撤回方案] 原版后端：定义驱动收集结果喂入原版 blocks 图集。
+            // [渲染三域架构] 原版后端（唯一路径）：把数据驱动收集结果喂入原版 blocks
+            // 图集（registerIcon），由原版缝合器完成布局 + 上传。UI 域素材
+            // （catframe:ui 图集定义）不在此列 —— 走 GuiTextureStitchEvent 独立链。
             // Vanilla backend: feed the definition-driven collection into the map.
-            if (!CatFrameConfig.catAtlasBackend) {
-                CatAtlasManager.registerDefinedSprites(event.map);
-            }
+            CatAtlasManager.registerDefinedSprites(event.map);
             // Register vanilla model textures before atlas is stitched
             VanillaTextureTracker.registerTextures(event.map);
             // Register _opaque leaf textures
             LeavesGraphicsExtension.registerTextures(event.map);
         } else if (event.map.getTextureType() == 1) {
-            // [Hot Update 撤回方案] 原版后端：定义驱动收集结果喂入原版 items 图集。
-            if (!CatFrameConfig.catAtlasBackend) {
-                CatAtlasManager.registerDefinedSprites(event.map);
-            }
+            // [渲染三域架构] 原版后端：把数据驱动收集结果喂入原版 items 图集。
+            CatAtlasManager.registerDefinedSprites(event.map);
             // Register item textures on the item atlas
             VanillaTextureTracker.registerItemTextures(event.map);
         }

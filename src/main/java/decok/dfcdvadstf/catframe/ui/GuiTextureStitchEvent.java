@@ -10,7 +10,7 @@ import cpw.mods.fml.common.eventhandler.Event;
  * 三阶段生命周期（由 {@link decok.dfcdvadstf.catframe.adapter.vanilla.model.GuiTextureStitchHandler}
  * 在原版 {@code TextureStitchEvent} 的资源同步点驱动）：
  * <ol>
- *   <li>{@link Pre} —— 收集：消费 {@code catframe:ui} 图集定义（{@code atlases/ui.json}
+ *   <li>{@link Pre} —— 收集：消费 {@code catframe:gui} 图集定义（{@code atlases/gui.json}
  *       的 sources）产出 sprite 引用；其他模组可订阅本阶段增删素材；</li>
  *   <li>{@link On} —— 缝合：布局（复用 TextureStitcher，无 mipmap）+ GL 上传；</li>
  *   <li>{@link Post} —— 发布：UI 侧 sprite 查表就绪，CatFrame 自家 UI 绘制可取 UV
@@ -26,7 +26,7 @@ import cpw.mods.fml.common.eventhandler.Event;
  */
 public class GuiTextureStitchEvent extends Event {
 
-    /** 收集阶段：catframe:ui 图集定义的 sources 产出 sprite 引用（可订阅增删）。 */
+    /** 收集阶段：catframe:gui 图集定义的 sources 产出 sprite 引用（可订阅增删）。 */
     public static class Pre extends GuiTextureStitchEvent {
     }
 

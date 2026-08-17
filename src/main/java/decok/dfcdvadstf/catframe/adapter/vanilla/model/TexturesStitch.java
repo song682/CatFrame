@@ -23,7 +23,7 @@ public class TexturesStitch {
             ModelManagerDataLoader.init();
             // [渲染三域架构] 原版后端（唯一路径）：把数据驱动收集结果喂入原版 blocks
             // 图集（registerIcon），由原版缝合器完成布局 + 上传。UI 域素材
-            // （catframe:ui 图集定义）不在此列 —— 走 GuiTextureStitchEvent 独立链。
+            // （catframe:gui 图集定义）不在此列 —— 走 GuiTextureStitchEvent 独立链。
             // Vanilla backend: feed the definition-driven collection into the map.
             CatAtlasManager.registerDefinedSprites(event.map);
             // Register vanilla model textures before atlas is stitched

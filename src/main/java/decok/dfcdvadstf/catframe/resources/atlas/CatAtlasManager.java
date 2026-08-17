@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *       缺失语义一致）。</li>
  * </ol>
  * <p>
- * UI 域素材（{@code catframe:ui} 图集定义）不经过本类 —— 由
+ * UI 域素材（{@code catframe:gui} 图集定义）不经过本类 —— 由
  * {@code GuiTextureStitchEvent}（Pre / On / Post）独立事件链驱动，见
  * {@link decok.dfcdvadstf.catframe.adapter.vanilla.model.GuiTextureStitchHandler}。
  *

@@ -50,7 +50,7 @@ public class ClientProxy extends CommonProxy {
         // 编译时内联写入原版批次，Post 路径无消费者。
         MinecraftForge.EVENT_BUS.register(new GuiTextureStitchHandler());
         // [渲染三域架构] UI 图集本体：订阅 GuiTextureStitchEvent 三阶段（Pre 收集/
-        // On 缝合上传/Post 发布查表），驱动 catframe:ui 自建 GUI 图集。
+        // On 缝合上传/Post 发布查表），驱动 catframe:gui 自建 GUI 图集。
         MinecraftForge.EVENT_BUS.register(new UiTextureAtlasManager());
 
         OverlayManager.INSTANCE.register(ActionBarOverlay.INSTANCE);

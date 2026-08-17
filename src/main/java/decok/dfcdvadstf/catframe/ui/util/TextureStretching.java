@@ -1,9 +1,15 @@
 package decok.dfcdvadstf.catframe.ui.util;
 
+import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
+import decok.dfcdvadstf.catframe.ui.UiTextureAtlasManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
+
+import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * <p>
@@ -19,14 +25,168 @@ import org.lwjgl.opengl.GL11;
  * <li>{@link #drawTiled} — 通用平铺</li>
  * </ul>
  *
- * <h3>扩展方式 / Extension</h3>
+ * <h3>UI 图集分流（渲染三域架构：阶段 C）/ UI-atlas routing</h3>
  * <p>
- * 实现 {@link StretchStrategy} 接口即可定义自定义策略。
+ * 传入的 {@link ResourceLocation} 若属于 {@code catframe:gui} 图集（经
+ * {@link UiTextureAtlasManager#resolve} 查到 sprite），则绑定图集 + 按 sprite
+ * UV 绘制（纹理不再经 TextureManager 逐张上传）；非图集纹理保持原路径绑定。
+ * 多次图集绘制可用 {@link #beginBatch()}/{@link #endBatch()} 合并为一次
+ * bind + 一次 draw（批量提交）。
  * </p>
  */
 public final class TextureStretching {
 
     private TextureStretching() {
+    }
+
+    // ──── 批次上下文（批量提交：同图集多段绘制合并一次 bind + draw） ────
+
+    /** 批次收集的 quad（屏幕坐标 + 最终 UV + alpha），endBatch 统一提交。 */
+    private static final class BatchQuad {
+        final float x, y, w, h;
+        final float u1, v1, u2, v2;
+        final float alpha;
+
+        BatchQuad(float x, float y, float w, float h,
+                  float u1, float v1, float u2, float v2, float alpha) {
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = h;
+            this.u1 = u1;
+            this.v1 = v1;
+            this.u2 = u2;
+            this.v2 = v2;
+            this.alpha = alpha;
+        }
+    }
+
+    /** 当前批次收集队列（beginBatch 时清空）。 */
+    private static final List<BatchQuad> BATCH = new ArrayList<>();
+    /** 批次进行中标记。 */
+    private static boolean inBatch = false;
+
+    /**
+     * 绘制绑定解析结果：实际绑定的纹理 + 图集 sprite（非 null 时 UV 走 sprite）。
+     */
+    private static final class DrawBinding {
+        final ResourceLocation bind;
+        @Nullable
+        final CatSprite sprite;
+
+        DrawBinding(ResourceLocation bind, @Nullable CatSprite sprite) {
+            this.bind = bind;
+            this.sprite = sprite;
+        }
+    }
+
+    /**
+     * 纹理 → 绘制绑定：属于 {@code catframe:gui} 图集的纹理解析为图集绑定 + sprite
+     * （UV 由图集查表得出），其余保持原纹理绑定（sprite 为 null）。
+     */
+    private static DrawBinding resolve(ResourceLocation texture) {
+        if (texture != null) {
+            CatSprite sprite = UiTextureAtlasManager.resolve(texture);
+            if (sprite != null) {
+                return new DrawBinding(UiTextureAtlasManager.getAtlasLocation(), sprite);
+            }
+        }
+        return new DrawBinding(texture, null);
+    }
+
+    /**
+     * 开始批量提交：绑定 UI 图集一次，后续图集绘制只收集 quad，
+     * {@link #endBatch()} 统一一次 draw。<br>
+     * Begins a batched draw scope: binds the UI atlas once, subsequent atlas
+     * draws only collect quads, {@code endBatch()} submits them in one draw.
+     */
+    public static void beginBatch() {
+        BATCH.clear();
+        inBatch = true;
+        bindAndPrepare(UiTextureAtlasManager.getAtlasLocation());
+    }
+
+    /**
+     * 结束批量提交：一次 draw 提交全部收集 quad，并关闭批次。
+     * 未在批次中调用时为空操作。<br>
+     * Ends the batched draw scope and submits all collected quads in one draw.
+     */
+    public static void endBatch() {
+        if (!inBatch) {
+            return;
+        }
+        inBatch = false;
+        if (!BATCH.isEmpty()) {
+            Tessellator t = Tessellator.instance;
+            t.startDrawingQuads();
+            for (BatchQuad q : BATCH) {
+                GL11.glColor4f(1.0f, 1.0f, 1.0f, q.alpha);
+                t.addVertexWithUV(q.x, q.y + q.h, 0.0D, q.u1, q.v2);
+                t.addVertexWithUV(q.x + q.w, q.y + q.h, 0.0D, q.u2, q.v2);
+                t.addVertexWithUV(q.x + q.w, q.y, 0.0D, q.u2, q.v1);
+                t.addVertexWithUV(q.x, q.y, 0.0D, q.u1, q.v1);
+            }
+            t.draw();
+            BATCH.clear();
+        }
+        cleanup();
+    }
+
+    /**
+     * 批次中遇到非图集绘制：先提交已收集的图集 quad（一次 draw），
+     * 随后该绘制按原路径独立进行。
+     */
+    private static void flushBatch() {
+        boolean wasInBatch = inBatch;
+        inBatch = false;
+        if (!BATCH.isEmpty()) {
+            Tessellator t = Tessellator.instance;
+            t.startDrawingQuads();
+            for (BatchQuad q : BATCH) {
+                GL11.glColor4f(1.0f, 1.0f, 1.0f, q.alpha);
+                t.addVertexWithUV(q.x, q.y + q.h, 0.0D, q.u1, q.v2);
+                t.addVertexWithUV(q.x + q.w, q.y + q.h, 0.0D, q.u2, q.v2);
+                t.addVertexWithUV(q.x + q.w, q.y, 0.0D, q.u2, q.v1);
+                t.addVertexWithUV(q.x, q.y, 0.0D, q.u1, q.v1);
+            }
+            t.draw();
+            BATCH.clear();
+        }
+        cleanup();
+        inBatch = wasInBatch;
+    }
+
+    /**
+     * 图集 sprite 的 UV 区间映射：像素归一化坐标 [0,1] → sprite UV。
+     */
+    private static float mapU(CatSprite sprite, float u) {
+        return sprite.getMinU() + (sprite.getMaxU() - sprite.getMinU()) * u;
+    }
+
+    private static float mapV(CatSprite sprite, float v) {
+        return sprite.getMinV() + (sprite.getMaxV() - sprite.getMinV()) * v;
+    }
+
+    /**
+     * 批次模式：收集一个 quad；非批次模式：立即 addVertex 到当前 Tessellator。
+     * UV 输入为像素归一化 [0,1]，sprite 非 null 时映射到图集 UV。
+     */
+    private static void emitQuad(Tessellator t, int sx, int sy, int sw, int sh,
+            float u1, float v1, float u2, float v2, float alpha,
+            @Nullable CatSprite sprite) {
+        float uu1 = sprite != null ? mapU(sprite, u1) : u1;
+        float uu2 = sprite != null ? mapU(sprite, u2) : u2;
+        float vv1 = sprite != null ? mapV(sprite, v1) : v1;
+        float vv2 = sprite != null ? mapV(sprite, v2) : v2;
+        if (inBatch) {
+            BATCH.add(new BatchQuad(sx, sy, sw, sh, uu1, vv1, uu2, vv2, alpha));
+            return;
+        }
+        GL11.glColor4f(1.0f, 1.0f, 1.0f, alpha);
+        t.addVertexWithUV(sx, sy + sh, 0.0D, uu1, vv2);
+        t.addVertexWithUV(sx + sw, sy + sh, 0.0D, uu2, vv2);
+        t.addVertexWithUV(sx + sw, sy, 0.0D, uu2, vv1);
+        t.addVertexWithUV(sx, sy, 0.0D, uu1, vv1);
     }
 
     // ──── Strategy interface ────
@@ -109,42 +269,56 @@ public final class TextureStretching {
             }
         }
 
-        bindAndPrepare(texture);
+        // [渲染三域架构] 图集分流：catframe:gui 纹理解析为图集绑定 + sprite UV；
+        // 批次中且非图集纹理时先 flush 已收集 quad，再按原路径独立绘制。
+        DrawBinding b = resolve(texture);
+        if (inBatch && b.sprite == null) {
+            flushBatch();
+        }
+        boolean batched = inBatch && b.sprite != null;
+        if (!batched) {
+            bindAndPrepare(b.bind);
+        }
         Tessellator t = Tessellator.instance;
-        t.startDrawingQuads();
+        if (!batched) {
+            t.startDrawingQuads();
+        }
 
         // Top-left corner
-        addQuad(t, x, y, edgeL, edgeT, 0, 0, edgeL, edgeT, texW, texH);
+        emitQuad(t, x, y, edgeL, edgeT, 0, 0, (float) edgeL / texW, (float) edgeT / texH, 1.0F, b.sprite);
         // Top-right corner
-        addQuad(t, x + w - edgeR, y, edgeR, edgeT, texW - edgeR, 0, edgeR, edgeT, texW, texH);
+        emitQuad(t, x + w - edgeR, y, edgeR, edgeT, (float) (texW - edgeR) / texW, 0, 1.0F, (float) edgeT / texH, 1.0F, b.sprite);
         // Bottom-left corner
-        addQuad(t, x, y + h - edgeB, edgeL, edgeB, 0, texH - edgeB, edgeL, edgeB, texW, texH);
+        emitQuad(t, x, y + h - edgeB, edgeL, edgeB, 0, (float) (texH - edgeB) / texH, (float) edgeL / texW, 1.0F, 1.0F, b.sprite);
         // Bottom-right corner
-        addQuad(t, x + w - edgeR, y + h - edgeB, edgeR, edgeB, texW - edgeR, texH - edgeB, edgeR, edgeB, texW, texH);
+        emitQuad(t, x + w - edgeR, y + h - edgeB, edgeR, edgeB,
+                (float) (texW - edgeR) / texW, (float) (texH - edgeB) / texH, 1.0F, 1.0F, 1.0F, b.sprite);
 
         // Top edge (tiled horizontally)
         if (innerW > 0) {
-            addTiledQuad(t, x + edgeL, y, innerW, edgeT, edgeL, 0, texInnerW, edgeT, texW, texH);
+            addTiledQuad(t, x + edgeL, y, innerW, edgeT, edgeL, 0, texInnerW, edgeT, texW, texH, b.sprite);
         }
         // Bottom edge (tiled horizontally)
         if (innerW > 0) {
-            addTiledQuad(t, x + edgeL, y + h - edgeB, innerW, edgeB, edgeL, texH - edgeB, texInnerW, edgeB, texW, texH);
+            addTiledQuad(t, x + edgeL, y + h - edgeB, innerW, edgeB, edgeL, texH - edgeB, texInnerW, edgeB, texW, texH, b.sprite);
         }
         // Left edge (tiled vertically)
         if (innerH > 0) {
-            addTiledQuad(t, x, y + edgeT, edgeL, innerH, 0, edgeT, edgeL, texInnerH, texW, texH);
+            addTiledQuad(t, x, y + edgeT, edgeL, innerH, 0, edgeT, edgeL, texInnerH, texW, texH, b.sprite);
         }
         // Right edge (tiled vertically)
         if (innerH > 0) {
-            addTiledQuad(t, x + w - edgeR, y + edgeT, edgeR, innerH, texW - edgeR, edgeT, edgeR, texInnerH, texW, texH);
+            addTiledQuad(t, x + w - edgeR, y + edgeT, edgeR, innerH, texW - edgeR, edgeT, edgeR, texInnerH, texW, texH, b.sprite);
         }
         // Centre (tiled both directions)
         if (innerW > 0 && innerH > 0) {
-            addTiledQuad(t, x + edgeL, y + edgeT, innerW, innerH, edgeL, edgeT, texInnerW, texInnerH, texW, texH);
+            addTiledQuad(t, x + edgeL, y + edgeT, innerW, innerH, edgeL, edgeT, texInnerW, texInnerH, texW, texH, b.sprite);
         }
 
-        t.draw();
-        cleanup();
+        if (!batched) {
+            t.draw();
+            cleanup();
+        }
     }
 
     // ──── Two-end-fixed, middle-repeat (three-patch, horizontal) ────
@@ -182,23 +356,35 @@ public final class TextureStretching {
             middleW = 0;
         }
 
-        bindAndPrepare(texture);
+        // [渲染三域架构] 图集分流：同 drawNinePatch（批次中非图集纹理先 flush）。
+        DrawBinding b = resolve(texture);
+        if (inBatch && b.sprite == null) {
+            flushBatch();
+        }
+        boolean batched = inBatch && b.sprite != null;
+        if (!batched) {
+            bindAndPrepare(b.bind);
+        }
         Tessellator t = Tessellator.instance;
-        t.startDrawingQuads();
+        if (!batched) {
+            t.startDrawingQuads();
+        }
 
         // Left edge
-        addQuad(t, x, y, edgeL, h, 0, 0, edgeL, h, texW, texH);
+        emitQuad(t, x, y, edgeL, h, 0, 0, (float) edgeL / texW, 1.0F, 1.0F, b.sprite);
 
         // Middle (tiled)
         if (middleW > 0 && tileW > 0) {
-            addTiledQuad(t, x + edgeL, y, middleW, h, edgeL, 0, tileW, h, texW, texH);
+            addTiledQuad(t, x + edgeL, y, middleW, h, edgeL, 0, tileW, h, texW, texH, b.sprite);
         }
 
         // Right edge
-        addQuad(t, x + w - edgeR, y, edgeR, h, texW - edgeR, 0, edgeR, h, texW, texH);
+        emitQuad(t, x + w - edgeR, y, edgeR, h, (float) (texW - edgeR) / texW, 0, 1.0F, 1.0F, 1.0F, b.sprite);
 
-        t.draw();
-        cleanup();
+        if (!batched) {
+            t.draw();
+            cleanup();
+        }
     }
 
     // ──── Static (integer-multiple upscale) ────
@@ -250,12 +436,24 @@ public final class TextureStretching {
                     + " is not an integer multiple of texture size " + texW + "x" + texH);
         }
 
-        bindAndPrepare(texture, alpha);
+        // [渲染三域架构] 图集分流：同 drawNinePatch（批次中非图集纹理先 flush）。
+        DrawBinding b = resolve(texture);
+        if (inBatch && b.sprite == null) {
+            flushBatch();
+        }
+        boolean batched = inBatch && b.sprite != null;
+        if (!batched) {
+            bindAndPrepare(b.bind, alpha);
+        }
         Tessellator t = Tessellator.instance;
-        t.startDrawingQuads();
-        addQuad(t, x, y, w, h, 0, 0, 1, 1, 1, 1);
-        t.draw();
-        cleanup();
+        if (!batched) {
+            t.startDrawingQuads();
+        }
+        emitQuad(t, x, y, w, h, 0, 0, 1, 1, alpha, b.sprite);
+        if (!batched) {
+            t.draw();
+            cleanup();
+        }
     }
 
     // ──── General tiling ────
@@ -280,27 +478,36 @@ public final class TextureStretching {
         if (w <= 0 || h <= 0 || tileW <= 0 || tileH <= 0)
             return;
 
-        bindAndPrepare(texture);
+        // [渲染三域架构] 图集分流：同 drawNinePatch（批次中非图集纹理先 flush）。
+        DrawBinding b = resolve(texture);
+        if (inBatch && b.sprite == null) {
+            flushBatch();
+        }
+        boolean batched = inBatch && b.sprite != null;
+        if (!batched) {
+            bindAndPrepare(b.bind);
+        }
         Tessellator t = Tessellator.instance;
-        t.startDrawingQuads();
+        if (!batched) {
+            t.startDrawingQuads();
+        }
 
         for (int offX = 0; offX < w; offX += tileW) {
             for (int offY = 0; offY < h; offY += tileH) {
                 int drawW = Math.min(tileW, w - offX);
                 int drawH = Math.min(tileH, h - offY);
 
-                double u2 = (double) drawW / (double) tileW;
-                double v2 = (double) drawH / (double) tileH;
+                float u2 = (float) drawW / (float) tileW;
+                float v2 = (float) drawH / (float) tileH;
 
-                t.addVertexWithUV(x + offX, y + offY + drawH, 0.0D, 0.0, v2);
-                t.addVertexWithUV(x + offX + drawW, y + offY + drawH, 0.0D, u2, v2);
-                t.addVertexWithUV(x + offX + drawW, y + offY, 0.0D, u2, 0.0);
-                t.addVertexWithUV(x + offX, y + offY, 0.0D, 0.0, 0.0);
+                emitQuad(t, x + offX, y + offY, drawW, drawH, 0, 0, u2, v2, 1.0F, b.sprite);
             }
         }
 
-        t.draw();
-        cleanup();
+        if (!batched) {
+            t.draw();
+            cleanup();
+        }
     }
 
     // ──── Auto-draw from mcmeta ────
@@ -440,42 +647,22 @@ public final class TextureStretching {
     }
 
     /**
-     * Add a single textured quad (fixed UV, no tiling).
-     */
-    private static void addQuad(Tessellator t, int sx, int sy, int sw, int sh,
-            float texU, float texV, float texSW, float texSH,
-            int texW, int texH) {
-        float u1 = texU / texW;
-        float u2 = (texU + texSW) / texW;
-        float v1 = texV / texH;
-        float v2 = (texV + texSH) / texH;
-
-        t.addVertexWithUV(sx, sy + sh, 0.0D, u1, v2);
-        t.addVertexWithUV(sx + sw, sy + sh, 0.0D, u2, v2);
-        t.addVertexWithUV(sx + sw, sy, 0.0D, u2, v1);
-        t.addVertexWithUV(sx, sy, 0.0D, u1, v1);
-    }
-
-    /**
      * Add a tiled textured quad — repeats the UV region across the screen area.
+     * <p>平铺 quad —— 委托 {@link #emitQuad} 统一走批次收集 / 即时绘制
+     * （含图集 sprite UV 映射）。</p>
      */
     private static void addTiledQuad(Tessellator t, int sx, int sy, int screenW, int screenH,
             float texU, float texV, float texTileW, float texTileH,
-            int texW, int texH) {
+            int texW, int texH, @Nullable CatSprite sprite) {
         for (int offX = 0; offX < screenW; offX += (int) texTileW) {
             for (int offY = 0; offY < screenH; offY += (int) texTileH) {
                 int drawW = Math.min((int) texTileW, screenW - offX);
                 int drawH = Math.min((int) texTileH, screenH - offY);
 
-                float u1 = texU / texW;
-                float u2 = (texU + drawW) / texW;
-                float v1 = texV / texH;
-                float v2 = (texV + drawH) / texH;
-
-                t.addVertexWithUV(sx + offX, sy + offY + drawH, 0.0D, u1, v2);
-                t.addVertexWithUV(sx + offX + drawW, sy + offY + drawH, 0.0D, u2, v2);
-                t.addVertexWithUV(sx + offX + drawW, sy + offY, 0.0D, u2, v1);
-                t.addVertexWithUV(sx + offX, sy + offY, 0.0D, u1, v1);
+                emitQuad(t, sx + offX, sy + offY, drawW, drawH,
+                        texU / texW, texV / texH,
+                        (texU + drawW) / texW, (texV + drawH) / texH,
+                        1.0F, sprite);
             }
         }
     }

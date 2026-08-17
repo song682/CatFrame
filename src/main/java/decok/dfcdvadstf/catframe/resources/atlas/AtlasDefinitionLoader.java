@@ -28,7 +28,7 @@ import java.util.Map;
  * 故同 id 多次 put 的内容一致，天然满足「高优先级包覆盖同定义文件」的 Wiki 语义。
  * <p>
  * [渲染三域架构] 收集分流：加载全部定义后按 atlas id 归属消费 —— blocks / items 定义
- * 喂原版 TextureMap（{@code CatAtlasManager.registerDefinedSprites}），{@code catframe:ui}
+ * 喂原版 TextureMap（{@code CatAtlasManager.registerDefinedSprites}），{@code catframe:gui}
  * 定义喂 CatFrame 自建 GUI 图集（{@code UiTextureAtlasManager}，独立事件链）；
  * 其它 atlas id 的定义由各自消费方处理。
  *
@@ -92,12 +92,12 @@ public final class AtlasDefinitionLoader {
      *   <li>SpriteRef 的 atlasId 覆盖字段仅 debug 记录（消费方决定是否接受跨图集引用）。</li>
      * </ol>
      * 由 {@code CatAtlasManager.registerDefinedSprites}（原版 blocks/items 输出端）与
-     * {@code UiTextureAtlasManager}（{@code catframe:ui} GUI 图集）共用。
+     * {@code UiTextureAtlasManager}（{@code catframe:gui} GUI 图集）共用。
      *
      * <p>Definition-driven collection for one atlas id: sources emit sprite refs
      * in order, filters remove, duplicates warn-and-skip (first wins).
      *
-     * @param atlasId 图集 id（{@code <ns>:<id>}，如 {@code minecraft:blocks} / {@code catframe:ui}）
+     * @param atlasId 图集 id（{@code <ns>:<id>}，如 {@code minecraft:blocks} / {@code catframe:gui}）
      * @return 去重后的 sprite 引用列表（定义缺失时为空）
      */
     public static List<SpriteRef> collectRefs(String atlasId) {

@@ -56,6 +56,9 @@ public class TooltipRenderUtil {
      * <p>先绘制背景填充层，再叠加边框层。</p>
      * <p>对标 26.1.2 {@code TooltipRenderUtil.extractTooltipBackground()}：
      * 背景区域 = 文字区域向外扩展 PADDING + MARGIN。</p>
+     * <p>[渲染三域架构：阶段 C] 两层九宫格经 {@link TextureStretching#beginBatch()}
+     * 合并为一次 bind + 一次 draw（批量提交）；纹理属于 {@code catframe:gui} 图集
+     * 时自动改走图集查表 UV（TextureStretching 内部分流）。</p>
      *
      * @param x     tooltip 文字区域左上 X
      * @param y     tooltip 文字区域左上 Y
@@ -73,11 +76,13 @@ public class TooltipRenderUtil {
         ResourceLocation bgTexture = getBackgroundTexture(style);
         ResourceLocation frameTexture = getFrameTexture(style);
 
+        // 批量提交：两层九宫格合并一次 bind + 一次 draw（同图集时跨层合并）。
+        TextureStretching.beginBatch();
         // 第一层：背景填充
         TextureStretching.drawAutoNinePatch(bgTexture, bgX, bgY, bgW, bgH, 100, 100, PADDING + MARGIN);
-
         // 第二层：边框
         TextureStretching.drawAutoNinePatch(frameTexture, bgX, bgY, bgW, bgH, 100, 100, PADDING + MARGIN);
+        TextureStretching.endBatch();
     }
 
     /**

@@ -32,7 +32,7 @@ import java.util.Map;
  * </ul>
  * <p>
  * [渲染三域架构] 本类现为<b>纯 UI 图集工具</b>（CatAtlas blocks/items 自研缝合链已退役）：
- * 由 {@code UiTextureAtlasManager} 驱动缝合 {@code catframe:ui} 图集。构造参数
+ * 由 {@code UiTextureAtlasManager} 驱动缝合 {@code catframe:gui} 图集。构造参数
  * {@code mipmapEnabled} 控制是否生成 mip 链：UI 域红线 = <b>无 mipmap</b>（GUI 素材
  * 1:1 正交绘制，mip 无收益且引入渗色风险），传 {@code false}；旧 blocks/items 时代
  * 的 mip 路径保留为通用能力（mipLevel 0 时全链路自动短路）。
@@ -61,7 +61,7 @@ import java.util.Map;
 @SideOnly(Side.CLIENT)
 public class CatAtlas implements IAtlas, ITextureObject {
 
-    /** 图集 id（如 {@code minecraft:blocks} / {@code catframe:ui}）。 */
+    /** 图集 id（如 {@code minecraft:blocks} / {@code catframe:gui}）。 */
     private final String atlasId;
     /** 是否生成 mip 链（UI 域恒 false：无 mipmap 红线；false 时 mip 相关链路全部短路）。 */
     private final boolean mipmapEnabled;
@@ -87,7 +87,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
 
     /**
      * @param atlasId       图集 id（{@code IAtlas#getAtlasName()} 即此值）
-     * @param mipmapEnabled 是否生成 mip 链；UI 图集（{@code catframe:ui}）传 false（无 mipmap 红线）
+     * @param mipmapEnabled 是否生成 mip 链；UI 图集（{@code catframe:gui}）传 false（无 mipmap 红线）
      */
     public CatAtlas(String atlasId, boolean mipmapEnabled) {
         this.atlasId = atlasId;

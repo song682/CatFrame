@@ -19,18 +19,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * UI 图集管理器（渲染三域架构：{@code catframe:ui} 图集本体，阶段 B）。
+ * UI 图集管理器（渲染三域架构：{@code catframe:gui} 图集本体，阶段 B）。
  * <p>
  * 订阅 {@link GuiTextureStitchEvent} 三阶段，驱动 CatFrame 自建 GUI 图集
  * （CatAtlas 纯 UI 工具形态，无 mipmap）：
  * <ol>
  *   <li>{@link GuiTextureStitchEvent.Pre} —— 收集：{@link AtlasDefinitionLoader#collectRefs}
- *       取 {@code catframe:ui} 定义（{@code assets/catframe/atlases/ui.json}，允许其他
+ *       取 {@code catframe:gui} 定义（{@code assets/catframe/atlases/gui.json}，允许其他
  *       模组声明归属）的 sources 产物，逐个 {@link CatSpriteLoader} 解码为
  *       {@link CatSprite}；解码失败用 missingno 占位；</li>
  *   <li>{@link GuiTextureStitchEvent.On} —— 缝合：CatAtlas 布局（复用 TextureStitcher）+
  *       单次 CPU 组装 + GL 上传（<b>无 mipmap</b>，红线），并经 TextureManager 以
- *       {@link #ATLAS_LOCATION}（{@code catframe:atlas/ui}）注册，渲染层
+ *       {@link #ATLAS_LOCATION}（{@code catframe:atlas/gui}）注册，渲染层
  *       {@code bindTexture} 零结构改动；</li>
  *   <li>{@link GuiTextureStitchEvent.Post} —— 发布：查表就绪（{@link #isReady()}），
  *       CatFrame 自家 UI 绘制可取 UV（阶段 C 消费端）。</li>
@@ -44,16 +44,16 @@ import java.util.Map;
  * UI 动画（当前素材均为静态，机制预留）：客户端 tick 经 {@link #tickAnimations()}
  * 推进帧并区域重传（CatAtlas 的 glTexSubImage2D 区域更新）。
  *
- * <p>UI atlas manager driving the {@code catframe:ui} stitch lifecycle
+ * <p>UI atlas manager driving the {@code catframe:gui} stitch lifecycle
  * (Pre collects / On stitches and uploads / Post publishes the lookup).
  */
 @SideOnly(Side.CLIENT)
 public final class UiTextureAtlasManager {
 
-    /** UI 图集 id（{@code assets/catframe/atlases/ui.json} → {@code catframe:ui}）。 */
-    public static final String ATLAS_ID = "catframe:ui";
+    /** UI 图集 id（{@code assets/catframe/atlases/gui.json} → {@code catframe:gui}）。 */
+    public static final String ATLAS_ID = "catframe:gui";
     /** UI 图集 GL 纹理注册位置（TextureManager 注册键，渲染层 bindTexture 用）。 */
-    public static final ResourceLocation ATLAS_LOCATION = new ResourceLocation("catframe", "atlas/ui");
+    public static final ResourceLocation ATLAS_LOCATION = new ResourceLocation("catframe", "atlas/gui");
 
     /** 当前 UI 图集（缝合前为 null）。 */
     private static CatAtlas atlas;
@@ -68,7 +68,7 @@ public final class UiTextureAtlasManager {
 
     // ==================== GuiTextureStitchEvent 三阶段 ====================
 
-    /** Pre —— 收集：catframe:ui 定义 sources → SpriteRef → CatSprite 解码（缺失用 missingno 占位）。 */
+    /** Pre —— 收集：catframe:gui 定义 sources → SpriteRef → CatSprite 解码（缺失用 missingno 占位）。 */
     @SubscribeEvent
     public void onPre(GuiTextureStitchEvent.Pre event) {
         List<SpriteRef> refs = AtlasDefinitionLoader.collectRefs(ATLAS_ID);
@@ -138,6 +138,42 @@ public final class UiTextureAtlasManager {
     /** UI 图集 GL 纹理注册位置（渲染层 bindTexture 用）。 */
     public static ResourceLocation getAtlasLocation() {
         return ATLAS_LOCATION;
+    }
+
+    /**
+     * 纹理路径 → 发布键：{@code <ns>:textures/gui/<path>.png} → {@code <ns>:gui/<path>}
+     * （与 DirectorySource 的 sprite id 生成规则互逆）。非 {@code textures/} 前缀
+     * 或非 {@code .png} 结尾的路径原样返回（调用方自行兜底）。
+     *
+     * <p>Texture path → publish key: strips the {@code textures/} segment and the
+     * {@code .png} suffix so a texture file maps to its atlas sprite id.
+     */
+    public static String toSpritePath(ResourceLocation texture) {
+        if (texture == null) {
+            return null;
+        }
+        String path = texture.getResourcePath();
+        if (path.startsWith("textures/") && path.endsWith(".png")) {
+            return texture.getResourceDomain() + ":" + path.substring("textures/".length(), path.length() - 4);
+        }
+        return texture.toString();
+    }
+
+    /**
+     * 图集查表：纹理路径 → UI sprite（阶段 C 消费端入口）。
+     * 纹理属于 {@code catframe:gui} 图集（即发布键可查）时返回 sprite（含 missing 兜底），
+     * 不属于图集（原版/第三方纹理）返回 null，调用方保持原路径绑定。
+     *
+     * <p>Atlas lookup: resolves a texture path against the UI atlas; returns null
+     * for textures that are not part of it (vanilla / third-party stay on their
+     * own bind path).
+     */
+    @Nullable
+    public static CatSprite resolve(ResourceLocation texture) {
+        if (!isReady() || texture == null) {
+            return null;
+        }
+        return findSprite(toSpritePath(texture));
     }
 
     /**

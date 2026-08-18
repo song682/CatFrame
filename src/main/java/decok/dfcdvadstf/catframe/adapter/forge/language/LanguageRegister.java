@@ -34,6 +34,12 @@ import java.util.jar.JarFile;
  * Currently single-path: only {@code assets/catframe/lang} is searched.
  * 当前为单一路径：仅搜索 {@code assets/catframe/lang}。
  * <p>
+ * When the optional JarUtils mod is present, {@link JarUtilsLangScanner}
+ * additionally feeds other mods' JSON lang files in via
+ * {@link #injectExternal} at post-init.
+ * 当可选模组 JarUtils 存在时，{@link JarUtilsLangScanner} 会在 post-init
+ * 阶段经 {@link #injectExternal} 补充注入其它模组的 JSON 语言文件。
+ * <p>
  * Usage / 用法:
  * <pre>{@code
  *   // In preInit:
@@ -61,12 +67,16 @@ public final class LanguageRegister {
     }
 
     private static class LangFileEntry {
-        final String vanillaCode;
-        final String fileName;
+        final String vanillaCode;    // "en_US"
+        final String fileName;       // "en_us.json"
+        final String resourceDomain; // "catframe"
+        final String resourceDir;    // "lang"
 
-        LangFileEntry(String vanillaCode, String fileName) {
+        LangFileEntry(String vanillaCode, String fileName, String resourceDomain, String resourceDir) {
             this.vanillaCode = vanillaCode;
             this.fileName = fileName;
+            this.resourceDomain = resourceDomain;
+            this.resourceDir = resourceDir;
         }
     }
 
@@ -80,6 +90,33 @@ public final class LanguageRegister {
      */
     public static void load() {
         scanAndInject(Tags.MODID, BASE_PATH);
+    }
+
+    /**
+     * Injects an externally discovered lang file — e.g. found in another
+     * mod's jar through JarUtils's parallel index — and remembers it so
+     * later resource-manager reloads re-inject it with resource pack
+     * overrides on top. The stream is consumed but not closed here.
+     * <p>
+     * 注入外部发现的语言文件——例如经 JarUtils 并行索引从其它模组 jar 中
+     * 找到的文件——并记录之，使后续资源管理器重载能带着资源包覆盖
+     * 重新注入。本方法消费但不关闭传入的流。
+     *
+     * @param resourceDomain resource domain of the file / 文件所属资源域
+     * @param resourceDir    directory under the domain, e.g. "lang" / 域内目录
+     * @param fileName       all-lowercase json name, e.g. "en_us.json" / 全小写文件名
+     * @param in             the file's content stream / 文件内容流
+     */
+    static void injectExternal(String resourceDomain, String resourceDir, String fileName, InputStream in) {
+        String langCode = fileName.substring(0, fileName.length() - ".json".length());
+        String vanillaCode = toVanillaCode(langCode);
+        Map<String, String> data = parseJsonLang(in);
+        if (data.isEmpty()) return;
+
+        langFiles.add(new LangFileEntry(vanillaCode, fileName, resourceDomain, resourceDir));
+        LanguageRegistry.instance().injectLanguage(vanillaCode, new HashMap<>(data));
+        CatFrame.logger.info("LanguageRegister: injected {} external keys from '{}:{}/{}' as '{}'",
+                data.size(), resourceDomain, resourceDir, fileName, vanillaCode);
     }
 
     /**
@@ -97,18 +134,9 @@ public final class LanguageRegister {
     public static void reloadFromResourceManager(IResourceManager manager) {
         if (langFiles.isEmpty()) return;
 
-        // BASE_PATH = "assets/catframe/lang"
-        //   → resourceDomain = "catframe" (between "assets/" and next "/")
-        //   → resourceDir    = "lang" (everything after the domain)
-        int assetsEnd = BASE_PATH.indexOf('/') + 1;
-        int domainEnd = BASE_PATH.indexOf('/', assetsEnd);
-        if (domainEnd < 0) return;
-        String resourceDomain = BASE_PATH.substring(assetsEnd, domainEnd);
-        String resourceDir = BASE_PATH.substring(domainEnd + 1);
-
         for (LangFileEntry entry : langFiles) {
-            String resPath = resourceDir + "/" + entry.fileName;
-            ResourceLocation loc = new ResourceLocation(resourceDomain, resPath);
+            String resPath = entry.resourceDir + "/" + entry.fileName;
+            ResourceLocation loc = new ResourceLocation(entry.resourceDomain, resPath);
 
             try {
                 @SuppressWarnings("unchecked")
@@ -157,17 +185,32 @@ public final class LanguageRegister {
             return;
         }
 
+        // basePath = "assets/catframe/lang"
+        //   → resourceDomain = "catframe" (between "assets/" and next "/")
+        //   → resourceDir    = "lang" (everything after the domain)
+        // basePath = "assets/catframe/lang"
+        //   → resourceDomain = "catframe"（"assets/" 与下一个 "/" 之间）
+        //   → resourceDir    = "lang"（域之后的部分）
+        int assetsEnd = basePath.indexOf('/') + 1;
+        int domainEnd = basePath.indexOf('/', assetsEnd);
+        if (domainEnd < 0) {
+            CatFrame.logger.warn("LanguageRegister: malformed lang base path '{}', skipping", basePath);
+            return;
+        }
+        String resourceDomain = basePath.substring(assetsEnd, domainEnd);
+        String resourceDir = basePath.substring(domainEnd + 1);
+
         if (source.isFile()) {
-            scanJar(source, basePath);
+            scanJar(source, basePath, resourceDomain, resourceDir);
         } else if (source.isDirectory()) {
-            scanDirectory(source, basePath);
+            scanDirectory(source, basePath, resourceDomain, resourceDir);
         }
     }
 
     /**
      * Scans a jar file for lang JSON files under the given base path.
      */
-    private static void scanJar(File jarFile, String basePath) {
+    private static void scanJar(File jarFile, String basePath, String resourceDomain, String resourceDir) {
         String prefix = basePath + "/";
         try (JarFile jar = new JarFile(jarFile)) {
             Enumeration<JarEntry> entries = jar.entries();
@@ -190,7 +233,7 @@ public final class LanguageRegister {
                 String vanillaCode = toVanillaCode(langCode);
 
                 // Record the discovered file for later IRMRL reload
-                langFiles.add(new LangFileEntry(vanillaCode, fileName));
+                langFiles.add(new LangFileEntry(vanillaCode, fileName, resourceDomain, resourceDir));
 
                 try (InputStream in = jar.getInputStream(entry)) {
                     Map<String, String> data = parseJsonLang(in);
@@ -209,7 +252,7 @@ public final class LanguageRegister {
     /**
      * Scans a directory (dev environment) for lang JSON files under the given base path.
      */
-    private static void scanDirectory(File modDir, String basePath) {
+    private static void scanDirectory(File modDir, String basePath, String resourceDomain, String resourceDir) {
         File langDir = new File(modDir, basePath);
         if (!langDir.isDirectory()) {
             CatFrame.logger.warn("LanguageRegister: lang directory not found: {}", langDir);
@@ -232,7 +275,7 @@ public final class LanguageRegister {
             String vanillaCode = toVanillaCode(langCode);
 
             // Record the discovered file for later IRMRL reload
-            langFiles.add(new LangFileEntry(vanillaCode, fileName));
+            langFiles.add(new LangFileEntry(vanillaCode, fileName, resourceDomain, resourceDir));
 
             try (InputStream in = new FileInputStream(f)) {
                 Map<String, String> data = parseJsonLang(in);

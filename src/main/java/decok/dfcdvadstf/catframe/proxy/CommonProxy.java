@@ -21,8 +21,9 @@ public class CommonProxy {
     protected BingoPlushyItem bingoPlushy;
 
     public void preInit(FMLPreInitializationEvent event) {
-        // load() is now triggered automatically by LanguageRegister.domain()
-        LanguageRegister.domain(Tags.MODID, "assets/catframe/lang");
+        // Scan CatFrame's own jar/directory for JSON lang files and inject them
+        // 扫描 CatFrame 自身 jar/目录中的 JSON 语言文件并注入
+        LanguageRegister.load();
         // Register data components
         RegisteredComponents.registerAll();
         MinecraftForge.EVENT_BUS.register(new TexturesStitch());

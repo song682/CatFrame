@@ -6,6 +6,7 @@ import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.ModContainer;
 import cpw.mods.fml.common.registry.LanguageRegistry;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.Tags;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.util.ResourceLocation;
@@ -21,20 +22,22 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 /**
- * Language file registry — mods register their language file directories here
- * during preInit. JSON lang files ({@code xx_xx.json}, all-lowercase) are scanned
- * from the mod's jar/directory and injected into Forge's {@link LanguageRegistry},
- * so vanilla {@code I18n} / {@code StatCollector} handle all translation lookups.
+ * Language file loader — scans CatFrame's own jar/directory during preInit
+ * for JSON lang files ({@code xx_xx.json}, all-lowercase) and injects them
+ * into Forge's {@link LanguageRegistry}, so vanilla {@code I18n} /
+ * {@code StatCollector} handle all translation lookups.
  * <p>
- * 语言文件注册表 —— 各 mod 在 preInit 中注册自己的语言文件目录。
- * 扫描 mod jar/目录中的 JSON 语言文件（{@code xx_xx.json}，全小写），
- * 注入 Forge {@link LanguageRegistry}，由原版 {@code I18n} / {@code StatCollector} 接管翻译。
+ * 语言文件加载器 —— 在 preInit 阶段扫描 CatFrame 自身 jar/目录中的
+ * JSON 语言文件（{@code xx_xx.json}，全小写），注入 Forge {@link LanguageRegistry}，
+ * 由原版 {@code I18n} / {@code StatCollector} 接管翻译。
+ * <p>
+ * Currently single-path: only {@code assets/catframe/lang} is searched.
+ * 当前为单一路径：仅搜索 {@code assets/catframe/lang}。
  * <p>
  * Usage / 用法:
  * <pre>{@code
- *   // In your mod's preInit:
- *   LanguageRegister.domain("mymod", "assets/mymod/lang");
- *   // That's it — translations are injected into LanguageRegistry automatically.
+ *   // In preInit:
+ *   LanguageRegister.load();
  * }</pre>
  */
 public final class LanguageRegister {
@@ -43,15 +46,16 @@ public final class LanguageRegister {
     private static final Type MAP_TYPE = new TypeToken<Map<String, String>>() {}.getType();
 
     /**
-     * modid → basePath (e.g. "catframe" → "assets/catframe/lang")
+     * The single lang base path searched: "assets/catframe/lang"
+     * 唯一被搜索的语言目录：{@code assets/catframe/lang}
      */
-    private static final Map<String, String> domains = new LinkedHashMap<>();
+    private static final String BASE_PATH = "assets/" + Tags.MODID + "/lang";
 
     /**
-     * modid → [(vanillaLangCode, fileName)]
-     * e.g. "catframe" → [("en_US", "en_us.json"), ("zh_CN", "zh_cn.json")]
+     * Discovered lang files: [(vanillaLangCode, fileName)]
+     * e.g. [("en_US", "en_us.json"), ("zh_CN", "zh_cn.json")]
      */
-    private static final Map<String, List<LangFileEntry>> domainLangFiles = new LinkedHashMap<>();
+    private static final List<LangFileEntry> langFiles = new ArrayList<>();
 
     private LanguageRegister() {
     }
@@ -67,29 +71,15 @@ public final class LanguageRegister {
     }
 
     /**
-     * Registers a mod's language file directory. Scans the mod's jar/directory
-     * for {@code xx_xx.json} files (all-lowercase language codes) and injects
+     * Scans CatFrame's own jar/directory for {@code xx_xx.json} files
+     * (all-lowercase language codes) under {@link #BASE_PATH} and injects
      * them into Forge's {@link LanguageRegistry}.
      * <p>
-     * 注册 mod 的语言文件目录。扫描 mod 的 jar/目录中 {@code xx_xx.json} 文件
-     * （全小写语言码），注入 Forge {@link LanguageRegistry}。
-     *
-     * @param modid    Forge mod identifier (must match {@code @Mod(modid=...)}) / Forge mod 标识符
-     * @param basePath classpath-relative directory containing lang JSON files,
-     *                 e.g. {@code "assets/mymod/lang"} / classpath 相对目录
+     * 扫描 CatFrame 自身 jar/目录中 {@link #BASE_PATH} 下的 {@code xx_xx.json}
+     * 文件（全小写语言码），注入 Forge {@link LanguageRegistry}。
      */
-    public static void domain(String modid, String basePath) {
-        domains.put(modid, basePath);
-        scanAndInject(modid, basePath);
-    }
-
-    /**
-     * Returns an unmodifiable view of all registered domains.
-     * <p>
-     * 返回所有已注册域的不可修改视图。
-     */
-    public static Map<String, String> getDomains() {
-        return Collections.unmodifiableMap(domains);
+    public static void load() {
+        scanAndInject(Tags.MODID, BASE_PATH);
     }
 
     /**
@@ -105,50 +95,45 @@ public final class LanguageRegister {
      * @param manager the resource manager (from the reload event) / 资源管理器
      */
     public static void reloadFromResourceManager(IResourceManager manager) {
-        for (Map.Entry<String, String> domainEntry : domains.entrySet()) {
-            String modid = domainEntry.getKey();
-            String basePath = domainEntry.getValue();
-            List<LangFileEntry> files = domainLangFiles.get(modid);
-            if (files == null || files.isEmpty()) continue;
+        if (langFiles.isEmpty()) return;
 
-            // basePath = "assets/catframe/lang"
-            //   → resourceDomain = "catframe" (between "assets/" and next "/")
-            //   → resourceDir    = "lang" (everything after the domain)
-            int assetsEnd = basePath.indexOf('/') + 1;
-            int domainEnd = basePath.indexOf('/', assetsEnd);
-            if (domainEnd < 0) continue;
-            String resourceDomain = basePath.substring(assetsEnd, domainEnd);
-            String resourceDir = basePath.substring(domainEnd + 1);
+        // BASE_PATH = "assets/catframe/lang"
+        //   → resourceDomain = "catframe" (between "assets/" and next "/")
+        //   → resourceDir    = "lang" (everything after the domain)
+        int assetsEnd = BASE_PATH.indexOf('/') + 1;
+        int domainEnd = BASE_PATH.indexOf('/', assetsEnd);
+        if (domainEnd < 0) return;
+        String resourceDomain = BASE_PATH.substring(assetsEnd, domainEnd);
+        String resourceDir = BASE_PATH.substring(domainEnd + 1);
 
-            for (LangFileEntry entry : files) {
-                String resPath = resourceDir + "/" + entry.fileName;
-                ResourceLocation loc = new ResourceLocation(resourceDomain, resPath);
+        for (LangFileEntry entry : langFiles) {
+            String resPath = resourceDir + "/" + entry.fileName;
+            ResourceLocation loc = new ResourceLocation(resourceDomain, resPath);
 
-                try {
-                    @SuppressWarnings("unchecked")
-                    List<IResource> resources = manager.getAllResources(loc);
-                    // getAllResources returns resources priority-descending
-                    // (highest priority = resource pack override first).
-                    // Iterate in reverse so mod jar data loads first,
-                    // then resource pack overrides on top.
-                    for (int i = resources.size() - 1; i >= 0; i--) {
-                        try (InputStream in = resources.get(i).getInputStream()) {
-                            Map<String, String> data = parseJsonLang(in);
-                            if (!data.isEmpty()) {
-                                LanguageRegistry.instance().injectLanguage(
-                                        entry.vanillaCode, new HashMap<>(data));
-                                if (i == 0) {
-                                    CatFrame.logger.debug(
-                                            "LanguageRegister: reloaded {} keys from '{}' as '{}'",
-                                            data.size(), resPath, entry.vanillaCode);
-                                }
+            try {
+                @SuppressWarnings("unchecked")
+                List<IResource> resources = manager.getAllResources(loc);
+                // getAllResources returns resources priority-descending
+                // (highest priority = resource pack override first).
+                // Iterate in reverse so mod jar data loads first,
+                // then resource pack overrides on top.
+                for (int i = resources.size() - 1; i >= 0; i--) {
+                    try (InputStream in = resources.get(i).getInputStream()) {
+                        Map<String, String> data = parseJsonLang(in);
+                        if (!data.isEmpty()) {
+                            LanguageRegistry.instance().injectLanguage(
+                                    entry.vanillaCode, new HashMap<>(data));
+                            if (i == 0) {
+                                CatFrame.logger.debug(
+                                        "LanguageRegister: reloaded {} keys from '{}' as '{}'",
+                                        data.size(), resPath, entry.vanillaCode);
                             }
                         }
                     }
-                } catch (Exception e) {
-                    // Resource not found in resource manager — skip
-                    CatFrame.logger.debug("LanguageRegister: no resource '{}' from resource manager", loc);
                 }
+            } catch (Exception e) {
+                // Resource not found in resource manager — skip
+                CatFrame.logger.debug("LanguageRegister: no resource '{}' from resource manager", loc);
             }
         }
     }
@@ -173,16 +158,16 @@ public final class LanguageRegister {
         }
 
         if (source.isFile()) {
-            scanJar(modid, source, basePath);
+            scanJar(source, basePath);
         } else if (source.isDirectory()) {
-            scanDirectory(modid, source, basePath);
+            scanDirectory(source, basePath);
         }
     }
 
     /**
      * Scans a jar file for lang JSON files under the given base path.
      */
-    private static void scanJar(String modid, File jarFile, String basePath) {
+    private static void scanJar(File jarFile, String basePath) {
         String prefix = basePath + "/";
         try (JarFile jar = new JarFile(jarFile)) {
             Enumeration<JarEntry> entries = jar.entries();
@@ -205,8 +190,7 @@ public final class LanguageRegister {
                 String vanillaCode = toVanillaCode(langCode);
 
                 // Record the discovered file for later IRMRL reload
-                domainLangFiles.computeIfAbsent(modid, k -> new ArrayList<>())
-                        .add(new LangFileEntry(vanillaCode, fileName));
+                langFiles.add(new LangFileEntry(vanillaCode, fileName));
 
                 try (InputStream in = jar.getInputStream(entry)) {
                     Map<String, String> data = parseJsonLang(in);
@@ -225,7 +209,7 @@ public final class LanguageRegister {
     /**
      * Scans a directory (dev environment) for lang JSON files under the given base path.
      */
-    private static void scanDirectory(String modid, File modDir, String basePath) {
+    private static void scanDirectory(File modDir, String basePath) {
         File langDir = new File(modDir, basePath);
         if (!langDir.isDirectory()) {
             CatFrame.logger.warn("LanguageRegister: lang directory not found: {}", langDir);
@@ -248,8 +232,7 @@ public final class LanguageRegister {
             String vanillaCode = toVanillaCode(langCode);
 
             // Record the discovered file for later IRMRL reload
-            domainLangFiles.computeIfAbsent(modid, k -> new ArrayList<>())
-                    .add(new LangFileEntry(vanillaCode, fileName));
+            langFiles.add(new LangFileEntry(vanillaCode, fileName));
 
             try (InputStream in = new FileInputStream(f)) {
                 Map<String, String> data = parseJsonLang(in);

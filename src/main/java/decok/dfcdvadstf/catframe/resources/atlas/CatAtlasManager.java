@@ -12,8 +12,6 @@ import net.minecraft.util.IIcon;
 import javax.annotation.Nullable;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * CatFrame 纹理收集管理器 —— 原版输出端与缺失兜底（渲染三域架构定案：物品/方块纹理
@@ -27,8 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *       {@code registerIcon} 进原版 blocks / items 图集，由原版缝合器完成布局 + 上传。
  *       仅可表达<b>素引用</b>（spriteId == resource 且无像素变换）；带 unstitch /
  *       paletted_permutations 等像素变换的定义产物原版无法表达，记日志挂起；</li>
- *   <li>{@link #findSprite(String)} / {@link #getMissingIcon(String)} —— 查找兜底：
- *       原版后端下 findSprite 恒返回 null（CatAtlas 不再构建），getMissingIcon
+ *   <li>{@link #getMissingIcon(String)} —— 缺失查找最终兜底：
  *       直接返回原版 missingImage（紫黑格，与原版 {@code TextureMap.getAtlasSprite}
  *       缺失语义一致）。</li>
  * </ol>
@@ -38,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@link decok.dfcdvadstf.catframe.adapter.vanilla.model.GuiTextureStitchHandler}。
  *
  * <p>Texture collection manager: definition-driven output into the vanilla
- * TextureMap plus missing-icon fallbacks. The CatAtlas self-stitch chain is
+ * TextureMap plus missing-icon fallback. The CatAtlas self-stitch chain is
  * retired; UI-domain sprites are handled by the independent GuiTextureStitchEvent.
  */
 @SideOnly(Side.CLIENT)
@@ -52,9 +49,6 @@ public final class CatAtlasManager {
 
     private CatAtlasManager() {
     }
-
-    /** 历史遗留查找表：原版后端下恒为空（CatAtlas 不再构建），仅保留 findSprite 契约。 */
-    private static final Map<String, CatSprite> sprites = new ConcurrentHashMap<>();
 
     /**
      * [渲染三域架构] 原版输出端：把图集定义（{@code atlases/<id>.json} sources）的
@@ -99,20 +93,6 @@ public final class CatAtlasManager {
         }
         CatFrame.logger.info("[CatAtlas] vanilla backend feed: atlas='{}' registered={} parked={}",
                 atlasId, registered, parked);
-    }
-
-    /**
-     * 按数据驱动键（定义产物 sprite id）查找 CatSprite。原版后端（唯一路径）下
-     * CatAtlas 不再构建，恒返回 null —— 调用方应把 null 视为「无 CatSprite，
-     * 使用 vanilla IIcon」。
-     *
-     * <p>Lookup by the data-driven key; always null under the vanilla backend
-     * (CatAtlas is never built), signalling "use the vanilla IIcon".
-     */
-    @Nullable
-    public static CatSprite findSprite(String texturePath) {
-        if (texturePath == null) return null;
-        return sprites.get(texturePath);
     }
 
     /**

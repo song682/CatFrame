@@ -2,13 +2,10 @@ package decok.dfcdvadstf.catframe.model.render.extension;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
-import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
-import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -250,19 +247,11 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
         if (ctx.phase == RenderPhase.BLOCK_WORLD) {
             // 世界阶段：绑定原版图集，vanilla _opaque sprite 直接可用（消除透明边缘）。
             ctx.iconOverride = opaqueIcon;
-            return;
         }
-        // [渲染三域架构] CatAtlas 已退役：findSprite 恒返回 null，物品阶段恒跳过
-        // override，退回模型正常纹理（quad 携带原版图集空间 UV，与 flushBatched 绑定的
-        // 原版图集一致，无采样错位）。CatSprite 换绑逻辑保留仅为 findSprite 契约存续。
-        // CatAtlas retired: findSprite is always null, so item phases skip the
-        // override and the normal model texture (vanilla-atlas UV space) drives.
-        CatSprite catOpaque = CatAtlasManager.findSprite(opaqueIcon.getIconName());
-        if (catOpaque != null) {
-            ctx.iconOverride = catOpaque;
-        } else {
-            CatFrame.logger.debug("[LeavesGraphics] no CatSprite for '{}', skip override in phase {}",
-                    opaqueIcon.getIconName(), ctx.phase);
-        }
+        // [渲染三域架构] CatAtlas 已退役，findSprite 契约已移除：
+        // 物品阶段无 CatSprite 可换绑，直接退回模型正常纹理（原版图集 UV），
+        // 与 flushBatched 绑定的原版图集一致，无采样错位。
+        // CatAtlas retired; item phases skip override and the normal model
+        // texture (vanilla-atlas UV space) drives.
     }
 }

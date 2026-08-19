@@ -34,11 +34,9 @@ import java.util.jar.JarFile;
  * Currently single-path: only {@code assets/catframe/lang} is searched.
  * 当前为单一路径：仅搜索 {@code assets/catframe/lang}。
  * <p>
- * When the optional JarUtils mod is present, {@link JarUtilsLangScanner}
- * additionally feeds other mods' JSON lang files in via
- * {@link #injectExternal} at post-init.
- * 当可选模组 JarUtils 存在时，{@link JarUtilsLangScanner} 会在 post-init
- * 阶段经 {@link #injectExternal} 补充注入其它模组的 JSON 语言文件。
+ * Compat-layer scans may additionally feed other mods' JSON lang files in
+ * via {@link #injectExternal}.
+ * 兼容层扫描可经 {@link #injectExternal} 补充注入其它模组的 JSON 语言文件。
  * <p>
  * Usage / 用法:
  * <pre>{@code
@@ -94,13 +92,13 @@ public final class LanguageRegister {
 
     /**
      * Injects an externally discovered lang file — e.g. found in another
-     * mod's jar through JarUtils's parallel index — and remembers it so
-     * later resource-manager reloads re-inject it with resource pack
-     * overrides on top. The stream is consumed but not closed here.
+     * mod's jar by a compat-layer scan — and remembers it so later
+     * resource-manager reloads re-inject it with resource pack overrides
+     * on top. The stream is consumed but not closed here.
      * <p>
-     * 注入外部发现的语言文件——例如经 JarUtils 并行索引从其它模组 jar 中
-     * 找到的文件——并记录之，使后续资源管理器重载能带着资源包覆盖
-     * 重新注入。本方法消费但不关闭传入的流。
+     * 注入外部发现的语言文件——例如兼容层扫描从其它模组 jar 中找到的
+     * 文件——并记录之，使后续资源管理器重载能带着资源包覆盖重新注入。
+     * 本方法消费但不关闭传入的流。
      *
      * @param resourceDomain resource domain of the file / 文件所属资源域
      * @param resourceDir    directory under the domain, e.g. "lang" / 域内目录

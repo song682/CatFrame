@@ -39,6 +39,12 @@ import java.util.*;
  * <br>本项目的旧式键（{@code "normal"}、{@code "meta=N"}、纯数字键及不含 {@code '='} 的键）
  * 不属于属性检查组，跳过校验。
  *
+ * <p>This class also rejects x/y rotation angles that are not multiples of 90 degrees
+ * (see {@link #validateRotations}), mirroring vanilla's behaviour of refusing invalid
+ * rotations instead of baking silently wrong geometry.
+ * <br>本类还拒绝非 90 度倍数的 x/y 旋转角度（见 {@link #validateRotations}），
+ * 对齐原版拒绝非法旋转的行为，而不是静默烘焙出错误几何。
+ *
  * <p>Client main thread only (model registration / render dispatch); no synchronization.
  * <br>仅在客户端主线程调用（模型注册 / 渲染分发），不做同步。
  */
@@ -55,6 +61,16 @@ public final class BlockstateKeyValidator {
      */
     private static final Set<BlockstateJson> VALIDATED =
             Collections.newSetFromMap(new IdentityHashMap<>());
+
+    /**
+     * BlockstateJson instances already rotation-checked — independent identity set, since
+     * rotation validation is definition-independent and has different call sites than
+     * {@link #validate}.
+     * 已做过旋转角度校验的 BlockstateJson 实例——独立的引用去重集合，
+     * 因为旋转校验不依赖状态定义，调用点与 {@link #validate} 不同。
+     */
+    private static final Set<BlockstateJson> ROTATION_VALIDATED =
+            Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
 
     /**
      * Validate all variant keys of a blockstate against the block's typed state definition.
@@ -76,6 +92,12 @@ public final class BlockstateKeyValidator {
         if (bs == null || def == null || bs.variants == null || bs.variants.isEmpty()) return;
         if (!VALIDATED.add(bs)) return;
 
+        // Rotation angles are definition-independent; piggyback on the same hub call
+        // sites so every validated blockstate also gets its rotations checked.
+        // 旋转角度校验不依赖状态定义；搭载同一批中枢调用点，
+        // 保证每个被校验的 blockstate 同时完成角度校验。
+        validateRotations(bs, owner);
+
         List<String> invalidKeys = null;
         for (String key : bs.variants.keySet()) {
             if (isLegacyKey(key)) continue;
@@ -95,6 +117,93 @@ public final class BlockstateKeyValidator {
                         key, owner);
             }
         }
+    }
+
+    /**
+     * Validate x/y rotation angles of every variant and multipart apply entry.
+     * Aligned with vanilla: blockstate rotations only allow 90-degree increments
+     * (0 / 90 / 180 / 270). Angles outside that set are rejected explicitly instead
+     * of silently baking wrong geometry — faces would leave axis alignment and
+     * face / cullface / AO recomputation would produce incorrect results.
+     * Invalid variants fall back to {@code builtin/missing} (MissingNo); invalid
+     * multipart apply entries are dropped entirely.
+     * <br>校验所有 variant 与 multipart apply 条目的 x/y 旋转角度。对齐原版：
+     * blockstate 旋转只允许 90 度增量（0 / 90 / 180 / 270）。超出该集合的角度
+     * 会被显式拒绝，而不是静默烘焙出错误几何——旋转非 90° 倍数后面不再轴对齐，
+     * face / cullface / AO 的重算会给出错误结果。非法 variant 回退
+     * {@code builtin/missing}（MissingNo）；非法 multipart apply 条目整体作废。
+     *
+     * <p>Definition-independent: can be called on any loaded blockstate, including ones
+     * that never reach {@link #validate}.
+     * <br>不依赖状态定义：可对任何已加载的 blockstate 调用，
+     * 包括从不经过 {@link #validate} 的 blockstate。
+     *
+     * @param bs    the loaded blockstate JSON (no-op if null)
+     *              已加载的 blockstate JSON（为 null 时不做任何事）
+     * @param owner human-readable owner for log context (e.g. blockstate resource id)
+     *              日志上下文用的归属描述（如 blockstate 资源标识）
+     */
+    public static void validateRotations(@Nullable BlockstateJson bs, String owner) {
+        if (bs == null) return;
+        if (!ROTATION_VALIDATED.add(bs)) return;
+
+        if (bs.variants != null) {
+            List<String> invalidKeys = null;
+            for (Map.Entry<String, BlockstateJson.VariantEntry> e : bs.variants.entrySet()) {
+                BlockstateJson.VariantEntry entry = e.getValue();
+                if (entry == null) continue;
+                boolean bad = false;
+                if (entry.isArray()) {
+                    for (BlockstateJson.Variant v : entry.list) {
+                        if (!hasValidRotations(v)) bad = true;
+                    }
+                } else if (entry.single != null && !hasValidRotations(entry.single)) {
+                    bad = true;
+                }
+                if (bad) {
+                    if (invalidKeys == null) invalidKeys = new ArrayList<>();
+                    invalidKeys.add(e.getKey());
+                }
+            }
+            if (invalidKeys != null) {
+                for (String key : invalidKeys) {
+                    // Whole variant invalidated → builtin/missing (MissingNo)
+                    // 整个 variant 作废 → builtin/missing（MissingNo）
+                    bs.variants.put(key, missingEntry());
+                    CatFrame.logger.warn(
+                            "Invalid rotation angle (not a multiple of 90) in variant '{}' of {}; "
+                                    + "its model mapping falls back to builtin/missing",
+                            key, owner);
+                }
+            }
+        }
+
+        if (bs.multipart != null) {
+            Iterator<BlockstateJson.MultipartCase> it = bs.multipart.iterator();
+            while (it.hasNext()) {
+                BlockstateJson.MultipartCase mpc = it.next();
+                if (mpc.apply != null && !hasValidRotations(mpc.apply)) {
+                    it.remove();
+                    CatFrame.logger.warn(
+                            "Invalid rotation angle (not a multiple of 90) in a multipart apply entry of {}; "
+                                    + "the entry is dropped",
+                            owner);
+                }
+            }
+        }
+    }
+
+    /**
+     * A variant's rotations are valid iff both x and y are multiples of 90 degrees.
+     * variant 的旋转合法当且仅当 x 与 y 均为 90 度的整数倍。
+     */
+    private static boolean hasValidRotations(BlockstateJson.Variant v) {
+        return v != null && isQuarterTurn(v.x) && isQuarterTurn(v.y);
+    }
+
+    /** Multiple-of-90 check; negative values are handled by the modulo. 90 度倍数判定（模运算兼容负值）。 */
+    private static boolean isQuarterTurn(int deg) {
+        return deg % 90 == 0;
     }
 
     // ==================== 内部：键解析与校验 ====================

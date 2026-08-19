@@ -9,6 +9,7 @@ import decok.dfcdvadstf.catframe.model.lazy.LazySingleBlockModel;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.model.state.BlockstateKeyValidator;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
@@ -392,6 +393,14 @@ public class VanillaModelManager {
             String blockId = Block.blockRegistry.getNameForObject(block);
             String ns = (blockId != null && blockId.contains(":"))
                     ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
+            // Rotation angle validation is definition-independent and must run here too:
+            // blocks without a typed CatStateDefinition never reach
+            // BlockstateKeyValidator.validate() (no-op when def == null), and this method
+            // is the single choke point of every resident blockstate registration.
+            // 旋转角度校验不依赖状态定义，必须在此补上一道：无 typed CatStateDefinition
+            // 的方块不会进入 BlockstateKeyValidator.validate()（def 为 null 时直接跳过），
+            // 而本方法是所有常驻 blockstate 注册的唯一必经点。
+            BlockstateKeyValidator.validateRotations(bs, blockId);
             IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
 
             // BlockPane: 运行时连接 multipart（per-face 合并 + AtlasGuard）

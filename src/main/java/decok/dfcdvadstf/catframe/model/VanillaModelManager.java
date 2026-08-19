@@ -69,46 +69,6 @@ public class VanillaModelManager {
 
     public static class Utilities {
 
-        /**
-         * 原版图集查询键：剥 namespace 与 block/blocks/item/items 前缀，生成 1.7.10
-         * {@code TextureMap} 的 basePath 注册/查询键（如 {@code minecraft:block/ladder}
-         * → {@code ladder}；原版加载时拼 {@code textures/blocks/ladder.png}）。
-         * <p>
-         * 仅用于原版图集（vanilla atlas）的键变换 —— CatFrame 数据驱动图集键是完整
-         * 纹理路径（定义 JSON 产出的 sprite id），由 {@code CatAtlasManager} 独立管理，
-         * 与本方法无关。
-         *
-         * <p>Vanilla-atlas base-path key: strips namespace and the block/blocks/
-         * item/items prefixes. The data-driven CatAtlas identity is managed
-         * separately by {@code CatAtlasManager}.
-         *
-         * <p>[Hot Update 撤回方案] 键策略收敛：namespace 剥离仅对 minecraft 生效
-         * （扁平键与 {@code block.registerBlockIcons()} 幂等重合，OptiFine CTM 按名字
-         * 匹配分毫不差）；其他命名空间保留为 {@code modid:name}（{@code ResourceLocation}
-         * 解析 domain，落到 {@code modid:textures/blocks/<name>.png}），跨 mod 永不撞键。
-         * Key strategy: the namespace is stripped only for minecraft (flat keys stay
-         * idempotent with vanilla registration and OptiFine CTM name matching);
-         * other namespaces keep {@code modid:name} to avoid cross-mod collisions.
-         */
-        public static String toVanillaBaseKey(String texturePath) {
-            if (texturePath == null) return null;
-            int colon = texturePath.indexOf(':');
-            String namespace = colon >= 0 ? texturePath.substring(0, colon) : "minecraft";
-            String pathPart = colon >= 0 ? texturePath.substring(colon + 1) : texturePath;
-            if (pathPart.startsWith("blocks/")) {
-                pathPart = pathPart.substring("blocks/".length());
-            } else if (pathPart.startsWith("items/")) {
-                pathPart = pathPart.substring("items/".length());
-            } else if (pathPart.startsWith("block/")) {
-                pathPart = pathPart.substring("block/".length());
-            } else if (pathPart.startsWith("item/")) {
-                pathPart = pathPart.substring("item/".length());
-            }
-            // minecraft → 扁平键；其余命名空间 → "modid:name"（跨 mod 不撞键）
-            // minecraft → flat key; other namespaces → "modid:name" (collision-free)
-            return "minecraft".equals(namespace) ? pathPart : namespace + ":" + pathPart;
-        }
-
         @Nullable
         public static Block findBlock(String namespace, String name) {
             Block block = Block.getBlockFromName(name);

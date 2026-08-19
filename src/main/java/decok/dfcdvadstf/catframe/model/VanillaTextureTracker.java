@@ -78,21 +78,6 @@ public class VanillaTextureTracker {
     // upload results at Post so missing textures are reported explicitly.
     static final Set<String> registeredBlockKeys = new LinkedHashSet<>();
     static final Set<String> registeredItemKeys = new LinkedHashSet<>();
-    // vanilla sprite 快照表：texturePath → 原版收集循环的 vanilla IIcon。
-    // [渲染三域架构] CatAtlas 退役后不再被渲染路径消费（QuadWriter 直接使用 quad
-    // 携带的原版空间 IIcon），保留为兼容快照供诊断查询（见 getVanillaIcons）。
-    // Vanilla sprite snapshot table: kept for diagnostic queries after the
-    // CatAtlas retirement; the render path consumes vanilla-space icons directly.
-    static final Map<String, IIcon> vanillaIcons = new ConcurrentHashMap<>();
-
-    /**
-     * 原版 sprite 快照表（跨包访问入口；CatAtlas 退役后渲染路径不再消费，保留为兼容
-     * 快照供外部诊断查询）。
-     */
-    public static Map<String, IIcon> getVanillaIcons() {
-        return vanillaIcons;
-    }
-
     /**
      * 模型驱动的 block 纹理集合（跨包访问入口，供 CatAtlasManager 消费）。
      */
@@ -244,7 +229,6 @@ public class VanillaTextureTracker {
             return;
         }
         textureIcons.clear();
-        vanillaIcons.clear(); // 世界渲染 UV 回退表与收集循环同步重建
         AtlasPixelCache.clear(); // 资源重载时清空上一轮回读缓存
 
         int blockCollected = 0, blockMissed = 0;
@@ -256,7 +240,6 @@ public class VanillaTextureTracker {
                 IIcon icon = map.getAtlasSprite(iconName);
                 if (icon != null) {
                     textureIcons.put(texturePath, icon);
-                    vanillaIcons.put(texturePath, icon);
                     blockIcons.add(icon);
                     blockCollected++;
                 } else {
@@ -278,7 +261,6 @@ public class VanillaTextureTracker {
                     IIcon icon = itemMap.getAtlasSprite(iconName);
                     if (icon != null) {
                         textureIcons.put(texturePath, icon);
-                        vanillaIcons.put(texturePath, icon);
                         itemIcons.add(icon);
                         itemCollected++;
                     } else {
@@ -344,7 +326,6 @@ public class VanillaTextureTracker {
                 IIcon icon = itemMap.getAtlasSprite(iconName);
                 if (icon != null) {
                     textureIcons.put(texturePath, icon);
-                    vanillaIcons.put(texturePath, icon);
                     itemIcons.add(icon);
                 }
             }

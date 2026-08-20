@@ -95,6 +95,7 @@ dependencies {
     runtimeOnly "maven.modrinth:codechickencore-unofficial:${project.cc_version}"
     runtimeOnly "maven.modrinth:codechickenlib-unofficial:${project.cc_version}"
 
+    
     implementation fileTree(dir: 'lib', includes: ['*.jar'])
 }
 

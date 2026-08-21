@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.ui.components;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
@@ -93,11 +94,18 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
 
         // Clip contents to the inner area (1 px border inset), then translate by the
         // scroll offset while drawing — contents are drawn in unscrolled coordinates.
+        // Scissor coordinates are in framebuffer pixels, so the GUI-scale-space
+        // geometry is multiplied by the GUI scale factor.
         // 用 scissor 将内容裁剪到内区（边框内缩 1px），绘制期间按滚动量平移，
         // 子类在未滚动坐标系中直接绘制即可。
-        int displayHeight = Minecraft.getMinecraft().displayHeight;
+        // scissor 坐标是帧缓冲像素，GUI 缩放坐标系的几何需乘以 GUI 缩放系数。
+        Minecraft mc = Minecraft.getMinecraft();
+        int scaleFactor = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaleFactor();
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
-        GL11.glScissor(getX() + 1, displayHeight - getY() - height + 1, width - 2, height - 2);
+        GL11.glScissor((getX() + 1) * scaleFactor,
+                mc.displayHeight - (getY() + height - 1) * scaleFactor,
+                (width - 2) * scaleFactor,
+                (height - 2) * scaleFactor);
         GL11.glPushMatrix();
         GL11.glTranslatef(0.0F, (float) (-this.scrollAmount()), 0.0F);
         extractContents(graphics, mouseX, mouseY, partialTicks);

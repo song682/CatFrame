@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
@@ -172,13 +173,24 @@ public abstract class AbstractScrollArea extends AbstractComponent {
     /**
      * Enable GL scissor to clip rendering to this container's bounds.
      * <p>
+     * The container geometry lives in GUI-scale space, while {@code glScissor}
+     * expects framebuffer pixels, so every coordinate is multiplied by the GUI
+     * scale factor resolved from {@link ScaledResolution}.
+     * </p>
+     * <p>
      * 启用 GL 裁剪，将渲染限制在此容器的范围内。
+     * 容器几何位于 GUI 缩放坐标系，而 {@code glScissor} 需要帧缓冲像素坐标，
+     * 因此所有坐标都要乘以 {@link ScaledResolution} 解析出的 GUI 缩放系数。
      * </p>
      */
     protected void enableScissor() {
-        int displayHeight = Minecraft.getMinecraft().displayHeight;
+        Minecraft mc = Minecraft.getMinecraft();
+        int scaleFactor = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaleFactor();
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
-        GL11.glScissor(this.x, displayHeight - this.y - this.height, this.width, this.height);
+        GL11.glScissor(this.x * scaleFactor,
+                mc.displayHeight - (this.y + this.height) * scaleFactor,
+                this.width * scaleFactor,
+                this.height * scaleFactor);
     }
 
     /**

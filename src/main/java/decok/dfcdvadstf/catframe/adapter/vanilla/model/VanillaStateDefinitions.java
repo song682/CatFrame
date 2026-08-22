@@ -70,6 +70,9 @@ public final class VanillaStateDefinitions {
         private static final Property<String> TALLGRASS_VARIANT = StateDefinitions.stringProp("variant", "grass",
                         "fern");
 
+        // 草方块雪覆盖（动态，运行时由 SNOWY resolver 从上方方块材质计算）
+        private static final Property<String> SNOWY = StateDefinitions.stringProp("snowy", "false", "true");
+
         // 双草丛（2 格高）
         private static final Property<String> DOUBLE_PLANT_VARIANT = StateDefinitions.stringProp("variant", "sunflower",
                         "lilac",
@@ -214,6 +217,7 @@ public final class VanillaStateDefinitions {
                 registerStairs();
                 registerWall();
                 registerPanes();
+                registerGrass();
                 registerFlowersAndGrass();
                 registerDoubleSlabs();
                 registerWoodenSlab();
@@ -534,6 +538,21 @@ public final class VanillaStateDefinitions {
                                 .states(nbfDef)
                                 .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
+                                .register();
+        }
+
+        // ==================== 草方块（snowy 动态） ====================
+
+        private static void registerGrass() {
+                // grass: 无 meta（原版恒 0），snowy 为动态属性——上方为雪/雪块材质时切到
+                // grass_block_snow 模型（对齐 1.7.10 BlockGrass.getIcon 的侧边纹理切换）
+                CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.grass)
+                                .add(SNOWY)
+                                .dynamic(SNOWY)
+                                .create();
+                CatModels.register(Blocks.grass)
+                                .states(def)
+                                .dynamic(VanillaBlockResolvers.SNOWY)
                                 .register();
         }
 

@@ -8,6 +8,7 @@ import net.minecraft.block.BlockFence;
 import net.minecraft.block.BlockPane;
 import net.minecraft.block.BlockStairs;
 import net.minecraft.block.BlockWall;
+import net.minecraft.block.material.Material;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -27,6 +28,7 @@ import static net.minecraft.util.Direction.rotateOpposite;
  * <li>{@link #REDSTONE_WIRE} — 红石粉连接（north/east/south/west + up_* 爬线）</li>
  * <li>{@link #DOOR} — 门上下两半 meta 合并（facing/half/hinge/open）</li>
  * <li>{@link #DOUBLE_PLANT} — 双植物上半块变体从下方读取（variant/half）</li>
+ * <li>{@link #SNOWY} — 草方块雪覆盖（snowy，上方为雪/雪块材质）</li>
  * </ul>
  */
 @SideOnly(Side.CLIENT)
@@ -329,6 +331,30 @@ public final class VanillaBlockResolvers {
             }
             props.put("variant", DOUBLE_PLANT_VARIANTS[Math.min(variantMeta & 7, 5)]);
             props.put("half", upper ? "upper" : "lower");
+        }
+    };
+
+    // ==================== 草方块雪覆盖 ====================
+
+    /**
+     * 草方块雪覆盖动态解析器：写入 snowy。
+     * <p>
+     * 复刻 1.7.10 {@code BlockGrass#getIcon(IBlockAccess,...)} 的侧边纹理切换判定：
+     * 上方方块材质为 {@link Material#snow}（雪层）或 {@link Material#craftedSnow}（雪块）
+     * 时，原版把侧边纹理从 {@code grass_side} 换成 {@code grass_side_snowed}。
+     * 此处把该世界内判定提升为 blockstate 的 snowy 动态属性，驱动 blockstate JSON
+     * 从 {@code grass_block} 切到 {@code grass_block_snow} 模型（1.13+ 同款语义）。
+     */
+    public static final DynamicPropertyResolver SNOWY = new DynamicPropertyResolver() {
+        @Override
+        public void resolve(IBlockAccess world, int x, int y, int z, int meta, Map<String, String> props) {
+            if (world == null) {
+                // 无世界上下文（如 GUI 预览）：按普通草方块渲染
+                props.put("snowy", "false");
+                return;
+            }
+            Material material = world.getBlock(x, y + 1, z).getMaterial();
+            props.put("snowy", material != Material.snow && material != Material.craftedSnow ? "false" : "true");
         }
     };
 }

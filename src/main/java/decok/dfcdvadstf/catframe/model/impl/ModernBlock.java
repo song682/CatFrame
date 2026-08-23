@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.model.impl;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.relauncher.Side;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.model.CatModels;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
@@ -10,6 +11,9 @@ import decok.dfcdvadstf.catframe.model.render.RenderJsonBlockModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
+import decok.dfcdvadstf.catframe.model.state.CatStateInheritance;
+import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.block.StateProviderBlockModel;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -58,6 +62,14 @@ public class ModernBlock extends Block implements IBlockStateProvider {
 
     /** ISBRH renderType ID，由 {@link #register(ModernBlock)} 在客户端分配。 */
     protected int modernRenderType = 0;
+
+    /**
+     * v0.3.0+ 自动继承解析得到的 typed 状态定义（{@link #register(ModernBlock)} 时填充）。
+     * <p>
+     * 子类无需手动赋值：未显式配置时沿继承链合并基类片段（见
+     * {@link CatStateInheritance}），供渲染管线与 blockstate 键校验使用。
+     */
+    private CatStateDefinition<?> stateDefinition;
 
     protected ModernBlock(Material material) {
         super(material);
@@ -114,6 +126,11 @@ public class ModernBlock extends Block implements IBlockStateProvider {
         return blockstateName;
     }
 
+    @Override
+    public CatStateDefinition<?> getStateDefinition() {
+        return stateDefinition;
+    }
+
     /**
      * 动态属性映射。默认返回空 map（匹配 blockstate JSON 中的 "normal" variant）。
      * <p>
@@ -164,6 +181,20 @@ public class ModernBlock extends Block implements IBlockStateProvider {
 
         ModelManagerDataLoader.registerBlock(block);
 
+        // 自动 BlockState 继承：未显式 typed def 时沿继承链合并基类片段（如
+        // PillarBlock 的 axis），子类无需手动覆盖 getStateProperties 或声明 .states(...)。
+        // Auto inheritance: merge base fragments (e.g. PillarBlock's axis) along the
+        // class hierarchy when no explicit typed def exists.
+        if (block.stateDefinition == null && !ModelRegistry.hasStateDefinition(block)) {
+            CatStateInheritance.Inherited inherited = CatStateInheritance.resolve(block);
+            if (inherited != null) {
+                block.stateDefinition = inherited.def;
+                ModelRegistry.registerStateDefinition(block, block.stateDefinition);
+                CatFrame.logger.info("[ModernBlock] inherited state definition for {} from base class chain",
+                        block.getClass().getName());
+            }
+        }
+
         // 注册 BlockStateModel，供 ItemBlock 渲染 fallback 使用
         ModelRegistry.registerBlockModel(block, new LazyStateProviderBlockModel(block));
 
@@ -172,6 +203,32 @@ public class ModernBlock extends Block implements IBlockStateProvider {
             block.modernRenderType = id;
             return id;
         }
+        return -1;
+    }
+
+    /**
+     * 任意 Block 的便捷注册入口：自动 BlockState 继承 + CatModels 声明式管线。
+     * <p>
+     * 非 {@link ModernBlock} 的方块（如直接继承原版 {@code BlockRotatedPillar} 的
+     * PillarBlock 扩展）无需实现 {@link IBlockStateProvider}：本方法从注册名推导并登记
+     * blockstate 命名空间，然后走 {@link CatModels#register(Block)} 管线（含继承解析），
+     * blockstate JSON 至迟在下次纹理缝合时加载、物化。
+     *
+     * @param block 任意方块实例
+     * @return 客户端分配的 ISBRH renderType ID；非 {@link ModernBlock} 返回 -1
+     */
+    public static int register(Block block) {
+        if (block instanceof ModernBlock) {
+            return register((ModernBlock) block);
+        }
+        // 推导并登记 blockstate 命名空间（CatModels.materialize 依赖已加载的 blockstates）
+        String registryName = Block.blockRegistry.getNameForObject(block);
+        if (registryName != null) {
+            int colon = registryName.indexOf(':');
+            String ns = colon > 0 ? registryName.substring(0, colon) : DEFAULT_BLOCKSTATE_NAMESPACE;
+            ModelManagerDataLoader.registerNamespace(ns);
+        }
+        CatModels.register(block).register();
         return -1;
     }
 
@@ -214,7 +271,17 @@ public class ModernBlock extends Block implements IBlockStateProvider {
                 Block block = (Block) provider;
                 BlockstateJson bs = ModelManagerDataLoader.getBlockstateData(block);
                 if (bs != null) {
-                    delegate = new StateProviderBlockModel(provider, bs, null);
+                    // typed 状态定义存在时（显式 .states(...) 或继承解析得到），
+                    // 走 ResidentStateModel 属性驱动匹配；否则回退到 provider 动态属性。
+                    CatStateDefinition<?> def = ModelRegistry.getStateDefinition(block);
+                    if (def != null) {
+                        delegate = ResidentStateModel.builder(block)
+                                        .blockstate(bs)
+                                        .stateDefinition(def)
+                                        .build();
+                    } else {
+                        delegate = new StateProviderBlockModel(provider, bs, null);
+                    }
                 }
             }
             return delegate;

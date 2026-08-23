@@ -7,6 +7,9 @@ import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import decok.dfcdvadstf.catframe.model.state.property.StateDefinitions;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockRotatedPillar;
+import net.minecraft.block.BlockSlab;
+import net.minecraft.block.BlockStairs;
 import net.minecraft.init.Blocks;
 
 /**
@@ -207,6 +210,7 @@ public final class VanillaStateDefinitions {
          */
         @SideOnly(Side.CLIENT)
         public static void registerVanillaStateDefinitions() {
+                registerVanillaBaseClasses();
                 registerColorBlocks();
                 registerLogsAndLeaves();
                 registerSingleVariantBlocks();
@@ -236,6 +240,55 @@ public final class VanillaStateDefinitions {
                 registerButtons();
                 registerFurnaces();
                 registerPistons();
+        }
+
+        // ==================== 原版基类状态定义片段（自动 BlockState 继承）
+        // ====================
+
+        /**
+         * 登记原版方块基类的状态定义片段，供自定义子类沿继承链自动获得属性与 meta 解码。
+         * <p>
+         * 子类（如模组的 {@code PillarBlock} 扩展）无需手动声明属性：在 preInit 调用
+         * {@code CatModels.register(block).register()} 或 {@code ModernBlock.register(block)}
+         * 时自动合并父类片段（见 {@code CatStateInheritance}）。
+         * <p>
+         * 注意：codec 必须对全部 16 个 meta 值安全（Builder.create() 会预填
+         * resolvedByMeta[0..15]），索引一律钳制到值域内。
+         */
+        private static void registerVanillaBaseClasses() {
+                // BlockRotatedPillar（1.7.10 的 PillarBlock）：axis 编码于 meta bit2-3
+                // （0=y,1=x,2=z），低 2 位保留给子类（如原木的 wood 类型）——
+                // 对齐 onBlockPlaced 的 j1|b0 位域布局。
+                CatStateDefinition<Class<?>> pillarDef = new CatStateDefinition.Builder<Class<?>>(
+                                BlockRotatedPillar.class)
+                                .add(StateDefinitions.AXIS)
+                                .metaCodec(meta -> new Comparable<?>[] {
+                                                StateDefinitions.AXIS.getValues().get((meta >> 2) % 3) })
+                                .create();
+                CatModels.registerBase(BlockRotatedPillar.class).states(pillarDef).register();
+
+                // BlockStairs：facing[meta&3: 0=east,1=west,2=south,3=north] +
+                // half[bit2: 0=bottom,1=top] + shape 动态（运行时由 STAIRS resolver 计算转角）。
+                CatStateDefinition<Class<?>> stairsDef = new CatStateDefinition.Builder<Class<?>>(
+                                BlockStairs.class)
+                                .add(STAIR_FACING, StateDefinitions.SLAB_HALF, STAIR_SHAPE)
+                                .dynamic(STAIR_SHAPE)
+                                .metaCodec(meta -> new Comparable<?>[] {
+                                                STAIR_FACING.getValues().get(meta & 3),
+                                                StateDefinitions.SLAB_HALF.getValues().get((meta & 4) == 0 ? 0 : 1) })
+                                .create();
+                CatModels.registerBase(BlockStairs.class)
+                                .states(stairsDef)
+                                .dynamic(VanillaBlockResolvers.STAIRS)
+                                .register();
+
+                // BlockSlab：half 编码于 meta bit3（0=bottom,1=top），低 3 位保留给子类 variant。
+                CatStateDefinition<Class<?>> slabDef = new CatStateDefinition.Builder<Class<?>>(BlockSlab.class)
+                                .add(StateDefinitions.SLAB_HALF)
+                                .metaCodec(meta -> new Comparable<?>[] {
+                                                StateDefinitions.SLAB_HALF.getValues().get((meta & 8) == 0 ? 0 : 1) })
+                                .create();
+                CatModels.registerBase(BlockSlab.class).states(slabDef).register();
         }
 
         // ==================== 纯 16 色（单 COLOR，默认笛卡尔解码 meta&15） ====================

@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.model.state;
 
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -183,6 +184,19 @@ public final class CatStateDefinition<O> {
      */
     public Property<?>[] getStaticProperties() {
         return staticProperties;
+    }
+
+    /**
+     * 返回 meta 编解码器；未设置时为 {@code null}（使用静态属性的笛卡尔积自然编码）。
+     * <p>
+     * 供 {@link CatStateInheritance} 提取片段 codec 使用：子类继承父类状态定义时
+     * 需要把各片段的 codec 按位域拼接组合。
+     *
+     * @return meta 编解码器，或 {@code null}
+     */
+    @Nullable
+    public MetaCodec getMetaCodec() {
+        return metaCodec;
     }
 
     /**

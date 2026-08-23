@@ -5,6 +5,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
+import decok.dfcdvadstf.catframe.model.state.CatStateInheritance;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
@@ -58,6 +59,20 @@ public final class CatModels {
      */
     public static Spec register(Block block) {
         return new Spec(block);
+    }
+
+    /**
+     * 开始登记一个方块基类的状态定义片段（自动 BlockState 继承）。
+     * <p>
+     * 登记后，任何继承该基类的方块在 {@link Spec#register()} 时自动合并基类属性 /
+     * MetaCodec / 动态属性等，无需手动重复声明。内置原版基类表见
+     * {@code VanillaStateDefinitions.registerVanillaBaseClasses()}。
+     *
+     * @param clazz 基类类型（如 {@code BlockRotatedPillar.class}）
+     * @return 链式配置器
+     */
+    public static CatStateInheritance.BaseSpec registerBase(Class<? extends Block> clazz) {
+        return CatStateInheritance.registerBase(clazz);
     }
 
     // ==================== 链式配置器 ====================
@@ -121,6 +136,17 @@ public final class CatModels {
 
         /** 完成登记：存入 {@link #SPECS} 并注册 typed 状态定义。 */
         public void register() {
+            // 自动 BlockState 继承：未显式配置 typed def 时，沿继承链合并基类片段；
+            // 基类片段可能晚于本调用注册（如模组 preInit 先于 CatFrame 内置表），
+            // 故 {@link #materialize()} 中还有一轮兜底解析。
+            // Auto inheritance: when no explicit typed def is set, merge base fragments
+            // from the class hierarchy; materialize() retries for late-registered bases.
+            if (spec.def == null) {
+                CatStateInheritance.Inherited inherited = CatStateInheritance.resolve(spec.block);
+                if (inherited != null) {
+                    applyInherited(spec, inherited);
+                }
+            }
             SPECS.put(spec.block, spec);
             if (spec.def != null) {
                 ModelRegistry.registerStateDefinition(spec.block, spec.def);
@@ -142,6 +168,29 @@ public final class CatModels {
     // ==================== 物化 ====================
 
     /**
+     * 把继承解析结果应用到 spec（仅填充未显式配置的字段，显式配置保持优先）。
+     * <p>
+     * 继承片段中的 connectionMultipart 与 fullModel 无法区分「显式设置」与「默认值」，
+     * 采用保守合并：基类开启 multipart / 关闭 fullModel 时覆盖默认值，反向不覆盖。
+     */
+    private static void applyInherited(CatModelSpec spec, CatStateInheritance.Inherited inherited) {
+        spec.def = inherited.def;
+        if (spec.dynamic == null) {
+            spec.dynamic = inherited.dynamic;
+        }
+        if (spec.redirect == null && inherited.redirect != null) {
+            spec.redirect = inherited.redirect;
+            spec.redirectNamespace = inherited.redirectNamespace;
+        }
+        if (!spec.connectionMultipart && inherited.connectionMultipart) {
+            spec.connectionMultipart = true;
+            spec.fullModel = false;
+        } else if (spec.fullModel && !inherited.fullModel) {
+            spec.fullModel = false;
+        }
+    }
+
+    /**
      * 把所有已登记的 spec 物化为常驻方块模型与物品决策树。
      * <p>
      * 在 blockstate JSON 加载完成后（{@code registerAllModels}）调用。已注册模型的方块
@@ -153,6 +202,20 @@ public final class CatModels {
     public static int materialize() {
         int count = 0;
         for (CatModelSpec spec : SPECS.values()) {
+            // 兜底继承解析：基类片段可能在 Spec.register() 之后才登记
+            // （如模组 preInit 早于 CatFrame 的内置基类表注册），此时补票。
+            if (spec.def == null) {
+                CatStateInheritance.Inherited inherited = CatStateInheritance.resolve(spec.block);
+                if (inherited != null) {
+                    applyInherited(spec, inherited);
+                    ModelRegistry.registerStateDefinition(spec.block, spec.def);
+                    if (spec.redirect != null) {
+                        ModelManagerDataLoader.registerBlockstateRedirect(spec.block, spec.redirect);
+                    }
+                    CatFrame.logger.info("CatModels: inherited state definition for {} from base class chain",
+                            Block.blockRegistry.getNameForObject(spec.block));
+                }
+            }
             Block block = spec.block;
             String registryName = Block.blockRegistry.getNameForObject(block);
             String namespace = "minecraft";

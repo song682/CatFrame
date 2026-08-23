@@ -1,12 +1,28 @@
 {
   "variants": {
-    "variant=stone": { "model": "minecraft:block/double_slab_stone" },
-    "variant=sandstone": { "model": "minecraft:block/double_slab_sandstone" },
-    "variant=wood": { "model": "minecraft:block/double_slab_wood" },
-    "variant=cobblestone": { "model": "minecraft:block/double_slab_cobblestone" },
-    "variant=brick": { "model": "minecraft:block/double_slab_brick" },
-    "variant=stone_brick": { "model": "minecraft:block/double_slab_stone_brick" },
-    "variant=nether_brick": { "model": "minecraft:block/double_slab_nether_brick" },
-    "variant=quartz": { "model": "minecraft:block/double_slab_quartz" }
+    "variant\u003dbrick": {
+      "model": "minecraft:block/double_slab_brick"
+    },
+    "variant\u003dcobblestone": {
+      "model": "minecraft:block/double_slab_cobblestone"
+    },
+    "variant\u003dnether_brick": {
+      "model": "minecraft:block/double_slab_nether_brick"
+    },
+    "variant\u003dquartz": {
+      "model": "minecraft:block/double_slab_quartz"
+    },
+    "variant\u003dsandstone": {
+      "model": "minecraft:block/double_slab_sandstone"
+    },
+    "variant\u003dstone": {
+      "model": "minecraft:block/double_slab_stone"
+    },
+    "variant\u003dstone_brick": {
+      "model": "minecraft:block/double_slab_stone_brick"
+    },
+    "variant\u003dwood": {
+      "model": "minecraft:block/double_slab_wood"
+    }
   }
 }

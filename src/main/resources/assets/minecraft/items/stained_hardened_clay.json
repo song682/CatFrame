@@ -1,25 +1,124 @@
 {
-    "model": {
-        "type": "minecraft:select",
-        "property": "catframe:meta",
-        "fallback": {"type": "minecraft:model", "model": "minecraft:block/hardened_clay"},
-        "cases": [
-            {"when": "0", "model": {"type": "minecraft:model", "model": "minecraft:block/white_terracotta"}},
-            {"when": "1", "model": {"type": "minecraft:model", "model": "minecraft:block/orange_terracotta"}},
-            {"when": "2", "model": {"type": "minecraft:model", "model": "minecraft:block/magenta_terracotta"}},
-            {"when": "3", "model": {"type": "minecraft:model", "model": "minecraft:block/light_blue_terracotta"}},
-            {"when": "4", "model": {"type": "minecraft:model", "model": "minecraft:block/yellow_terracotta"}},
-            {"when": "5", "model": {"type": "minecraft:model", "model": "minecraft:block/lime_terracotta"}},
-            {"when": "6", "model": {"type": "minecraft:model", "model": "minecraft:block/pink_terracotta"}},
-            {"when": "7", "model": {"type": "minecraft:model", "model": "minecraft:block/gray_terracotta"}},
-            {"when": "8", "model": {"type": "minecraft:model", "model": "minecraft:block/light_gray_terracotta"}},
-            {"when": "9", "model": {"type": "minecraft:model", "model": "minecraft:block/cyan_terracotta"}},
-            {"when": "10", "model": {"type": "minecraft:model", "model": "minecraft:block/purple_terracotta"}},
-            {"when": "11", "model": {"type": "minecraft:model", "model": "minecraft:block/blue_terracotta"}},
-            {"when": "12", "model": {"type": "minecraft:model", "model": "minecraft:block/brown_terracotta"}},
-            {"when": "13", "model": {"type": "minecraft:model", "model": "minecraft:block/green_terracotta"}},
-            {"when": "14", "model": {"type": "minecraft:model", "model": "minecraft:block/red_terracotta"}},
-            {"when": "15", "model": {"type": "minecraft:model", "model": "minecraft:block/black_terracotta"}}
-        ]
-    }
+  "model": {
+    "type": "minecraft:select",
+    "cases": [
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/white_terracotta"
+        },
+        "when": "0"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/orange_terracotta"
+        },
+        "when": "1"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/magenta_terracotta"
+        },
+        "when": "2"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/light_blue_terracotta"
+        },
+        "when": "3"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/yellow_terracotta"
+        },
+        "when": "4"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/lime_terracotta"
+        },
+        "when": "5"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/pink_terracotta"
+        },
+        "when": "6"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/gray_terracotta"
+        },
+        "when": "7"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/light_gray_terracotta"
+        },
+        "when": "8"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/cyan_terracotta"
+        },
+        "when": "9"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/purple_terracotta"
+        },
+        "when": "10"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/blue_terracotta"
+        },
+        "when": "11"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/brown_terracotta"
+        },
+        "when": "12"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/green_terracotta"
+        },
+        "when": "13"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/red_terracotta"
+        },
+        "when": "14"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/black_terracotta"
+        },
+        "when": "15"
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "minecraft:block/hardened_clay"
+    },
+    "property": "catframe:meta"
+  }
 }

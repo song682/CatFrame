@@ -1,10 +1,22 @@
 {
   "variants": {
-    "variant=stone":              { "model": "minecraft:block/stone" },
-    "variant=cobblestone":        { "model": "minecraft:block/cobblestone" },
-    "variant=stone_brick":        { "model": "minecraft:block/stonebrick" },
-    "variant=mossy_stone_brick":  { "model": "minecraft:block/mossy_stonebrick" },
-    "variant=cracked_stone_brick": { "model": "minecraft:block/cracked_stonebrick" },
-    "variant=chiseled_stone_brick": { "model": "minecraft:block/chiseled_stonebrick" }
+    "variant\u003dchiseled_stone_brick": {
+      "model": "minecraft:block/chiseled_stonebrick"
+    },
+    "variant\u003dcobblestone": {
+      "model": "minecraft:block/cobblestone"
+    },
+    "variant\u003dcracked_stone_brick": {
+      "model": "minecraft:block/cracked_stonebrick"
+    },
+    "variant\u003dmossy_stone_brick": {
+      "model": "minecraft:block/mossy_stonebrick"
+    },
+    "variant\u003dstone": {
+      "model": "minecraft:block/stone"
+    },
+    "variant\u003dstone_brick": {
+      "model": "minecraft:block/stonebrick"
+    }
   }
 }

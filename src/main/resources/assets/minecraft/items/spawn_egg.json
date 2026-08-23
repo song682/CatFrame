@@ -1,10 +1,16 @@
 {
-    "model": {
-        "type": "minecraft:model",
-        "model": "minecraft:item/spawn_egg",
-        "tints": [
-            { "type": "minecraft:spawn_egg", "index": 0 },
-            { "type": "minecraft:spawn_egg", "index": 1 }
-        ]
-    }
+  "model": {
+    "type": "minecraft:model",
+    "model": "minecraft:item/spawn_egg",
+    "tints": [
+      {
+        "type": "minecraft:spawn_egg",
+        "index": 0
+      },
+      {
+        "type": "minecraft:spawn_egg",
+        "index": 1
+      }
+    ]
+  }
 }

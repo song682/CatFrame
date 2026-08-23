@@ -1,5 +1,7 @@
 {
   "variants": {
-    "normal": { "model": "minecraft:block/emerald_ore" }
+    "normal": {
+      "model": "minecraft:block/emerald_ore"
+    }
   }
 }

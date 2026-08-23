@@ -1,44 +1,217 @@
 {
   "variants": {
-    "facing=east,half=bottom,shape=straight":       { "model": "minecraft:block/quartz_stairs" },
-    "facing=west,half=bottom,shape=straight":       { "model": "minecraft:block/quartz_stairs", "y": 180, "uvlock": true },
-    "facing=south,half=bottom,shape=straight":      { "model": "minecraft:block/quartz_stairs", "y": 90, "uvlock": true },
-    "facing=north,half=bottom,shape=straight":      { "model": "minecraft:block/quartz_stairs", "y": 270, "uvlock": true },
-    "facing=east,half=bottom,shape=outer_right":    { "model": "minecraft:block/quartz_outer_stairs", "uvlock": true },
-    "facing=west,half=bottom,shape=outer_right":    { "model": "minecraft:block/quartz_outer_stairs", "y": 180, "uvlock": true },
-    "facing=south,half=bottom,shape=outer_right":   { "model": "minecraft:block/quartz_outer_stairs", "y": 90, "uvlock": true },
-    "facing=north,half=bottom,shape=outer_right":   { "model": "minecraft:block/quartz_outer_stairs", "y": 270, "uvlock": true },
-    "facing=east,half=bottom,shape=outer_left":     { "model": "minecraft:block/quartz_outer_stairs", "y": 270, "uvlock": true },
-    "facing=west,half=bottom,shape=outer_left":     { "model": "minecraft:block/quartz_outer_stairs", "y": 90, "uvlock": true },
-    "facing=south,half=bottom,shape=outer_left":    { "model": "minecraft:block/quartz_outer_stairs", "y": 0, "uvlock": true },
-    "facing=north,half=bottom,shape=outer_left":    { "model": "minecraft:block/quartz_outer_stairs", "y": 180, "uvlock": true },
-    "facing=east,half=bottom,shape=inner_right":    { "model": "minecraft:block/quartz_inner_stairs", "uvlock": true },
-    "facing=west,half=bottom,shape=inner_right":    { "model": "minecraft:block/quartz_inner_stairs", "y": 180, "uvlock": true },
-    "facing=south,half=bottom,shape=inner_right":   { "model": "minecraft:block/quartz_inner_stairs", "y": 90, "uvlock": true },
-    "facing=north,half=bottom,shape=inner_right":   { "model": "minecraft:block/quartz_inner_stairs", "y": 270, "uvlock": true },
-    "facing=east,half=bottom,shape=inner_left":     { "model": "minecraft:block/quartz_inner_stairs", "y": 270, "uvlock": true },
-    "facing=west,half=bottom,shape=inner_left":     { "model": "minecraft:block/quartz_inner_stairs", "y": 90, "uvlock": true },
-    "facing=south,half=bottom,shape=inner_left":    { "model": "minecraft:block/quartz_inner_stairs", "y": 0, "uvlock": true },
-    "facing=north,half=bottom,shape=inner_left":    { "model": "minecraft:block/quartz_inner_stairs", "y": 180, "uvlock": true },
-    "facing=east,half=top,shape=straight":          { "model": "minecraft:block/quartz_stairs", "x": 180, "uvlock": true },
-    "facing=west,half=top,shape=straight":          { "model": "minecraft:block/quartz_stairs", "x": 180, "uvlock": true, "y": 180 },
-    "facing=south,half=top,shape=straight":         { "model": "minecraft:block/quartz_stairs", "x": 180, "uvlock": true, "y": 90 },
-    "facing=north,half=top,shape=straight":         { "model": "minecraft:block/quartz_stairs", "x": 180, "uvlock": true, "y": 270 },
-    "facing=east,half=top,shape=outer_right":       { "model": "minecraft:block/quartz_outer_stairs", "x": 180, "uvlock": true },
-    "facing=west,half=top,shape=outer_right":       { "model": "minecraft:block/quartz_outer_stairs", "x": 180, "uvlock": true, "y": 180 },
-    "facing=south,half=top,shape=outer_right":      { "model": "minecraft:block/quartz_outer_stairs", "x": 180, "uvlock": true, "y": 90 },
-    "facing=north,half=top,shape=outer_right":      { "model": "minecraft:block/quartz_outer_stairs", "x": 180, "uvlock": true, "y": 270 },
-    "facing=east,half=top,shape=outer_left":        { "model": "minecraft:block/quartz_outer_stairs", "x": 180, "uvlock": true, "y": 270 },
-    "facing=west,half=top,shape=outer_left":        { "model": "minecraft:block/quartz_outer_stairs", "x": 180, "uvlock": true, "y": 90 },
-    "facing=south,half=top,shape=outer_left":       { "model": "minecraft:block/quartz_outer_stairs", "x": 180, "uvlock": true, "y": 0 },
-    "facing=north,half=top,shape=outer_left":       { "model": "minecraft:block/quartz_outer_stairs", "x": 180, "uvlock": true, "y": 180 },
-    "facing=east,half=top,shape=inner_right":       { "model": "minecraft:block/quartz_inner_stairs", "x": 180, "uvlock": true },
-    "facing=west,half=top,shape=inner_right":       { "model": "minecraft:block/quartz_inner_stairs", "x": 180, "uvlock": true, "y": 180 },
-    "facing=south,half=top,shape=inner_right":      { "model": "minecraft:block/quartz_inner_stairs", "x": 180, "uvlock": true, "y": 90 },
-    "facing=north,half=top,shape=inner_right":      { "model": "minecraft:block/quartz_inner_stairs", "x": 180, "uvlock": true, "y": 270 },
-    "facing=east,half=top,shape=inner_left":        { "model": "minecraft:block/quartz_inner_stairs", "x": 180, "uvlock": true, "y": 270 },
-    "facing=west,half=top,shape=inner_left":        { "model": "minecraft:block/quartz_inner_stairs", "x": 180, "uvlock": true, "y": 90 },
-    "facing=south,half=top,shape=inner_left":       { "model": "minecraft:block/quartz_inner_stairs", "x": 180, "uvlock": true, "y": 0 },
-    "facing=north,half=top,shape=inner_left":       { "model": "minecraft:block/quartz_inner_stairs", "x": 180, "uvlock": true, "y": 180 }
+    "facing\u003deast,half\u003dbottom,shape\u003dinner_left": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "y": 270
+    },
+    "facing\u003deast,half\u003dbottom,shape\u003dinner_right": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true
+    },
+    "facing\u003deast,half\u003dbottom,shape\u003douter_left": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "y": 270
+    },
+    "facing\u003deast,half\u003dbottom,shape\u003douter_right": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true
+    },
+    "facing\u003deast,half\u003dbottom,shape\u003dstraight": {
+      "model": "minecraft:block/quartz_stairs"
+    },
+    "facing\u003deast,half\u003dtop,shape\u003dinner_left": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 270
+    },
+    "facing\u003deast,half\u003dtop,shape\u003dinner_right": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "x": 180
+    },
+    "facing\u003deast,half\u003dtop,shape\u003douter_left": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 270
+    },
+    "facing\u003deast,half\u003dtop,shape\u003douter_right": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "x": 180
+    },
+    "facing\u003deast,half\u003dtop,shape\u003dstraight": {
+      "model": "minecraft:block/quartz_stairs",
+      "uvlock": true,
+      "x": 180
+    },
+    "facing\u003dnorth,half\u003dbottom,shape\u003dinner_left": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "y": 180
+    },
+    "facing\u003dnorth,half\u003dbottom,shape\u003dinner_right": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "y": 270
+    },
+    "facing\u003dnorth,half\u003dbottom,shape\u003douter_left": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "y": 180
+    },
+    "facing\u003dnorth,half\u003dbottom,shape\u003douter_right": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "y": 270
+    },
+    "facing\u003dnorth,half\u003dbottom,shape\u003dstraight": {
+      "model": "minecraft:block/quartz_stairs",
+      "uvlock": true,
+      "y": 270
+    },
+    "facing\u003dnorth,half\u003dtop,shape\u003dinner_left": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 180
+    },
+    "facing\u003dnorth,half\u003dtop,shape\u003dinner_right": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 270
+    },
+    "facing\u003dnorth,half\u003dtop,shape\u003douter_left": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 180
+    },
+    "facing\u003dnorth,half\u003dtop,shape\u003douter_right": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 270
+    },
+    "facing\u003dnorth,half\u003dtop,shape\u003dstraight": {
+      "model": "minecraft:block/quartz_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 270
+    },
+    "facing\u003dsouth,half\u003dbottom,shape\u003dinner_left": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "y": 0
+    },
+    "facing\u003dsouth,half\u003dbottom,shape\u003dinner_right": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "y": 90
+    },
+    "facing\u003dsouth,half\u003dbottom,shape\u003douter_left": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "y": 0
+    },
+    "facing\u003dsouth,half\u003dbottom,shape\u003douter_right": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "y": 90
+    },
+    "facing\u003dsouth,half\u003dbottom,shape\u003dstraight": {
+      "model": "minecraft:block/quartz_stairs",
+      "uvlock": true,
+      "y": 90
+    },
+    "facing\u003dsouth,half\u003dtop,shape\u003dinner_left": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 0
+    },
+    "facing\u003dsouth,half\u003dtop,shape\u003dinner_right": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 90
+    },
+    "facing\u003dsouth,half\u003dtop,shape\u003douter_left": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 0
+    },
+    "facing\u003dsouth,half\u003dtop,shape\u003douter_right": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 90
+    },
+    "facing\u003dsouth,half\u003dtop,shape\u003dstraight": {
+      "model": "minecraft:block/quartz_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 90
+    },
+    "facing\u003dwest,half\u003dbottom,shape\u003dinner_left": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "y": 90
+    },
+    "facing\u003dwest,half\u003dbottom,shape\u003dinner_right": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "y": 180
+    },
+    "facing\u003dwest,half\u003dbottom,shape\u003douter_left": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "y": 90
+    },
+    "facing\u003dwest,half\u003dbottom,shape\u003douter_right": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "y": 180
+    },
+    "facing\u003dwest,half\u003dbottom,shape\u003dstraight": {
+      "model": "minecraft:block/quartz_stairs",
+      "uvlock": true,
+      "y": 180
+    },
+    "facing\u003dwest,half\u003dtop,shape\u003dinner_left": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 90
+    },
+    "facing\u003dwest,half\u003dtop,shape\u003dinner_right": {
+      "model": "minecraft:block/quartz_inner_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 180
+    },
+    "facing\u003dwest,half\u003dtop,shape\u003douter_left": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 90
+    },
+    "facing\u003dwest,half\u003dtop,shape\u003douter_right": {
+      "model": "minecraft:block/quartz_outer_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 180
+    },
+    "facing\u003dwest,half\u003dtop,shape\u003dstraight": {
+      "model": "minecraft:block/quartz_stairs",
+      "uvlock": true,
+      "x": 180,
+      "y": 180
+    }
   }
 }

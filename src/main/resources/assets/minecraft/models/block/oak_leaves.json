@@ -1,4 +1,6 @@
 {
   "parent": "block/leaves",
-  "textures": { "all": "minecraft:blocks/leaves_oak" }
+  "textures": {
+    "all": "minecraft:blocks/leaves_oak"
+  }
 }

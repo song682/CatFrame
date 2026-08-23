@@ -1,43 +1,204 @@
 {
-    "ambientocclusion": false,
-    "textures": {
-        "particle": "minecraft:blocks/repeater_off",
-        "slab": "minecraft:blocks/stone_slab_top",
-        "top": "minecraft:blocks/repeater_off",
-        "lock": "minecraft:blocks/bedrock",
-        "unlit": "minecraft:blocks/redstone_torch_off"
-    },
-    "elements": [
-        {   "from": [ 0, 0, 0 ],
-            "to": [ 16, 2, 16 ],
-            "faces": {
-                "down":  { "uv": [ 0,  0, 16, 16 ], "texture": "#slab", "cullface": "down" },
-                "up":    { "uv": [ 0,  0, 16, 16 ], "texture": "#top" },
-                "north": { "uv": [ 0, 14, 16, 16 ], "texture": "#slab", "cullface": "north" },
-                "south": { "uv": [ 0, 14, 16, 16 ], "texture": "#slab", "cullface": "south" },
-                "west":  { "uv": [ 0, 14, 16, 16 ], "texture": "#slab", "cullface": "west" },
-                "east":  { "uv": [ 0, 14, 16, 16 ], "texture": "#slab", "cullface": "east" }
-            }
+  "ambientocclusion": false,
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#slab",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
         },
-        {   "from": [ 2, 2, 8 ],
-            "to": [ 14, 4, 10 ],
-            "faces": {
-                "up":    { "uv": [ 7, 2,  9, 14 ], "texture": "#lock", "rotation": 90 },
-                "north": { "uv": [ 2, 7, 14,  9 ], "texture": "#lock" },
-                "south": { "uv": [ 2, 7, 14,  9 ], "texture": "#lock" },
-                "west":  { "uv": [ 6, 7,  8,  9 ], "texture": "#lock" },
-                "east":  { "uv": [ 6, 7,  8,  9 ], "texture": "#lock" }
-            }
+        "east": {
+          "cullface": "east",
+          "texture": "#slab",
+          "uv": [
+            0,
+            14,
+            16,
+            16
+          ]
         },
-        {   "from": [ 7, 2, 2 ],
-            "to": [ 9, 7, 4 ],
-            "faces": {
-                "up":    { "uv": [ 7,  6, 9,  8 ], "texture": "#unlit" },
-                "north": { "uv": [ 7,  6, 9, 11 ], "texture": "#unlit" },
-                "south": { "uv": [ 7,  6, 9, 11 ], "texture": "#unlit" },
-                "west":  { "uv": [ 7,  6, 9, 11 ], "texture": "#unlit" },
-                "east":  { "uv": [ 7,  6, 9, 11 ], "texture": "#unlit" }
-            }
+        "north": {
+          "cullface": "north",
+          "texture": "#slab",
+          "uv": [
+            0,
+            14,
+            16,
+            16
+          ]
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#slab",
+          "uv": [
+            0,
+            14,
+            16,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#top",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#slab",
+          "uv": [
+            0,
+            14,
+            16,
+            16
+          ]
         }
-    ]
+      },
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        2,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#lock",
+          "uv": [
+            6,
+            7,
+            8,
+            9
+          ]
+        },
+        "north": {
+          "texture": "#lock",
+          "uv": [
+            2,
+            7,
+            14,
+            9
+          ]
+        },
+        "south": {
+          "texture": "#lock",
+          "uv": [
+            2,
+            7,
+            14,
+            9
+          ]
+        },
+        "up": {
+          "rotation": 90,
+          "texture": "#lock",
+          "uv": [
+            7,
+            2,
+            9,
+            14
+          ]
+        },
+        "west": {
+          "texture": "#lock",
+          "uv": [
+            6,
+            7,
+            8,
+            9
+          ]
+        }
+      },
+      "from": [
+        2,
+        2,
+        8
+      ],
+      "to": [
+        14,
+        4,
+        10
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#unlit",
+          "uv": [
+            7,
+            6,
+            9,
+            11
+          ]
+        },
+        "north": {
+          "texture": "#unlit",
+          "uv": [
+            7,
+            6,
+            9,
+            11
+          ]
+        },
+        "south": {
+          "texture": "#unlit",
+          "uv": [
+            7,
+            6,
+            9,
+            11
+          ]
+        },
+        "up": {
+          "texture": "#unlit",
+          "uv": [
+            7,
+            6,
+            9,
+            8
+          ]
+        },
+        "west": {
+          "texture": "#unlit",
+          "uv": [
+            7,
+            6,
+            9,
+            11
+          ]
+        }
+      },
+      "from": [
+        7,
+        2,
+        2
+      ],
+      "to": [
+        9,
+        7,
+        4
+      ]
+    }
+  ],
+  "textures": {
+    "lock": "minecraft:blocks/bedrock",
+    "particle": "minecraft:blocks/repeater_off",
+    "slab": "minecraft:blocks/stone_slab_top",
+    "top": "minecraft:blocks/repeater_off",
+    "unlit": "minecraft:blocks/redstone_torch_off"
+  }
 }

@@ -2,7 +2,7 @@
   "parent": "minecraft:block/stairs",
   "textures": {
     "bottom": "minecraft:blocks/quartz_block_bottom",
-    "top": "minecraft:blocks/quartz_block_top",
-    "side": "minecraft:blocks/quartz_block_side"
+    "side": "minecraft:blocks/quartz_block_side",
+    "top": "minecraft:blocks/quartz_block_top"
   }
 }

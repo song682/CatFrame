@@ -1,18 +1,82 @@
 {
-    "textures": {
-        "particle": "#texture"
-    },
-    "elements": [
-        {   "from": [ 0, 0, 13 ],
-            "to": [ 16, 16, 16 ],
-            "faces": {
-                "down":  { "uv": [  0,  0, 16, 3 ], "texture": "#texture", "cullface": "down" },
-                "up":    { "uv": [  0,  3, 16, 0 ], "texture": "#texture", "cullface": "up" },
-                "north": { "uv": [  0, 16, 16, 0 ], "texture": "#texture" },
-                "south": { "uv": [  0, 16, 16, 0 ], "texture": "#texture", "cullface": "south" },
-                "west":  { "uv": [  0,  0, 16, 3 ], "rotation": 90, "texture": "#texture", "cullface": "west" },
-                "east":  { "uv": [  0,  3, 16, 0 ], "rotation": 90, "texture": "#texture", "cullface": "east" }
-            }
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#texture",
+          "uv": [
+            0,
+            0,
+            16,
+            3
+          ]
+        },
+        "east": {
+          "cullface": "east",
+          "rotation": 90,
+          "texture": "#texture",
+          "uv": [
+            0,
+            3,
+            16,
+            0
+          ]
+        },
+        "north": {
+          "texture": "#texture",
+          "uv": [
+            0,
+            16,
+            16,
+            0
+          ]
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#texture",
+          "uv": [
+            0,
+            16,
+            16,
+            0
+          ]
+        },
+        "up": {
+          "cullface": "up",
+          "texture": "#texture",
+          "uv": [
+            0,
+            3,
+            16,
+            0
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "rotation": 90,
+          "texture": "#texture",
+          "uv": [
+            0,
+            0,
+            16,
+            3
+          ]
         }
-    ]
+      },
+      "from": [
+        0,
+        0,
+        13
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
+    }
+  ],
+  "textures": {
+    "particle": "#texture"
+  }
 }

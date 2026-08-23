@@ -2,11 +2,11 @@
   "parent": "block/cube",
   "textures": {
     "down": "#end",
-    "up": "#end",
-    "north": "#side",
-    "south": "#side",
     "east": "#side",
-    "west": "#side",
-    "particle": "#side"
+    "north": "#side",
+    "particle": "#side",
+    "south": "#side",
+    "up": "#end",
+    "west": "#side"
   }
 }

@@ -1,1 +1,6 @@
-{"parent":"item/handheld","textures":{"layer0":"minecraft:items/carrot_on_a_stick"}}
+{
+  "parent": "item/handheld",
+  "textures": {
+    "layer0": "minecraft:items/carrot_on_a_stick"
+  }
+}

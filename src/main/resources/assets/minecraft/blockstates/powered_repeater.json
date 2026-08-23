@@ -1,20 +1,64 @@
 {
   "variants": {
-    "delay=1,facing=north": { "model": "minecraft:block/repeater_1tick_on", "y": 180 },
-    "delay=1,facing=east":  { "model": "minecraft:block/repeater_1tick_on", "y": 270 },
-    "delay=1,facing=south": { "model": "minecraft:block/repeater_1tick_on" },
-    "delay=1,facing=west":  { "model": "minecraft:block/repeater_1tick_on", "y": 90 },
-    "delay=2,facing=north": { "model": "minecraft:block/repeater_2tick_on", "y": 180 },
-    "delay=2,facing=east":  { "model": "minecraft:block/repeater_2tick_on", "y": 270 },
-    "delay=2,facing=south": { "model": "minecraft:block/repeater_2tick_on" },
-    "delay=2,facing=west":  { "model": "minecraft:block/repeater_2tick_on", "y": 90 },
-    "delay=3,facing=north": { "model": "minecraft:block/repeater_3tick_on", "y": 180 },
-    "delay=3,facing=east":  { "model": "minecraft:block/repeater_3tick_on", "y": 270 },
-    "delay=3,facing=south": { "model": "minecraft:block/repeater_3tick_on" },
-    "delay=3,facing=west":  { "model": "minecraft:block/repeater_3tick_on", "y": 90 },
-    "delay=4,facing=north": { "model": "minecraft:block/repeater_4tick_on", "y": 180 },
-    "delay=4,facing=east":  { "model": "minecraft:block/repeater_4tick_on", "y": 270 },
-    "delay=4,facing=south": { "model": "minecraft:block/repeater_4tick_on" },
-    "delay=4,facing=west":  { "model": "minecraft:block/repeater_4tick_on", "y": 90 }
+    "delay\u003d1,facing\u003deast": {
+      "model": "minecraft:block/repeater_1tick_on",
+      "y": 270
+    },
+    "delay\u003d1,facing\u003dnorth": {
+      "model": "minecraft:block/repeater_1tick_on",
+      "y": 180
+    },
+    "delay\u003d1,facing\u003dsouth": {
+      "model": "minecraft:block/repeater_1tick_on"
+    },
+    "delay\u003d1,facing\u003dwest": {
+      "model": "minecraft:block/repeater_1tick_on",
+      "y": 90
+    },
+    "delay\u003d2,facing\u003deast": {
+      "model": "minecraft:block/repeater_2tick_on",
+      "y": 270
+    },
+    "delay\u003d2,facing\u003dnorth": {
+      "model": "minecraft:block/repeater_2tick_on",
+      "y": 180
+    },
+    "delay\u003d2,facing\u003dsouth": {
+      "model": "minecraft:block/repeater_2tick_on"
+    },
+    "delay\u003d2,facing\u003dwest": {
+      "model": "minecraft:block/repeater_2tick_on",
+      "y": 90
+    },
+    "delay\u003d3,facing\u003deast": {
+      "model": "minecraft:block/repeater_3tick_on",
+      "y": 270
+    },
+    "delay\u003d3,facing\u003dnorth": {
+      "model": "minecraft:block/repeater_3tick_on",
+      "y": 180
+    },
+    "delay\u003d3,facing\u003dsouth": {
+      "model": "minecraft:block/repeater_3tick_on"
+    },
+    "delay\u003d3,facing\u003dwest": {
+      "model": "minecraft:block/repeater_3tick_on",
+      "y": 90
+    },
+    "delay\u003d4,facing\u003deast": {
+      "model": "minecraft:block/repeater_4tick_on",
+      "y": 270
+    },
+    "delay\u003d4,facing\u003dnorth": {
+      "model": "minecraft:block/repeater_4tick_on",
+      "y": 180
+    },
+    "delay\u003d4,facing\u003dsouth": {
+      "model": "minecraft:block/repeater_4tick_on"
+    },
+    "delay\u003d4,facing\u003dwest": {
+      "model": "minecraft:block/repeater_4tick_on",
+      "y": 90
+    }
   }
 }

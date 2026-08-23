@@ -1,9 +1,22 @@
 {
   "variants": {
-    "axis=y,type=quartz_block": { "model": "minecraft:block/quartz_block" },
-    "axis=y,type=chiseled_quartz_block": { "model": "minecraft:block/quartz_chiseled" },
-    "axis=y,type=quartz_pillar": { "model": "minecraft:block/quartz_pillar" },
-    "axis=x,type=quartz_pillar": { "model": "minecraft:block/quartz_pillar", "x": 90, "y": 90 },
-    "axis=z,type=quartz_pillar": { "model": "minecraft:block/quartz_pillar", "x": 90 }
+    "axis\u003dx,type\u003dquartz_pillar": {
+      "model": "minecraft:block/quartz_pillar",
+      "x": 90,
+      "y": 90
+    },
+    "axis\u003dy,type\u003dchiseled_quartz_block": {
+      "model": "minecraft:block/quartz_chiseled"
+    },
+    "axis\u003dy,type\u003dquartz_block": {
+      "model": "minecraft:block/quartz_block"
+    },
+    "axis\u003dy,type\u003dquartz_pillar": {
+      "model": "minecraft:block/quartz_pillar"
+    },
+    "axis\u003dz,type\u003dquartz_pillar": {
+      "model": "minecraft:block/quartz_pillar",
+      "x": 90
+    }
   }
 }

@@ -1,59 +1,59 @@
 {
-    "ambientocclusion": false,
-    "textures": {
-        "particle": "minecraft:blocks/redstone_dust_cross",
-        "line": "minecraft:blocks/redstone_dust_cross",
-        "overlay": "minecraft:blocks/redstone_dust_cross_overlay"
-    },
-    "elements": [
-        {
-            "from": [
-                0,
-                0.25,
-                0
-            ],
-            "to": [
-                5,
-                0.25,
-                16
-            ],
-            "shade": false,
-            "faces": {
-                "up": {
-                    "uv": [
-                        0,
-                        0,
-                        5,
-                        16
-                    ],
-                    "texture": "#line",
-                    "tintindex": 0
-                }
-            }
-        },
-        {
-            "from": [
-                0,
-                0.25,
-                0
-            ],
-            "to": [
-                5,
-                0.25,
-                16
-            ],
-            "shade": false,
-            "faces": {
-                "up": {
-                    "uv": [
-                        0,
-                        0,
-                        5,
-                        16
-                    ],
-                    "texture": "#overlay"
-                }
-            }
+  "ambientocclusion": false,
+  "elements": [
+    {
+      "faces": {
+        "up": {
+          "texture": "#line",
+          "tintindex": 0,
+          "uv": [
+            0,
+            0,
+            5,
+            16
+          ]
         }
-    ]
+      },
+      "from": [
+        0,
+        0.25,
+        0
+      ],
+      "shade": false,
+      "to": [
+        5,
+        0.25,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "up": {
+          "texture": "#overlay",
+          "uv": [
+            0,
+            0,
+            5,
+            16
+          ]
+        }
+      },
+      "from": [
+        0,
+        0.25,
+        0
+      ],
+      "shade": false,
+      "to": [
+        5,
+        0.25,
+        16
+      ]
+    }
+  ],
+  "textures": {
+    "line": "minecraft:blocks/redstone_dust_cross",
+    "overlay": "minecraft:blocks/redstone_dust_cross_overlay",
+    "particle": "minecraft:blocks/redstone_dust_cross"
+  }
 }

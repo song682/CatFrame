@@ -1,6 +1,6 @@
 {
-    "model": {
-        "type": "minecraft:model",
-        "model": "minecraft:item/golden_chestplate"
-    }
+  "model": {
+    "type": "minecraft:model",
+    "model": "minecraft:item/golden_chestplate"
+  }
 }

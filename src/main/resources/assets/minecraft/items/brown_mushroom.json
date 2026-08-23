@@ -1,6 +1,6 @@
 {
-    "model": {
-        "type": "minecraft:model",
-        "model": "minecraft:item/brown_mushroom"
-    }
+  "model": {
+    "type": "minecraft:model",
+    "model": "minecraft:item/brown_mushroom"
+  }
 }

@@ -1,5 +1,7 @@
 {
-    "variants": {
-        "normal": { "model": "minecraft:block/bookshelf" }
+  "variants": {
+    "normal": {
+      "model": "minecraft:block/bookshelf"
     }
+  }
 }

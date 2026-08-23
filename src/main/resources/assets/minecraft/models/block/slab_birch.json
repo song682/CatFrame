@@ -2,7 +2,7 @@
   "parent": "block/slab",
   "textures": {
     "bottom": "minecraft:blocks/planks_birch",
-    "top": "minecraft:blocks/planks_birch",
-    "side": "minecraft:blocks/planks_birch"
+    "side": "minecraft:blocks/planks_birch",
+    "top": "minecraft:blocks/planks_birch"
   }
 }

@@ -1,5 +1,7 @@
 {
   "variants": {
-    "normal": { "model": "minecraft:block/glowstone" }
+    "normal": {
+      "model": "minecraft:block/glowstone"
+    }
   }
 }

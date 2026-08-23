@@ -1,13 +1,22 @@
 {
   "model": {
     "type": "minecraft:select",
-    "property": "minecraft:display_context",
-    "fallback": { "type": "minecraft:model", "model": "catframe:item/bluey_inventory" },
     "cases": [
       {
-        "when": ["ITEM_HAND_FIRST_PERSON", "ITEM_HAND_THIRD_PERSON"],
-        "model": { "type": "minecraft:model", "model": "catframe:item/bluey" }
+        "model": {
+          "type": "minecraft:model",
+          "model": "catframe:item/bluey"
+        },
+        "when": [
+          "ITEM_HAND_FIRST_PERSON",
+          "ITEM_HAND_THIRD_PERSON"
+        ]
       }
-    ]
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "catframe:item/bluey_inventory"
+    },
+    "property": "minecraft:display_context"
   }
 }

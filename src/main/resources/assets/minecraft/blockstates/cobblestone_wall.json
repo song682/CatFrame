@@ -1,97 +1,97 @@
 {
   "multipart": [
     {
-      "when": {
-        "variant": "cobblestone"
-      },
       "apply": {
         "model": "minecraft:block/cobblestone_wall_post"
+      },
+      "when": {
+        "variant": "cobblestone"
       }
     },
     {
-      "when": {
-        "variant": "cobblestone",
-        "north": "true"
-      },
       "apply": {
         "model": "minecraft:block/cobblestone_wall_side"
+      },
+      "when": {
+        "north": "true",
+        "variant": "cobblestone"
       }
     },
     {
-      "when": {
-        "variant": "cobblestone",
-        "east": "true"
-      },
       "apply": {
         "model": "minecraft:block/cobblestone_wall_side",
         "y": 90
+      },
+      "when": {
+        "east": "true",
+        "variant": "cobblestone"
       }
     },
     {
-      "when": {
-        "variant": "cobblestone",
-        "south": "true"
-      },
       "apply": {
         "model": "minecraft:block/cobblestone_wall_side",
         "y": 180
+      },
+      "when": {
+        "south": "true",
+        "variant": "cobblestone"
       }
     },
     {
-      "when": {
-        "variant": "cobblestone",
-        "west": "true"
-      },
       "apply": {
         "model": "minecraft:block/cobblestone_wall_side",
         "y": 270
+      },
+      "when": {
+        "variant": "cobblestone",
+        "west": "true"
       }
     },
     {
-      "when": {
-        "variant": "mossy_cobblestone"
-      },
       "apply": {
         "model": "minecraft:block/mossy_cobblestone_wall_post"
+      },
+      "when": {
+        "variant": "mossy_cobblestone"
       }
     },
     {
-      "when": {
-        "variant": "mossy_cobblestone",
-        "north": "true"
-      },
       "apply": {
         "model": "minecraft:block/mossy_cobblestone_wall_side"
+      },
+      "when": {
+        "north": "true",
+        "variant": "mossy_cobblestone"
       }
     },
     {
-      "when": {
-        "variant": "mossy_cobblestone",
-        "east": "true"
-      },
       "apply": {
         "model": "minecraft:block/mossy_cobblestone_wall_side",
         "y": 90
+      },
+      "when": {
+        "east": "true",
+        "variant": "mossy_cobblestone"
       }
     },
     {
-      "when": {
-        "variant": "mossy_cobblestone",
-        "south": "true"
-      },
       "apply": {
         "model": "minecraft:block/mossy_cobblestone_wall_side",
         "y": 180
+      },
+      "when": {
+        "south": "true",
+        "variant": "mossy_cobblestone"
       }
     },
     {
-      "when": {
-        "variant": "mossy_cobblestone",
-        "west": "true"
-      },
       "apply": {
         "model": "minecraft:block/mossy_cobblestone_wall_side",
         "y": 270
+      },
+      "when": {
+        "variant": "mossy_cobblestone",
+        "west": "true"
       }
     }
   ]

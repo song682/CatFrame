@@ -1,56 +1,235 @@
 {
   "parent": "block/block",
   "display": {
-    "gui": {
-      "rotation": [ 30, 135, 0 ],
-      "translation": [ 2.5, -1.5, 0],
-      "scale":[ 0.625, 0.625, 0.625 ]
-    },
     "fixed": {
-      "rotation": [ 0, 0, 0 ],
-      "translation": [ 0, 0, -4 ],
-      "scale": [ 0.5, 0.5, 0.5 ]
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "translation": [
+        0,
+        0,
+        -4
+      ]
+    },
+    "gui": {
+      "rotation": [
+        30,
+        135,
+        0
+      ],
+      "scale": [
+        0.625,
+        0.625,
+        0.625
+      ],
+      "translation": [
+        2.5,
+        -1.5,
+        0
+      ]
     }
-  },
-  "textures": {
-    "particle": "#particle"
   },
   "elements": [
     {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#all",
+          "uv": [
+            16,
+            6,
+            8,
+            4.5
+          ]
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#all",
+          "uv": [
+            8,
+            0,
+            9.5,
+            8
+          ]
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#all",
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ]
+        },
+        "up": {
+          "cullface": "up",
+          "texture": "#all",
+          "uv": [
+            16,
+            5,
+            8,
+            3.5
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#all",
+          "uv": [
+            14.5,
+            0,
+            16,
+            8
+          ]
+        }
+      },
+      "from": [
+        0,
+        0,
+        13
+      ],
       "name": "shelf_body",
-      "from": [0, 0, 13],
-      "to": [16, 16, 16],
-      "faces": {
-        "east": {"uv": [8, 0, 9.5, 8], "texture": "#all", "cullface": "east"},
-        "south": {"uv": [8, 0, 16, 8], "texture": "#all", "cullface": "south"},
-        "west": {"uv": [14.5, 0, 16, 8], "texture": "#all", "cullface": "west"},
-        "up": {"uv": [16, 5, 8, 3.5], "texture": "#all", "cullface": "up"},
-        "down": {"uv": [16, 6, 8, 4.5], "texture": "#all", "cullface": "down"}
-      }
+      "to": [
+        16,
+        16,
+        16
+      ]
     },
     {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#all",
+          "uv": [
+            16,
+            4.5,
+            8,
+            3.5
+          ]
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#all",
+          "uv": [
+            1.5,
+            6,
+            2.5,
+            8
+          ]
+        },
+        "north": {
+          "texture": "#all",
+          "uv": [
+            0,
+            6,
+            8,
+            8
+          ]
+        },
+        "up": {
+          "texture": "#all",
+          "uv": [
+            8,
+            3.5,
+            16,
+            4.5
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#all",
+          "uv": [
+            5.5,
+            6,
+            6.5,
+            8
+          ]
+        }
+      },
+      "from": [
+        0,
+        0,
+        11
+      ],
       "name": "shelf_bottom",
-      "from": [0, 0, 11],
-      "to": [16, 4, 13],
-      "faces": {
-        "north": {"uv": [0, 6, 8, 8], "texture": "#all"},
-        "east": {"uv": [1.5, 6, 2.5, 8], "texture": "#all", "cullface": "east"},
-        "west": {"uv": [5.5, 6, 6.5, 8], "texture": "#all", "cullface": "west"},
-        "up": {"uv": [8, 3.5, 16, 4.5], "texture": "#all"},
-        "down": {"uv": [16, 4.5, 8, 3.5], "texture": "#all", "cullface": "down"}
-      }
+      "to": [
+        16,
+        4,
+        13
+      ]
     },
     {
-      "name": "shelf_top",
-      "from": [0, 12, 11],
-      "to": [16, 16, 13],
       "faces": {
-        "north": {"uv": [0, 0, 8, 2], "texture": "#all"},
-        "east": {"uv": [1.5, 0, 2.5, 2], "texture": "#all", "cullface": "east"},
-        "west": {"uv": [5.5, 0, 6.5, 2], "texture": "#all", "cullface": "west"},
-        "up": {"uv": [16, 6, 8, 5], "texture": "#all", "cullface": "up"},
-        "down": {"uv": [8, 5, 16, 6], "texture": "#all"}
-      }
+        "down": {
+          "texture": "#all",
+          "uv": [
+            8,
+            5,
+            16,
+            6
+          ]
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#all",
+          "uv": [
+            1.5,
+            0,
+            2.5,
+            2
+          ]
+        },
+        "north": {
+          "texture": "#all",
+          "uv": [
+            0,
+            0,
+            8,
+            2
+          ]
+        },
+        "up": {
+          "cullface": "up",
+          "texture": "#all",
+          "uv": [
+            16,
+            6,
+            8,
+            5
+          ]
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#all",
+          "uv": [
+            5.5,
+            0,
+            6.5,
+            2
+          ]
+        }
+      },
+      "from": [
+        0,
+        12,
+        11
+      ],
+      "name": "shelf_top",
+      "to": [
+        16,
+        16,
+        13
+      ]
     }
-  ]
+  ],
+  "textures": {
+    "particle": "#particle"
+  }
 }

@@ -1,19 +1,19 @@
 {
-    "variants": {
-        "facing=east": {
-            "model": "minecraft:block/ladder",
-            "y": 270
-        },
-        "facing=north": {
-            "model": "minecraft:block/ladder",
-            "y": 180
-        },
-        "facing=south": {
-            "model": "minecraft:block/ladder"
-        },
-        "facing=west": {
-            "model": "minecraft:block/ladder",
-            "y": 90
-        }
+  "variants": {
+    "facing\u003deast": {
+      "model": "minecraft:block/ladder",
+      "y": 270
+    },
+    "facing\u003dnorth": {
+      "model": "minecraft:block/ladder",
+      "y": 180
+    },
+    "facing\u003dsouth": {
+      "model": "minecraft:block/ladder"
+    },
+    "facing\u003dwest": {
+      "model": "minecraft:block/ladder",
+      "y": 90
     }
+  }
 }

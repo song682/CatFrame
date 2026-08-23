@@ -1,6 +1,6 @@
 {
-    "parent": "minecraft:block/button_pressed",
-    "textures": {
-        "texture": "minecraft:blocks/planks_oak"
-    }
+  "parent": "minecraft:block/button_pressed",
+  "textures": {
+    "texture": "minecraft:blocks/planks_oak"
+  }
 }

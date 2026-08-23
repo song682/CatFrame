@@ -1,6 +1,6 @@
 {
-    "model": {
-        "type": "minecraft:item",
-        "model": "minecraft:item/record_11"
-    }
+  "model": {
+    "type": "minecraft:item",
+    "model": "minecraft:item/record_11"
+  }
 }

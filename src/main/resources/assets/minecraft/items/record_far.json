@@ -1,6 +1,6 @@
 {
-    "model": {
-        "type": "minecraft:item",
-        "model": "minecraft:item/record_far"
-    }
+  "model": {
+    "type": "minecraft:item",
+    "model": "minecraft:item/record_far"
+  }
 }

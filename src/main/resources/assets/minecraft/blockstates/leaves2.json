@@ -1,6 +1,10 @@
 {
   "variants": {
-    "wood=acacia":   { "model": "minecraft:block/acacia_leaves" },
-    "wood=dark_oak": { "model": "minecraft:block/dark_oak_leaves" }
+    "wood\u003dacacia": {
+      "model": "minecraft:block/acacia_leaves"
+    },
+    "wood\u003ddark_oak": {
+      "model": "minecraft:block/dark_oak_leaves"
+    }
   }
 }

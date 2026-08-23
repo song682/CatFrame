@@ -1,25 +1,26 @@
 {
-    "model": {
-        "type": "minecraft:select",
-        "property": "catframe:meta",
-        "fallback": {
-            "type": "minecraft:model",
-            "model": "minecraft:block/leaves2"
+  "model": {
+    "type": "minecraft:select",
+    "cases": [
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/acacia_leaves"
         },
-        "cases": [
-            {
-                "when": "0", "model": {
-                    "type": "minecraft:model", 
-                    "model": "minecraft:block/acacia_leaves"
-                }
-            },
-            {
-                "when": "1", 
-                "model": {
-                    "type": "minecraft:model", 
-                    "model": "minecraft:block/dark_oak_leaves"
-                }
-            }
-        ]
-    }
+        "when": "0"
+      },
+      {
+        "model": {
+          "type": "minecraft:model",
+          "model": "minecraft:block/dark_oak_leaves"
+        },
+        "when": "1"
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "minecraft:block/leaves2"
+    },
+    "property": "catframe:meta"
+  }
 }

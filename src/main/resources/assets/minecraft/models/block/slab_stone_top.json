@@ -2,7 +2,7 @@
   "parent": "block/slab_top",
   "textures": {
     "bottom": "minecraft:blocks/stone_slab_top",
-    "top": "minecraft:blocks/stone_slab_top",
-    "side": "minecraft:blocks/stone_slab_side"
+    "side": "minecraft:blocks/stone_slab_side",
+    "top": "minecraft:blocks/stone_slab_top"
   }
 }

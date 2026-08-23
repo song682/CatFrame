@@ -1,6 +1,6 @@
 {
-  "model": {
-    "type": "minecraft:item",
-    "model": "minecraft:item/mushroom_stew"
-  }
+    "model": {
+        "type": "minecraft:item",
+        "model": "minecraft:item/mushroom_stew"
+    }
 }

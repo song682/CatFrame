@@ -4,7 +4,6 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.command.CommandTitle;
-import decok.dfcdvadstf.catframe.datagen.DatagenEntrypoint;
 import decok.dfcdvadstf.catframe.adapter.vanilla.ClientOverlayHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.LanguageReloadListener;
@@ -100,11 +99,5 @@ public class ClientProxy extends CommonProxy {
         // 客户端 /title 命令 —— Title/ActionBar 状态全在客户端单例、无网络通道，
         // 故本地执行，<targets> 收敛为本地玩家（详见 CommandTitle 类注释）。
         ClientCommandHandler.instance.registerCommand(new CommandTitle());
-
-        // Datagen mode: runs all resource providers when -Dcatframe.datagen is
-        // set, then exits the JVM. No-op in normal launches.
-        // datagen 模式：设置 -Dcatframe.datagen 时运行全部资源 provider 后退出；
-        // 正常启动为无操作。
-        DatagenEntrypoint.tryRun();
     }
 }

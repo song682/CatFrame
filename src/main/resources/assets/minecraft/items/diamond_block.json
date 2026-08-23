@@ -1,6 +1,6 @@
 {
-  "model": {
-    "type": "minecraft:model",
-    "model": "minecraft:block/diamond_block"
-  }
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:block/diamond_block"
+    }
 }

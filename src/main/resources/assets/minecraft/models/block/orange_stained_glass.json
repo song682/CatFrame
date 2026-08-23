@@ -1,6 +1,1 @@
-{
-  "parent": "block/cube_all",
-  "textures": {
-    "all": "minecraft:blocks/glass_orange"
-  }
-}
+{"parent":"block/cube_all","textures":{"all":"minecraft:blocks/glass_orange"}}

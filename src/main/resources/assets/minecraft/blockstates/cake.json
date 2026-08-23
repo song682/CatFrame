@@ -1,25 +1,11 @@
 {
   "variants": {
-    "bites\u003d0": {
-      "model": "minecraft:block/cake"
-    },
-    "bites\u003d1": {
-      "model": "minecraft:block/cake_slice1"
-    },
-    "bites\u003d2": {
-      "model": "minecraft:block/cake_slice2"
-    },
-    "bites\u003d3": {
-      "model": "minecraft:block/cake_slice3"
-    },
-    "bites\u003d4": {
-      "model": "minecraft:block/cake_slice4"
-    },
-    "bites\u003d5": {
-      "model": "minecraft:block/cake_slice5"
-    },
-    "bites\u003d6": {
-      "model": "minecraft:block/cake_slice6"
-    }
+    "bites=0": { "model": "minecraft:block/cake" },
+    "bites=1": { "model": "minecraft:block/cake_slice1" },
+    "bites=2": { "model": "minecraft:block/cake_slice2" },
+    "bites=3": { "model": "minecraft:block/cake_slice3" },
+    "bites=4": { "model": "minecraft:block/cake_slice4" },
+    "bites=5": { "model": "minecraft:block/cake_slice5" },
+    "bites=6": { "model": "minecraft:block/cake_slice6" }
   }
 }

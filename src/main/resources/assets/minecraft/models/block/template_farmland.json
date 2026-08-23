@@ -1,81 +1,19 @@
 {
-  "parent": "block/block",
-  "elements": [
-    {
-      "faces": {
-        "down": {
-          "cullface": "down",
-          "texture": "#dirt",
-          "uv": [
-            0,
-            0,
-            16,
-            16
-          ]
-        },
-        "east": {
-          "cullface": "east",
-          "texture": "#dirt",
-          "uv": [
-            0,
-            1,
-            16,
-            16
-          ]
-        },
-        "north": {
-          "cullface": "north",
-          "texture": "#dirt",
-          "uv": [
-            0,
-            1,
-            16,
-            16
-          ]
-        },
-        "south": {
-          "cullface": "south",
-          "texture": "#dirt",
-          "uv": [
-            0,
-            1,
-            16,
-            16
-          ]
-        },
-        "up": {
-          "texture": "#top",
-          "uv": [
-            0,
-            0,
-            16,
-            16
-          ]
-        },
-        "west": {
-          "cullface": "west",
-          "texture": "#dirt",
-          "uv": [
-            0,
-            1,
-            16,
-            16
-          ]
+    "parent": "block/block",
+    "textures": {
+        "particle": "#dirt"
+    },
+    "elements": [
+        {   "from": [ 0, 0, 0 ],
+            "to": [ 16, 15, 16 ],
+            "faces": {
+                "down":  { "uv": [ 0, 0, 16, 16 ], "texture": "#dirt", "cullface": "down" },
+                "up":    { "uv": [ 0, 0, 16, 16 ], "texture": "#top" },
+                "north": { "uv": [ 0, 1, 16, 16 ], "texture": "#dirt", "cullface": "north" },
+                "south": { "uv": [ 0, 1, 16, 16 ], "texture": "#dirt", "cullface": "south" },
+                "west":  { "uv": [ 0, 1, 16, 16 ], "texture": "#dirt", "cullface": "west" },
+                "east":  { "uv": [ 0, 1, 16, 16 ], "texture": "#dirt", "cullface": "east" }
+            }
         }
-      },
-      "from": [
-        0,
-        0,
-        0
-      ],
-      "to": [
-        16,
-        15,
-        16
-      ]
-    }
-  ],
-  "textures": {
-    "particle": "#dirt"
-  }
+    ]
 }

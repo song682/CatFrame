@@ -1,7 +1,5 @@
 {
   "variants": {
-    "normal": {
-      "model": "minecraft:block/noteblock"
-    }
+    "normal": { "model": "minecraft:block/noteblock" }
   }
 }

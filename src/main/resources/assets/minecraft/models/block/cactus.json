@@ -1,85 +1,23 @@
 {
   "parent": "block/block",
+  "textures": {
+    "particle": "minecraft:blocks/cactus_side",
+    "bottom": "minecraft:blocks/cactus_top",
+    "top": "minecraft:blocks/cactus_top",
+    "side": "minecraft:blocks/cactus_side"
+  },
   "elements": [
     {
+      "from": [ 1, 0, 1 ],
+      "to": [ 15, 16, 15 ],
       "faces": {
-        "down": {
-          "cullface": "down",
-          "texture": "#bottom",
-          "uv": [
-            1,
-            1,
-            15,
-            15
-          ]
-        },
-        "east": {
-          "cullface": "east",
-          "texture": "#side",
-          "uv": [
-            1,
-            0,
-            15,
-            16
-          ]
-        },
-        "north": {
-          "cullface": "north",
-          "texture": "#side",
-          "uv": [
-            1,
-            0,
-            15,
-            16
-          ]
-        },
-        "south": {
-          "cullface": "south",
-          "texture": "#side",
-          "uv": [
-            1,
-            0,
-            15,
-            16
-          ]
-        },
-        "up": {
-          "cullface": "up",
-          "texture": "#top",
-          "uv": [
-            1,
-            1,
-            15,
-            15
-          ]
-        },
-        "west": {
-          "cullface": "west",
-          "texture": "#side",
-          "uv": [
-            1,
-            0,
-            15,
-            16
-          ]
-        }
-      },
-      "from": [
-        1,
-        0,
-        1
-      ],
-      "to": [
-        15,
-        16,
-        15
-      ]
+        "down":  { "uv": [ 1, 1, 15, 15 ], "texture": "#bottom", "cullface": "down" },
+        "up":    { "uv": [ 1, 1, 15, 15 ], "texture": "#top",    "cullface": "up" },
+        "north": { "uv": [ 1, 0, 15, 16 ], "texture": "#side",   "cullface": "north" },
+        "south": { "uv": [ 1, 0, 15, 16 ], "texture": "#side",   "cullface": "south" },
+        "west":  { "uv": [ 1, 0, 15, 16 ], "texture": "#side",   "cullface": "west" },
+        "east":  { "uv": [ 1, 0, 15, 16 ], "texture": "#side",   "cullface": "east" }
+      }
     }
-  ],
-  "textures": {
-    "bottom": "minecraft:blocks/cactus_top",
-    "particle": "minecraft:blocks/cactus_side",
-    "side": "minecraft:blocks/cactus_side",
-    "top": "minecraft:blocks/cactus_top"
-  }
+  ]
 }

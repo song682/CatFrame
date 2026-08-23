@@ -1,6 +1,6 @@
 {
-  "model": {
-    "type": "minecraft:model",
-    "model": "minecraft:block/gravel"
-  }
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:block/gravel"
+    }
 }

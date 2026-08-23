@@ -1,79 +1,21 @@
 {
-  "elements": [
-    {
-      "faces": {
-        "down": {
-          "cullface": "down",
-          "texture": "#bottom",
-          "uv": [
-            1,
-            1,
-            15,
-            15
-          ]
-        },
-        "east": {
-          "texture": "#side",
-          "uv": [
-            1,
-            0,
-            15,
-            8
-          ]
-        },
-        "north": {
-          "texture": "#side",
-          "uv": [
-            1,
-            0,
-            15,
-            8
-          ]
-        },
-        "south": {
-          "texture": "#side",
-          "uv": [
-            1,
-            0,
-            15,
-            8
-          ]
-        },
-        "up": {
-          "texture": "#top",
-          "uv": [
-            1,
-            1,
-            15,
-            15
-          ]
-        },
-        "west": {
-          "texture": "#side",
-          "uv": [
-            1,
-            0,
-            15,
-            8
-          ]
+    "textures": {
+        "particle": "minecraft:blocks/cake_side",
+        "bottom": "minecraft:blocks/cake_bottom",
+        "top": "minecraft:blocks/cake_top",
+        "side": "minecraft:blocks/cake_side"
+    },
+    "elements": [
+        {   "from": [ 1, 0, 1 ],
+            "to": [ 15, 8, 15 ],
+            "faces": {
+                "down":  { "uv": [1, 1, 15, 15], "texture": "#bottom", "cullface": "down" },
+                "up":    { "uv": [1, 1, 15, 15], "texture": "#top" },
+                "north": { "uv": [1, 0, 15, 8],  "texture": "#side" },
+                "south": { "uv": [1, 0, 15, 8],  "texture": "#side" },
+                "west":  { "uv": [1, 0, 15, 8],  "texture": "#side" },
+                "east":  { "uv": [1, 0, 15, 8],  "texture": "#side" }
+            }
         }
-      },
-      "from": [
-        1,
-        0,
-        1
-      ],
-      "to": [
-        15,
-        8,
-        15
-      ]
-    }
-  ],
-  "textures": {
-    "bottom": "minecraft:blocks/cake_bottom",
-    "particle": "minecraft:blocks/cake_side",
-    "side": "minecraft:blocks/cake_side",
-    "top": "minecraft:blocks/cake_top"
-  }
+    ]
 }

@@ -1,124 +1,25 @@
 {
-  "model": {
-    "type": "minecraft:select",
-    "cases": [
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_black"
-        },
-        "when": "0"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_red"
-        },
-        "when": "1"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_green"
-        },
-        "when": "2"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_brown"
-        },
-        "when": "3"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_blue"
-        },
-        "when": "4"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_purple"
-        },
-        "when": "5"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_cyan"
-        },
-        "when": "6"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_light_gray"
-        },
-        "when": "7"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_gray"
-        },
-        "when": "8"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_pink"
-        },
-        "when": "9"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_lime"
-        },
-        "when": "10"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_yellow"
-        },
-        "when": "11"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_light_blue"
-        },
-        "when": "12"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_magenta"
-        },
-        "when": "13"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_orange"
-        },
-        "when": "14"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/dye_white"
-        },
-        "when": "15"
-      }
-    ],
-    "fallback": {
-      "type": "minecraft:model",
-      "model": "minecraft:item/dye"
-    },
-    "property": "catframe:meta"
-  }
+    "model": {
+        "type": "minecraft:select",
+        "property": "catframe:meta",
+        "fallback": { "type": "minecraft:model", "model": "minecraft:item/dye"},
+        "cases": [
+            {"when": "0",  "model": { "type": "minecraft:model", "model": "minecraft:item/dye_black" }},
+            {"when": "1",  "model": { "type": "minecraft:model", "model": "minecraft:item/dye_red" }},
+            {"when": "2",  "model": { "type": "minecraft:model", "model": "minecraft:item/dye_green" }},
+            {"when": "3",  "model": { "type": "minecraft:model", "model": "minecraft:item/dye_brown" }},
+            {"when": "4",  "model": { "type": "minecraft:model", "model": "minecraft:item/dye_blue" }},
+            {"when": "5",  "model": { "type": "minecraft:model", "model": "minecraft:item/dye_purple" }},
+            {"when": "6",  "model": { "type": "minecraft:model", "model": "minecraft:item/dye_cyan" }},
+            {"when": "7",  "model": { "type": "minecraft:model", "model": "minecraft:item/dye_light_gray" }},
+            {"when": "8",  "model": { "type": "minecraft:model", "model": "minecraft:item/dye_gray" }},
+            {"when": "9",  "model": { "type": "minecraft:model", "model": "minecraft:item/dye_pink" }},
+            {"when": "10", "model": { "type": "minecraft:model", "model": "minecraft:item/dye_lime" }},
+            {"when": "11", "model": { "type": "minecraft:model", "model": "minecraft:item/dye_yellow" }},
+            {"when": "12", "model": { "type": "minecraft:model", "model": "minecraft:item/dye_light_blue" }},
+            {"when": "13", "model": { "type": "minecraft:model", "model": "minecraft:item/dye_magenta" }},
+            {"when": "14", "model": { "type": "minecraft:model", "model": "minecraft:item/dye_orange" }},
+            {"when": "15", "model": { "type": "minecraft:model", "model": "minecraft:item/dye_white" }}
+        ]
+    }
 }

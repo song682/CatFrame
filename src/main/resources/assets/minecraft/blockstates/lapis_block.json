@@ -1,7 +1,5 @@
 {
   "variants": {
-    "normal": {
-      "model": "minecraft:block/lapis_block"
-    }
+    "normal": { "model": "minecraft:block/lapis_block" }
   }
 }

@@ -1,50 +1,50 @@
 {
-  "variants": {
-    "extended\u003dfalse,facing\u003ddown": {
-      "model": "minecraft:block/sticky_piston",
-      "x": 270
-    },
-    "extended\u003dfalse,facing\u003deast": {
-      "model": "minecraft:block/sticky_piston",
-      "y": 90
-    },
-    "extended\u003dfalse,facing\u003dnorth": {
-      "model": "minecraft:block/sticky_piston"
-    },
-    "extended\u003dfalse,facing\u003dsouth": {
-      "model": "minecraft:block/sticky_piston",
-      "y": 180
-    },
-    "extended\u003dfalse,facing\u003dup": {
-      "model": "minecraft:block/sticky_piston",
-      "x": 90
-    },
-    "extended\u003dfalse,facing\u003dwest": {
-      "model": "minecraft:block/sticky_piston",
-      "y": 270
-    },
-    "extended\u003dtrue,facing\u003ddown": {
-      "model": "minecraft:block/sticky_piston_extended",
-      "x": 270
-    },
-    "extended\u003dtrue,facing\u003deast": {
-      "model": "minecraft:block/sticky_piston_extended",
-      "y": 90
-    },
-    "extended\u003dtrue,facing\u003dnorth": {
-      "model": "minecraft:block/sticky_piston_extended"
-    },
-    "extended\u003dtrue,facing\u003dsouth": {
-      "model": "minecraft:block/sticky_piston_extended",
-      "y": 180
-    },
-    "extended\u003dtrue,facing\u003dup": {
-      "model": "minecraft:block/sticky_piston_extended",
-      "x": 90
-    },
-    "extended\u003dtrue,facing\u003dwest": {
-      "model": "minecraft:block/sticky_piston_extended",
-      "y": 270
+    "variants": {
+        "extended=false,facing=down": {
+            "model": "minecraft:block/sticky_piston",
+            "x": 270
+        },
+        "extended=false,facing=up": {
+            "model": "minecraft:block/sticky_piston",
+            "x": 90
+        },
+        "extended=false,facing=north": {
+            "model": "minecraft:block/sticky_piston"
+        },
+        "extended=false,facing=south": {
+            "model": "minecraft:block/sticky_piston",
+            "y": 180
+        },
+        "extended=false,facing=west": {
+            "model": "minecraft:block/sticky_piston",
+            "y": 270
+        },
+        "extended=false,facing=east": {
+            "model": "minecraft:block/sticky_piston",
+            "y": 90
+        },
+        "extended=true,facing=down": {
+            "model": "minecraft:block/sticky_piston_extended",
+            "x": 270
+        },
+        "extended=true,facing=up": {
+            "model": "minecraft:block/sticky_piston_extended",
+            "x": 90
+        },
+        "extended=true,facing=north": {
+            "model": "minecraft:block/sticky_piston_extended"
+        },
+        "extended=true,facing=south": {
+            "model": "minecraft:block/sticky_piston_extended",
+            "y": 180
+        },
+        "extended=true,facing=west": {
+            "model": "minecraft:block/sticky_piston_extended",
+            "y": 270
+        },
+        "extended=true,facing=east": {
+            "model": "minecraft:block/sticky_piston_extended",
+            "y": 90
+        }
     }
-  }
 }

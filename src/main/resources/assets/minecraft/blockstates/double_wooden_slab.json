@@ -1,22 +1,22 @@
 {
   "variants": {
-    "variant\u003dacacia": {
-      "model": "minecraft:block/double_slab_acacia"
+    "variant=oak": { 
+      "model": "minecraft:block/double_slab_oak" 
     },
-    "variant\u003dbig_oak": {
-      "model": "minecraft:block/double_slab_dark_oak"
+    "variant=spruce": { 
+      "model": "minecraft:block/double_slab_spruce" 
     },
-    "variant\u003dbirch": {
-      "model": "minecraft:block/double_slab_birch"
+    "variant=birch": { 
+      "model": "minecraft:block/double_slab_birch" 
     },
-    "variant\u003djungle": {
-      "model": "minecraft:block/double_slab_jungle"
+    "variant=jungle": { 
+      "model": "minecraft:block/double_slab_jungle" 
     },
-    "variant\u003doak": {
-      "model": "minecraft:block/double_slab_oak"
+    "variant=acacia": { 
+      "model": "minecraft:block/double_slab_acacia" 
     },
-    "variant\u003dspruce": {
-      "model": "minecraft:block/double_slab_spruce"
+    "variant=big_oak": { 
+      "model": "minecraft:block/double_slab_dark_oak" 
     }
   }
 }

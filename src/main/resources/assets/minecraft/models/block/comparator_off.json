@@ -1,9 +1,9 @@
 {
   "parent": "block/template_comparator",
   "textures": {
-    "back_torch": "minecraft:blocks/redstone_torch_off",
-    "front_torch": "minecraft:blocks/redstone_torch_off",
+    "top": "minecraft:blocks/comparator_off",
     "side": "minecraft:blocks/stone_slab_side",
-    "top": "minecraft:blocks/comparator_off"
+    "front_torch": "minecraft:blocks/redstone_torch_off",
+    "back_torch": "minecraft:blocks/redstone_torch_off"
   }
 }

@@ -1,6 +1,6 @@
 {
-  "model": {
-    "type": "minecraft:model",
-    "model": "minecraft:block/sand"
-  }
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:block/sand"
+    }
 }

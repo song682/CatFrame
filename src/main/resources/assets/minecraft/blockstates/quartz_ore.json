@@ -1,7 +1,5 @@
 {
   "variants": {
-    "normal": {
-      "model": "minecraft:block/quartz_ore"
-    }
+    "normal": { "model": "minecraft:block/quartz_ore" }
   }
 }

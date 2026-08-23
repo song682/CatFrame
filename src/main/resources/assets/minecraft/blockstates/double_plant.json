@@ -1,40 +1,16 @@
 {
   "variants": {
-    "half\u003dlower,variant\u003ddouble_fern": {
-      "model": "minecraft:block/double_fern_bottom"
-    },
-    "half\u003dlower,variant\u003ddouble_grass": {
-      "model": "minecraft:block/tall_grass_bottom"
-    },
-    "half\u003dlower,variant\u003dlilac": {
-      "model": "minecraft:block/lilac_bottom"
-    },
-    "half\u003dlower,variant\u003dpeony": {
-      "model": "minecraft:block/peony_bottom"
-    },
-    "half\u003dlower,variant\u003drose_bush": {
-      "model": "minecraft:block/rose_bush_bottom"
-    },
-    "half\u003dlower,variant\u003dsunflower": {
-      "model": "minecraft:block/sunflower_bottom"
-    },
-    "half\u003dupper,variant\u003ddouble_fern": {
-      "model": "minecraft:block/double_fern_top"
-    },
-    "half\u003dupper,variant\u003ddouble_grass": {
-      "model": "minecraft:block/tall_grass_top"
-    },
-    "half\u003dupper,variant\u003dlilac": {
-      "model": "minecraft:block/lilac_top"
-    },
-    "half\u003dupper,variant\u003dpeony": {
-      "model": "minecraft:block/peony_top"
-    },
-    "half\u003dupper,variant\u003drose_bush": {
-      "model": "minecraft:block/rose_bush_top"
-    },
-    "half\u003dupper,variant\u003dsunflower": {
-      "model": "minecraft:block/sunflower_top"
-    }
+    "half=lower,variant=sunflower":  { "model": "minecraft:block/sunflower_bottom" },
+    "half=upper,variant=sunflower":  { "model": "minecraft:block/sunflower_top" },
+    "half=lower,variant=lilac":      { "model": "minecraft:block/lilac_bottom" },
+    "half=upper,variant=lilac":      { "model": "minecraft:block/lilac_top" },
+    "half=lower,variant=double_grass":  { "model": "minecraft:block/tall_grass_bottom" },
+    "half=upper,variant=double_grass":  { "model": "minecraft:block/tall_grass_top" },
+    "half=lower,variant=double_fern":   { "model": "minecraft:block/double_fern_bottom" },
+    "half=upper,variant=double_fern":   { "model": "minecraft:block/double_fern_top" },
+    "half=lower,variant=rose_bush":     { "model": "minecraft:block/rose_bush_bottom" },
+    "half=upper,variant=rose_bush":     { "model": "minecraft:block/rose_bush_top" },
+    "half=lower,variant=peony":         { "model": "minecraft:block/peony_bottom" },
+    "half=upper,variant=peony":         { "model": "minecraft:block/peony_top" }
   }
 }

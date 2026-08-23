@@ -1,61 +1,61 @@
 {
-  "ambientocclusion": false,
-  "elements": [
-    {
-      "faces": {
-        "south": {
-          "rotation": 90,
-          "texture": "#line",
-          "tintindex": 0,
-          "uv": [
-            0,
-            0,
-            16,
-            16
-          ]
-        }
-      },
-      "from": [
-        0,
-        0,
-        0.015625
-      ],
-      "shade": false,
-      "to": [
-        16,
-        16,
-        0.015625
-      ]
+    "ambientocclusion": false,
+    "textures": {
+        "particle": "minecraft:blocks/redstone_dust_line",
+        "line": "minecraft:blocks/redstone_dust_line",
+        "overlay": "minecraft:blocks/redstone_dust_line_overlay"
     },
-    {
-      "faces": {
-        "south": {
-          "rotation": 90,
-          "texture": "#overlay",
-          "uv": [
-            0,
-            0,
-            16,
-            16
-          ]
+    "elements": [
+        {
+            "from": [
+                0,
+                0,
+                0.015625
+            ],
+            "to": [
+                16,
+                16,
+                0.015625
+            ],
+            "shade": false,
+            "faces": {
+                "south": {
+                    "uv": [
+                        0,
+                        0,
+                        16,
+                        16
+                    ],
+                    "texture": "#line",
+                    "tintindex": 0,
+                    "rotation": 90
+                }
+            }
+        },
+        {
+            "from": [
+                0,
+                0,
+                0.015625
+            ],
+            "to": [
+                16,
+                16,
+                0.015625
+            ],
+            "shade": false,
+            "faces": {
+                "south": {
+                    "uv": [
+                        0,
+                        0,
+                        16,
+                        16
+                    ],
+                    "texture": "#overlay",
+                    "rotation": 90
+                }
+            }
         }
-      },
-      "from": [
-        0,
-        0,
-        0.015625
-      ],
-      "shade": false,
-      "to": [
-        16,
-        16,
-        0.015625
-      ]
-    }
-  ],
-  "textures": {
-    "line": "minecraft:blocks/redstone_dust_line",
-    "overlay": "minecraft:blocks/redstone_dust_line_overlay",
-    "particle": "minecraft:blocks/redstone_dust_line"
-  }
+    ]
 }

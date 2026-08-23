@@ -1,7 +1,5 @@
 {
   "variants": {
-    "normal": {
-      "model": "minecraft:block/hardened_clay"
-    }
+    "normal": { "model": "minecraft:block/hardened_clay" }
   }
 }

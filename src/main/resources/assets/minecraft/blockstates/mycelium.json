@@ -1,7 +1,5 @@
 {
   "variants": {
-    "normal": {
-      "model": "minecraft:block/mycelium"
-    }
+    "normal": { "model": "minecraft:block/mycelium" }
   }
 }

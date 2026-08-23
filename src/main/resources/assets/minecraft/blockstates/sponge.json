@@ -1,7 +1,5 @@
 {
   "variants": {
-    "normal": {
-      "model": "minecraft:block/sponge"
-    }
+    "normal": { "model": "minecraft:block/sponge" }
   }
 }

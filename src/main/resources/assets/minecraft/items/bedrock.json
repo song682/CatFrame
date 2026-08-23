@@ -1,6 +1,6 @@
 {
-  "model": {
-    "type": "minecraft:model",
-    "model": "minecraft:block/bedrock"
-  }
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:block/bedrock"
+    }
 }

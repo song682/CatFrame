@@ -1,6 +1,6 @@
 {
-  "model": {
-    "type": "minecraft:model",
-    "model": "minecraft:item/record_wait"
-  }
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:item/record_wait"
+    }
 }

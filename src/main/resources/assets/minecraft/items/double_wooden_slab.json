@@ -1,54 +1,18 @@
 {
-  "model": {
-    "type": "minecraft:select",
-    "cases": [
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:block/double_slab_oak"
+    "model": {
+        "type": "minecraft:select",
+        "property": "catframe:meta",
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:block/slab_oak"
         },
-        "when": "0"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:block/double_slab_spruce"
-        },
-        "when": "1"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:block/double_slab_birch"
-        },
-        "when": "2"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:block/double_slab_jungle"
-        },
-        "when": "3"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:block/double_slab_acacia"
-        },
-        "when": "4"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:block/double_slab_dark_oak"
-        },
-        "when": "5"
-      }
-    ],
-    "fallback": {
-      "type": "minecraft:model",
-      "model": "minecraft:block/slab_oak"
-    },
-    "property": "catframe:meta"
-  }
+        "cases": [
+            {"when": "0", "model": {"type": "minecraft:model", "model": "minecraft:block/double_slab_oak"}},
+            {"when": "1", "model": {"type": "minecraft:model", "model": "minecraft:block/double_slab_spruce"}},
+            {"when": "2", "model": {"type": "minecraft:model", "model": "minecraft:block/double_slab_birch"}},
+            {"when": "3", "model": {"type": "minecraft:model", "model": "minecraft:block/double_slab_jungle"}},
+            {"when": "4", "model": {"type": "minecraft:model", "model": "minecraft:block/double_slab_acacia"}},
+            {"when": "5", "model": {"type": "minecraft:model", "model": "minecraft:block/double_slab_dark_oak"}}
+        ]
+    }
 }

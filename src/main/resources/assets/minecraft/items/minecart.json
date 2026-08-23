@@ -1,6 +1,6 @@
 {
-  "model": {
-    "type": "minecraft:item",
-    "model": "minecraft:item/minecart"
-  }
+    "model": {
+        "type": "minecraft:item",
+        "model": "minecraft:item/minecart"
+    }
 }

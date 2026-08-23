@@ -1,19 +1,8 @@
 {
   "variants": {
-    "facing\u003deast": {
-      "model": "minecraft:block/furnace",
-      "y": 90
-    },
-    "facing\u003dnorth": {
-      "model": "minecraft:block/furnace"
-    },
-    "facing\u003dsouth": {
-      "model": "minecraft:block/furnace",
-      "y": 180
-    },
-    "facing\u003dwest": {
-      "model": "minecraft:block/furnace",
-      "y": 270
-    }
+    "facing=north": { "model": "minecraft:block/furnace" },
+    "facing=south": { "model": "minecraft:block/furnace", "y": 180 },
+    "facing=west":  { "model": "minecraft:block/furnace", "y": 270 },
+    "facing=east":  { "model": "minecraft:block/furnace", "y": 90 }
   }
 }

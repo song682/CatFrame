@@ -2,7 +2,7 @@
   "parent": "minecraft:block/stairs",
   "textures": {
     "bottom": "minecraft:blocks/brick",
-    "side": "minecraft:blocks/brick",
-    "top": "minecraft:blocks/brick"
+    "top": "minecraft:blocks/brick",
+    "side": "minecraft:blocks/brick"
   }
 }

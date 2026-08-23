@@ -1,6 +1,6 @@
 {
-  "model": {
-    "type": "minecraft:model",
-    "model": "minecraft:block/trapdoor_bottom"
-  }
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:block/trapdoor_bottom"
+    }
 }

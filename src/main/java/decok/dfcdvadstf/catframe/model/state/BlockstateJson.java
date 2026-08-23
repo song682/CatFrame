@@ -129,12 +129,6 @@ public class BlockstateJson {
          * Weight for random selection (default 1)
          */
         public int weight = 1;
-        /**
-         * Datagen-only: emit {@code "y": 0} explicitly even though zero is
-         * the default. Some hand-written matrices (1.7.10 stairs) spell the
-         * zero rotation out; ignored by the loader.
-         */
-        public transient boolean forceY;
     }
 
     public static class MultipartCase {

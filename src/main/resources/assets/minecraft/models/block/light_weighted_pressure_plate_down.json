@@ -1,6 +1,6 @@
 {
-  "parent": "minecraft:block/pressure_plate_down",
-  "textures": {
-    "texture": "minecraft:blocks/gold_block"
-  }
+    "parent": "minecraft:block/pressure_plate_down",
+    "textures": {
+        "texture": "minecraft:blocks/gold_block"
+    }
 }

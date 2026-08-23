@@ -1,10 +1,6 @@
 {
   "variants": {
-    "variant\u003ddirt": {
-      "model": "minecraft:block/dirt"
-    },
-    "variant\u003dpodzol": {
-      "model": "minecraft:block/podzol"
-    }
+    "variant=dirt": { "model": "minecraft:block/dirt" },
+    "variant=podzol": { "model": "minecraft:block/podzol" }
   }
 }

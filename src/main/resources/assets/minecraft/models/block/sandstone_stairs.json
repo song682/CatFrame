@@ -2,7 +2,7 @@
   "parent": "minecraft:block/stairs",
   "textures": {
     "bottom": "minecraft:blocks/sandstone_bottom",
-    "side": "minecraft:blocks/sandstone_normal",
-    "top": "minecraft:blocks/sandstone_top"
+    "top": "minecraft:blocks/sandstone_top",
+    "side": "minecraft:blocks/sandstone_normal"
   }
 }

@@ -1,75 +1,21 @@
 {
-  "model": {
-    "type": "minecraft:select",
-    "cases": [
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/poppy"
+    "model": {
+        "type": "minecraft:select",
+        "property": "catframe:meta",
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:item/poppy"
         },
-        "when": "0"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/blue_orchid"
-        },
-        "when": "1"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/allium"
-        },
-        "when": "2"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/houstonia"
-        },
-        "when": "3"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/tulip_red"
-        },
-        "when": "4"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/tulip_orange"
-        },
-        "when": "5"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/tulip_white"
-        },
-        "when": "6"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/tulip_pink"
-        },
-        "when": "7"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/oxeye_daisy"
-        },
-        "when": "8"
-      }
-    ],
-    "fallback": {
-      "type": "minecraft:model",
-      "model": "minecraft:item/poppy"
-    },
-    "property": "catframe:meta"
-  }
+        "cases": [
+            {"when": "0", "model": { "type": "minecraft:model", "model": "minecraft:item/poppy" }},
+            {"when": "1", "model": { "type": "minecraft:model", "model": "minecraft:item/blue_orchid" }},
+            {"when": "2", "model": { "type": "minecraft:model", "model": "minecraft:item/allium" }},
+            {"when": "3", "model": { "type": "minecraft:model", "model": "minecraft:item/houstonia" }},
+            {"when": "4", "model": { "type": "minecraft:model", "model": "minecraft:item/tulip_red" }},
+            {"when": "5", "model": { "type": "minecraft:model", "model": "minecraft:item/tulip_orange" }},
+            {"when": "6", "model": { "type": "minecraft:model", "model": "minecraft:item/tulip_white" }},
+            {"when": "7", "model": { "type": "minecraft:model", "model": "minecraft:item/tulip_pink" }},
+            {"when": "8", "model": { "type": "minecraft:model", "model": "minecraft:item/oxeye_daisy" }}
+        ]
+    }
 }

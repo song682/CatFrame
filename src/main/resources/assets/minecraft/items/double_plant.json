@@ -1,64 +1,56 @@
 {
-  "model": {
-    "type": "minecraft:select",
-    "cases": [
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/sunflower"
+    "model": {
+        "type": "minecraft:select",
+        "property": "catframe:meta",
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:item/sunflower"
         },
-        "when": "0"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/lilac"
-        },
-        "when": "1"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/tall_grass",
-          "tints": [
+        "cases": [
             {
-              "type": "minecraft:grass"
-            }
-          ]
-        },
-        "when": "2"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/tall_fern",
-          "tints": [
+                "when": "0",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/sunflower"
+                }
+            },
             {
-              "type": "minecraft:grass"
+                "when": "1",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/lilac"
+                }
+            },
+            {
+                "when": "2",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/tall_grass",
+                    "tints": [{ "type": "minecraft:grass" }]
+                }
+            },
+            {
+                "when": "3",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/tall_fern",
+                    "tints": [{ "type": "minecraft:grass" }]
+                }
+            },
+            {
+                "when": "4",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/rose"
+                }
+            },
+            {
+                "when": "5",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/peony"
+                }
             }
-          ]
-        },
-        "when": "3"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/rose"
-        },
-        "when": "4"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:item/peony"
-        },
-        "when": "5"
-      }
-    ],
-    "fallback": {
-      "type": "minecraft:model",
-      "model": "minecraft:item/sunflower"
-    },
-    "property": "catframe:meta"
-  }
+        ]
+    }
 }

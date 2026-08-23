@@ -1,147 +1,32 @@
 {
-  "ambientocclusion": false,
-  "elements": [
-    {
-      "faces": {
-        "down": {
-          "cullface": "down",
-          "texture": "#base",
-          "uv": [
-            5,
-            4,
-            11,
-            12
-          ]
-        },
-        "east": {
-          "texture": "#base",
-          "uv": [
-            4,
-            0,
-            12,
-            3
-          ]
-        },
-        "north": {
-          "texture": "#base",
-          "uv": [
-            5,
-            0,
-            11,
-            3
-          ]
-        },
-        "south": {
-          "texture": "#base",
-          "uv": [
-            5,
-            0,
-            11,
-            3
-          ]
-        },
-        "up": {
-          "texture": "#base",
-          "uv": [
-            5,
-            4,
-            11,
-            12
-          ]
-        },
-        "west": {
-          "texture": "#base",
-          "uv": [
-            4,
-            0,
-            12,
-            3
-          ]
-        }
-      },
-      "from": [
-        5,
-        -0.02,
-        4
-      ],
-      "to": [
-        11,
-        2.98,
-        12
-      ]
+    "ambientocclusion": false,
+    "textures": {
+        "particle": "blocks/cobblestone",
+        "base": "blocks/cobblestone",
+        "lever": "blocks/lever"
     },
-    {
-      "faces": {
-        "east": {
-          "texture": "#lever",
-          "uv": [
-            7,
-            6,
-            9,
-            16
-          ]
+    "elements": [
+        {   "from": [ 5, -0.02, 4 ],
+            "to": [ 11, 2.98, 12 ],
+            "faces": {
+                "down":  { "uv": [ 5, 4, 11, 12 ], "texture": "#base", "cullface": "down" },
+                "up":    { "uv": [ 5, 4, 11, 12 ], "texture": "#base" },
+                "north": { "uv": [ 5, 0, 11,  3 ], "texture": "#base" },
+                "south": { "uv": [ 5, 0, 11,  3 ], "texture": "#base" },
+                "west":  { "uv": [ 4, 0, 12,  3 ], "texture": "#base" },
+                "east":  { "uv": [ 4, 0, 12,  3 ], "texture": "#base" }
+            }
         },
-        "north": {
-          "texture": "#lever",
-          "uv": [
-            7,
-            6,
-            9,
-            16
-          ]
-        },
-        "south": {
-          "texture": "#lever",
-          "uv": [
-            7,
-            6,
-            9,
-            16
-          ]
-        },
-        "up": {
-          "texture": "#lever",
-          "uv": [
-            7,
-            6,
-            9,
-            8
-          ]
-        },
-        "west": {
-          "texture": "#lever",
-          "uv": [
-            7,
-            6,
-            9,
-            16
-          ]
+        {   "from": [ 7, 1, 7 ],
+            "to": [ 9, 11, 9 ],
+            "rotation": { "origin": [ 8, 1, 8 ], "axis": "x", "angle": -45 },
+            "faces": {
+                "up":    { "uv": [ 7, 6, 9,  8 ], "texture": "#lever" },
+                "north": { "uv": [ 7, 6, 9, 16 ], "texture": "#lever" },
+                "south": { "uv": [ 7, 6, 9, 16 ], "texture": "#lever" },
+                "west":  { "uv": [ 7, 6, 9, 16 ], "texture": "#lever" },
+                "east":  { "uv": [ 7, 6, 9, 16 ], "texture": "#lever" }
+            }
         }
-      },
-      "from": [
-        7,
-        1,
-        7
-      ],
-      "rotation": {
-        "angle": -45,
-        "axis": "x",
-        "origin": [
-          8,
-          1,
-          8
-        ]
-      },
-      "to": [
-        9,
-        11,
-        9
-      ]
-    }
-  ],
-  "textures": {
-    "base": "blocks/cobblestone",
-    "lever": "blocks/lever",
-    "particle": "blocks/cobblestone"
-  }
+    ]
 }

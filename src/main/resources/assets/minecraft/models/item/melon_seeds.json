@@ -1,6 +1,7 @@
 {
-  "parent": "item/generated",
-  "textures": {
-    "layer0": "minecraft:items/seeds_melon"
-  }
+    "parent": "item/generated",
+    "textures": {
+        "layer0": "minecraft:items/seeds_melon"
+    }
 }
+    

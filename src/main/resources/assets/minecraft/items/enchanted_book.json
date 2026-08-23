@@ -1,6 +1,6 @@
 {
-  "model": {
-    "type": "minecraft:model",
-    "model": "minecraft:item/enchanted_book"
-  }
+    "model": {
+        "type": "minecraft:model",
+        "model": "minecraft:item/enchanted_book"
+    }
 }

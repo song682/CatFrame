@@ -1,7 +1,5 @@
 {
   "variants": {
-    "normal": {
-      "model": "minecraft:block/snow"
-    }
+    "normal": { "model": "minecraft:block/snow" }
   }
 }

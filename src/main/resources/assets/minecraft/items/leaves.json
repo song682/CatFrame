@@ -1,40 +1,40 @@
 {
-  "model": {
-    "type": "minecraft:select",
-    "cases": [
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:block/oak_leaves"
+    "model": {
+        "type": "minecraft:select",
+        "property": "catframe:meta",
+        "fallback": {
+            "type": "minecraft:model", 
+            "model": "minecraft:block/leave" 
         },
-        "when": "0"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:block/spruce_leaves"
-        },
-        "when": "1"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:block/birch_leaves"
-        },
-        "when": "2"
-      },
-      {
-        "model": {
-          "type": "minecraft:model",
-          "model": "minecraft:block/jungle_leaves"
-        },
-        "when": "3"
-      }
-    ],
-    "fallback": {
-      "type": "minecraft:model",
-      "model": "minecraft:block/leave"
-    },
-    "property": "catframe:meta"
-  }
+        "cases": [
+            {
+                "when": "0",
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/oak_leaves" 
+                    }
+                },
+            {
+                "when": "1",
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/spruce_leaves" 
+                    }
+                },
+            {
+                "when": "2",
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/birch_leaves" 
+                    }
+                },
+            {
+                "when": "3",
+                "model": {
+                    "type": "minecraft:model", 
+                    "model": "minecraft:block/jungle_leaves" 
+                }
+            }
+        ]
+    }
 }

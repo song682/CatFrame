@@ -1,81 +1,19 @@
 {
   "parent": "minecraft:block/block",
+  "textures": {"particle": "#side"},
   "elements": [
     {
+      "from": [0, 8, 0],
+      "to": [16, 16, 16],
       "faces": {
-        "down": {
-          "texture": "#bottom",
-          "uv": [
-            0,
-            0,
-            16,
-            16
-          ]
-        },
-        "east": {
-          "cullface": "east",
-          "texture": "#side",
-          "uv": [
-            0,
-            0,
-            16,
-            8
-          ]
-        },
-        "north": {
-          "cullface": "north",
-          "texture": "#side",
-          "uv": [
-            0,
-            0,
-            16,
-            8
-          ]
-        },
-        "south": {
-          "cullface": "south",
-          "texture": "#side",
-          "uv": [
-            0,
-            0,
-            16,
-            8
-          ]
-        },
-        "up": {
-          "cullface": "up",
-          "texture": "#top",
-          "uv": [
-            0,
-            0,
-            16,
-            16
-          ]
-        },
-        "west": {
-          "cullface": "west",
-          "texture": "#side",
-          "uv": [
-            0,
-            0,
-            16,
-            8
-          ]
-        }
-      },
-      "from": [
-        0,
-        8,
-        0
-      ],
-      "to": [
-        16,
-        16,
-        16
-      ]
+        "down":  { "texture": "#bottom", "uv": [0, 0, 16, 16] },
+        "up":    { "texture": "#top",    "uv": [0, 0, 16, 16], "cullface": "up" },
+        "north": { "texture": "#side",   "uv": [0, 0, 16, 8], "cullface": "north" },
+        "south": { "texture": "#side",   "uv": [0, 0, 16, 8], "cullface": "south" },
+        "west":  { "texture": "#side",   "uv": [0, 0, 16, 8], "cullface": "west" },
+        "east":  { "texture": "#side",   "uv": [0, 0, 16, 8], "cullface": "east" }
+      }
     }
-  ],
-  "textures": {
-    "particle": "#side"
-  }
+  ]
+
 }

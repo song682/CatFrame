@@ -1,6 +1,6 @@
 {
   "variants": {
-    "normal": {
+    "normal": { 
       "model": "minecraft:block/diamond_block"
     }
   }

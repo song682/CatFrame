@@ -14,7 +14,12 @@ import javax.annotation.Nullable;
  * 同时处理 Tab/Shift+Tab 焦点导航。<br>
  * 必须在 {@code GuiScreen.handleKeyboardInput()} 的 {@code while(Keyboard.next())} 循环
  * 上下文中调用（此时 LWJGL 的 {@code current_event} 有效）；本类<strong>不</strong>调用
- * {@code Keyboard.next()}，因此不会「偷走」原版事件。
+ * {@code Keyboard.next()}，因此不会「偷走」原版事件。<br>
+ * 本类也<strong>不</strong>调用 {@code keyTyped}：原版 {@code handleKeyboardInput()}
+ * 自身的 {@code this.keyTyped(char, int)} 调用（对 CatFrame 内建 {@code Screen}
+ * 基类即 {@code Screen.keyTyped} → {@code dispatchKeyTyped}）已是只实现
+ * {@code keyTyped} 的叶子组件（文本框、按钮等）的唯一输入通道，此处再派发
+ * 会造成每个按键到达组件两次（双重输入回归，见 UI-Completity.md C2 第三轮）。
  * </p>
  * <p>
  * Screen keyboard input dispatcher — reads LWJGL2's <strong>current</strong> keyboard
@@ -22,7 +27,12 @@ import javax.annotation.Nullable;
  * dispatching to the root component and handling Tab/Shift+Tab focus navigation. It must
  * be called within the {@code GuiScreen.handleKeyboardInput()} context (where LWJGL's
  * current event is valid) and does <strong>not</strong> call {@code Keyboard.next()}, so
- * it never steals events from vanilla.
+ * it never steals events from vanilla. It also does <strong>not</strong> call
+ * {@code keyTyped}: the vanilla {@code this.keyTyped(char, int)} inside
+ * {@code handleKeyboardInput()} (for the built-in {@code Screen} base that is
+ * {@code Screen.keyTyped} → {@code dispatchKeyTyped}) already is the sole input channel
+ * for leaf components that implement only {@code keyTyped}, and dispatching it here
+ * again would deliver every keystroke twice (see UI-Completity.md C2 round 3).
  * </p>
  */
 public final class ScreenKeyboardInput {
@@ -61,13 +71,15 @@ public final class ScreenKeyboardInput {
         }
 
         // ── Split key press + char ──
+        // Note: the legacy keyTyped bridge has been removed. The vanilla
+        // GuiScreen.handleKeyboardInput() loop calls this.keyTyped() →
+        // Screen.keyTyped() → dispatchKeyTyped(), which already delivers
+        // the event to all children exactly once. Calling root.keyTyped()
+        // here as well caused every keystroke to reach widgets twice.
         final boolean consumed = root.keyPressed(keyCode);
         if (!consumed && isTextCharacter(character)) {
             root.charTyped(character);
         }
-
-        // ── Legacy bridge: keep keyTyped-based widgets working ──
-        root.keyTyped(character, keyCode);
     }
 
     /**

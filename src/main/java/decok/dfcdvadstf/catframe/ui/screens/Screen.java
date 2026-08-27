@@ -63,15 +63,20 @@ import java.util.List;
  * <h3>事件契约 / Event contract</h3>
  * <p>
  * 拆分键盘事件（{@code keyPressed}/{@code keyReleased}/{@code charTyped}）经
- * {@code ScreenKeyboardInput} 派发；本类的原版 {@link #keyTyped(char, int)}
- * <strong>只</strong>处理
- * Esc 关闭，<strong>不</strong>向子组件转发，以免与拆分事件重复分发
- * （见 {@link CatFrameInputScreen} 契约）。<br>
- * Split keyboard events are dispatched via {@code ScreenKeyboardInput}; this
- * class's vanilla
- * {@link #keyTyped(char, int)} handles <strong>only</strong> Esc-to-close and
- * does
- * <strong>not</strong> forward to children, to avoid double dispatch.
+ * {@code ScreenKeyboardInput} 派发（Tab 焦点导航与 {@code keyReleased} 仅由此到达）；
+ * 本类的原版 {@link #keyTyped(char, int)} 由 {@code super.handleKeyboardInput()}
+ * 驱动，处理 Esc 关闭后经 {@link #dispatchKeyTyped(char, int)} 转发到焦点子组件——
+ * 这是只实现了 {@code keyTyped} 的叶子组件（文本框、按钮等）的<strong>唯一</strong>
+ * 输入通道（{@code ScreenKeyboardInput} 末尾的 legacy keyTyped 桥接曾与之并存并导致
+ * 双重输入，已移除）。<br>
+ * Split keyboard events are dispatched via {@code ScreenKeyboardInput} (Tab focus
+ * navigation and {@code keyReleased} only reach components through it); this
+ * class's vanilla {@link #keyTyped(char, int)} is driven by
+ * {@code super.handleKeyboardInput()}, handles Esc-to-close and then forwards to
+ * the focused child via {@link #dispatchKeyTyped(char, int)} — the
+ * <strong>only</strong> input channel for leaf components that implement just
+ * {@code keyTyped} (the legacy keyTyped bridge inside {@code ScreenKeyboardInput}
+ * that used to coexist with it was removed after causing double input).
  * </p>
  */
 public abstract class Screen extends GuiScreen implements GuiEventListener, ContainerEventHandler, CatFrameInputScreen {
@@ -292,6 +297,9 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * Self-dispatches the split keyboard events ({@code keyPressed} /
      * {@code keyReleased} /
      * {@code charTyped}) into the component tree, then delegates to vanilla.
+     * The vanilla path drives {@code keyTyped} →
+     * {@link #dispatchKeyTyped(char, int)}, the sole input channel for leaf
+     * components that override only {@code keyTyped}.
      * Reading LWJGL2's
      * current event here — inside the {@code while (Keyboard.next())} loop, before
      * vanilla's
@@ -308,7 +316,10 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * base.
      * </p>
      * <p>
-     * 本基类自行把拆分键盘事件派发进组件树，随后委托原版。此处（在 {@code while(Keyboard.next())}
+     * 本基类自行把拆分键盘事件派发进组件树，随后委托原版；原版路径驱动
+     * {@code keyTyped} → {@link #dispatchKeyTyped(char, int)}，是只覆写了
+     * {@code keyTyped} 的叶子组件的唯一输入通道。
+     * 此处（在 {@code while(Keyboard.next())}
      * 循环内、原版 {@code keyTyped} 之前）读取 LWJGL2 当前事件，与 {@code MixinGuiScreen} 为外部宿主
      * 所做的完全一致。因本基类自派发，{@link #handlesKeyboardDispatchInternally()} 返回 {@code true}，
      * 令 {@code MixinGuiScreen} 跳过本屏幕，从而不会重复派发。
@@ -327,21 +338,20 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * {@link GuiEventListener#keyTyped(char, int)}. Handles Esc-to-close and
      * then forwards to the focused child via {@link #dispatchKeyTyped(char, int)}.
      * <p>
-     * Split keyboard events ({@code keyPressed}/{@code charTyped}) are dispatched
-     * via {@code ScreenKeyboardInput} and forwarded to the focused child through
-     * {@link #keyPressed}/{@link #charTyped}. However, leaf components (edit boxes,
-     * buttons, etc.) only override {@code keyTyped} — they do not implement the
-     * split-method equivalents. Therefore the legacy {@code keyTyped} bridge at the
-     * end of {@code ScreenKeyboardInput.handleCurrentEvent} must reach them,
-     * and this is achieved by calling {@code dispatchKeyTyped} here.
+     * Driven by {@code super.handleKeyboardInput()} (vanilla fires it only on key
+     * press). Leaf components (edit boxes, buttons, etc.) override just
+     * {@code keyTyped} — they do not implement the split-method equivalents — so
+     * this dispatch is their <strong>only</strong> keyboard input channel. The
+     * legacy {@code keyTyped} bridge inside
+     * {@code ScreenKeyboardInput.handleCurrentEvent} was removed because it
+     * delivered every keystroke twice (here and via the vanilla path).
      * </p>
      * <p>
-     * 处理 Esc 关闭后向当前焦点子组件转发按键事件。拆分键盘事件经
-     * {@code ScreenKeyboardInput} 派发后通过 {@link #keyPressed}/{@link #charTyped}
-     * 转发给焦点子组件，但叶子组件（文本框、按钮等）只覆写了 {@code keyTyped}，
-     * 未覆写拆分方法等价体，故 {@code ScreenKeyboardInput.handleCurrentEvent}
-     * 末尾的 legacy {@code keyTyped} 桥接必须能到达它们——此处调用
-     * {@code dispatchKeyTyped} 完成该转发。
+     * 由 {@code super.handleKeyboardInput()} 驱动（原版仅在按下时触发）。
+     * 叶子组件（文本框、按钮等）只覆写了 {@code keyTyped}，未实现拆分方法等价体，
+     * 故此处的 {@link #dispatchKeyTyped(char, int)} 转发是它们<strong>唯一</strong>
+     * 的键盘输入通道；{@code ScreenKeyboardInput.handleCurrentEvent} 中的 legacy
+     * {@code keyTyped} 桥接已移除（它曾与本原版路径并存，导致每个按键被投递两次）。
      * </p>
      */
     @Override

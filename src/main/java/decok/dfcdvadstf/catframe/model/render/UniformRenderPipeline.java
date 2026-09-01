@@ -12,6 +12,7 @@ import net.minecraft.world.IBlockAccess;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
+import java.util.Map;
 
 /**
  * Uniform Render Pipeline —— 延迟命令管线的<b>提交端</b>。
@@ -76,6 +77,23 @@ public final class UniformRenderPipeline {
                                         Block block, int rotationDeg,
                                         RenderPhase phase,
                                         int metadata) {
+        renderBlockQuads(part, world, x, y, z, block, rotationDeg, phase, metadata, null);
+    }
+
+    /**
+     * 渲染方块的 quads（带 metadata + 方块状态属性支持）。
+     *
+     * @param part            渲染部件
+     * @param metadata       方块 metadata（用于染色）
+     * @param blockstateProps 匹配期构造的方块状态属性（不可修改视图，可为 null），
+     *                        随提交携带供扩展链经 {@code RenderContext.blockstateProps} 读取
+     */
+    public static void renderBlockQuads(BlockStateModelPart part,
+                                        IBlockAccess world, int x, int y, int z,
+                                        Block block, int rotationDeg,
+                                        RenderPhase phase,
+                                        int metadata,
+                                        @Nullable Map<String, String> blockstateProps) {
         if (part == null) return;
 
         // 世界渲染绑定 CatAtlas：按半透明性选择渲染组（与 vanilla 分层语义一致）——
@@ -92,7 +110,8 @@ public final class UniformRenderPipeline {
                 x, y, z, rotationDeg,
                 block, null, world, metadata,
                 null, null,
-                false, false);
+                false, false,
+                blockstateProps, null);
         RenderCommandBuffers.submit(s);
     }
 
@@ -131,6 +150,32 @@ public final class UniformRenderPipeline {
                                        IBlockAccess world, int x, int y, int z, Block block,
                                        @Nullable Matrix4d preTransform,
                                        @Nullable Matrix4d transformation) {
+        renderItemQuads(part, stack, phase, world, x, y, z, block,
+                preTransform, transformation, null);
+    }
+
+    /**
+     * 无 transformation 时的兼容重载 — 委托给带 transformation 的完整版（传 null 即单位变换）。
+     */
+    public static void renderItemQuads(BlockStateModelPart part,
+                                       ItemStack stack, RenderPhase phase,
+                                       IBlockAccess world, int x, int y, int z, Block block,
+                                       @Nullable Matrix4d preTransform) {
+        renderItemQuads(part, stack, phase, world, x, y, z, block, preTransform, null);
+    }
+
+    /**
+     * 渲染物品的 quads（带物品属性支持）。
+     *
+     * @param itemProps 物品属性集（只读惰性 Map，可为 null），由物品属性系统构建，
+     *                  随提交携带供扩展链经 {@code RenderContext.itemProps} 读取
+     */
+    public static void renderItemQuads(BlockStateModelPart part,
+                                       ItemStack stack, RenderPhase phase,
+                                       IBlockAccess world, int x, int y, int z, Block block,
+                                       @Nullable Matrix4d preTransform,
+                                       @Nullable Matrix4d transformation,
+                                       @Nullable Map<String, Comparable<?>> itemProps) {
         if (part == null) return;
 
         boolean gui = (phase == RenderPhase.ITEM_GUI);
@@ -150,25 +195,17 @@ public final class UniformRenderPipeline {
             BlockStateModelPart sub = split[i];
             if (sub == null) continue;
             RenderTypeKey type = RenderTypeRegistry.of(i == 0, blendRequired);
+            // 两次提交共享同一 itemProps 引用（零拷贝）
             RenderSubmit s = new RenderSubmit(
                     phase, sub, type,
                     x, y, z, 0,
                     block, stack, world, 0,
                     preTransform,
                     transformation,
-                    false, blendRequired);
+                    false, blendRequired,
+                    null, itemProps);
             RenderCommandBuffers.submit(s);
         }
-    }
-
-    /**
-     * 无 transformation 时的兼容重载 — 委托给带 transformation 的完整版（传 null 即单位变换）。
-     */
-    public static void renderItemQuads(BlockStateModelPart part,
-                                       ItemStack stack, RenderPhase phase,
-                                       IBlockAccess world, int x, int y, int z, Block block,
-                                       @Nullable Matrix4d preTransform) {
-        renderItemQuads(part, stack, phase, world, x, y, z, block, preTransform, null);
     }
 
     /**

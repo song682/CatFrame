@@ -12,6 +12,7 @@ import net.minecraft.world.IBlockAccess;
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 一次渲染提交的不可变数据快照，对标原版 26w+ 管线中的 {@code Submit} 命令 record。
@@ -67,6 +68,25 @@ public final class RenderSubmit implements RenderSubmitView {
     /** flush 时是否需要开启混合（与 {@link RenderTypeKey#blend()} 一致）。 */
     public final boolean blend;
 
+    /**
+     * 方块状态属性（如 pane 的 north/east/south/west、stairs 的 facing/half/shape），
+     * 由模型解析阶段计算并随提交携带，经 {@link RenderContext#blockstateProps} 暴露给扩展链。
+     * 仅 BLOCK_WORLD / BLOCK_DESTROY 提交非 null。
+     */
+    @Nullable
+    public final Map<String, String> blockstateProps;
+
+    /**
+     * 物品属性（如 damage / using_item / use_duration / display_context），
+     * 由物品属性系统构建并随提交携带，经 {@link RenderContext#itemProps} 暴露给扩展链。
+     * 仅 ITEM_* 提交非 null。
+     */
+    @Nullable
+    public final Map<String, Comparable<?>> itemProps;
+
+    /**
+     * 旧签名构造器兼容 shim：blockstateProps / itemProps 均为 null。
+     */
     public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
                         int x, int y, int z, int rotationDeg,
                         @Nullable Block block, @Nullable ItemStack stack,
@@ -74,6 +94,21 @@ public final class RenderSubmit implements RenderSubmitView {
                         @Nullable Matrix4d preTransform,
                         @Nullable Matrix4d transformation,
                         boolean disableCull, boolean blend) {
+        this(phase, part, type, x, y, z, rotationDeg,
+                block, stack, world, metadata,
+                preTransform, transformation,
+                disableCull, blend, null, null);
+    }
+
+    public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
+                        int x, int y, int z, int rotationDeg,
+                        @Nullable Block block, @Nullable ItemStack stack,
+                        @Nullable IBlockAccess world, int metadata,
+                        @Nullable Matrix4d preTransform,
+                        @Nullable Matrix4d transformation,
+                        boolean disableCull, boolean blend,
+                        @Nullable Map<String, String> blockstateProps,
+                        @Nullable Map<String, Comparable<?>> itemProps) {
         this.phase = phase;
         this.part = part;
         this.type = type;
@@ -89,6 +124,8 @@ public final class RenderSubmit implements RenderSubmitView {
         this.transformation = transformation;
         this.disableCull = disableCull;
         this.blend = blend;
+        this.blockstateProps = blockstateProps;
+        this.itemProps = itemProps;
     }
 
     // ==================== RenderSubmitView（只读视图实现） ====================
@@ -166,5 +203,15 @@ public final class RenderSubmit implements RenderSubmitView {
     @Override
     public Matrix4d transformationCopy() {
         return transformation == null ? null : new Matrix4d(transformation);
+    }
+
+    @Override
+    public Map<String, String> blockstateProps() {
+        return blockstateProps;
+    }
+
+    @Override
+    public Map<String, Comparable<?>> itemProps() {
+        return itemProps;
     }
 }

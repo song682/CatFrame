@@ -97,8 +97,13 @@ public final class ResidentStateModel implements BlockStateModel {
 
     @Override
     public BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z, int metadata) {
+        return collectPartsWithProps(world, x, y, z, metadata).part;
+    }
+
+    @Override
+    public CollectedPart collectPartsWithProps(IBlockAccess world, int x, int y, int z, int metadata) {
         BlockstateJson target = resolveTarget(metadata);
-        if (target == null) return BlockStateModelPart.empty();
+        if (target == null) return new CollectedPart(BlockStateModelPart.empty(), null);
 
         Map<String, String> props = resolveProps(world, x, y, z, metadata);
         if (dynamic != null) {
@@ -106,16 +111,22 @@ public final class ResidentStateModel implements BlockStateModel {
             dynamic.resolve(world, x, y, z, metadata, props);
         }
 
+        BlockStateModelPart part;
         if (connectionMultipart) {
-            return collectConnectionMultipart(target, props);
+            part = collectConnectionMultipart(target, props);
+        } else if (target.variants != null) {
+            part = collectVariants(world, x, y, z, metadata, target, props);
+        } else if (target.multipart != null) {
+            part = collectMultipart(target, props);
+        } else {
+            part = BlockStateModelPart.empty();
         }
-        if (target.variants != null) {
-            return collectVariants(world, x, y, z, metadata, target, props);
-        }
-        if (target.multipart != null) {
-            return collectMultipart(target, props);
-        }
-        return BlockStateModelPart.empty();
+
+        // 匹配完成后包裹只读视图随提交携带（防扩展篡改）；props 为 null 或空
+        // （无 def 且无 dynamic 的普通方块）时保持 null，零额外成本。
+        Map<String, String> exposed = (props == null || props.isEmpty())
+                ? null : Collections.unmodifiableMap(props);
+        return new CollectedPart(part, exposed);
     }
 
     @Override

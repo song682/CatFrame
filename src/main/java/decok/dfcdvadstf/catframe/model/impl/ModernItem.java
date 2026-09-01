@@ -323,7 +323,8 @@ public class ModernItem extends Item implements IItemStateProvider {
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty())
                 continue;
-            UniformRenderPipeline.renderItemQuads(part, stack, phase);
+            UniformRenderPipeline.renderItemQuads(part, stack, phase,
+                    null, 0, 0, 0, null, null, null, props);
         }
     }
 
@@ -345,7 +346,7 @@ public class ModernItem extends Item implements IItemStateProvider {
             if (part == null || part.isEmpty())
                 continue;
             UniformRenderPipeline.renderItemQuads(part, stack, phase,
-                    null, 0, 0, 0, null, preTransform);
+                    null, 0, 0, 0, null, preTransform, null, props);
         }
     }
 

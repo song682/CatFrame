@@ -76,7 +76,7 @@ public class ItemStateModel implements IItemStateProvider {
             BlockStateModelPart missing = BakedModelCache.INSTANCE.get(cacheKey);
             if (missing != null && !missing.isEmpty()) {
                 UniformRenderPipeline.renderItemQuads(missing, stack, phase,
-                        null, 0, 0, 0, null, preTransform);
+                        null, 0, 0, 0, null, preTransform, null, props);
             }
             return;
         }
@@ -98,7 +98,7 @@ public class ItemStateModel implements IItemStateProvider {
             // pipeline after the display transform (identity when absent).
             Matrix4d transformation = findTransformationForModel(rootNode, path);
             UniformRenderPipeline.renderItemQuads(part, stack, phase,
-                    null, 0, 0, 0, null, preTransform, transformation);
+                    null, 0, 0, 0, null, preTransform, transformation, props);
         }
     }
 

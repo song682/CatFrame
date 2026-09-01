@@ -8,6 +8,7 @@ import net.minecraft.world.IBlockAccess;
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 一次渲染提交的只读视图（retained command 的快照投影）。
@@ -78,4 +79,28 @@ public interface RenderSubmitView {
      */
     @Nullable
     Matrix4d transformationCopy();
+
+    /**
+     * 方块状态属性（如 pane 的 north/east/south/west、stairs 的 facing/half/shape），
+     * 由模型解析阶段计算并随提交携带。仅 BLOCK_WORLD / BLOCK_DESTROY 提交非 null。
+     * <p>
+     * 只读约定：返回不可修改视图，调用方不得修改。默认返回 null，由 {@code RenderSubmit}
+     * 覆写返回真实值。
+     */
+    @Nullable
+    default Map<String, String> blockstateProps() {
+        return null;
+    }
+
+    /**
+     * 物品属性（如 damage / using_item / use_duration / display_context），
+     * 由物品属性系统构建并随提交携带。仅 ITEM_* 提交非 null。
+     * <p>
+     * 只读惰性 Map：读取某个 key 才触发对应 provider 的计算，请避免全量遍历。
+     * 默认返回 null，由 {@code RenderSubmit} 覆写返回真实值。
+     */
+    @Nullable
+    default Map<String, Comparable<?>> itemProps() {
+        return null;
+    }
 }

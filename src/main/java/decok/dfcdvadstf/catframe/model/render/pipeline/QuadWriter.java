@@ -62,7 +62,8 @@ public final class QuadWriter {
 
             // 创建上下文并运行扩展链
             RenderContext ctx = new RenderContext(s.phase, q,
-                    s.world, s.x, s.y, s.z, s.block, null, baseBrightness, baseShade);
+                    s.world, s.x, s.y, s.z, s.block, null, baseBrightness, baseShade,
+                    s.blockstateProps, s.itemProps);
             ctx.metadata = s.metadata;
             ModelRenderRegistry.apply(ctx);
             if (ctx.skip)
@@ -223,7 +224,8 @@ public final class QuadWriter {
             // 非 GUI 交由 GL_LIGHTING 依逐面法线计算，baseShade 取 1.0 以免双重着色。
             float baseShade = glLit ? 1.0f : CardinalLighting.DEFAULT.byFace(q.face);
             RenderContext ctx = new RenderContext(s.phase, q,
-                    s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, baseShade);
+                    s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, baseShade,
+                    s.blockstateProps, s.itemProps);
             ModelRenderRegistry.apply(ctx);
             if (ctx.skip)
                 continue;
@@ -305,7 +307,8 @@ public final class QuadWriter {
 
             float baseShade = glLit ? 1.0f : CardinalLighting.DEFAULT.byFace(q.face);
             RenderContext ctx = new RenderContext(s.phase, q,
-                    s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, baseShade);
+                    s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, baseShade,
+                    s.blockstateProps, s.itemProps);
             ModelRenderRegistry.apply(ctx);
             if (ctx.skip)
                 continue;
@@ -409,7 +412,8 @@ public final class QuadWriter {
             // 运行扩展链：获取 displayTransform 并尊重 skip（与正常 pass 的可见性一致）
             // Run extension chain: obtain displayTransform and honor skip flag
             RenderContext ctx = new RenderContext(s.phase, q,
-                    s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, 1.0f);
+                    s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, 1.0f,
+                    s.blockstateProps, s.itemProps);
             ModelRenderRegistry.apply(ctx);
             if (ctx.skip)
                 continue;

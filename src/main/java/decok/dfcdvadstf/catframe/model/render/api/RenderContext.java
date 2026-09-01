@@ -9,6 +9,7 @@ import net.minecraft.world.IBlockAccess;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
+import java.util.Map;
 
 /**
  * 一次 quad 渲染的上下文，扩展链 {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry#apply(RenderContext)}
@@ -44,6 +45,34 @@ public final class RenderContext {
 
     // Item phases only (block phase: stack=null)
     public final ItemStack stack;
+
+    /**
+     * 方块状态属性（blockstate properties），由 CatFrame 的动态属性解析器
+     * （{@code VanillaBlockResolvers}）在模型解析时计算，例如玻璃板/铁栏杆的
+     * north/east/south/west 连接状态、楼梯的 facing/half/shape、红石线的 power 等。
+     * <p>
+     * 仅 {@link RenderPhase#BLOCK_WORLD} / {@link RenderPhase#BLOCK_DESTROY} 阶段可用；
+     * 物品阶段或未计算动态属性的方块为 null。
+     * <p>
+     * 只读约定：返回不可修改视图，扩展不得修改；引用仅在扩展链调用期间有效
+     * （同帧同线程），不得跨帧保留。
+     */
+    @Nullable
+    public final Map<String, String> blockstateProps;
+
+    /**
+     * 物品属性（item properties），由 CatFrame 的物品属性系统
+     * （{@code ItemProperties.buildProperties}）计算，例如 damage / max_damage /
+     * using_item / use_duration / display_context 等，供 items JSON 决策树求值使用。
+     * <p>
+     * 仅 {@code ITEM_*} 阶段可用；方块阶段为 null。
+     * <p>
+     * 只读惰性 Map（{@code LazyPropertyMap}）：读取某个 key 才会触发对应 provider 的
+     * 计算并缓存，请避免 {@code entrySet()/values()} 全量遍历（会触发全部求值）。
+     * 引用仅在扩展链调用期间有效（同帧同线程），不得跨帧保留。
+     */
+    @Nullable
+    public final Map<String, Comparable<?>> itemProps;
 
     /**
      * [S1] 方块的 metadata 值，由渲染管线在提交时携带（历史上用于 GUI 方块染色）。
@@ -86,10 +115,23 @@ public final class RenderContext {
     @Nullable
     public Matrix4d displayTransform = null;
 
+    /**
+     * 旧签名构造器兼容 shim：blockstateProps / itemProps 均为 null。
+     */
     public RenderContext(RenderPhase phase, BakedQuad quad,
                          IBlockAccess world, int x, int y, int z, Block block,
                          ItemStack stack,
                          int baselineBrightness, float defaultShade) {
+        this(phase, quad, world, x, y, z, block, stack,
+                baselineBrightness, defaultShade, null, null);
+    }
+
+    public RenderContext(RenderPhase phase, BakedQuad quad,
+                         IBlockAccess world, int x, int y, int z, Block block,
+                         ItemStack stack,
+                         int baselineBrightness, float defaultShade,
+                         @Nullable Map<String, String> blockstateProps,
+                         @Nullable Map<String, Comparable<?>> itemProps) {
         this.phase = phase;
         this.quad = quad;
         this.world = world;
@@ -100,6 +142,8 @@ public final class RenderContext {
         this.stack = stack;
         this.baselineBrightness = baselineBrightness;
         this.shade = defaultShade;
+        this.blockstateProps = blockstateProps;
+        this.itemProps = itemProps;
     }
 
     /**

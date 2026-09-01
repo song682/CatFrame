@@ -39,7 +39,8 @@ public class RenderDispatcher {
         int metadata = world.getBlockMetadata(x, y, z);
         ResolvedModel rm = resolveBlockModel(world, x, y, z, block, metadata);
         if (rm == null) return false;
-        UniformRenderPipeline.renderBlockQuads(rm.part, world, x, y, z, block, rm.rot);
+        UniformRenderPipeline.renderBlockQuads(rm.part, world, x, y, z, block, rm.rot,
+                RenderPhase.BLOCK_WORLD, metadata, rm.blockstateProps);
         return true;
     }
 
@@ -70,7 +71,7 @@ public class RenderDispatcher {
                 // Use CatBlockState.toVariantKey() for matching
                 BlockstateJson bs = ModelManagerDataLoader.stateBlockData.get(block);
                 if (bs != null) {
-                    return resolved(renderStateWithCatBlockState(world, x, y, z, block, catState, bs));
+                    return renderStateWithCatBlockState(world, x, y, z, block, catState, bs);
                 }
             }
         }
@@ -78,7 +79,8 @@ public class RenderDispatcher {
         // --- Path 2: check registered BlockStateModel ---
         BlockStateModel stateModel = ModelRegistry.registeredBlockModels.get(block);
         if (stateModel != null) {
-            BlockStateModelPart part = stateModel.collectParts(world, x, y, z, metadata);
+            BlockStateModel.CollectedPart collected = stateModel.collectPartsWithProps(world, x, y, z, metadata);
+            BlockStateModelPart part = collected != null ? collected.part : null;
             if (part != null && !part.isEmpty()) {
                 // Compute rotation
                 int rot = 0;
@@ -92,24 +94,16 @@ public class RenderDispatcher {
                         if (r != null) rot = r;
                     }
                 }
-                return new ResolvedModel(part, rot);
+                return new ResolvedModel(part, rot, collected.blockstateProps);
             }
         }
 
         // --- Path 3: dynamic state-provider ---
         if (block instanceof IBlockStateProvider && ModelManagerDataLoader.stateBlockData.containsKey(block)) {
-            return resolved(renderStateProviderBlock(world, x, y, z, block, metadata));
+            return renderStateProviderBlock(world, x, y, z, block, metadata);
         }
 
         return null;
-    }
-
-    /**
-     * 包装解析结果：路径 1/3（blockstate / state-provider）的旋转已在烘焙期固定，rot 恒 0。
-     * Wraps a resolved part; paths 1/3 bake rotation at bake time, so rot is always 0.
-     */
-    private static ResolvedModel resolved(BlockStateModelPart part) {
-        return part == null ? null : new ResolvedModel(part, 0);
     }
 
     /**
@@ -143,7 +137,8 @@ public class RenderDispatcher {
         if (rm == null) return;
         RenderSubmit s = new RenderSubmit(RenderPhase.BLOCK_DESTROY, rm.part,
                 RenderTypeRegistry.BLOCK_ATLAS_DESTROY, x, y, z, rm.rot,
-                block, null, world, metadata, null, null, false, false);
+                block, null, world, metadata, null, null, false, false,
+                rm.blockstateProps, null);
         BlockDestroyExtension.setCurrentIcon(destroyIcon);
         try {
             FeatureRenderDispatcher.flushInline(s);
@@ -159,11 +154,11 @@ public class RenderDispatcher {
      * （渲染由调用方按阶段提交）。Only resolves the model part; rendering is
      * left to the caller (renderBlock / renderBlockDestroy).
      *
-     * @return 解析出的部件；无可渲染模型返回 null
+     * @return 解析结果（部件 + 状态属性）；无可渲染模型返回 null
      */
-    private static BlockStateModelPart renderStateWithCatBlockState(IBlockAccess world, int x, int y, int z,
-                                                                     Block block, CatBlockState catState,
-                                                                     BlockstateJson bs) {
+    private static ResolvedModel renderStateWithCatBlockState(IBlockAccess world, int x, int y, int z,
+                                                              Block block, CatBlockState catState,
+                                                              BlockstateJson bs) {
         if (bs == null) return null;
 
         // One-shot variant key validation (identity-deduped inside): invalid
@@ -188,17 +183,14 @@ public class RenderDispatcher {
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) return null;
 
-            return part;
+            // 提取 typed 属性（与 toVariantKey 序列化语义一致）随提交携带
+            Map<String, String> propMap = propsFromCatState(catState);
+            return new ResolvedModel(part, 0,
+                    propMap.isEmpty() ? null : Collections.unmodifiableMap(propMap));
 
         } else if (bs.multipart != null) {
             // Convert CatBlockState to property map for multipart condition matching
-            java.util.Map<String, String> propMap = new java.util.HashMap<>();
-            CatStateDefinition<?> def = catState.getDefinition();
-            if (def != null) {
-                for (Property<?> p : def.getProperties()) {
-                    propMap.put(p.getName(), catState.getValue(p).toString());
-                }
-            }
+            Map<String, String> propMap = propsFromCatState(catState);
 
             java.util.List<BakedQuad> allQuads = new java.util.ArrayList<>();
 
@@ -215,10 +207,26 @@ public class RenderDispatcher {
             }
 
             if (allQuads.isEmpty()) return null;
-            return BlockStateModelPart.fromQuads(allQuads);
+            return new ResolvedModel(BlockStateModelPart.fromQuads(allQuads), 0,
+                    propMap.isEmpty() ? null : Collections.unmodifiableMap(propMap));
         }
 
         return null;
+    }
+
+    /**
+     * 将 CatBlockState 的全部 typed 属性提取为 name→value 字符串映射
+     * （与 {@link CatBlockState#toVariantKey()} 的序列化语义一致）。
+     */
+    private static Map<String, String> propsFromCatState(CatBlockState catState) {
+        Map<String, String> propMap = new java.util.HashMap<>();
+        CatStateDefinition<?> def = catState.getDefinition();
+        if (def != null) {
+            for (Property<?> p : def.getProperties()) {
+                propMap.put(p.getName(), catState.getValue(p).toString());
+            }
+        }
+        return propMap;
     }
 
     /**
@@ -229,15 +237,18 @@ public class RenderDispatcher {
      * （渲染由调用方按阶段提交）。Only resolves the model part; rendering is
      * left to the caller (renderBlock / renderBlockDestroy).
      *
-     * @return 解析出的部件；无可渲染模型返回 null
+     * @return 解析结果（部件 + 状态属性）；无可渲染模型返回 null
      */
-    private static BlockStateModelPart renderStateProviderBlock(IBlockAccess world, int x, int y, int z, Block block, int metadata) {
+    private static ResolvedModel renderStateProviderBlock(IBlockAccess world, int x, int y, int z, Block block, int metadata) {
         IBlockStateProvider provider = (IBlockStateProvider) block;
         BlockstateJson bs = ModelManagerDataLoader.stateBlockData.get(block);
         if (bs == null) return null;
 
         Map<String, String> properties = provider.getStateProperties(world, x, y, z, metadata);
         if (properties == null) properties = Collections.emptyMap();
+        // 匹配完成后包裹只读视图随提交携带（防扩展篡改）；属性为空时保持 null
+        Map<String, String> exposed = properties.isEmpty()
+                ? null : Collections.unmodifiableMap(properties);
 
         if (bs.variants != null) {
             // Build variant key from properties: "key1=val1,key2=val2" (sorted)
@@ -258,7 +269,7 @@ public class RenderDispatcher {
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) return null;
 
-            return part;
+            return new ResolvedModel(part, 0, exposed);
 
         } else if (bs.multipart != null) {
             // Multipart: combine all matching parts
@@ -277,23 +288,27 @@ public class RenderDispatcher {
             }
 
             if (allQuads.isEmpty()) return null;
-            return BlockStateModelPart.fromQuads(allQuads);
+            return new ResolvedModel(BlockStateModelPart.fromQuads(allQuads), 0, exposed);
         }
 
         return null;
     }
 
     /**
-     * 模型解析结果：渲染部件 + Y 轴旋转角度。
-     * Model resolution result: the render part plus its Y-axis rotation.
+     * 模型解析结果：渲染部件 + Y 轴旋转角度 + 匹配期构造的方块状态属性（可为 null）。
+     * Model resolution result: the render part plus its Y-axis rotation and the
+     * per-position blockstate properties computed during matching (nullable).
      */
     private static final class ResolvedModel {
         final BlockStateModelPart part;
         final int rot;
+        /** 匹配期构造的方块状态属性（不可修改视图），无属性时为 null。 */
+        final Map<String, String> blockstateProps;
 
-        ResolvedModel(BlockStateModelPart part, int rot) {
+        ResolvedModel(BlockStateModelPart part, int rot, Map<String, String> blockstateProps) {
             this.part = part;
             this.rot = rot;
+            this.blockstateProps = blockstateProps;
         }
     }
 

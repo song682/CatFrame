@@ -9,6 +9,7 @@ import net.minecraft.world.IBlockAccess;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.function.Consumer;
 
@@ -36,6 +37,41 @@ public interface BlockStateModel {
      * @return 渲染部件集合
      */
     BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z, int metadata);
+
+    /**
+     * 收集渲染部件的同时带回匹配期构造的方块状态属性（如 pane 的 north/east/south/west）。
+     * <p>
+     * 默认实现委托 {@link #collectParts(IBlockAccess, int, int, int, int)} 且属性为 null；
+     * 实现类在已计算属性时覆写本方法复用同一 Map，避免二次计算。
+     * 返回的属性 Map 为只读约定（不可修改视图），仅供本次提交携带。
+     *
+     * @param world    世界（可为 null，物品渲染场景）
+     * @param x        方块 X 坐标
+     * @param y        方块 Y 坐标
+     * @param z        方块 Z 坐标
+     * @param metadata 方块 metadata
+     * @return 部件 + 属性（属性可为 null）
+     */
+    default CollectedPart collectPartsWithProps(IBlockAccess world, int x, int y, int z, int metadata) {
+        return new CollectedPart(collectParts(world, x, y, z, metadata), null);
+    }
+
+    /**
+     * 收集结果：渲染部件 + 匹配期构造的方块状态属性（可为 null）。
+     * <p>
+     * 属性 Map 仅存活于单次渲染提交生命周期，调用方不得修改、不得跨帧保留。
+     */
+    final class CollectedPart {
+        public final BlockStateModelPart part;
+        @Nullable
+        public final Map<String, String> blockstateProps;
+
+        public CollectedPart(BlockStateModelPart part,
+                             @Nullable Map<String, String> blockstateProps) {
+            this.part = part;
+            this.blockstateProps = blockstateProps;
+        }
+    }
 
     /**
      * v0.3.0: 通过 {@link CatBlockState} 收集渲染部件（新路径）。

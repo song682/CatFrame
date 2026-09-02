@@ -14,19 +14,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 物品属性静态注册表。
+ * 物品属性静态注册表 — 属性注册的唯一入口。
  * <p>
- * 所有属性提供者通过 {@link #register(String, ItemPropertyProvider)} 注册，
- * 同时写入裸名和 {@code minecraft:} 前缀两个 key。
+ * 内部属性通过 {@link #register(String, ItemPropertyProvider)} 注册（裸名 + {@code minecraft:} 双 key）；
+ * 第三方模组通过 {@link #register(String, String, ItemPropertyProvider)} 注册（强制 {@code modid:name} 命名空间）。
  * <p>
  * {@link #registerDefaults()} 在模组初始化时调用一次，注册 wiki 规范中定义的全部 33+ 属性。
  * 未实现的属性提供安全的占位值（false / 0 / ""），不会导致决策树崩溃。
  * <p>
- * 第三方模组请勿直接调用本类，应走 {@link CatItemProperties} facade（强制命名空间 +
- * 默认表先行物化）。
- * <br>Third-party mods should go through the {@link CatItemProperties} facade
- * (namespace enforcement + defaults-first materialization) instead of calling
- * this class directly.
+ * Item property static registry — the single entry point for property registration.
+ * <br>Internal properties use {@link #register(String, ItemPropertyProvider)} (bare name +
+ * {@code minecraft:} dual key); third-party mods use
+ * {@link #register(String, String, ItemPropertyProvider)} (enforced {@code modid:name} namespace).
  */
 public class ItemPropertyRegistry {
 
@@ -301,6 +300,79 @@ public class ItemPropertyRegistry {
         // max_damage — 补充数值属性
         register("max_damage", (stack, phase) ->
                 stack != null ? stack.getMaxDamage() : 0);
+    }
+
+    // ==================== 第三方注册 API（原 CatItemProperties facade） ====================
+
+    /**
+     * 注册一个带命名空间的第三方属性，最终 key 为 {@code modid:name}。
+     * <p>
+     * Registers a namespaced third-party property under the key {@code modid:name}.
+     *
+     * @param modid    模组 id（非空，不含 {@code :}） / mod id (non-empty, no {@code :})
+     * @param name     属性名（非空，不含 {@code :}） / property name (non-empty, no {@code :})
+     * @param provider 属性计算逻辑 / the property computation logic
+     * @throws IllegalArgumentException 参数为空或含 {@code :} 时 / on empty args or embedded {@code :}
+     */
+    public static void register(String modid, String name, ItemPropertyProvider provider) {
+        validatePart(modid, "modid");
+        validatePart(name, "name");
+        if (provider == null) {
+            throw new IllegalArgumentException("ItemPropertyRegistry: provider must not be null");
+        }
+        // 先物化默认表，确保外部注册永远排在默认注册之后
+        // Materialize defaults first so external entries always land after them
+        registerDefaults();
+        register(modid + ":" + name, provider);
+    }
+
+    /**
+     * 覆写一个已存在的属性（含默认属性，如 {@code damage}）。
+     * <p>
+     * 与 {@link #register(String, String, ItemPropertyProvider)} 不同，此方法接受完整属性名
+     * （裸名或带命名空间均可），且要求目标属性已注册——避免拼写错误静默创建新属性。
+     * 裸名覆写会同步刷新 {@code minecraft:} 别名（由 {@link #register(String, ItemPropertyProvider)} 保证）。
+     * <p>
+     * Overrides an existing property (including defaults such as {@code damage}).
+     * Unlike {@code register}, this takes the full property name (bare or namespaced)
+     * and requires the target to already exist — a typo won't silently create a new
+     * property. Bare-name overrides refresh the {@code minecraft:} alias as well.
+     *
+     * @param propertyName 目标属性全名 / full name of the target property
+     * @param provider     新的属性计算逻辑 / the replacement computation logic
+     * @throws IllegalArgumentException 目标属性未注册或参数非法时 / if the target is unknown or args are invalid
+     */
+    public static void override(String propertyName, ItemPropertyProvider provider) {
+        if (propertyName == null || propertyName.isEmpty()) {
+            throw new IllegalArgumentException("ItemPropertyRegistry: propertyName must not be empty");
+        }
+        if (provider == null) {
+            throw new IllegalArgumentException("ItemPropertyRegistry: provider must not be null");
+        }
+        // 先物化默认表，否则默认属性尚未注册、且覆写会被后到的默认注册冲掉
+        // Materialize defaults first: the target may not exist yet, and a later
+        // lazy default registration would clobber the override
+        registerDefaults();
+        if (REGISTRY.get(propertyName) == null) {
+            throw new IllegalArgumentException(
+                    "ItemPropertyRegistry: cannot override unknown property '" + propertyName + "'");
+        }
+        CatFrame.logger.info("ItemPropertyRegistry: property '{}' overridden by external provider", propertyName);
+        register(propertyName, provider);
+    }
+
+    /**
+     * 校验命名空间片段：非空且不含 {@code :}。
+     * <p>Validates a namespace fragment: non-empty and without {@code :}.
+     */
+    private static void validatePart(String value, String label) {
+        if (value == null || value.isEmpty()) {
+            throw new IllegalArgumentException("ItemPropertyRegistry: " + label + " must not be empty");
+        }
+        if (value.indexOf(':') >= 0) {
+            throw new IllegalArgumentException(
+                    "ItemPropertyRegistry: " + label + " must not contain ':' (got '" + value + "')");
+        }
     }
 
     // ==================== 内部工具 ====================

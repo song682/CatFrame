@@ -3,7 +3,7 @@ package decok.dfcdvadstf.catframe.model;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
-import decok.dfcdvadstf.catframe.model.state.property.CatItemProperties;
+import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyRegistry;
 import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyProvider;
 import net.minecraft.item.ItemStack;
 
@@ -118,14 +118,14 @@ public interface IItemStateProvider {
      * <p>
      * 对标 {@link IBlockStateProvider#getStateDefinition()} 的接口化声明范式：
      * 实现类在此返回非空 Map 后，CatFrame 在 {@link ModelManagerDataLoader#init()}
-     * 发现阶段经 {@link CatItemProperties} 校验并自动注册，实现类无需再手动调用注册 facade。
+     * 发现阶段经 {@link ItemPropertyRegistry} 校验并自动注册，实现类无需再手动调用注册 facade。
      * key 必须为完整命名空间形式（{@code modid:name}），裸名会被拒绝并记录警告。
      * <p>
      * Optionally declares the custom properties this item needs
      * ({@code modid:name} → provider). Mirrors the interface-based declaration
      * paradigm of {@link IBlockStateProvider#getStateDefinition()}: when a non-empty
      * map is returned, CatFrame validates and registers the entries through
-     * {@link CatItemProperties} during discovery, so implementations never need to
+     * {@link ItemPropertyRegistry} during discovery, so implementations never need to
      * call the registration facade manually. Keys must be fully namespaced
      * ({@code modid:name}); bare names are rejected with a warning.
      * <p>

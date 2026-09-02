@@ -14,7 +14,7 @@ import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.BlockstateKeyValidator;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
-import decok.dfcdvadstf.catframe.model.state.property.CatItemProperties;
+import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyRegistry;
 import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyProvider;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
@@ -232,14 +232,14 @@ public class ModelManagerDataLoader {
      * 注册 {@link IItemStateProvider#getPropertyDefinitions()} 声明的自定义属性。
      * <p>
      * 防御式处理：单个非法声明（裸名 / 空 key / null provider）只跳过并记录警告，
-     * 不中断整个发现流程。合法条目经 {@link CatItemProperties#register} 注册
+     * 不中断整个发现流程。合法条目经 {@link ItemPropertyRegistry#register} 注册
      * （命名空间强制 + 默认表先行物化）。
      * <p>
      * Registers the custom properties declared via
      * {@link IItemStateProvider#getPropertyDefinitions()}. Defensive: a single bad
      * declaration (bare name / empty key / null provider) is skipped with a warning
      * instead of aborting discovery; valid entries go through
-     * {@link CatItemProperties#register} (namespace enforcement + defaults-first).
+     * {@link ItemPropertyRegistry#register} (namespace enforcement + defaults-first).
      */
     private static void registerDeclaredProperties(Item item, IItemStateProvider provider) {
         Map<String, ItemPropertyProvider> declarations = provider.getPropertyDefinitions();
@@ -257,7 +257,7 @@ public class ModelManagerDataLoader {
                 continue;
             }
             try {
-                CatItemProperties.register(key.substring(0, colon), key.substring(colon + 1), entry.getValue());
+                ItemPropertyRegistry.register(key.substring(0, colon), key.substring(colon + 1), entry.getValue());
                 CatFrame.logger.debug("[VMM] Item {} declared property '{}' registered", itemId, key);
             } catch (IllegalArgumentException e) {
                 CatFrame.logger.warn("[VMM] Item {} declared invalid property '{}': {}", itemId, key, e.getMessage());

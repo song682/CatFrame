@@ -349,6 +349,173 @@ public abstract class ItemStateNode {
         }
     }
 
+    // ==================== Node type registry ====================
+
+    private static final Map<String, NodeTypeDeserializer> NODE_TYPE_REGISTRY = new HashMap<>();
+    private static boolean nodeTypesInitialized = false;
+
+    /**
+     * Register a custom node type for items/ decision tree JSON.
+     * <p>
+     * 注册自定义节点类型，扩展 items/ 决策树 JSON 的 {@code "type"} 分发。
+     * 内置类型（{@code minecraft:model}, {@code minecraft:condition} 等）在首次调用时自动注册。
+     *
+     * @param type         the "type" string (e.g. "{@code mymod:my_node}")
+     * @param deserializer factory that parses a JsonObject into an ItemStateNode
+     */
+    public static void registerNodeType(String type, NodeTypeDeserializer deserializer) {
+        ensureDefaultNodeTypes();
+        NODE_TYPE_REGISTRY.put(type, deserializer);
+    }
+
+    static synchronized void ensureDefaultNodeTypes() {
+        if (nodeTypesInitialized) return;
+        nodeTypesInitialized = true;
+        registerNodeType("minecraft:model", (obj, ctx) -> deserializeModel(obj));
+        registerNodeType("minecraft:condition", (obj, ctx) -> deserializeCondition(obj, ctx));
+        registerNodeType("minecraft:range_dispatch", (obj, ctx) -> deserializeRangeDispatch(obj, ctx));
+        registerNodeType("minecraft:composite", (obj, ctx) -> deserializeComposite(obj, ctx));
+        registerNodeType("minecraft:select", (obj, ctx) -> deserializeSelect(obj, ctx));
+        registerNodeType("minecraft:empty", (obj, ctx) -> new EmptyNode());
+    }
+
+    // ==================== Tint type registry ====================
+
+    private static final Map<String, TintTypeDeserializer> TINT_TYPE_REGISTRY = new HashMap<>();
+    private static boolean tintTypesInitialized = false;
+
+    /**
+     * Register a custom tint type for items/ decision tree JSON.
+     * <p>
+     * 注册自定义 tint 类型，扩展 {@code "tints"} 数组中的 {@code "type"} 分发。
+     * 内置类型（{@code minecraft:constant}, {@code minecraft:grass} 等）在首次调用时自动注册。
+     *
+     * @param type         the tint "type" string (e.g. "{@code mymod:my_tint}")
+     * @param deserializer factory that parses a tint JsonObject into an ItemTint
+     */
+    public static void registerTintType(String type, TintTypeDeserializer deserializer) {
+        ensureDefaultTintTypes();
+        TINT_TYPE_REGISTRY.put(type, deserializer);
+    }
+
+    static synchronized void ensureDefaultTintTypes() {
+        if (tintTypesInitialized) return;
+        tintTypesInitialized = true;
+        registerTintType("minecraft:constant", obj -> new ConstantTint(
+                obj.has("value") ? obj.get("value").getAsInt() : 0xFFFFFF));
+        registerTintType("minecraft:custom_model_data", obj -> new CustomModelDataTint(
+                obj.has("index") ? obj.get("index").getAsInt() : 0));
+        registerTintType("minecraft:grass", obj -> new GrassTint());
+        registerTintType("minecraft:firework", obj -> new FireworkTint());
+        registerTintType("minecraft:dye", obj -> new DyeTint(
+                obj.has("default") ? obj.get("default").getAsInt() : DyeTint.DEFAULT_LEATHER_COLOR));
+        registerTintType("minecraft:potion", obj -> new PotionTint());
+        registerTintType("minecraft:map", obj -> new MapColorTint());
+        registerTintType("minecraft:spawn_egg", obj -> new SpawnEggTint(
+                obj.has("index") ? obj.get("index").getAsInt() : 0));
+    }
+
+    // ==================== Static deserialization helpers ====================
+
+    private static ModelLeaf deserializeModel(JsonObject obj) {
+        String model = obj.has("model") ? obj.get("model").getAsString() : null;
+        List<ItemTint> tints = deserializeTints(obj);
+        // 可选 transformation：16-float 行主序矩阵数组，或分解形式对象
+        // Optional transformation: 16-float row-major matrix array or decomposed object
+        Matrix4d transformation = ItemTransformation.parse(obj.get("transformation"));
+        return new ModelLeaf(model, tints, transformation);
+    }
+
+    /**
+     * Parse tints array using the tint type registry.
+     * <p>JSON: {@code "tints": [{"type": "minecraft:constant", "value": 0xFF0000}, ...]}
+     */
+    private static List<ItemTint> deserializeTints(JsonObject obj) {
+        if (!obj.has("tints") || !obj.get("tints").isJsonArray()) {
+            return Collections.emptyList();
+        }
+        ensureDefaultTintTypes();
+        List<ItemTint> tints = new ArrayList<>();
+        for (JsonElement elem : obj.getAsJsonArray("tints")) {
+            if (!elem.isJsonObject()) continue;
+            JsonObject tintObj = elem.getAsJsonObject();
+            String type = tintObj.has("type") ? tintObj.get("type").getAsString() : "";
+            TintTypeDeserializer factory = TINT_TYPE_REGISTRY.get(type);
+            if (factory != null) {
+                tints.add(factory.deserialize(tintObj));
+            }
+            // Unknown tint type, skip
+        }
+        return tints;
+    }
+
+    private static ConditionNode deserializeCondition(JsonObject obj, JsonDeserializationContext ctx) {
+        String property = obj.has("property") ? obj.get("property").getAsString() : null;
+        ItemStateNode onTrue = obj.has("on_true")
+                ? ctx.deserialize(obj.get("on_true"), ItemStateNode.class) : null;
+        ItemStateNode onFalse = obj.has("on_false")
+                ? ctx.deserialize(obj.get("on_false"), ItemStateNode.class) : null;
+        return new ConditionNode(property, onTrue, onFalse);
+    }
+
+    private static RangeDispatchNode deserializeRangeDispatch(JsonObject obj, JsonDeserializationContext ctx) {
+        String property = obj.has("property") ? obj.get("property").getAsString() : null;
+        float scale = obj.has("scale") ? obj.get("scale").getAsFloat() : 1.0f;
+        ItemStateNode fallback = obj.has("fallback")
+                ? ctx.deserialize(obj.get("fallback"), ItemStateNode.class) : null;
+
+        List<ThresholdEntry> entries = new ArrayList<>();
+        if (obj.has("entries") && obj.get("entries").isJsonArray()) {
+            for (JsonElement elem : obj.getAsJsonArray("entries")) {
+                JsonObject entryObj = elem.getAsJsonObject();
+                float threshold = entryObj.get("threshold").getAsFloat();
+                ItemStateNode node = ctx.deserialize(entryObj.get("model"), ItemStateNode.class);
+                entries.add(new ThresholdEntry(threshold, node));
+            }
+        }
+        // 确保 entries 按 threshold 升序排列
+        entries.sort(Comparator.comparingDouble(e -> e.threshold));
+
+        return new RangeDispatchNode(property, scale, fallback, entries);
+    }
+
+    private static CompositeNode deserializeComposite(JsonObject obj, JsonDeserializationContext ctx) {
+        List<ItemStateNode> models = new ArrayList<>();
+        if (obj.has("models") && obj.get("models").isJsonArray()) {
+            for (JsonElement elem : obj.getAsJsonArray("models")) {
+                models.add(ctx.deserialize(elem, ItemStateNode.class));
+            }
+        }
+        return new CompositeNode(models);
+    }
+
+    private static SelectNode deserializeSelect(JsonObject obj, JsonDeserializationContext ctx) {
+        String property = obj.has("property") ? obj.get("property").getAsString() : null;
+        ItemStateNode fallback = obj.has("fallback")
+                ? ctx.deserialize(obj.get("fallback"), ItemStateNode.class) : null;
+
+        List<SelectCase> cases = new ArrayList<>();
+        if (obj.has("cases") && obj.get("cases").isJsonArray()) {
+            for (JsonElement elem : obj.getAsJsonArray("cases")) {
+                JsonObject caseObj = elem.getAsJsonObject();
+                Set<String> when = new LinkedHashSet<>();
+                JsonElement whenElem = caseObj.get("when");
+                if (whenElem != null) {
+                    if (whenElem.isJsonArray()) {
+                        for (JsonElement w : whenElem.getAsJsonArray()) {
+                            when.add(w.getAsString());
+                        }
+                    } else if (whenElem.isJsonPrimitive()) {
+                        when.add(whenElem.getAsString());
+                    }
+                }
+                ItemStateNode node = ctx.deserialize(caseObj.get("model"), ItemStateNode.class);
+                cases.add(new SelectCase(when, node));
+            }
+        }
+        return new SelectNode(property, cases, fallback);
+    }
+
     // ==================== Gson 反序列化 ====================
 
     /**
@@ -402,7 +569,7 @@ public abstract class ItemStateNode {
     }
 
     /**
-     * 自定义反序列化器：根据 "type" 字段分发到不同的节点类型。
+     * 自定义反序列化器：根据 "type" 字段通过注册表分发到不同的节点类型。
      */
     private static class ItemStateNodeDeserializer implements JsonDeserializer<ItemStateNode> {
         @Override
@@ -418,156 +585,16 @@ public abstract class ItemStateNode {
                 throw new JsonParseException("ItemStateNode missing 'type' field");
             }
 
-            switch (type) {
-                case "minecraft:model":
-                    return deserializeModel(obj);
-                case "minecraft:condition":
-                    return deserializeCondition(obj, context);
-                case "minecraft:range_dispatch":
-                    return deserializeRangeDispatch(obj, context);
-                case "minecraft:composite":
-                    return deserializeComposite(obj, context);
-                case "minecraft:select":
-                    return deserializeSelect(obj, context);
-                case "minecraft:empty":
-                    return new EmptyNode();
-                case "minecraft:special":
-                    throw new JsonParseException(
-                            "minecraft:special is not yet supported (requires special renderer infrastructure)");
-                default:
-                    throw new JsonParseException("Unknown ItemStateNode type: " + type);
+            ensureDefaultNodeTypes();
+            NodeTypeDeserializer factory = NODE_TYPE_REGISTRY.get(type);
+            if (factory != null) {
+                return factory.deserialize(obj, context);
             }
-        }
-
-        private ModelLeaf deserializeModel(JsonObject obj) {
-            String model = obj.has("model") ? obj.get("model").getAsString() : null;
-            List<ItemTint> tints = deserializeTints(obj);
-            // 可选 transformation：16-float 行主序矩阵数组，或分解形式对象
-            // Optional transformation: 16-float row-major matrix array or decomposed object
-            Matrix4d transformation = ItemTransformation.parse(obj.get("transformation"));
-            return new ModelLeaf(model, tints, transformation);
-        }
-
-        /**
-         * 解析 tints 数组。
-         * <p>JSON: {@code "tints": [{"type": "minecraft:constant", "value": 0xFF0000}, ...]}
-         */
-        private List<ItemTint> deserializeTints(JsonObject obj) {
-            if (!obj.has("tints") || !obj.get("tints").isJsonArray()) {
-                return Collections.emptyList();
+            if ("minecraft:special".equals(type)) {
+                throw new JsonParseException(
+                        "minecraft:special is not yet supported (requires special renderer infrastructure)");
             }
-            List<ItemTint> tints = new ArrayList<>();
-            for (JsonElement elem : obj.getAsJsonArray("tints")) {
-                if (!elem.isJsonObject()) continue;
-                JsonObject tintObj = elem.getAsJsonObject();
-                String type = tintObj.has("type") ? tintObj.get("type").getAsString() : "";
-                switch (type) {
-                    case "minecraft:constant": {
-                        int value = tintObj.has("value") ? tintObj.get("value").getAsInt() : 0xFFFFFF;
-                        tints.add(new ConstantTint(value));
-                        break;
-                    }
-                    case "minecraft:custom_model_data": {
-                        int index = tintObj.has("index") ? tintObj.get("index").getAsInt() : 0;
-                        tints.add(new CustomModelDataTint(index));
-                        break;
-                    }
-                    case "minecraft:grass":
-                        tints.add(new GrassTint());
-                        break;
-                    case "minecraft:firework":
-                        tints.add(new FireworkTint());
-                        break;
-                    case "minecraft:dye":
-                        tints.add(new DyeTint(
-                                tintObj.has("default") ? tintObj.get("default").getAsInt()
-                                                       : DyeTint.DEFAULT_LEATHER_COLOR));
-                        break;
-                    case "minecraft:potion":
-                        tints.add(new PotionTint());
-                        break;
-                    case "minecraft:map":
-                        tints.add(new MapColorTint());
-                        break;
-                    case "minecraft:spawn_egg": {
-                        // CatFrame 扩展类型：index 0=主色(layer0)，非 0=副色(layer1)。
-                        int idx = tintObj.has("index") ? tintObj.get("index").getAsInt() : 0;
-                        tints.add(new SpawnEggTint(idx));
-                        break;
-                    }
-                    default:
-                        // 未知 tint 类型，跳过（可记录警告）
-                        break;
-                }
-            }
-            return tints;
-        }
-
-        private ConditionNode deserializeCondition(JsonObject obj, JsonDeserializationContext ctx) {
-            String property = obj.has("property") ? obj.get("property").getAsString() : null;
-            ItemStateNode onTrue = obj.has("on_true")
-                    ? ctx.deserialize(obj.get("on_true"), ItemStateNode.class) : null;
-            ItemStateNode onFalse = obj.has("on_false")
-                    ? ctx.deserialize(obj.get("on_false"), ItemStateNode.class) : null;
-            return new ConditionNode(property, onTrue, onFalse);
-        }
-
-        private RangeDispatchNode deserializeRangeDispatch(JsonObject obj, JsonDeserializationContext ctx) {
-            String property = obj.has("property") ? obj.get("property").getAsString() : null;
-            float scale = obj.has("scale") ? obj.get("scale").getAsFloat() : 1.0f;
-            ItemStateNode fallback = obj.has("fallback")
-                    ? ctx.deserialize(obj.get("fallback"), ItemStateNode.class) : null;
-
-            List<ThresholdEntry> entries = new ArrayList<>();
-            if (obj.has("entries") && obj.get("entries").isJsonArray()) {
-                for (JsonElement elem : obj.getAsJsonArray("entries")) {
-                    JsonObject entryObj = elem.getAsJsonObject();
-                    float threshold = entryObj.get("threshold").getAsFloat();
-                    ItemStateNode node = ctx.deserialize(entryObj.get("model"), ItemStateNode.class);
-                    entries.add(new ThresholdEntry(threshold, node));
-                }
-            }
-            // 确保 entries 按 threshold 升序排列
-            entries.sort(Comparator.comparingDouble(e -> e.threshold));
-
-            return new RangeDispatchNode(property, scale, fallback, entries);
-        }
-
-        private CompositeNode deserializeComposite(JsonObject obj, JsonDeserializationContext ctx) {
-            List<ItemStateNode> models = new ArrayList<>();
-            if (obj.has("models") && obj.get("models").isJsonArray()) {
-                for (JsonElement elem : obj.getAsJsonArray("models")) {
-                    models.add(ctx.deserialize(elem, ItemStateNode.class));
-                }
-            }
-            return new CompositeNode(models);
-        }
-
-        private SelectNode deserializeSelect(JsonObject obj, JsonDeserializationContext ctx) {
-            String property = obj.has("property") ? obj.get("property").getAsString() : null;
-            ItemStateNode fallback = obj.has("fallback")
-                    ? ctx.deserialize(obj.get("fallback"), ItemStateNode.class) : null;
-
-            List<SelectCase> cases = new ArrayList<>();
-            if (obj.has("cases") && obj.get("cases").isJsonArray()) {
-                for (JsonElement elem : obj.getAsJsonArray("cases")) {
-                    JsonObject caseObj = elem.getAsJsonObject();
-                    Set<String> when = new LinkedHashSet<>();
-                    JsonElement whenElem = caseObj.get("when");
-                    if (whenElem != null) {
-                        if (whenElem.isJsonArray()) {
-                            for (JsonElement w : whenElem.getAsJsonArray()) {
-                                when.add(w.getAsString());
-                            }
-                        } else if (whenElem.isJsonPrimitive()) {
-                            when.add(whenElem.getAsString());
-                        }
-                    }
-                    ItemStateNode node = ctx.deserialize(caseObj.get("model"), ItemStateNode.class);
-                    cases.add(new SelectCase(when, node));
-                }
-            }
-            return new SelectNode(property, cases, fallback);
+            throw new JsonParseException("Unknown ItemStateNode type: " + type);
         }
     }
 }

@@ -12,7 +12,6 @@ import decok.dfcdvadstf.catframe.adapter.vanilla.model.ResourcePackModelDetector
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.VanillaStateDefinitions;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
-import decok.dfcdvadstf.catframe.model.render.extension.DebugPropsExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesInHandTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
@@ -84,9 +83,6 @@ public class ClientProxy extends CommonProxy {
         TintRegistry.register(new LeavesInHandTintProvider());
         TintRegistry.register(new RedstoneWireTintProvider());
         ModelRenderRegistry.register(new LeavesGraphicsExtension());
-
-        // TODO 临时调试扩展（Test Plan 2 验证 blockstateProps/itemProps 暴露后删除）
-        ModelRenderRegistry.register(new DebugPropsExtension());
     }
 
     @Override

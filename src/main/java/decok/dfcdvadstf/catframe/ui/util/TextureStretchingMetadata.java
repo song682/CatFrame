@@ -59,10 +59,20 @@ public final class TextureStretchingMetadata {
 
     private final int tileWidth;
 
+    /** Whether the inner (centre) region of a nine-patch should be stretched instead of tiled. */
+    private final boolean stretchInner;
+
     private TextureStretchingMetadata(TextureStretching.StretchType type,
             int defaultWidth, int defaultHeight,
             int edgeLeft, int edgeTop, int edgeRight, int edgeBottom,
             int tileWidth) {
+        this(type, defaultWidth, defaultHeight, edgeLeft, edgeTop, edgeRight, edgeBottom, tileWidth, false);
+    }
+
+    private TextureStretchingMetadata(TextureStretching.StretchType type,
+            int defaultWidth, int defaultHeight,
+            int edgeLeft, int edgeTop, int edgeRight, int edgeBottom,
+            int tileWidth, boolean stretchInner) {
         this.type = type;
         this.defaultWidth = defaultWidth;
         this.defaultHeight = defaultHeight;
@@ -71,6 +81,7 @@ public final class TextureStretchingMetadata {
         this.edgeRight = edgeRight;
         this.edgeBottom = edgeBottom;
         this.tileWidth = tileWidth;
+        this.stretchInner = stretchInner;
     }
 
     // ──── Getters ────
@@ -105,6 +116,15 @@ public final class TextureStretchingMetadata {
 
     public int getTileWidth() {
         return tileWidth;
+    }
+
+    /**
+     * Whether the inner (centre) region of a nine-patch should be stretched
+     * (single quad covering the entire centre) instead of tiled.
+     * <p>对应 mcmeta 中 {@code "inner": { "will_stretch": true }}。</p>
+     */
+    public boolean isStretchInner() {
+        return stretchInner;
     }
 
     // ──── Loader ────
@@ -160,13 +180,24 @@ public final class TextureStretchingMetadata {
                         if (s.get("edge").isJsonObject()) {
                             JsonObject e = s.getAsJsonObject("edge");
                             eL = e.has("left") ? e.get("left").getAsInt() : eL;
-                            eT = e.has("top") ? e.get("top").getAsInt() : eT;
+                            // Accept both "top"/"bottom" and "up"/"down" key names
+                            eT = e.has("top") ? e.get("top").getAsInt()
+                                 : e.has("up") ? e.get("up").getAsInt() : eT;
                             eR = e.has("right") ? e.get("right").getAsInt() : eR;
-                            eB = e.has("bottom") ? e.get("bottom").getAsInt() : eB;
+                            eB = e.has("bottom") ? e.get("bottom").getAsInt()
+                                 : e.has("down") ? e.get("down").getAsInt() : eB;
                         } else {
                             // Shorthand: "edge": 4 means all sides equal
                             int v = s.get("edge").getAsInt();
                             eL = eT = eR = eB = v;
+                        }
+                    }
+                    // Parse optional inner region behaviour (stretch vs tile)
+                    boolean stretchInner = false;
+                    if (s.has("inner") && s.get("inner").isJsonObject()) {
+                        JsonObject inner = s.getAsJsonObject("inner");
+                        if (inner.has("will_stretch")) {
+                            stretchInner = inner.get("will_stretch").getAsBoolean();
                         }
                     }
                     // Validate edge values / 校验边缘值
@@ -180,7 +211,7 @@ public final class TextureStretchingMetadata {
                         throw new WrongMetadataError("bottom", eB);
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.NINE_PATCH,
-                            defW, defH, eL, eT, eR, eB, 0);
+                            defW, defH, eL, eT, eR, eB, 0, stretchInner);
 
                 } else if ("three_patch".equals(typeStr)) {
                     int eL = 2, eR = 2;

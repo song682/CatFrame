@@ -38,7 +38,8 @@ import java.util.*;
  * <li>26.1.2's {@code RenderPipelines.GUI_ITEM} implicitly manages all GL state →
  * This class explicitly manages GL in 1.7.10 immediate mode</li>
  * <li>26.1.2's {@code GuiGraphics.item()} extracts render state via {@code GuiItemRenderState} →
- * This class delegates to {@link IItemStateProvider#render} and submits rendering records to {@link GuiRenderState}</li>
+ * This class draws items <b>immediately</b> at the call site via {@link IItemStateProvider#render},
+ * since the GL modelview matrix is valid at the call point (no matrix snapshot needed)</li>
  * <li>26.1.2's enchantment glint handled by the render pipeline's glint shader →
  * Implemented by this class with {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)},
  * with the pipeline's {@code FeatureRenderDispatcher} driving per submitted item, covering all item phases</li>
@@ -50,8 +51,8 @@ import java.util.*;
  * <pre>{@code
  * GuiGraphicsExtractor gui = GuiGraphicsExtractor.getInstance();
  * gui.resetForNewFrame(); // Start of frame (drawScreen HEAD)
- * gui.item(stack, x, y); // Extract: snapshot matrix, collect state (doesn’t draw immediately)
- * gui.extractDeferredElements(); // End of frame (drawScreen RETURN) flush all items and tooltips
+ * gui.item(stack, x, y); // Immediate: draws the model right at the call site
+ * gui.extractDeferredElements(); // End of frame (drawScreen RETURN) flush PiP entities and tooltips
  * }</pre>
  */
 public class GuiGraphicsExtractor {
@@ -75,11 +76,15 @@ public class GuiGraphicsExtractor {
     private final Minecraft mc;
 
     /** Complete layered state collector (aligned with 26.1.2 GuiRenderState) */
-    private final GuiRenderState renderState;
+    public final GuiRenderState renderState;
 
     /** Delayed tooltip — corresponds to 26.1.2 {@code GuiGraphics.deferredTooltip} */
     @Nullable
     private Runnable deferredTooltip;
+    @Nullable
+    private Style hoveredTextStyle;
+    @Nullable
+    private Style clickableTextStyle;
 
     /**
      * In-frame PiP (Picture-in-Picture) submission queue — corresponds to the PiP state collected by 26.1.2 {@code GuiRenderState}.
@@ -94,6 +99,14 @@ public class GuiGraphicsExtractor {
     /** GUI item drawing callback implementation — allows {@link OversizedItemPipRenderer} to reuse this class's item rendering logic. */
     private final ItemGuiDrawer itemDrawer = new ItemGuiDrawerImpl();
 
+    public int getHeight() {
+        return mc.currentScreen.height;
+    }
+
+    public int getWidth() {
+        return mc.currentScreen.width;
+    }
+
     public GuiGraphicsExtractor() {
         this.mc = Minecraft.getMinecraft();
         this.renderState = new GuiRenderState();
@@ -101,6 +114,8 @@ public class GuiGraphicsExtractor {
         // 注册 PiP 渲染器分派表（构造期常量，帧间不清）
         registerPip(new OversizedItemPipRenderer(itemDrawer));
         registerPip(new EntityPipRenderer());
+        UiTextureAtlasManager textureAtlasManager = new UiTextureAtlasManager();
+
     }
 
     /** 注册一个 PiP 渲染器，以其处理的状态类型为分派 key。 */
@@ -125,79 +140,60 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * Renders an item in the GUI (<b>deferred to the end of the frame</b>).
+     * Renders an item in the GUI <b>immediately</b> at the call site.
      * <p>
-     * Corresponds to LaterRenderer.md path 1 / 26.1.2 {@code GuiGraphics.item()}: <b>doesn't draw during the extraction phase</b>,
-     * it just snapshots the current modelview matrix and collects the render state into the {@link GuiRenderState} tree,
-     * and the actual GL drawing is deferred to {@link #extractDeferredElements()}.
+     * Corresponds to 26.1.2 {@code GuiGraphics.item()}, but unlike the high-version which extracts
+     * render state into {@code GuiItemRenderState} for deferred pipeline consumption, this method
+     * draws the model directly using the current GL modelview matrix (which is valid at the call point,
+     * set up by the caller for the slot position). No matrix snapshot is needed.
      * <p>
-     * Unlike {@code RenderCommandBuffers} which <b>defers within a scope</b> (begin→submit→endScope flushes in the same GL
-     * context, no matrix snapshot needed), flushing at the <b>end of frame</b> happens after {@code drawScreen} returns,
-     * at which point the GL context has switched, so the modelview matrix must be snapshotted here and restored with {@code glLoadMatrix} at the end of the frame.
+     * Only items registered with CatFrame models (via {@link ModelRegistry#hasItemModel}) go through
+     * this path; other items are handled by the vanilla rendering pipeline.
      *
      * @param stack The item stack to render
-     * @param x GUI slot X coordinate (pixels, only for layering/tracking)
-     * @param y GUI slot Y coordinate (pixels, only for layering/tracking)
+     * @param x GUI slot X coordinate (pixels)
+     * @param y GUI slot Y coordinate (pixels)
      */
     public void item(ItemStack stack, int x, int y) {
         if (stack == null || stack.getItem() == null) return;
 
-        // 仅对显式注册了 CatFrame 模型的物品走延迟渲染路径，其余物品由原版管线处理。
+        // Only items with registered CatFrame models go through this path;
+        // everything else is handled by the vanilla rendering pipeline.
         if (!ModelRegistry.hasItemModel(stack.getItem())) return;
 
-        // 延迟渲染：仅快照调用点的 modelview 矩阵 + 收集状态，不立即绘制。
-        float[] pose = captureModelViewMatrix();
-
-        // oversized_in_gui=true 的物品走独立 PiP 通道：绕开 GuiRenderState 自动分层、不设 scissor，
-        // 允许模型几何自然溢出 16x16 槽位。
-        if (ModelRegistry.isOversizedInGui(stack.getItem())) {
-            deferredPip.add(new OversizedItemRenderState(stack, pose, new ScreenRectangle(x, y, 16, 16)));
-        } else {
-            renderState.addItem(new GuiRenderState.ItemRenderState(stack, x, y, pose));
-        }
+        // Immediate rendering: the GL modelview matrix is valid at the call site,
+        // so we draw directly — no matrix snapshot needed (pose = null).
+        drawItemModel(stack, null);
     }
 
     /**
-     * 实际绘制一个已收集的物品渲染状态 — 对标 26.1.2 {@code GuiRenderer.prepareItemElements()} 的消费端。
-     * <p>
-     * 从旧 {@code item()} 抽取的即时渲染逻辑，由 {@link #extractDeferredElements()} 帧末统一驱动：
+     * GUI item model drawing core — used by the immediate {@link #item(ItemStack, int, int)} path
+     * and the PiP oversized channel (via {@link ItemGuiDrawer}).
      * <ol>
-     *   <li>{@code glPushAttrib} 保存 GL 状态 + 设置物品渲染环境</li>
-     *   <li>{@code glLoadMatrix} 恢复收集时的 modelview 矩阵（精确复现调用点的位置/缩放）</li>
-     *   <li>委托 {@link IItemStateProvider#render} 渲染模型（附魔光效由管线驱动
-     *       {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)} 统一叠加）</li>
-     * </ol>
-     */
-    private void renderDeferredItem(GuiRenderState.ItemRenderState state) {
-        drawItemModel(state.getStack(), state.getPoseMatrix(), false);
-    }
-
-    /**
-     * GUI 物品模型的实际绘制核心 — 供延迟物品路径与 PiP oversized 通道复用。
-     * <ol>
-     *   <li>{@code glPushAttrib} 保存 GL 状态 + 设置物品渲染环境</li>
-     *   <li>{@code glLoadMatrix} 恢复收集时的 modelview 矩阵（精确复现调用点的位置/缩放）</li>
-     *   <li>委托 {@link IItemStateProvider#render} 渲染模型（附魔光效由管线驱动
-     *       {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)} 统一叠加）</li>
+     *   <li>{@code glPushAttrib} saves GL state + sets up item rendering environment</li>
+     *   <li>If {@code pose} is non-null, restores the modelview matrix from the snapshot
+     *       (needed for deferred PiP rendering where the GL context has changed since capture)</li>
+     *   <li>Delegates to {@link IItemStateProvider#render} for model rendering
+     *       (enchantment glint is driven by the pipeline's {@code FeatureRenderDispatcher}
+     *       calling {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)})</li>
      * </ol>
      *
-     * @param stack          物品栈
-     * @param pose           采集时的 modelview 矩阵快照，可为 null
-     * @param allowOversized 预留标志：为未来溢出钳制支持保留。当前无实时钳制逻辑，
-     *                       两分支渲染一致（oversized 物品的差异体现在采集侧走独立 PiP 通道）。
+     * @param stack the item stack to render
+     * @param pose  modelview matrix snapshot for deferred PiP rendering, or {@code null} for immediate rendering
      */
-    private void drawItemModel(ItemStack stack, @Nullable float[] pose, boolean allowOversized) {
+    private void drawItemModel(ItemStack stack, @Nullable float[] pose) {
         if (stack == null || stack.getItem() == null) return;
 
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
 
-        // 保存完整 GL 状态 — 不依赖手动逐条恢复
+        // Save full GL state — no need to manually restore individual bits
         GL11.glPushAttrib(GL_SAVE_MASK);
         setupItemRenderState();
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glPushMatrix();
         try {
-            // 恢复收集时的 modelview 矩阵 — 帧末 GL 上下文已切换，需据快照重建调用点变换
+            // Restore modelview matrix from snapshot (deferred PiP path only;
+            // immediate path passes null — the caller's matrix is already active)
             if (pose != null) {
                 MATRIX_BUFFER.clear();
                 MATRIX_BUFFER.put(pose);
@@ -205,8 +201,9 @@ public class GuiGraphicsExtractor {
                 GL11.glLoadMatrix(MATRIX_BUFFER);
             }
 
-            // GUI 上下文不需要反抵消预变换（Forge INVENTORY 路径无 Forge 前置变换）
-            // 附魔光效由管线 FeatureRenderDispatcher 驱动 renderEnchantmentGlint 统一叠加
+            // No pre-transform cancellation needed in GUI context
+            // (Forge INVENTORY path has no Forge前置 transform)
+            // Enchantment glint is driven by FeatureRenderDispatcher → renderEnchantmentGlint
             model.render(stack, RenderPhase.ITEM_GUI, null);
         } finally {
             GL11.glPopMatrix();
@@ -215,14 +212,14 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * {@link ItemGuiDrawer} 的内部实现 — 委托到 {@link #drawItemModel}，
-     * 供 pip 包的 {@link OversizedItemPipRenderer} 复用物品渲染逻辑，
-     * 避免把 {@code draw()} 泄漏进本类公共 API。
+     * {@link ItemGuiDrawer} internal implementation — delegates to {@link #drawItemModel},
+     * allowing the PiP package's {@link OversizedItemPipRenderer} to reuse item rendering logic
+     * without leaking {@code draw()} into this class's public API.
      */
     private final class ItemGuiDrawerImpl implements ItemGuiDrawer {
         @Override
         public void draw(ItemStack stack, @Nullable float[] pose, boolean allowOversized) {
-            drawItemModel(stack, pose, allowOversized);
+            drawItemModel(stack, pose);
         }
     }
 
@@ -564,24 +561,24 @@ public class GuiGraphicsExtractor {
     // ==================== 延迟元素 Flush ====================
 
     /**
-     * 帧末 flush 延迟元素 — 对标 26.1.2 {@code GuiGraphics.extractDeferredElements()}。
+     * Flush deferred elements at end of frame — corresponds to 26.1.2
+     * {@code GuiGraphics.extractDeferredElements()}.
      * <p>
-     * 在 Screen 渲染末尾调用，统一驱动两条延迟路径：
+     * Called at the end of screen rendering, drives the remaining deferred paths:
      * <ol>
-     *   <li><b>路径一（物品模型）</b>：按 {@link GuiRenderState} 树的 z-order 绘制所有收集的物品（内容层）。</li>
-     *   <li><b>路径三（tooltip）</b>：新建 stratum 后绘制，确保 tooltip 始终在最上层。</li>
+     *   <li><b>PiP</b>: renders 3D content (entities) that require deferred drawing.</li>
+     *   <li><b>Tooltip</b>: rendered last in a new stratum, ensuring it's always on top.</li>
      * </ol>
+     * Note: item models are rendered immediately by {@link #item(ItemStack, int, int)},
+     * so no item flush is needed here.
      */
     public void extractDeferredElements() {
-        // 路径二（PiP）：先绘制 3D 内容层（方块模型 / 实体 / oversized 物品），位于扁平物品之下
+        // PiP: render 3D content (entities) that still requires deferred drawing
         for (PictureInPictureRenderState state : deferredPip) {
             dispatchPip(state);
         }
 
-        // 路径一：绘制收集到的普通物品模型（位于 tooltip 之下的内容层）
-        renderState.forEachItem(this::renderDeferredItem);
-
-        // 路径三：tooltip 始终在最上层
+        // Tooltip: always on top — rendered last in a new stratum
         if (this.deferredTooltip != null) {
             this.renderState.nextStratum();
             this.deferredTooltip.run();

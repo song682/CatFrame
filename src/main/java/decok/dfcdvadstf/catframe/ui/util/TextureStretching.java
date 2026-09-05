@@ -248,6 +248,21 @@ public final class TextureStretching {
     public static void drawNinePatch(ResourceLocation texture, int x, int y, int w, int h,
             int edgeL, int edgeT, int edgeR, int edgeB,
             int texW, int texH) {
+        drawNinePatch(texture, x, y, w, h, edgeL, edgeT, edgeR, edgeB, texW, texH, false);
+    }
+
+    /**
+     * Nine-patch stretch with explicit inner region control.
+     * <p>
+     * When {@code stretchInner} is {@code true}, the centre region is drawn as a single
+     * stretched quad instead of tiled — aligns with 26.1.2 {@code NineSlice.stretchInner()}.
+     * </p>
+     *
+     * @param stretchInner if {@code true}, stretch the centre region; if {@code false}, tile it
+     */
+    public static void drawNinePatch(ResourceLocation texture, int x, int y, int w, int h,
+            int edgeL, int edgeT, int edgeR, int edgeB,
+            int texW, int texH, boolean stretchInner) {
         if (w <= 0 || h <= 0)
             return;
 
@@ -310,9 +325,17 @@ public final class TextureStretching {
         if (innerH > 0) {
             addTiledQuad(t, x + w - edgeR, y + edgeT, edgeR, innerH, texW - edgeR, edgeT, edgeR, texInnerH, texW, texH, b.sprite);
         }
-        // Centre (tiled both directions)
+        // Centre: stretch or tile depending on stretchInner flag
         if (innerW > 0 && innerH > 0) {
-            addTiledQuad(t, x + edgeL, y + edgeT, innerW, innerH, edgeL, edgeT, texInnerW, texInnerH, texW, texH, b.sprite);
+            if (stretchInner) {
+                // Single stretched quad covering the entire centre region
+                emitQuad(t, x + edgeL, y + edgeT, innerW, innerH,
+                        (float) edgeL / texW, (float) edgeT / texH,
+                        (float) (texW - edgeR) / texW, (float) (texH - edgeB) / texH,
+                        1.0F, b.sprite);
+            } else {
+                addTiledQuad(t, x + edgeL, y + edgeT, innerW, innerH, edgeL, edgeT, texInnerW, texInnerH, texW, texH, b.sprite);
+            }
         }
 
         if (!batched) {
@@ -546,7 +569,8 @@ public final class TextureStretching {
                     drawNinePatch(texture, x, y, w, h,
                             meta.getEdgeLeft(), meta.getEdgeTop(),
                             meta.getEdgeRight(), meta.getEdgeBottom(),
-                            meta.getDefaultWidth(), meta.getDefaultHeight());
+                            meta.getDefaultWidth(), meta.getDefaultHeight(),
+                            meta.isStretchInner());
                     return;
                 case THREE_PATCH:
                     drawFixedEndRepeat(texture, x, y, w, h,

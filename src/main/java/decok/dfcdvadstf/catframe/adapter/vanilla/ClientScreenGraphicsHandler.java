@@ -33,7 +33,8 @@ import net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent;
 public class ClientScreenGraphicsHandler {
 
     /**
-     * 帧开始：屏幕绘制前重置延迟渲染状态（物品 / PiP / tooltip）。
+     * 帧开始：屏幕绘制前重置延迟渲染状态（PiP / tooltip）。
+     * <p>物品模型已改为即时渲染（在 {@code item()} 调用点直接绘制），不再需要帧末 flush。</p>
      * <p>对标原 {@code MixinGuiScreen} 的 {@code drawScreen} HEAD 注入。</p>
      */
     @SubscribeEvent(priority = EventPriority.HIGH)
@@ -42,8 +43,9 @@ public class ClientScreenGraphicsHandler {
     }
 
     /**
-     * 帧末：屏幕绘制后统一 flush 延迟元素（物品模型 / PiP / tooltip），
+     * 帧末：屏幕绘制后统一 flush 延迟元素（PiP 实体 / tooltip），
      * 确保 tooltip 始终渲染在最上层。
+     * <p>物品模型已改为即时渲染，此处不再 flush 物品。</p>
      * <p>对标原 {@code MixinGuiScreen} 的 {@code drawScreen} RETURN 注入。</p>
      */
     @SubscribeEvent(priority = EventPriority.LOW)

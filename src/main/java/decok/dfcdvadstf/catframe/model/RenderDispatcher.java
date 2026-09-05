@@ -301,11 +301,11 @@ public class RenderDispatcher {
      */
     private static final class ResolvedModel {
         final BlockStateModelPart part;
-        final int rot;
+        final float rot;
         /** 匹配期构造的方块状态属性（不可修改视图），无属性时为 null。 */
         final Map<String, String> blockstateProps;
 
-        ResolvedModel(BlockStateModelPart part, int rot, Map<String, String> blockstateProps) {
+        ResolvedModel(BlockStateModelPart part, float rot, Map<String, String> blockstateProps) {
             this.part = part;
             this.rot = rot;
             this.blockstateProps = blockstateProps;

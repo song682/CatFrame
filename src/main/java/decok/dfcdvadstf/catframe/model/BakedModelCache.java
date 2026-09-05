@@ -52,10 +52,10 @@ public class BakedModelCache {
                     public Optional<BlockStateModelPart> load(String key) {
                         String[] parts = parseCacheKey(key);
                         if (parts == null) return Optional.absent();
-                        int rotX, rotY;
+                        float rotX, rotY;
                         try {
-                            rotX = Integer.parseInt(parts[1]);
-                            rotY = Integer.parseInt(parts[2]);
+                            rotX = Float.parseFloat(parts[1]);
+                            rotY = Float.parseFloat(parts[2]);
                         } catch (NumberFormatException e) {
                             return Optional.absent();
                         }
@@ -224,9 +224,20 @@ public class BakedModelCache {
 
     /**
      * 构建 cacheKey。与 {@link ModelBaker} 的 cacheKey 格式保持一致。
+     * float 值格式化：整数角度输出无小数点（如 90），非整数输出小数（如 22.5）。
      */
-    public static String buildKey(String modelPath, int rotX, int rotY) {
-        return modelPath + "@" + rotX + "@" + rotY;
+    public static String buildKey(String modelPath, float rotX, float rotY) {
+        return modelPath + "@" + formatRot(rotX) + "@" + formatRot(rotY);
+    }
+
+    /**
+     * 格式化旋转角度为紧凑字符串：整数无小数点，非整数保留有效小数。
+     */
+    private static String formatRot(float v) {
+        if (v == Math.floor(v) && !Float.isInfinite(v)) {
+            return Integer.toString((int) v);
+        }
+        return Float.toString(v);
     }
 
     /**
@@ -234,10 +245,10 @@ public class BakedModelCache {
      */
     public static class BakeRequest {
         public final String modelPath;
-        public final int rotX;
-        public final int rotY;
+        public final float rotX;
+        public final float rotY;
 
-        public BakeRequest(String modelPath, int rotX, int rotY) {
+        public BakeRequest(String modelPath, float rotX, float rotY) {
             this.modelPath = modelPath;
             this.rotX = rotX;
             this.rotY = rotY;
@@ -247,11 +258,11 @@ public class BakedModelCache {
             return new BakeRequest(modelPath, 0, 0);
         }
 
-        public static BakeRequest of(String modelPath, int rotY) {
+        public static BakeRequest of(String modelPath, float rotY) {
             return new BakeRequest(modelPath, 0, rotY);
         }
 
-        public static BakeRequest of(String modelPath, int rotX, int rotY) {
+        public static BakeRequest of(String modelPath, float rotX, float rotY) {
             return new BakeRequest(modelPath, rotX, rotY);
         }
     }

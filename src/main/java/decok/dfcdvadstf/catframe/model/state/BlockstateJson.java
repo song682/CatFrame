@@ -114,13 +114,13 @@ public class BlockstateJson {
          */
         public String model;
         /**
-         * Y-axis rotation in degrees (0, 90, 180, 270)
+         * Y-axis rotation in degrees (supports any float, e.g. 0, 22.5, 90, 180, 270).
          */
-        public int y = 0;
+        public float y = 0;
         /**
-         * X-axis rotation in degrees (0, 90, 180, 270)
+         * X-axis rotation in degrees (supports any float, e.g. 0, 22.5, 90, 180, 270).
          */
-        public int x = 0;
+        public float x = 0;
         /**
          * Whether to apply UV lock when rotating
          */

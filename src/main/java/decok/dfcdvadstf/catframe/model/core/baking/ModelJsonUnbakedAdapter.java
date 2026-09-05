@@ -89,12 +89,12 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
      * 移入此处以实现 Unbaked→Baked 的阶段分离。
      *
      * @param textures  已解析的纹理槽（TextureSlots 已处理好 IIcon 查找）
-     * @param rotationX X 轴旋转角度（0/90/180/270）
-     * @param rotationY Y 轴旋转角度（0/90/180/270）
+     * @param rotationX X 轴旋转角度（支持任意角度，如 22.5°）
+     * @param rotationY Y 轴旋转角度（支持任意角度，如 22.5°）
      * @return 烘焙后的渲染部件
      */
     @Override
-    public BlockStateModelPart bake(TextureSlots textures, int rotationX, int rotationY) {
+    public BlockStateModelPart bake(TextureSlots textures, float rotationX, float rotationY) {
         // 1. 获取 texture_size
         int[] texSize = json.texture_size;
 

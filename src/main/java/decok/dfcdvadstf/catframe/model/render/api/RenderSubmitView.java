@@ -40,7 +40,7 @@ public interface RenderSubmitView {
     int z();
 
     /** Y 轴旋转角度（方块世界/GUI 使用，0/90/180/270）。 */
-    int rotationDeg();
+    float rotationDeg();
 
     /** 方块实例（物品阶段可为 null）。 */
     @Nullable

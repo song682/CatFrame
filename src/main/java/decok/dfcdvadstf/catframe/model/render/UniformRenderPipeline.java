@@ -58,7 +58,7 @@ public final class UniformRenderPipeline {
      */
     public static void renderBlockQuads(BlockStateModelPart part,
                                         IBlockAccess world, int x, int y, int z,
-                                        Block block, int rotationDeg,
+                                        Block block, float rotationDeg,
                                         RenderPhase phase) {
         renderBlockQuads(part, world, x, y, z, block, rotationDeg, phase, 0);
     }
@@ -74,7 +74,7 @@ public final class UniformRenderPipeline {
      */
     public static void renderBlockQuads(BlockStateModelPart part,
                                         IBlockAccess world, int x, int y, int z,
-                                        Block block, int rotationDeg,
+                                        Block block, float rotationDeg,
                                         RenderPhase phase,
                                         int metadata) {
         renderBlockQuads(part, world, x, y, z, block, rotationDeg, phase, metadata, null);
@@ -90,7 +90,7 @@ public final class UniformRenderPipeline {
      */
     public static void renderBlockQuads(BlockStateModelPart part,
                                         IBlockAccess world, int x, int y, int z,
-                                        Block block, int rotationDeg,
+                                        Block block, float rotationDeg,
                                         RenderPhase phase,
                                         int metadata,
                                         @Nullable Map<String, String> blockstateProps) {
@@ -120,7 +120,7 @@ public final class UniformRenderPipeline {
      */
     public static void renderBlockQuads(BlockStateModelPart part,
                                         IBlockAccess world, int x, int y, int z,
-                                        Block block, int rotationDeg) {
+                                        Block block, float rotationDeg) {
         renderBlockQuads(part, world, x, y, z, block, rotationDeg,
                 RenderPhase.BLOCK_WORLD, 0);
     }

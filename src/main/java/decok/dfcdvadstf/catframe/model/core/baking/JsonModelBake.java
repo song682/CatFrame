@@ -339,10 +339,10 @@ public class JsonModelBake {
      * [C1 修复] 返回深拷贝的新列表，不修改原始 quad，防止缓存污染。
      *
      * @param quads   待旋转的 quad 列表（不会被修改）
-     * @param degY    Y 轴旋转角度（0/90/180/270）
+     * @param degY    Y 轴旋转角度（支持任意角度，如 22.5°）
      * @return 旋转后的新 BakedQuad 列表
      */
-    public static List<BakedQuad> applyYRotation(List<BakedQuad> quads, int degY) {
+    public static List<BakedQuad> applyYRotation(List<BakedQuad> quads, float degY) {
         if (quads == null || quads.isEmpty() || degY == 0) return quads;
         // Minecraft blockstate 的 y 旋转是「俯视顺时针」（北→东→南→西），
         // 而 vecmath Matrix4d.rotY 是右手系逆时针（北→西），二者方向相反，
@@ -383,10 +383,10 @@ public class JsonModelBake {
      * [W3] 支持 blockstate 中的 x 旋转字段。
      *
      * @param quads   待旋转的 quad 列表（不会被修改）
-     * @param degX    X 轴旋转角度（0/90/180/270）
+     * @param degX    X 轴旋转角度（支持任意角度，如 22.5°）
      * @return 旋转后的新 BakedQuad 列表
      */
-    public static List<BakedQuad> applyXRotation(List<BakedQuad> quads, int degX) {
+    public static List<BakedQuad> applyXRotation(List<BakedQuad> quads, float degX) {
         if (quads == null || quads.isEmpty() || degX == 0) return quads;
         Matrix4d rotX = new Matrix4d();
         rotX.rotX(Math.toRadians(degX));

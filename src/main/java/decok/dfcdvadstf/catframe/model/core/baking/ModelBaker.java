@@ -45,7 +45,7 @@ public class ModelBaker {
      * 便捷重载：从模型路径烘焙，仅 Y 轴旋转（使用当前 stitch 周期的 iconMap）。
      */
     @Nullable
-    public static BlockStateModelPart bake(String modelPath, int rotationY) {
+    public static BlockStateModelPart bake(String modelPath, float rotationY) {
         return bake(modelPath, 0, rotationY);
     }
 
@@ -57,12 +57,12 @@ public class ModelBaker {
      * 注意：本方法不维护缓存。缓存由 {@link BakedModelCache} 统一管理。
      *
      * @param modelPath 模型路径（如 {@code "block/stone"}、{@code "builtin/generated"}）
-     * @param rotationX X 轴旋转角度（0/90/180/270）
-     * @param rotationY Y 轴旋转角度（0/90/180/270）
+     * @param rotationX X 轴旋转角度（支持任意角度）
+     * @param rotationY Y 轴旋转角度（支持任意角度）
      * @return 烘焙后的渲染部件，失败返回 null
      */
     @Nullable
-    public static BlockStateModelPart bake(String modelPath, int rotationX, int rotationY) {
+    public static BlockStateModelPart bake(String modelPath, float rotationX, float rotationY) {
         return bake(modelPath, rotationX, rotationY, VanillaTextureTracker.textureIcons);
     }
 
@@ -79,7 +79,7 @@ public class ModelBaker {
      * @return 烘焙后的渲染部件，失败返回 null
      */
     @Nullable
-    public static BlockStateModelPart bake(String modelPath, int rotationX, int rotationY,
+    public static BlockStateModelPart bake(String modelPath, float rotationX, float rotationY,
                                             @Nullable Map<String, IIcon> iconMap) {
         if (modelPath == null) return null;
 
@@ -103,7 +103,7 @@ public class ModelBaker {
      * @return 烘焙后的渲染部件
      */
     @Nullable
-    public static BlockStateModelPart bake(ModelJson resolved, int rotationX, int rotationY) {
+    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY) {
         return bake(resolved, rotationX, rotationY, "adapter", VanillaTextureTracker.textureIcons);
     }
 
@@ -117,7 +117,7 @@ public class ModelBaker {
      * @return 烘焙后的渲染部件
      */
     @Nullable
-    public static BlockStateModelPart bake(ModelJson resolved, int rotationX, int rotationY, String modelPath) {
+    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, String modelPath) {
         return bake(resolved, rotationX, rotationY, modelPath, VanillaTextureTracker.textureIcons);
     }
 
@@ -134,7 +134,7 @@ public class ModelBaker {
      * @return 烘焙后的渲染部件
      */
     @Nullable
-    public static BlockStateModelPart bake(ModelJson resolved, int rotationX, int rotationY,
+    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY,
                                             String modelPath, @Nullable Map<String, IIcon> iconMap) {
         if (resolved == null) return null;
         if (resolved.elements == null || resolved.elements.isEmpty()) {
@@ -165,7 +165,7 @@ public class ModelBaker {
      */
     @Nullable
     public static BlockStateModelPart bake(UnbakedModel model, TextureSlots textures,
-                                            int rotationX, int rotationY) {
+                                            float rotationX, float rotationY) {
         if (model == null) return null;
         return model.bake(textures, rotationX, rotationY);
     }

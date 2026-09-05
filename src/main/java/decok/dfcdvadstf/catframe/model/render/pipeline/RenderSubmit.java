@@ -35,8 +35,8 @@ public final class RenderSubmit implements RenderSubmitView {
 
     /** 方块坐标（物品阶段通常为 0）。 */
     public final int x, y, z;
-    /** Y 轴旋转角度（方块世界渲染使用，0/90/180/270）。 */
-    public final int rotationDeg;
+    /** Y 轴旋转角度（方块世界渲染使用，支持任意角度）。 */
+    public final float rotationDeg;
 
     /** 方块实例（物品阶段可为 null）。 */
     @Nullable
@@ -88,7 +88,7 @@ public final class RenderSubmit implements RenderSubmitView {
      * 旧签名构造器兼容 shim：blockstateProps / itemProps 均为 null。
      */
     public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
-                        int x, int y, int z, int rotationDeg,
+                        int x, int y, int z, float rotationDeg,
                         @Nullable Block block, @Nullable ItemStack stack,
                         @Nullable IBlockAccess world, int metadata,
                         @Nullable Matrix4d preTransform,
@@ -101,7 +101,7 @@ public final class RenderSubmit implements RenderSubmitView {
     }
 
     public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
-                        int x, int y, int z, int rotationDeg,
+                        int x, int y, int z, float rotationDeg,
                         @Nullable Block block, @Nullable ItemStack stack,
                         @Nullable IBlockAccess world, int metadata,
                         @Nullable Matrix4d preTransform,
@@ -156,7 +156,7 @@ public final class RenderSubmit implements RenderSubmitView {
     }
 
     @Override
-    public int rotationDeg() {
+    public float rotationDeg() {
         return rotationDeg;
     }
 

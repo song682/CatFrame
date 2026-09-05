@@ -34,12 +34,12 @@ public class BakingCore {
      * 不写入任何静态缓存或全局状态。
      *
      * @param modelPath 模型路径（如 "block/stone"、"builtin/generated"）
-     * @param rotX      X 轴旋转角度（0/90/180/270）
-     * @param rotY      Y 轴旋转角度（0/90/180/270）
+     * @param rotX      X 轴旋转角度（支持任意角度）
+     * @param rotY      Y 轴旋转角度（支持任意角度）
      * @return 烘焙后的模型部件，失败返回 null
      */
     @Nullable
-    public static BlockStateModelPart bake(String modelPath, int rotX, int rotY) {
+    public static BlockStateModelPart bake(String modelPath, float rotX, float rotY) {
         return bake(modelPath, rotX, rotY, VanillaTextureTracker.textureIcons);
     }
 
@@ -56,7 +56,7 @@ public class BakingCore {
      * @return 烘焙后的模型部件，失败返回 null
      */
     @Nullable
-    public static BlockStateModelPart bake(String modelPath, int rotX, int rotY,
+    public static BlockStateModelPart bake(String modelPath, float rotX, float rotY,
                                             @Nullable Map<String, IIcon> iconMap) {
         if (modelPath == null) return null;
 

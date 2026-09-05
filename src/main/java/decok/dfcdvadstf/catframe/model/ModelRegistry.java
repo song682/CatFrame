@@ -64,7 +64,7 @@ public class ModelRegistry {
         /**
          * Public API: bake a model path into a BlockStateModelPart with Y rotation.
          */
-        public static BlockStateModelPart bakeModelPart(String modelPath, int rotationY) {
+        public static BlockStateModelPart bakeModelPart(String modelPath, float rotationY) {
             return bakeModelPart(modelPath, 0, rotationY);
         }
 
@@ -73,7 +73,7 @@ public class ModelRegistry {
          * [W3] 支持 blockstate 中的 x 旋转字段。
          * 通过 {@link BakedModelCache} 懒烘焙，线程安全。
          */
-        public static BlockStateModelPart bakeModelPart(String modelPath, int rotationX, int rotationY) {
+        public static BlockStateModelPart bakeModelPart(String modelPath, float rotationX, float rotationY) {
             String cacheKey = BakedModelCache.buildKey(modelPath, rotationX, rotationY);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             return part != null ? part : BlockStateModelPart.empty();

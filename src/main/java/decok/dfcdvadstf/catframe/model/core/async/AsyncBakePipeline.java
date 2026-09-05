@@ -48,12 +48,12 @@ public class AsyncBakePipeline {
     /** 烘焙任务：一个模型 + 旋转组合。 */
     public static class BakeTask {
         public final String modelPath;
-        public final int rotX;
-        public final int rotY;
+        public final float rotX;
+        public final float rotY;
         @Nullable
         public final Map<String, IIcon> iconMap;
 
-        public BakeTask(String modelPath, int rotX, int rotY, @Nullable Map<String, IIcon> iconMap) {
+        public BakeTask(String modelPath, float rotX, float rotY, @Nullable Map<String, IIcon> iconMap) {
             this.modelPath = modelPath;
             this.rotX = rotX;
             this.rotY = rotY;
@@ -461,14 +461,14 @@ public class AsyncBakePipeline {
      */
     private static List<BakeTask> generateTasks(List<String> sortedPaths, @Nullable Map<String, IIcon> iconMap) {
         List<BakeTask> tasks = new ArrayList<>();
-        int[] rotations = {0, 90, 180, 270};
+        float[] rotations = {0, 90, 180, 270};
 
         for (String path : sortedPaths) {
             // 基础烘焙（无旋转）
             tasks.add(new BakeTask(path, 0, 0, iconMap));
 
             // Y 轴旋转
-            for (int rotY : rotations) {
+            for (float rotY : rotations) {
                 if (rotY != 0) {
                     tasks.add(new BakeTask(path, 0, rotY, iconMap));
                 }

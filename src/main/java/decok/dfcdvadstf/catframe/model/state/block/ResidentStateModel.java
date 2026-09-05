@@ -209,7 +209,7 @@ public final class ResidentStateModel implements BlockStateModel {
         }
 
         String modelPath;
-        int rotX, rotY;
+        float rotX, rotY;
         if (variant != null && variant.model != null) {
             modelPath = variant.model;
             rotX = variant.x;

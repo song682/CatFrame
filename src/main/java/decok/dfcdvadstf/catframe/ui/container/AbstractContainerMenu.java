@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.ui.container;
 import decok.dfcdvadstf.catframe.ui.container.data.ContainerData;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.inventory.Container;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
@@ -14,8 +13,8 @@ import java.util.List;
 /**
  * <p>
  * Menu logic layer of the three-layer container abstraction. Extends vanilla
- * {@link Container} (required by the 1.7.10 framework) but delegates storage
- * to an {@link AbstractContainer} via composition and re-implements
+ * {@link net.minecraft.inventory.Container} (required by the 1.7.10 framework)
+ * but delegates storage to a {@link Container} via composition and re-implements
  * {@link #slotClick} as a thin dispatcher over the {@link ContainerInput}
  * enum.<br>
  * The carried (cursor-held) item is managed through {@link #getCarried()} /
@@ -23,17 +22,17 @@ import java.util.List;
  * {@code InventoryPlayer.getItemStack()} so that vanilla sync still works.
  * </p>
  * <p>
- * 三层容器抽象的菜单逻辑层。继承原版 {@link Container}（1.7.10 框架强制要求），
- * 但通过组合将存储委托给 {@link AbstractContainer}，并将 {@link #slotClick}
- * 重新实现为基于 {@link ContainerInput} 枚举的薄分发器。<br>
+ * 三层容器抽象的菜单逻辑层。继承原版 {@link net.minecraft.inventory.Container}
+ * （1.7.10 框架强制要求），但通过组合将存储委托给 {@link Container}，并将
+ * {@link #slotClick} 重新实现为基于 {@link ContainerInput} 枚举的薄分发器。<br>
  * 游标物品通过 {@link #getCarried()} / {@link #setCarried(ItemStack)} 管理，
  * 内部桥接到 {@code InventoryPlayer.getItemStack()} 以保证原版同步正常运作。
  * </p>
  */
-public abstract class AbstractContainerMenu extends Container {
+public abstract class AbstractContainerMenu extends net.minecraft.inventory.Container {
 
     /** The data container this menu operates on. / 本菜单操作的数据容器。 */
-    protected final AbstractContainer container;
+    protected final Container container;
 
     /** Data slots for integer sync (furnace progress, etc.). / 整数同步数据槽。 */
     private final List<ContainerData> dataSlots = new ArrayList<ContainerData>();
@@ -46,7 +45,7 @@ public abstract class AbstractContainerMenu extends Container {
     /**
      * @param container the data container to operate on / 要操作的数据容器
      */
-    protected AbstractContainerMenu(final AbstractContainer container) {
+    protected AbstractContainerMenu(final Container container) {
         this.container = container;
     }
 
@@ -260,7 +259,7 @@ public abstract class AbstractContainerMenu extends Container {
     /**
      * @return the data container this menu operates on / 本菜单操作的数据容器
      */
-    public AbstractContainer getContainer() {
+    public Container getContainer() {
         return this.container;
     }
 

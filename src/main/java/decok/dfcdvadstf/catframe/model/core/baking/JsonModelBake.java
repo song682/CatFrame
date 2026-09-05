@@ -5,7 +5,6 @@ import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.core.ModelJson;
 import net.minecraft.util.IIcon;
 
-import javax.vecmath.AxisAngle4d;
 import javax.vecmath.Matrix4d;
 import javax.vecmath.Vector3d;
 import java.util.ArrayList;
@@ -47,60 +46,88 @@ public class JsonModelBake {
         C[idx(1, 0, 1)] = new Vector3d(x1, y0, z1);
         C[idx(0, 1, 1)] = new Vector3d(x0, y1, z1);
         C[idx(1, 1, 1)] = new Vector3d(x1, y1, z1);
-        // 归一化旋转格式：兼容 x/y/z 字段（高版本 Blockbench 格式）→ angle/axis。
+        // 旋转解析：支持单轴（angle/axis）和多轴（x/y/z）两种格式。
         // [FIX] 只读取到局部变量，绝不写回共享的 e.rotation：ModelResolver 缓存使同一个
-        //     Element 被多个烘焙线程并发复用，就地改写会造成竞态——先写 angle 后写 axis，
-        //     其他线程恰好读到 "angle!=0 但 axis==null" 的中间态，跳过归一化直奔下方
-        //     axis.charAt(0) → NullPointerException；异步管线 fail-fast 聚合随即把整轮
-        //     烘焙结果作废，导致物品模型消失。并发改写还会让其他线程读到半改状态，
-        //     烤出错误几何（贴图错乱）。改为局部变量后彻底无竞态、无副作用。
-        // [FIX] Normalize rotation into LOCAL variables only; never mutate the shared
-        //     e.rotation. ModelResolver caches a single Element reused by all concurrent
-        //     bake threads, so in-place writes race (angle written before axis), letting
-        //     another thread observe "angle!=0 but axis==null", skip normalization and NPE
-        //     at axis.charAt(0); the fail-fast aggregate then discards the whole bake round
-        //     (item models vanish). Concurrent writes can also hand other threads a
-        //     half-updated rotation, producing corrupted geometry (garbled textures).
+        //     Element 被多个烘焙线程并发复用，就地改写会造成竞态。
+        // [FIX] Read-only into locals; never mutate shared e.rotation (cached, concurrent).
+        boolean isMultiAxis = false;
         float rotAngle = 0f;
-        String rotAxis = null;
+        char rotAxis = 0;
+        float rotX = 0f, rotY = 0f, rotZ = 0f;
         boolean rotRescale = false;
         float[] rotOrigin = null;
         if (e.rotation != null) {
-            rotAngle = e.rotation.angle;
-            rotAxis = e.rotation.axis;
             rotRescale = e.rotation.rescale;
             rotOrigin = e.rotation.origin;
-            if (rotAngle == 0f && rotAxis == null) {
-                if (e.rotation.x != 0f) {
-                    rotAngle = e.rotation.x;
-                    rotAxis = "x";
-                } else if (e.rotation.y != 0f) {
-                    rotAngle = e.rotation.y;
-                    rotAxis = "y";
-                } else if (e.rotation.z != 0f) {
-                    rotAngle = e.rotation.z;
-                    rotAxis = "z";
+            if (e.rotation.angle != 0f || e.rotation.axis != null) {
+                // 单轴格式：{"angle": <deg>, "axis": "x"|"y"|"z"}
+                rotAngle = e.rotation.angle;
+                if (e.rotation.axis != null && !e.rotation.axis.isEmpty()) {
+                    rotAxis = Character.toLowerCase(e.rotation.axis.charAt(0));
                 }
+            } else if (e.rotation.x != 0f || e.rotation.y != 0f || e.rotation.z != 0f) {
+                // 多轴格式：{"x": <deg>, "y": <deg>, "z": <deg>}
+                isMultiAxis = true;
+                rotX = e.rotation.x;
+                rotY = e.rotation.y;
+                rotZ = e.rotation.z;
             }
         }
 
-        if (rotAngle != 0 && rotAxis != null) {
-            char ax = Character.toLowerCase(rotAxis.charAt(0));
-            float ang = rotAngle;
-            float[] o = rotOrigin;
-            // [C6] origin 空值兜底（Blockbench 导出可能不含 origin）
-            if (o == null) o = new float[]{8f, 8f, 8f};
-            boolean originIsZero = (o.length >= 3 && o[0] == 0f && o[1] == 0f && o[2] == 0f);
-            final float oxPx = originIsZero ? 8f : o[0];
-            final float oyPx = originIsZero ? ((e.from[1] + e.to[1]) * 0.5f) : o[1];
-            final float ozPx = originIsZero ? 8f : o[2];
+        // [C6] origin 空值兜底（Blockbench 导出可能不含 origin）
+        float[] o = rotOrigin;
+        if (o == null) o = new float[]{8f, 8f, 8f};
+        boolean originIsZero = (o.length >= 3 && o[0] == 0f && o[1] == 0f && o[2] == 0f);
+        final float oxPx = originIsZero ? 8f : o[0];
+        final float oyPx = originIsZero ? ((e.from[1] + e.to[1]) * 0.5f) : o[1];
+        final float ozPx = originIsZero ? 8f : o[2];
+        final double ox = oxPx / 16.0, oy = oyPx / 16.0, oz = ozPx / 16.0;
+
+        boolean hasRotation = (!isMultiAxis && rotAngle != 0 && rotAxis != 0)
+                           || (isMultiAxis && (rotX != 0 || rotY != 0 || rotZ != 0));
+
+        if (hasRotation) {
+            Matrix4d rot = new Matrix4d();
+            rot.setIdentity();
+
+            if (isMultiAxis) {
+                // 多轴旋转：按 X→Y→Z 顺序依次应用（对齐 26.1 Quaternionf.rotationXYZ）。
+                // 支持任意角度（不限于 22.5° 倍数），支持多轴同时非零。
+                // 左乘顺序：rot = Rz * Ry * Rx，顶点作用顺序 Rx 先 → Ry → Rz。
+                if (rotX != 0) {
+                    Matrix4d rx = new Matrix4d();
+                    rx.setIdentity();
+                    rx.rotX(Math.toRadians(rotX));
+                    rot.mul(rx, rot);
+                }
+                if (rotY != 0) {
+                    Matrix4d ry = new Matrix4d();
+                    ry.setIdentity();
+                    ry.rotY(Math.toRadians(rotY));
+                    rot.mul(ry, rot);
+                }
+                if (rotZ != 0) {
+                    Matrix4d rz = new Matrix4d();
+                    rz.setIdentity();
+                    rz.rotZ(Math.toRadians(rotZ));
+                    rot.mul(rz, rot);
+                }
+            } else {
+                // 单轴旋转：angle/axis 格式
+                double angRad = Math.toRadians(rotAngle);
+                switch (rotAxis) {
+                    case 'x': rot.rotX(angRad); break;
+                    case 'y': rot.rotY(angRad); break;
+                    case 'z': rot.rotZ(angRad); break;
+                    default: break;
+                }
+            }
 
             // [W4] rescale：旋转前沿各局部坐标轴应用非均匀缩放，
             // 使旋转后的最大投影分量恢复至原始大小，补偿旋转造成的视觉收缩。
             // 对齐 26.1 CuboidRotation.computeRescale 语义：rotation × scale。
             if (rotRescale) {
-                double[] rescaleS = computeRescaleFactors(ax, ang);
-                double ox = oxPx / 16.0, oy = oyPx / 16.0, oz = ozPx / 16.0;
+                double[] rescaleS = computeRescaleFactors(rot);
                 for (int i = 0; i < 8; i++) {
                     C[i].x = (C[i].x - ox) * rescaleS[0] + ox;
                     C[i].y = (C[i].y - oy) * rescaleS[1] + oy;
@@ -108,12 +135,8 @@ public class JsonModelBake {
                 }
             }
 
-            double angleRad = Math.toRadians(ang);
-            Vector3d axisVec = new Vector3d(ax == 'x' ? 1 : 0, ax == 'y' ? 1 : 0, ax == 'z' ? 1 : 0);
-            Vector3d origin = new Vector3d(oxPx / 16.0, oyPx / 16.0, ozPx / 16.0);
-            Matrix4d rot = new Matrix4d();
-            rot.setIdentity();
-            rot.setRotation(new AxisAngle4d(axisVec, angleRad));
+            // 应用旋转：sub(origin) → rotate → add(origin)
+            Vector3d origin = new Vector3d(ox, oy, oz);
             for (int i = 0; i < 8; i++) {
                 C[i].sub(origin);
                 rot.transform(C[i]);
@@ -285,30 +308,28 @@ public class JsonModelBake {
 
     /**
      * 计算 rescale 非均匀缩放因子，对齐 26.1 {@code CuboidRotation.computeRescale}。
-     * <p>对旋转轴对应的单位向量做变换，取变换后各分量的最大绝对值，缩放因子 = 1 / maxComponent。
-     * 对于单轴旋转 θ：
+     * <p>通用实现：从旋转矩阵各行取绝对值之和的倒数作为各轴缩放因子。
+     * 对单轴旋转 θ 退化为：
      * <ul>
      *   <li>Y 轴旋转：scaleX = scaleZ = 1 / max(|cosθ|, |sinθ|), scaleY = 1</li>
      *   <li>X 轴旋转：scaleY = scaleZ = 1 / max(|cosθ|, |sinθ|), scaleX = 1</li>
      *   <li>Z 轴旋转：scaleX = scaleY = 1 / max(|cosθ|, |sinθ|), scaleZ = 1</li>
      * </ul>
+     * 多轴旋转时，每行绝对值之和 = 该轴单位向量经旋转后各分量的最大投影，
+     * 缩放因子 = 1 / 该值，确保旋转后最大投影恢复原始大小。
      *
-     * @param axis     旋转轴（'x', 'y', 'z'）
-     * @param angleDeg 旋转角度（度）
+     * @param rot 旋转矩阵（单轴或多轴合成）
      * @return [sx, sy, sz] 缩放因子
      */
-    private static double[] computeRescaleFactors(char axis, float angleDeg) {
-        double a = Math.toRadians(angleDeg);
-        double cos = Math.abs(Math.cos(a));
-        double sin = Math.abs(Math.sin(a));
-        double maxComp = Math.max(cos, sin);
-        double s = maxComp > 1e-10 ? 1.0 / maxComp : 1.0;
-        switch (Character.toLowerCase(axis)) {
-            case 'x': return new double[]{1.0, s, s};
-            case 'y': return new double[]{s, 1.0, s};
-            case 'z': return new double[]{s, s, 1.0};
-            default:  return new double[]{1.0, 1.0, 1.0};
-        }
+    private static double[] computeRescaleFactors(Matrix4d rot) {
+        double sx = Math.abs(rot.m00) + Math.abs(rot.m01) + Math.abs(rot.m02);
+        double sy = Math.abs(rot.m10) + Math.abs(rot.m11) + Math.abs(rot.m12);
+        double sz = Math.abs(rot.m20) + Math.abs(rot.m21) + Math.abs(rot.m22);
+        return new double[]{
+            sx > 1e-10 ? 1.0 / sx : 1.0,
+            sy > 1e-10 ? 1.0 / sy : 1.0,
+            sz > 1e-10 ? 1.0 / sz : 1.0
+        };
     }
 
     /**

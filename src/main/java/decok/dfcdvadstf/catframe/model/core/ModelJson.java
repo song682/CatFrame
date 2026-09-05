@@ -53,8 +53,20 @@ public class ModelJson {
     }
 
     public static class Rotation {
+        /**
+         * Single-axis rotation angle in degrees (positive = CW when looking along +axis).
+         * Used with {@link #axis} for the legacy single-axis format:
+         * {@code {"angle": -22.5, "axis": "x", "origin": [0,0,0]}}.
+         */
         public float angle;
+        /**
+         * Single-axis rotation axis: "x", "y", or "z".
+         * Used with {@link #angle} for the legacy single-axis format.
+         */
         public String axis;
+        /**
+         * Rotation center in pixel coordinates (0-16). Defaults to [8, 8, 8] if absent.
+         */
         public float[] origin;
 
         /**
@@ -67,9 +79,15 @@ public class ModelJson {
         public boolean rescale;
 
         /**
-         * 兼容格式: 直接指定旋转轴的角度（高版本 Blockbench 导出的格式）。
-         * 例如 {"x": -47.5, "y": 0, "z": 0} 等价于 {"angle": -47.5, "axis": "x"}。
-         * 多个非零轴时，使用非零的第一个（按 x → y → z 优先级）。
+         * Multi-axis rotation angles in degrees (one per axis).
+         * <p>高版本 Blockbench 导出的多轴旋转格式：
+         * {@code {"x": -37.5, "y": 0, "z": 0, "origin": [0,0,0]}}。
+         * 当 {@link #angle}/{@link #axis} 未指定时生效，按 X→Y→Z 顺序依次应用
+         * （对齐 26.1 {@code Quaternionf.rotationXYZ} 语义）。
+         * 支持任意角度（不限于 22.5° 倍数），支持多轴同时非零。
+         * <p>
+         * 解析优先级：先尝试 {@code angle}/{@code axis}（单轴），
+         * 若缺失则回退到 {@code x}/{@code y}/{@code z}（多轴）。
          */
         public float x, y, z;
     }

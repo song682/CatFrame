@@ -13,7 +13,7 @@ A modern rendering & UI framework for **Minecraft 1.7.10**. Backports the **1.8+
 
 | Module | Key APIs | Description |
 |---|---|---|
-| **[JSON Model System](src/main/java/decok/dfcdvadstf/catframe/model)** | `IBlockStateProvider`, `BakedModelCache` | Full 26.1+ model pipeline: `parent` inheritance, `elements` with per-face UV/rotation/cullface, `textures` with recursive `#references`, `display` transforms, blockstate variants & multipart. |
+| **[JSON Model System](src/main/java/decok/dfcdvadstf/catframe/model/core)** | `ModelJson`, `ModelResolver`, `BakedModelCache` | Full 26.1+ model pipeline: `parent` inheritance, `elements` with per-face UV/rotation/cullface, `textures` with recursive `#references`, `display` transforms, blockstate variants & multipart. |
 | **[ItemState Decision Tree](src/main/java/decok/dfcdvadstf/catframe/model/state/item)** | `IItemStateProvider`, `ItemStateNode` | 1.21.2+ style `items/` JSON — runtime decision tree (`condition`, `range_dispatch`, `select`, `composite`) that resolves a model per-frame from ItemStack properties. Extensible node & tint type registries. |
 | **[Render Extensions + Uniform Render Pipeline](src/main/java/decok/dfcdvadstf/catframe/model/render)** | `IModelRenderExtension`, `RenderContext`, `UniformRenderPipeline`, `RenderPhase`, `RenderSubmit` | Per-quad extension chain — mods register extensions that modify color, brightness, culling, etc. before each quad is written. Thread-safe; exception-isolated. Deferred command pipeline (Extract → Submit → Render). Block world rendering writes inline to vanilla chunk Tessellator; item/GUI paths use scoped command buffers with sorted batch flush. |
 | **[Atlas](src/main/java/decok/dfcdvadstf/catframe/resources/atlas)** | `CatAtlas`, `CatSprite`, `AtlasSource` | Custom texture atlas with pluggable sources: `SingleSource`, `DirectorySource`, `FilterSource`, `PalettedPermutationsSource`, `UnstitchSource`. Automatic texture collection & stitching. |
@@ -43,7 +43,3 @@ dependencies {
 
 **Source Code**: [MIT License](LICENSE).  
 **Assets**: [All rights reserved](LICENSE-Assets) — Third-party character assets (Bluey) are excluded from the open-source license and may not be redistributed without permission from their respective rights holders.
-
-## Credits
-
-- [AmarokIce](https://github.com/AmarokIce) for the [JSON model system](https://github.com/AmarokIce/JsonModellegacy), licensed under MIT.

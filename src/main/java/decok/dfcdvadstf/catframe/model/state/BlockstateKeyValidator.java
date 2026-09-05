@@ -121,13 +121,19 @@ public final class BlockstateKeyValidator {
 
     /**
      * Validate x/y rotation angles of every variant and multipart apply entry.
-     * Blockstate rotations allow 22.5-degree increments (0, 22.5, 45, 67.5, 90, ...).
-     * Angles outside that set are rejected explicitly instead of silently baking
-     * wrong geometry. Invalid variants fall back to {@code builtin/missing}
-     * (MissingNo); invalid multipart apply entries are dropped entirely.
-     * <br>校验所有 variant 与 multipart apply 条目的 x/y 旋转角度。
-     * blockstate 旋转允许 22.5° 增量（0, 22.5, 45, 67.5, 90, ...）。
-     * 超出该集合的角度会被显式拒绝。非法 variant 回退
+     * Aligned with vanilla: blockstate rotations only allow 90-degree increments
+     * (0 / 90 / 180 / 270). Angles outside that set are rejected explicitly instead
+     * of silently baking wrong geometry — faces would leave axis alignment and
+     * face / cullface / AO recomputation would produce incorrect results.
+     * Arbitrary-angle rotation is a mod-exclusive feature reserved for the
+     * compatibility layer, not available in vanilla blockstate definitions.
+     * Invalid variants fall back to {@code builtin/missing} (MissingNo); invalid
+     * multipart apply entries are dropped entirely.
+     * <br>校验所有 variant 与 multipart apply 条目的 x/y 旋转角度。对齐原版：
+     * blockstate 旋转只允许 90 度增量（0 / 90 / 180 / 270）。超出该集合的角度
+     * 会被显式拒绝，而不是静默烘焙出错误几何——旋转非 90° 倍数后面不再轴对齐，
+     * face / cullface / AO 的重算会给出错误结果。任意角度旋转是模组兼容层专属
+     * 特性，不在原版 blockstate 定义中开放。非法 variant 回退
      * {@code builtin/missing}（MissingNo）；非法 multipart apply 条目整体作废。
      *
      * <p>Definition-independent: can be called on any loaded blockstate, including ones
@@ -168,7 +174,7 @@ public final class BlockstateKeyValidator {
                     // 整个 variant 作废 → builtin/missing（MissingNo）
                     bs.variants.put(key, missingEntry());
                     CatFrame.logger.warn(
-                            "Invalid rotation angle (not a multiple of 22.5) in variant '{}' of {}; "
+                            "Invalid rotation angle (not a multiple of 90) in variant '{}' of {}; "
                                     + "its model mapping falls back to builtin/missing",
                             key, owner);
                 }
@@ -182,7 +188,7 @@ public final class BlockstateKeyValidator {
                 if (mpc.apply != null && !hasValidRotations(mpc.apply)) {
                     it.remove();
                     CatFrame.logger.warn(
-                            "Invalid rotation angle (not a multiple of 22.5) in a multipart apply entry of {}; "
+                            "Invalid rotation angle (not a multiple of 90) in a multipart apply entry of {}; "
                                     + "the entry is dropped",
                             owner);
                 }
@@ -191,17 +197,17 @@ public final class BlockstateKeyValidator {
     }
 
     /**
-     * A variant's rotations are valid iff both x and y are multiples of 22.5 degrees.
-     * variant 的旋转合法当且仅当 x 与 y 均为 22.5 度的整数倍。
+     * A variant's rotations are valid iff both x and y are multiples of 90 degrees.
+     * variant 的旋转合法当且仅当 x 与 y 均为 90 度的整数倍。
      */
     private static boolean hasValidRotations(BlockstateJson.Variant v) {
-        return v != null && isFineAngle(v.x) && isFineAngle(v.y);
+        return v != null && isQuarterTurn(v.x) && isQuarterTurn(v.y);
     }
 
-    /** Multiple-of-22.5 check. 22.5° 倍数判定（浮点容差 ±0.01°）。 */
-    private static boolean isFineAngle(float deg) {
-        float remainder = Math.abs(deg % 22.5f);
-        return remainder < 0.01f || Math.abs(remainder - 22.5f) < 0.01f;
+    /** Multiple-of-90 check for float angles (±0.01° tolerance). 90° 倍数判定（浮点容差）。 */
+    private static boolean isQuarterTurn(float deg) {
+        float remainder = Math.abs(deg % 90f);
+        return remainder < 0.01f || Math.abs(remainder - 90f) < 0.01f;
     }
 
     // ==================== 内部：键解析与校验 ====================

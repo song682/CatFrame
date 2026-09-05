@@ -1,251 +1,57 @@
-# CatFrame
-[![](https://jitpack.io/v/song682/CatFrame.svg)](https://jitpack.io/#song682/CatFrame)   
+CatFrame
+<img align="right" alt="Logo" width="128" height="128" src="src/main/resources/assets/catframe/logo.png">
+====
 
-A modern rendering & UI framework for **Minecraft 1.7.10**, providing a full backport of the **1.8+ JSON model system**, an enhanced **multi‑layer item renderer**, and a modular **UI toolkit** for building complex GUIs.  
-Designed as a foundational library for mods that require modern visuals and structured UI components.
+[![modrinth](https://raw.githubusercontent.com/song682/svg-bandage/refs/heads/main/Modrinth-Bandage-Small.svg)](https://modrinth.com/mod/catframe)[![curseforge](https://raw.githubusercontent.com/song682/svg-bandage/refs/heads/main/CurseForge-Bandage-Small.svg)](https://www.curseforge.com/minecraft/mc-mods/catframe)[![github](https://raw.githubusercontent.com/song682/svg-bandage/refs/heads/main/GitHub-Bandage-Small.svg)](https://github.com/song682/CatFrame)[![codeberg](https://raw.githubusercontent.com/song682/svg-bandage/refs/heads/main/CodeBerg-Bandage-Small.svg)](https://codeberg.org/song682/cat-frame)   
+[![](https://jitpack.io/v/song682/CatFrame.svg)](https://jitpack.io/#song682/CatFrame)     
 
----
-
-## **✨ Features Overview**
-
-- **Type-safe BlockState Property System** — `Property<T>`, `BooleanProperty`, `IntegerProperty`, `EnumProperty`
-- **CatBlockState** — state holder with O(1) neighbor jump-table (`setValue()` is a direct array lookup)
-- **CatStateDefinition** — builder-pattern state manager with Cartesian-product state generation
-- **StateBlockModel** — property-based model dispatch using `CatBlockState.toVariantKey()`
-- **Backward-compatible** — all existing `IBlockStateProvider`, metadata, and model mappings still work
-- **1.8‑style JSON model system** (inheritance, elements, textures, display transforms)
-- **Blockstate JSON** with variants, rotations, weighted randomness, multipart logic
-- **Runtime state mapping** via `IBlockStateProvider`
-- **Automatic model baking** into `BakedQuad`
-- **Unified BlockStateModel / ItemModel interfaces** — clean dispatch, easy to extend
-- **BlockStateModelPart** — direction-grouped quads
-- **UniformRenderPipeline** — centralized AO → extension chain → Tessellator
-- **Enhanced item rendering** with unlimited texture layers (`ItemModern`)
-- **Modular UI framework** (Cyclable buttons, content panels, tab system)
-- **Namespace‑based resource loading**
-- **Mixin‑based integration** with vanilla block & item rendering
+A modern rendering & UI framework for **Minecraft 1.7.10**. Backports the **1.8+ JSON model pipeline** and **1.21+ item state decision trees**, provides a **deferred render pipeline** with a per-quad extension API, a **custom texture atlas** system, a **type-safe BlockState** property system, a **data component** framework, a **tag** system with OreDict interop, and a full **component-based UI toolkit**.
 
 ---
 
-# **📦 Installation**
+## Modules
 
-Add CatFrame as a dependency in your `build.gradle`:
+| Module | Key APIs | Description |
+|---|---|---|
+| **JSON Model System** | `IBlockStateProvider`, `CatModels`, `BakedModelCache` | Full 1.8+ model pipeline: `parent` inheritance, `elements` with per-face UV/rotation/cullface, `textures` with recursive `#references`, `display` transforms, blockstate variants & multipart. |
+| **ItemState Decision Tree** | `IItemStateProvider`, `ItemStateNode` | 1.21.2+ style `items/` JSON — runtime decision tree (`condition`, `range_dispatch`, `select`, `composite`) that resolves a model per-frame from ItemStack properties. Extensible node & tint type registries. |
+| **Uniform Render Pipeline** | `UniformRenderPipeline`, `RenderPhase`, `RenderSubmit` | Deferred command pipeline (Extract → Submit → Render). Block world rendering writes inline to vanilla chunk Tessellator; item/GUI paths use scoped command buffers with sorted batch flush. |
+| **Render Extensions** | `IModelRenderExtension`, `RenderContext` | Per-quad extension chain — mods register extensions that modify color, brightness, culling, etc. before each quad is written. Thread-safe; exception-isolated. |
+| **CatAtlas** | `CatAtlas`, `CatSprite`, `AtlasSource` | Custom texture atlas with pluggable sources: `SingleSource`, `DirectorySource`, `FilterSource`, `PalettedPermutationsSource`, `UnstitchSource`. Automatic texture collection & stitching. |
+| **Type-Safe BlockState** | `Property<T>`, `CatStateDefinition`, `CatBlockState` | 1.8+ style typed properties (`BooleanProperty`, `IntegerProperty`, `EnumProperty`) with O(1) neighbor jump table. `CatStateInheritance` for base-class state propagation. |
+| **Data Components** | `DataComponentType`, `DataComponents`, `DataComponentMap` | 1.21+ style per-ItemStack data components. Type-safe global registry, per-item defaults, NBT migration, network sync. Built-in: `ENCHANTMENT_GLINT`, `ITEM_MODEL`. |
+| **Tag System** | `TagLoader`, `TagKey`, `OreDict2Tag` | Modern tag system (JSON-loaded, namespaced). Bidirectional OreDict ↔ Tag conversion for gradual migration. |
+| **Recipe System** | `CatFrameRecipeManager`, `ShapedTagRecipe`, `ShapelessTagRecipe` | Tag-aware shaped/shapeless crafting & smelting recipes. Recipe removal API (by output, by predicate). |
+| **UI Toolkit** | `Screen`, `Layout`, components, `OverlayManager` | Component-based GUI framework: `Screen` base class with focus navigation & event dispatch; layouts (`Grid`, `Linear`, `Frame`, `HeaderFooter`); widgets (buttons, edit boxes, scroll areas, selection lists, tabs, toasts); overlay system with auto-stacking for both Screen and HUD contexts. |
+| **Language** | `LanguageRegister` | JSON lang file (`xx_xx.json`) loader — injects into Forge `LanguageRegistry` with resource-pack override support. |
+| **Search Tree** | `TextSearchTree`, `SuffixArray` | Suffix-array / trie-based search tree for item/block lookup. |
+
+## Dependency
+
+```
+Minecraft:     1.7.10
+Forge:         10.13.4.1614
+UniMixins:     0.2.1 (optional, for Mixin support)
+Java:          8
+```
+
+## Installation
 
 ```gradle
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
 dependencies {
     implementation 'com.github.song682:CatFrame:<version>'
 }
 ```
 
-Replace `<version>` with the latest release.
+## License
 
----
+**Source Code**: [MIT License](LICENSE).  
+**Assets**: All rights reserved — see [LICENSE-Assets](LICENSE-Assets). Third-party character assets (Bluey) are excluded from the open-source license and may not be redistributed without permission from their respective rights holders.
 
-# **🧱 JSON Model System**
+## Credits
 
-CatFrame backports the entire **1.8+ model pipeline** to 1.7.10.
-
-### **Supported Features**
-- `parent` inheritance chain  
-- `elements` with per‑face UV, rotation, cullface  
-- `textures` with recursive `#references`  
-- `display` transforms for GUI, ground, first‑person, third‑person, fixed, shelf  
-- `gui_light: "front" | "side"`  
-- Automatic texture collection & stitching  
-
-### **Example**
-```json
-{
-  "parent": "block/cube_all",
-  "textures": {
-    "all": "minecraft:blocks/stone"
-  }
-}
-```
-
----
-
-# **🧩 Blockstate System**
-
-CatFrame implements a full **blockstate JSON** system identical to 1.8+.
-
-### **Features**
-- Property‑based variants  
-- `x` / `y` rotation  
-- UV lock  
-- Weighted random models  
-- Multipart rendering  
-- Metadata mapping for legacy blocks  
-
-### **Example**
-```json
-{
-  "variants": {
-    "facing=north": { "model": "block/furnace", "y": 0 },
-    "facing=east":  { "model": "block/furnace", "y": 90 }
-  }
-}
-```
-
----
-
-# **⚙️ Dynamic Runtime States (`IBlockStateProvider`)**
-
-For modded blocks, CatFrame can dynamically compute blockstate properties at runtime.
-
-```java
-public class BlockModCake extends Block implements IBlockStateProvider {
-    @Override
-    public Map<String, String> getStateProperties(IBlockAccess world, int x, int y, int z, int meta) {
-        return Map.of("bites", String.valueOf(meta));
-    }
-}
-```
-
-CatFrame will:
-1. Read your properties  
-2. Build a variant key (`bites=3`)  
-3. Select the correct model  
-4. Bake & render it  
-
-No ISBRH. No TESR. No OpenGL.
-
----
-
-# **🖼️ ItemModern — Enhanced Item Rendering**
-
-`ItemModern` extends vanilla item rendering with:
-
-- Unlimited texture layers  
-- Per‑layer color tinting  
-- 2D GUI + 3D in‑hand rendering  
-- JSON model compatibility  
-
-### **Example**
-```java
-setLayerTextureNames(
-    "mymod:items/blade",
-    "mymod:items/guard",
-    "mymod:items/handle",
-    "mymod:items/gem"
-);
-```
-
----
-
-# **🖥️ UI Framework**
-
-CatFrame includes a modular UI toolkit used by CreateWorldUI and available for any mod.
-
----
-
-## **GuiCyclableButton\<T\>**
-
-A type‑safe cycling button with scroll‑wheel support.
-
-- Custom value‑to‑text formatting  
-- Dynamic value lists  
-- Update callbacks  
-- On/off builder shortcut  
-
-```java
-GuiCyclableButton<Boolean> cheats = GuiCyclableButton.onOffBuilder()
-    .initially(false)
-    .build(201, x, y, 200, 20, (btn, v) -> setAllowCheats(v));
-```
-
----
-
-## **ContentPanelRenderer**
-
-A shared renderer for structured panel layouts.
-
-- Header & footer separators  
-- Tiled backgrounds  
-- Custom textures  
-- One‑call `drawContentPanel()`  
-
-```java
-ContentPanelRenderer.drawContentPanel(x, top, width, bottom);
-```
-
----
-
-## **Tab System**
-
-A complete multi‑tab GUI framework.
-
-### Components
-- `Tab` — core interface  
-- `AbstractScreenTab` — base implementation  
-- `TabManager` — switching, input routing, resize persistence  
-- `TabBar` — customizable tab bar (solid color, tiled texture, custom tab buttons)  
-- `TabRegistry` — register tabs from external mods  
-
-### Example
-```java
-TabRegistry.registerTab(MyTab::new, 103, "mymod.tab.custom", 5);
-```
-
----
-
-# 📁 Resource Structure
-
-```
-assets/<namespace>/
-├── blockstates/
-├── models/
-│   ├── block/
-│   ├── item/
-│   └── builtin/
-└── model_mappings.json
-```
-
----
-
-## 🔧 Architecture Overview
-
-- **VanillaModelManager** — core loader, baker, renderer; orchestrates BlockStateModel/ItemModel dispatch
-- **Property / BooleanProperty / IntegerProperty / EnumProperty** (v0.3.0) — type-safe block state properties
-- **CatBlockState** (v0.3.0) — state holder with O(1) neighbor jump-table, `toVariantKey()` for JSON matching
-- **CatStateDefinition** (v0.3.0) — builder-pattern state definition manager
-- **BlockStateModel** — block model interface: `collectParts(world, x, y, z, meta)` / `collectParts(world, x, y, z, state)`
-  - `SingleBlockModel` — static model wrapper
-  - `MetadataBlockModel` — metadata → variant dispatch
-  - `StateProviderBlockModel` — dynamic IBlockStateProvider resolution (string maps)
-  - **`StateBlockModel`** (v0.3.0) — property-based dispatch via `CatBlockState.toVariantKey()`
-  - `MultipartBlockModel` — conditional multipart composition
-- **BlockStateModelPart** — direction-grouped quad container
-- **ItemModel** — item render interface
-  - `ItemModelWrapper` — reuses BlockStateModel for item rendering
-- **UniformRenderPipeline** — unified rendering: per-vertex AO → extension chain → Tessellator
-- **ModelResolver** — parent chain resolution
-- **BlockJsonModelBake** — element → BakedQuad
-- **MixinRenderBlocks / MixinRenderItem** — rendering hooks
-- **ItemModern** — enhanced item renderer
-- **UI Components** — cycling buttons, panels, tabs
-
----
-
-# 📜 License
-
-**Source Code**: Under [MIT License](LICENSE).   
-Third-Party Assets / Example Assets (Bluey plushy) / Offical Assets:   
-This project contains fan-made assets inspired by the charactor "Bluey", Bluey and related charactors, names, trademarks, and intellectual property ar owned by their respective Copyright holders, including Ludo Studio, Joe Brumm, and other rights holders.   
-The Bluey plushy json model, textures and minecraft assets included in this project were independently created by me (as the author) as a fan-made content and examples.   
-Third-party character assets are excluded from the project's open-source license and may not be redistributed or used separately without appropriate permission from the respective rights holders.   
-The license [see here](LICENSE-Model)
-
-The offical assets  are excluded from the project's open-source license and may not be redistributed or used separately without appropriate permission from the respective rights holders.
-
----
-
-# 📚 Related
-- Model System
-- ItemModern
-- UI Components
-
-# 🤲 Credits
-
-- [AmarokIce](https://github.com/AmarokIce) for the [json model system](https://github.com/AmarokIce/JsonModellegacy), licensed under MIT. 
-- **Character**: Bluey, **original creators**: Joe Brumm, **production**: Ludo Studio, **rights**:Bluey and related intellectual property belong to their respective rights holders.
+- [AmarokIce](https://github.com/AmarokIce) for the [JSON model system](https://github.com/AmarokIce/JsonModellegacy), licensed under MIT.

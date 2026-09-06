@@ -37,9 +37,11 @@ dependencies {
 }
 ```
 
-> Extra extension for more mod compatibility and tools, see CatFrame Compat ([Github](https://github.com/song682/CatFrame-Compat), [CodeBerg](https://codeberg.org/song682/cat-frame-compat)).
+> Extra extension for more mod compatibility and tools, see CatFrame Compat ([GitHub](https://github.com/song682/CatFrame-Compat), [CodeBerg](https://codeberg.org/song682/cat-frame-compat)).
 
 ## License
 
 **Source Code**: [MIT License](LICENSE).  
-**Assets**: [All rights reserved](LICENSE-Assets) — Third-party character assets (Bluey & Bingo) are excluded from the open-source license and may not be redistributed without permission from their respective rights holders.
+**Assets**: CopyRight © dfdvdsf 2026, [All rights reserved](LICENSE-Assets) — Third-party character assets (Bluey & Bingo) are excluded from the open-source license and may not be redistributed without permission from their respective rights holders.    
+***These assets are not affiliated with a Ludo Studio Production.***
+

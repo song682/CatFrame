@@ -37,7 +37,7 @@ dependencies {
 }
 ```
 
-> Extra extension for more mod compatibility and tools see CatFrame Compat ([Github](https://github.com/song682/CatFrame-Compat), [CodeBerg](https://codeberg.org/song682/cat-frame-compat)).
+> Extra extension for more mod compatibility and tools, see CatFrame Compat ([Github](https://github.com/song682/CatFrame-Compat), [CodeBerg](https://codeberg.org/song682/cat-frame-compat)).
 
 ## License
 

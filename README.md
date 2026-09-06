@@ -5,7 +5,7 @@ CatFrame
 [![modrinth](https://raw.githubusercontent.com/song682/svg-bandage/refs/heads/main/Modrinth-Bandage-Small.svg)](https://modrinth.com/mod/catframe)[![curseforge](https://raw.githubusercontent.com/song682/svg-bandage/refs/heads/main/CurseForge-Bandage-Small.svg)](https://www.curseforge.com/minecraft/mc-mods/catframe)[![github](https://raw.githubusercontent.com/song682/svg-bandage/refs/heads/main/GitHub-Bandage-Small.svg)](https://github.com/song682/CatFrame)[![codeberg](https://raw.githubusercontent.com/song682/svg-bandage/refs/heads/main/CodeBerg-Bandage-Small.svg)](https://codeberg.org/song682/cat-frame)   
 [![](https://jitpack.io/v/song682/CatFrame.svg)](https://jitpack.io/#song682/CatFrame)     
 
-A modern rendering & UI framework for **Minecraft 1.7.10**. Backports the **1.8+ JSON model pipeline** and **1.21+ item state decision trees**, provides a **deferred render pipeline** with a per-quad extension API, a **custom texture atlas** system, a **type-safe BlockState** property system, a **data component** framework, a **tag** system with OreDict interop, and a full **component-based UI toolkit**.
+A modern rendering & UI framework for **Minecraft 1.7.10**. Backports the **26.1+ JSON model pipeline** and **1.21+ item state decision trees**, provides a **deferred render pipeline** with a per-quad extension API, a **custom texture atlas** system, a **type-safe BlockState** property system, a **data component** framework, a **tag** system with OreDict interop, and a full **component-based UI toolkit**.
 
 ---
 
@@ -42,4 +42,4 @@ dependencies {
 ## License
 
 **Source Code**: [MIT License](LICENSE).  
-**Assets**: [All rights reserved](LICENSE-Assets) — Third-party character assets (Bluey) are excluded from the open-source license and may not be redistributed without permission from their respective rights holders.
+**Assets**: [All rights reserved](LICENSE-Assets) — Third-party character assets (Bluey & Bingo) are excluded from the open-source license and may not be redistributed without permission from their respective rights holders.

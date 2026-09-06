@@ -134,6 +134,25 @@ public class BlockstateJson {
          * Weight for random selection (default 1)
          */
         public int weight = 1;
+
+        /**
+         * Raw JSON object preserved for compatibility-layer extension fields.
+         * <p>
+         * Compat layers can inspect this to detect and parse extra fields
+         * (e.g. {@code "transformation"}) beyond the standard set
+         * (model, x, y, z, uvlock, weight). Null when the Variant was
+         * constructed programmatically rather than deserialized from JSON.
+         */
+        public transient JsonObject rawJson;
+
+        /**
+         * Get the raw JSON object for extension-field access.
+         *
+         * @return the original JSON object, or null if not deserialized from JSON
+         */
+        public JsonObject getRawJson() {
+            return rawJson;
+        }
     }
 
     public static class MultipartCase {
@@ -274,6 +293,9 @@ public class BlockstateJson {
             variant.z = obj.has("z") ? obj.get("z").getAsFloat() : 0;
             variant.uvlock = obj.has("uvlock") && obj.get("uvlock").getAsBoolean();
             variant.weight = obj.has("weight") ? obj.get("weight").getAsInt() : 1;
+
+            // Preserve raw JSON for compat-layer extension field access
+            variant.rawJson = obj;
 
             return variant;
         }

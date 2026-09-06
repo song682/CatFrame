@@ -81,7 +81,8 @@ public interface UnbakedModel {
      * @param textures  已解析的纹理槽（IIcon 已就绪）
      * @param rotationX X 轴旋转角度（支持任意角度，如 22.5°）
      * @param rotationY Y 轴旋转角度（支持任意角度，如 22.5°）
+     * @param rotationZ Z 轴旋转角度（支持任意角度，如 22.5°）
      * @return 烘焙后的渲染部件
      */
-    BlockStateModelPart bake(TextureSlots textures, float rotationX, float rotationY);
+    BlockStateModelPart bake(TextureSlots textures, float rotationX, float rotationY, float rotationZ);
 }

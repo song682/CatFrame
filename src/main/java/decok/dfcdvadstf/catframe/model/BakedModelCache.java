@@ -31,9 +31,9 @@ import java.util.Map;
  */
 public class BakedModelCache {
 
-    /** 全局单例（容量覆盖一次 reload 的全部预烘焙结果：2652 任务 / 约 2636 成功，
+    /** 全局单例（容量覆盖一次 reload 的全部预烘焙结果，含 Z 轴旋转组合，
      *  留余量避免 LRU 驱逐导致渲染时懒烘焙 —— 见 ItemBlock-ItemRender-UV-Mismatch-Diagnosis.md）。 */
-    public static final BakedModelCache INSTANCE = new BakedModelCache(3200);
+    public static final BakedModelCache INSTANCE = new BakedModelCache(4800);
 
     private final int maxSize;
     private final LoadingCache<String, Optional<BlockStateModelPart>> cache;
@@ -52,15 +52,16 @@ public class BakedModelCache {
                     public Optional<BlockStateModelPart> load(String key) {
                         String[] parts = parseCacheKey(key);
                         if (parts == null) return Optional.absent();
-                        float rotX, rotY;
+                        float rotX, rotY, rotZ;
                         try {
                             rotX = Float.parseFloat(parts[1]);
                             rotY = Float.parseFloat(parts[2]);
+                            rotZ = parts.length > 3 ? Float.parseFloat(parts[3]) : 0f;
                         } catch (NumberFormatException e) {
                             return Optional.absent();
                         }
                         // 调用烘焙纯函数（传递当前 stitch 周期的 iconMap）
-                        BlockStateModelPart result = BakingCore.bake(parts[0], rotX, rotY, iconMap);
+                        BlockStateModelPart result = BakingCore.bake(parts[0], rotX, rotY, rotZ, iconMap);
                         if (result != null) {
                             CatFrame.logger.debug("[BakedModelCache] lazy bake: {} | quads={}",
                                     key, result.isEmpty() ? 0 : result.getAllQuads().size());
@@ -79,7 +80,7 @@ public class BakedModelCache {
      *   if (part != null) UniformRenderPipeline.renderBlockQuads(part, ...);
      * </pre>
      *
-     * @param cacheKey 格式为 "modelPath@rotX@rotY"
+     * @param cacheKey 格式为 "modelPath@rotX@rotY" 或 "modelPath@rotX@rotY@rotZ"
      * @return 烘焙后的模型部件，模型解析失败返回 null
      */
     @Nullable
@@ -113,7 +114,7 @@ public class BakedModelCache {
             String key = entry.getKey();
             if (cache.getIfPresent(key) != null) continue;
             BakeRequest req = entry.getValue();
-            BlockStateModelPart result = BakingCore.bake(req.modelPath, req.rotX, req.rotY, this.iconMap);
+            BlockStateModelPart result = BakingCore.bake(req.modelPath, req.rotX, req.rotY, req.rotZ, this.iconMap);
             if (result != null) {
                 cache.put(key, Optional.of(result));
                 baked++;
@@ -206,28 +207,49 @@ public class BakedModelCache {
     }
 
     /**
-     * 解析 cacheKey 为 [modelPath, rotX, rotY]。
-     * cacheKey 格式: "modelPath@rotX@rotY"
+     * 解析 cacheKey 为 [modelPath, rotX, rotY] 或 [modelPath, rotX, rotY, rotZ]。
+     * cacheKey 格式: "modelPath@rotX@rotY" 或 "modelPath@rotX@rotY@rotZ"
+     * 向后兼容旧的 3 段格式。
      */
     @Nullable
     private static String[] parseCacheKey(String cacheKey) {
+        // 从右向左找所有 '@' 分隔符
         int lastAt = cacheKey.lastIndexOf('@');
         if (lastAt < 0) return null;
         int secondLastAt = cacheKey.lastIndexOf('@', lastAt - 1);
         if (secondLastAt < 0) return null;
 
-        String modelPath = cacheKey.substring(0, secondLastAt);
-        String rotX = cacheKey.substring(secondLastAt + 1, lastAt);
-        String rotY = cacheKey.substring(lastAt + 1);
-        return new String[]{modelPath, rotX, rotY};
+        // 检查是否有第三个 '@'（Z 轴旋转）
+        int thirdLastAt = cacheKey.lastIndexOf('@', secondLastAt - 1);
+        if (thirdLastAt >= 0) {
+            // 4 段格式: modelPath@rotX@rotY@rotZ
+            String modelPath = cacheKey.substring(0, thirdLastAt);
+            String rotX = cacheKey.substring(thirdLastAt + 1, secondLastAt);
+            String rotY = cacheKey.substring(secondLastAt + 1, lastAt);
+            String rotZ = cacheKey.substring(lastAt + 1);
+            return new String[]{modelPath, rotX, rotY, rotZ};
+        } else {
+            // 3 段格式（向后兼容）: modelPath@rotX@rotY
+            String modelPath = cacheKey.substring(0, secondLastAt);
+            String rotX = cacheKey.substring(secondLastAt + 1, lastAt);
+            String rotY = cacheKey.substring(lastAt + 1);
+            return new String[]{modelPath, rotX, rotY};
+        }
     }
 
     /**
-     * 构建 cacheKey。与 {@link ModelBaker} 的 cacheKey 格式保持一致。
-     * float 值格式化：整数角度输出无小数点（如 90），非整数输出小数（如 22.5）。
+     * 构建 cacheKey（无 Z 轴旋转，向后兼容）。
      */
     public static String buildKey(String modelPath, float rotX, float rotY) {
         return modelPath + "@" + formatRot(rotX) + "@" + formatRot(rotY);
+    }
+
+    /**
+     * 构建 cacheKey（含 Z 轴旋转）。
+     * float 值格式化：整数角度输出无小数点（如 90），非整数输出小数（如 22.5）。
+     */
+    public static String buildKey(String modelPath, float rotX, float rotY, float rotZ) {
+        return modelPath + "@" + formatRot(rotX) + "@" + formatRot(rotY) + "@" + formatRot(rotZ);
     }
 
     /**
@@ -247,23 +269,29 @@ public class BakedModelCache {
         public final String modelPath;
         public final float rotX;
         public final float rotY;
+        public final float rotZ;
 
-        public BakeRequest(String modelPath, float rotX, float rotY) {
+        public BakeRequest(String modelPath, float rotX, float rotY, float rotZ) {
             this.modelPath = modelPath;
             this.rotX = rotX;
             this.rotY = rotY;
+            this.rotZ = rotZ;
         }
 
         public static BakeRequest of(String modelPath) {
-            return new BakeRequest(modelPath, 0, 0);
+            return new BakeRequest(modelPath, 0, 0, 0);
         }
 
         public static BakeRequest of(String modelPath, float rotY) {
-            return new BakeRequest(modelPath, 0, rotY);
+            return new BakeRequest(modelPath, 0, rotY, 0);
         }
 
         public static BakeRequest of(String modelPath, float rotX, float rotY) {
-            return new BakeRequest(modelPath, rotX, rotY);
+            return new BakeRequest(modelPath, rotX, rotY, 0);
+        }
+
+        public static BakeRequest of(String modelPath, float rotX, float rotY, float rotZ) {
+            return new BakeRequest(modelPath, rotX, rotY, rotZ);
         }
     }
 }

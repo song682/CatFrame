@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Merges textures and elements from parent models recursively.
  */
 public class ModelResolver {
-    public static final Gson GSON = new Gson();
+    public static final Gson GSON = ModelJson.createGson();
     private static final Map<String, ModelJson> cache = new ConcurrentHashMap<>();
     private static final List<String> registeredNamespaces = new ArrayList<>();
     private static final int MAX_DEPTH = 16;

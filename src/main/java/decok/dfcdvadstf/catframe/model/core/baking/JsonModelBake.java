@@ -416,6 +416,43 @@ public class JsonModelBake {
     }
 
     /**
+     * 对一组 BakedQuad 应用 Z 轴旋转（绕方块中心 0.5, 0.5）。
+     * 同时旋转顶点坐标和 faceNormal，保持 UV 不变。
+     *
+     * @param quads   待旋转的 quad 列表（不会被修改）
+     * @param degZ    Z 轴旋转角度（支持任意角度，如 22.5°）
+     * @return 旋转后的新 BakedQuad 列表
+     */
+    public static List<BakedQuad> applyZRotation(List<BakedQuad> quads, float degZ) {
+        if (quads == null || quads.isEmpty() || degZ == 0) return quads;
+        Matrix4d rotZ = new Matrix4d();
+        rotZ.rotZ(Math.toRadians(degZ));
+        List<BakedQuad> result = new ArrayList<>(quads.size());
+        for (BakedQuad src : quads) {
+            BakedQuad q = deepCopyQuad(src);
+            for (int i = 0; i < 4; i++) {
+                q.vertices[i].x -= 0.5;
+                q.vertices[i].y -= 0.5;
+                rotZ.transform(q.vertices[i]);
+                q.vertices[i].x += 0.5;
+                q.vertices[i].y += 0.5;
+            }
+            // 旋转法线
+            if (q.faceNormal != null) {
+                rotZ.transform(q.faceNormal);
+            }
+            // Z 轴旋转会改变面朝向与遮挡方向，需要重新计算 face 并同步旋转 cullface
+            q.face = recomputeFace(q);
+            q.cullface = rotateCullface(q.cullface, rotZ);
+            // 旋转后按新 face 重排顶点顺序（对齐 26.1.2 FaceBakery.recalculateWinding），
+            // 否则 AO 亮度会映射到错误的角。
+            recalculateWinding(q);
+            result.add(q);
+        }
+        return result;
+    }
+
+    /**
      * 深拷贝一个 BakedQuad 的顶点数据，生成独立副本。
      */
     private static BakedQuad deepCopyQuad(BakedQuad src) {

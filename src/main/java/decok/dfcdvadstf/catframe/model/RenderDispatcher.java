@@ -179,7 +179,7 @@ public class RenderDispatcher {
 
             // [C1+W3] 旋转已在 bakeModel 中烘焙，运行时传 0
             // 走 BakedModelCache 缓存（线程安全 + 懒烘焙）
-            String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y);
+            String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) return null;
 
@@ -193,15 +193,19 @@ public class RenderDispatcher {
             Map<String, String> propMap = propsFromCatState(catState);
 
             java.util.List<BakedQuad> allQuads = new java.util.ArrayList<>();
+            int seed = x * 3129871 ^ z * 116129781 ^ y;
 
             for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(propMap);
                 if (applies && mpc.apply != null) {
-                    // [C1] 走 BakedModelCache 缓存
-                    String partKey = BakedModelCache.buildKey(mpc.apply.model, mpc.apply.x, mpc.apply.y);
-                    BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
-                    if (bakedPart != null && !bakedPart.isEmpty()) {
-                        allQuads.addAll(bakedPart.getAllQuads());
+                    BlockstateJson.Variant v = mpc.apply.getVariant(seed);
+                    if (v != null && v.model != null) {
+                        // [C1] 走 BakedModelCache 缓存
+                        String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z);
+                        BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
+                        if (bakedPart != null && !bakedPart.isEmpty()) {
+                            allQuads.addAll(bakedPart.getAllQuads());
+                        }
                     }
                 }
             }
@@ -265,7 +269,7 @@ public class RenderDispatcher {
             if (variant == null || variant.model == null) return null;
 
             // [C1+W3] 走 BakedModelCache 缓存（线程安全 + 懒烘焙）
-            String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y);
+            String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) return null;
 
@@ -274,15 +278,19 @@ public class RenderDispatcher {
         } else if (bs.multipart != null) {
             // Multipart: combine all matching parts
             List<BakedQuad> allQuads = new ArrayList<>();
+            int seed = x * 3129871 ^ z * 116129781 ^ y;
 
             for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(properties);
                 if (applies && mpc.apply != null) {
-                    // [C1] 走 BakedModelCache 缓存
-                    String partKey = BakedModelCache.buildKey(mpc.apply.model, mpc.apply.x, mpc.apply.y);
-                    BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
-                    if (bakedPart != null && !bakedPart.isEmpty()) {
-                        allQuads.addAll(bakedPart.getAllQuads());
+                    BlockstateJson.Variant v = mpc.apply.getVariant(seed);
+                    if (v != null && v.model != null) {
+                        // [C1] 走 BakedModelCache 缓存
+                        String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z);
+                        BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
+                        if (bakedPart != null && !bakedPart.isEmpty()) {
+                            allQuads.addAll(bakedPart.getAllQuads());
+                        }
                     }
                 }
             }

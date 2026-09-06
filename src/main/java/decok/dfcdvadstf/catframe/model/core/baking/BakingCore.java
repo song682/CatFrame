@@ -28,19 +28,37 @@ public class BakingCore {
     private BakingCore() {}
 
     /**
+     * 便捷重载：无 Z 轴旋转。
+     */
+    @Nullable
+    public static BlockStateModelPart bake(String modelPath, float rotX, float rotY) {
+        return bake(modelPath, rotX, rotY, 0);
+    }
+
+    /**
+     * 便捷重载：无 Z 轴旋转，显式 iconMap。
+     */
+    @Nullable
+    public static BlockStateModelPart bake(String modelPath, float rotX, float rotY,
+                                            @Nullable Map<String, IIcon> iconMap) {
+        return bake(modelPath, rotX, rotY, 0, iconMap);
+    }
+
+    /**
      * 烘焙单个模型为 {@link BlockStateModelPart}（使用当前 stitch 周期的 iconMap）。
      * <p>
-     * 纯函数语义：相同的 (modelPath, rotX, rotY, iconMap) 输入始终产出语义等价的结果。
+     * 纯函数语义：相同的 (modelPath, rotX, rotY, rotZ, iconMap) 输入始终产出语义等价的结果。
      * 不写入任何静态缓存或全局状态。
      *
      * @param modelPath 模型路径（如 "block/stone"、"builtin/generated"）
      * @param rotX      X 轴旋转角度（支持任意角度）
      * @param rotY      Y 轴旋转角度（支持任意角度）
+     * @param rotZ      Z 轴旋转角度（支持任意角度）
      * @return 烘焙后的模型部件，失败返回 null
      */
     @Nullable
-    public static BlockStateModelPart bake(String modelPath, float rotX, float rotY) {
-        return bake(modelPath, rotX, rotY, VanillaTextureTracker.textureIcons);
+    public static BlockStateModelPart bake(String modelPath, float rotX, float rotY, float rotZ) {
+        return bake(modelPath, rotX, rotY, rotZ, VanillaTextureTracker.textureIcons);
     }
 
     /**
@@ -52,11 +70,12 @@ public class BakingCore {
      * @param modelPath 模型路径
      * @param rotX      X 轴旋转角度
      * @param rotY      Y 轴旋转角度
+     * @param rotZ      Z 轴旋转角度
      * @param iconMap   当前 stitch 周期的 IIcon 映射
      * @return 烘焙后的模型部件，失败返回 null
      */
     @Nullable
-    public static BlockStateModelPart bake(String modelPath, float rotX, float rotY,
+    public static BlockStateModelPart bake(String modelPath, float rotX, float rotY, float rotZ,
                                             @Nullable Map<String, IIcon> iconMap) {
         if (modelPath == null) return null;
 
@@ -68,9 +87,9 @@ public class BakingCore {
         }
 
         // 2. 委托给 ModelBaker 执行实际烘焙（传递 iconMap，而非读全局静态）
-        BlockStateModelPart part = ModelBaker.bake(resolved, rotX, rotY, modelPath, iconMap);
+        BlockStateModelPart part = ModelBaker.bake(resolved, rotX, rotY, rotZ, modelPath, iconMap);
         if (part == null) {
-            CatFrame.logger.debug("[BakingCore] bake returned null for '{}' @ {}@{}", modelPath, rotX, rotY);
+            CatFrame.logger.debug("[BakingCore] bake returned null for '{}' @ {}@{}@{}", modelPath, rotX, rotY, rotZ);
         }
         return part;
     }

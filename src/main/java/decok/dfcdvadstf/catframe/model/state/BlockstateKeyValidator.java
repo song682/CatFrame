@@ -185,23 +185,33 @@ public final class BlockstateKeyValidator {
             Iterator<BlockstateJson.MultipartCase> it = bs.multipart.iterator();
             while (it.hasNext()) {
                 BlockstateJson.MultipartCase mpc = it.next();
-                if (mpc.apply != null && !hasValidRotations(mpc.apply)) {
-                    it.remove();
-                    CatFrame.logger.warn(
-                            "Invalid rotation angle (not a multiple of 90) in a multipart apply entry of {}; "
-                                    + "the entry is dropped",
-                            owner);
+                if (mpc.apply != null) {
+                    boolean bad = false;
+                    if (mpc.apply.isArray()) {
+                        for (BlockstateJson.Variant v : mpc.apply.list) {
+                            if (!hasValidRotations(v)) bad = true;
+                        }
+                    } else if (mpc.apply.single != null && !hasValidRotations(mpc.apply.single)) {
+                        bad = true;
+                    }
+                    if (bad) {
+                        it.remove();
+                        CatFrame.logger.warn(
+                                "Invalid rotation angle (not a multiple of 90) in a multipart apply entry of {}; "
+                                        + "the entry is dropped",
+                                owner);
+                    }
                 }
             }
         }
     }
 
     /**
-     * A variant's rotations are valid iff both x and y are multiples of 90 degrees.
-     * variant 的旋转合法当且仅当 x 与 y 均为 90 度的整数倍。
+     * A variant's rotations are valid iff x, y and z are multiples of 90 degrees.
+     * variant 的旋转合法当且仅当 x、y 与 z 均为 90 度的整数倍。
      */
     private static boolean hasValidRotations(BlockstateJson.Variant v) {
-        return v != null && isQuarterTurn(v.x) && isQuarterTurn(v.y);
+        return v != null && isQuarterTurn(v.x) && isQuarterTurn(v.y) && isQuarterTurn(v.z);
     }
 
     /** Multiple-of-90 check for float angles (±0.01° tolerance). 90° 倍数判定（浮点容差）。 */

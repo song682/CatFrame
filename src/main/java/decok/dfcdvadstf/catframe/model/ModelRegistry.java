@@ -80,6 +80,16 @@ public class ModelRegistry {
         }
 
         /**
+         * Public API: bake a model path into a BlockStateModelPart with X, Y and Z rotation.
+         * 通过 {@link BakedModelCache} 懒烘焙，线程安全。
+         */
+        public static BlockStateModelPart bakeModelPart(String modelPath, float rotationX, float rotationY, float rotationZ) {
+            String cacheKey = BakedModelCache.buildKey(modelPath, rotationX, rotationY, rotationZ);
+            BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
+            return part != null ? part : BlockStateModelPart.empty();
+        }
+
+        /**
          * Register a BlockStateModel for a block. Overrides any previously registered model.
          */
         public static void registerBlockModel(Block block, BlockStateModel model) {

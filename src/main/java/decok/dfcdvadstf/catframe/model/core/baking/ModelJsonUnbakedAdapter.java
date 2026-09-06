@@ -91,10 +91,11 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
      * @param textures  已解析的纹理槽（TextureSlots 已处理好 IIcon 查找）
      * @param rotationX X 轴旋转角度（支持任意角度，如 22.5°）
      * @param rotationY Y 轴旋转角度（支持任意角度，如 22.5°）
+     * @param rotationZ Z 轴旋转角度（支持任意角度，如 22.5°）
      * @return 烘焙后的渲染部件
      */
     @Override
-    public BlockStateModelPart bake(TextureSlots textures, float rotationX, float rotationY) {
+    public BlockStateModelPart bake(TextureSlots textures, float rotationX, float rotationY, float rotationZ) {
         // 1. 获取 texture_size
         int[] texSize = json.texture_size;
 
@@ -152,7 +153,7 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         //    不再需要逐个设置到 BakedQuad 上
 
         // 8. 应用旋转（深拷贝，不污染基础缓存）
-        //    顺序必须与 Minecraft blockstate 一致：先绕 X 轴、再绕 Y 轴。
+        //    顺序必须与 Minecraft blockstate 一致：先绕 X 轴、再绕 Y 轴、最后绕 Z 轴。
         //    3D 旋转不可交换，若先 Y 后 X 会导致 axis=x 原木被摆成 Z 轴、
         //    以及 x:180 顶部楼梯朝向错误（180° 翻转会对 Y 旋转做共轭取反）。
         if (rotationX != 0) {
@@ -160,6 +161,9 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         }
         if (rotationY != 0) {
             quads = JsonModelBake.applyYRotation(quads, rotationY);
+        }
+        if (rotationZ != 0) {
+            quads = JsonModelBake.applyZRotation(quads, rotationZ);
         }
 
         // 8.5 图集归属后置扫描（对标 26.1.2 BakedQuad.MaterialInfo.of 按
@@ -169,8 +173,8 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
             q.blockAtlas = TextureSlots.isBlockAtlas(q.icon);
         }
 
-        CatFrame.logger.debug("[ModelJsonUnbakedAdapter] bake: '{}' | elements={} | quads={} | rotX={} rotY={}",
-                modelPath, json.elements.size(), quads.size(), rotationX, rotationY);
+        CatFrame.logger.debug("[ModelJsonUnbakedAdapter] bake: '{}' | elements={} | quads={} | rotX={} rotY={} rotZ={}",
+                modelPath, json.elements.size(), quads.size(), rotationX, rotationY, rotationZ);
 
         // 9. 包装为 BlockStateModelPart（携带 display transforms）
         return BlockStateModelPart.fromQuads(quads, json.display);

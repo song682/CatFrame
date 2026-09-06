@@ -113,11 +113,11 @@ public final class ResidentStateModel implements BlockStateModel {
 
         BlockStateModelPart part;
         if (connectionMultipart) {
-            part = collectConnectionMultipart(target, props);
+            part = collectConnectionMultipart(world, x, y, z, target, props);
         } else if (target.variants != null) {
             part = collectVariants(world, x, y, z, metadata, target, props);
         } else if (target.multipart != null) {
-            part = collectMultipart(target, props);
+            part = collectMultipart(world, x, y, z, target, props);
         } else {
             part = BlockStateModelPart.empty();
         }
@@ -209,18 +209,20 @@ public final class ResidentStateModel implements BlockStateModel {
         }
 
         String modelPath;
-        float rotX, rotY;
+        float rotX, rotY, rotZ;
         if (variant != null && variant.model != null) {
             modelPath = variant.model;
             rotX = variant.x;
             rotY = variant.y;
+            rotZ = variant.z;
         } else {
             modelPath = "builtin/missing";
             rotX = 0;
             rotY = 0;
+            rotZ = 0;
         }
 
-        String cacheKey = BakedModelCache.buildKey(modelPath, rotX, rotY);
+        String cacheKey = BakedModelCache.buildKey(modelPath, rotX, rotY, rotZ);
         BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
         return part != null ? part : BlockStateModelPart.empty();
     }
@@ -252,18 +254,23 @@ public final class ResidentStateModel implements BlockStateModel {
 
     // ==================== 常规 multipart 匹配（展平） ====================
 
-    private BlockStateModelPart collectMultipart(BlockstateJson target,
+    private BlockStateModelPart collectMultipart(IBlockAccess world, int x, int y, int z,
+                                                 BlockstateJson target,
                                                  @Nullable Map<String, String> props) {
         Map<String, String> matchProps = (props != null) ? props : Collections.emptyMap();
         List<BakedQuad> allQuads = new ArrayList<>();
+        int seed = x * 3129871 ^ z * 116129781 ^ y;
 
         for (BlockstateJson.MultipartCase mpc : target.multipart) {
             boolean applies = (mpc.when == null) || mpc.when.matches(matchProps);
-            if (applies && mpc.apply != null && mpc.apply.model != null) {
-                String partKey = BakedModelCache.buildKey(mpc.apply.model, mpc.apply.x, mpc.apply.y);
-                BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
-                if (bakedPart != null && !bakedPart.isEmpty()) {
-                    allQuads.addAll(bakedPart.getAllQuads());
+            if (applies && mpc.apply != null) {
+                BlockstateJson.Variant v = mpc.apply.getVariant(seed);
+                if (v != null && v.model != null) {
+                    String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z);
+                    BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
+                    if (bakedPart != null && !bakedPart.isEmpty()) {
+                        allQuads.addAll(bakedPart.getAllQuads());
+                    }
                 }
             }
         }
@@ -274,10 +281,12 @@ public final class ResidentStateModel implements BlockStateModel {
 
     // ==================== 连接 multipart（pane，face-map 合并 + AtlasGuard） ====================
 
-    private BlockStateModelPart collectConnectionMultipart(BlockstateJson target,
+    private BlockStateModelPart collectConnectionMultipart(IBlockAccess world, int x, int y, int z,
+                                                           BlockstateJson target,
                                                            @Nullable Map<String, String> props) {
         if (target.multipart == null) return BlockStateModelPart.empty();
         Map<String, String> matchProps = (props != null) ? props : Collections.emptyMap();
+        int seed = x * 3129871 ^ z * 116129781 ^ y;
 
         if (CatFrameConfig.shouldLogDebug()) {
             CatFrame.logger.info("[ResidentPane] block={} props={} cases={}",
@@ -290,15 +299,18 @@ public final class ResidentStateModel implements BlockStateModel {
 
         for (BlockstateJson.MultipartCase mpc : target.multipart) {
             boolean applies = (mpc.when == null) || mpc.when.matches(matchProps);
-            if (applies && mpc.apply != null && mpc.apply.model != null) {
-                BlockStateModelPart part = AtlasGuard.gate(
-                        ModelBaker.bake(mpc.apply.model, mpc.apply.x, mpc.apply.y), mpc.apply.model);
-                if (part != null) {
-                    for (Direction dir : Direction.values()) {
-                        mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())
-                                .addAll(part.getQuads(dir));
+            if (applies && mpc.apply != null) {
+                BlockstateJson.Variant v = mpc.apply.getVariant(seed);
+                if (v != null && v.model != null) {
+                    BlockStateModelPart part = AtlasGuard.gate(
+                            ModelBaker.bake(v.model, v.x, v.y, v.z), v.model);
+                    if (part != null) {
+                        for (Direction dir : Direction.values()) {
+                            mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())
+                                    .addAll(part.getQuads(dir));
+                        }
+                        mergedGeneral.addAll(part.getGeneralQuads());
                     }
-                    mergedGeneral.addAll(part.getGeneralQuads());
                 }
             }
         }

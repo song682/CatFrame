@@ -59,8 +59,12 @@ public class MultipartSelector {
         List<BlockstateJson.Variant> result = new ArrayList<>();
         for (BlockstateJson.MultipartCase mpc : cases) {
             boolean applies = (mpc.when == null) || mpc.when.matches(properties);
-            if (applies && mpc.apply != null && mpc.apply.model != null) {
-                result.add(mpc.apply);
+            if (applies && mpc.apply != null) {
+                // Resolve variant from VariantEntry (use seed 0 for deterministic cached selection)
+                BlockstateJson.Variant v = mpc.apply.getVariant(0);
+                if (v != null && v.model != null) {
+                    result.add(v);
+                }
             }
         }
 

@@ -63,6 +63,7 @@ public class BlockstateJson {
         return new GsonBuilder()
                 .registerTypeAdapter(VariantEntry.class, new VariantEntryDeserializer())
                 .registerTypeAdapter(MultipartWhen.class, new MultipartWhenDeserializer())
+                .registerTypeAdapter(Variant.class, new VariantDeserializer())
                 .create();
     }
 
@@ -122,6 +123,10 @@ public class BlockstateJson {
          */
         public float x = 0;
         /**
+         * Z-axis rotation in degrees (supports any float, e.g. 0, 22.5, 90, 180, 270).
+         */
+        public float z = 0;
+        /**
          * Whether to apply UV lock when rotating
          */
         public boolean uvlock = false;
@@ -138,9 +143,10 @@ public class BlockstateJson {
         @SerializedName("when")
         public MultipartWhen when;
         /**
-         * The model(s) to apply when condition is met
+         * The model(s) to apply when condition is met.
+         * Supports both single object and weighted array format (like variants).
          */
-        public Variant apply;
+        public VariantEntry apply;
     }
 
     // ==================== Custom Deserializer ====================
@@ -246,6 +252,30 @@ public class BlockstateJson {
                 }
             }
             return when;
+        }
+    }
+
+    /**
+     * Custom deserializer for Variant to eliminate reflection mapping.
+     */
+    public static class VariantDeserializer implements JsonDeserializer<Variant> {
+        @Override
+        public Variant deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+                throws JsonParseException {
+            if (!json.isJsonObject()) {
+                throw new JsonParseException("Variant must be a JSON object");
+            }
+            JsonObject obj = json.getAsJsonObject();
+            Variant variant = new Variant();
+
+            variant.model = obj.has("model") ? obj.get("model").getAsString() : null;
+            variant.y = obj.has("y") ? obj.get("y").getAsFloat() : 0;
+            variant.x = obj.has("x") ? obj.get("x").getAsFloat() : 0;
+            variant.z = obj.has("z") ? obj.get("z").getAsFloat() : 0;
+            variant.uvlock = obj.has("uvlock") && obj.get("uvlock").getAsBoolean();
+            variant.weight = obj.has("weight") ? obj.get("weight").getAsInt() : 1;
+
+            return variant;
         }
     }
 }

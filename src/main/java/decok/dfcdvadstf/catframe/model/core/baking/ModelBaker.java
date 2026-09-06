@@ -38,7 +38,7 @@ public class ModelBaker {
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath) {
-        return bake(modelPath, 0, 0);
+        return bake(modelPath, 0, 0, 0);
     }
 
     /**
@@ -46,7 +46,7 @@ public class ModelBaker {
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, float rotationY) {
-        return bake(modelPath, 0, rotationY);
+        return bake(modelPath, 0, rotationY, 0);
     }
 
     /**
@@ -63,7 +63,25 @@ public class ModelBaker {
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, float rotationX, float rotationY) {
-        return bake(modelPath, rotationX, rotationY, VanillaTextureTracker.textureIcons);
+        return bake(modelPath, rotationX, rotationY, 0);
+    }
+
+    /**
+     * 从模型路径烘焙为 {@link BlockStateModelPart}（使用当前 stitch 周期的 iconMap）。
+     * <p>
+     * 完整管线：{@code modelPath → ModelResolver.resolve() → ModelJsonUnbakedAdapter → TextureSlots → bake()}
+     * <p>
+     * 注意：本方法不维护缓存。缓存由 {@link BakedModelCache} 统一管理。
+     *
+     * @param modelPath 模型路径（如 {@code "block/stone"}、{@code "builtin/generated"}）
+     * @param rotationX X 轴旋转角度（支持任意角度）
+     * @param rotationY Y 轴旋转角度（支持任意角度）
+     * @param rotationZ Z 轴旋转角度（支持任意角度）
+     * @return 烘焙后的渲染部件，失败返回 null
+     */
+    @Nullable
+    public static BlockStateModelPart bake(String modelPath, float rotationX, float rotationY, float rotationZ) {
+        return bake(modelPath, rotationX, rotationY, rotationZ, VanillaTextureTracker.textureIcons);
     }
 
     /**
@@ -75,11 +93,12 @@ public class ModelBaker {
      * @param modelPath 模型路径
      * @param rotationX X 轴旋转角度
      * @param rotationY Y 轴旋转角度
+     * @param rotationZ Z 轴旋转角度
      * @param iconMap   当前 stitch 周期的 IIcon 映射
      * @return 烘焙后的渲染部件，失败返回 null
      */
     @Nullable
-    public static BlockStateModelPart bake(String modelPath, float rotationX, float rotationY,
+    public static BlockStateModelPart bake(String modelPath, float rotationX, float rotationY, float rotationZ,
                                             @Nullable Map<String, IIcon> iconMap) {
         if (modelPath == null) return null;
 
@@ -91,7 +110,23 @@ public class ModelBaker {
         }
 
         // 2. 委托给已解析的重载
-        return bake(resolved, rotationX, rotationY, modelPath, iconMap);
+        return bake(resolved, rotationX, rotationY, rotationZ, modelPath, iconMap);
+    }
+
+    /**
+     * 便捷重载：从已解析的 {@link ModelJson} 烘焙，无旋转。
+     */
+    @Nullable
+    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY) {
+        return bake(resolved, rotationX, rotationY, 0);
+    }
+
+    /**
+     * 便捷重载：从已解析的 {@link ModelJson} 烘焙，无 Z 轴旋转。
+     */
+    @Nullable
+    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, String modelPath) {
+        return bake(resolved, rotationX, rotationY, 0, modelPath);
     }
 
     /**
@@ -100,11 +135,12 @@ public class ModelBaker {
      * @param resolved  已解析的模型
      * @param rotationX X 轴旋转角度
      * @param rotationY Y 轴旋转角度
+     * @param rotationZ Z 轴旋转角度
      * @return 烘焙后的渲染部件
      */
     @Nullable
-    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY) {
-        return bake(resolved, rotationX, rotationY, "adapter", VanillaTextureTracker.textureIcons);
+    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, float rotationZ) {
+        return bake(resolved, rotationX, rotationY, rotationZ, "adapter", VanillaTextureTracker.textureIcons);
     }
 
     /**
@@ -113,12 +149,13 @@ public class ModelBaker {
      * @param resolved  已解析的模型
      * @param rotationX X 轴旋转角度
      * @param rotationY Y 轴旋转角度
+     * @param rotationZ Z 轴旋转角度
      * @param modelPath 模型路径（用于日志和标识）
      * @return 烘焙后的渲染部件
      */
     @Nullable
-    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, String modelPath) {
-        return bake(resolved, rotationX, rotationY, modelPath, VanillaTextureTracker.textureIcons);
+    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, float rotationZ, String modelPath) {
+        return bake(resolved, rotationX, rotationY, rotationZ, modelPath, VanillaTextureTracker.textureIcons);
     }
 
     /**
@@ -129,12 +166,13 @@ public class ModelBaker {
      * @param resolved  已解析的模型
      * @param rotationX X 轴旋转角度
      * @param rotationY Y 轴旋转角度
+     * @param rotationZ Z 轴旋转角度
      * @param modelPath 模型路径（用于日志和标识）
      * @param iconMap   当前 stitch 周期的 IIcon 映射
      * @return 烘焙后的渲染部件
      */
     @Nullable
-    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY,
+    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, float rotationZ,
                                             String modelPath, @Nullable Map<String, IIcon> iconMap) {
         if (resolved == null) return null;
         if (resolved.elements == null || resolved.elements.isEmpty()) {
@@ -151,7 +189,7 @@ public class ModelBaker {
         TextureSlots textures = TextureSlots.fromModel(resolved, iconMap, null);
 
         // 3. 烘焙
-        return unbaked.bake(textures, rotationX, rotationY);
+        return unbaked.bake(textures, rotationX, rotationY, rotationZ);
     }
 
     /**
@@ -161,13 +199,14 @@ public class ModelBaker {
      * @param textures  已解析的纹理槽
      * @param rotationX X 轴旋转角度
      * @param rotationY Y 轴旋转角度
+     * @param rotationZ Z 轴旋转角度
      * @return 烘焙后的渲染部件
      */
     @Nullable
     public static BlockStateModelPart bake(UnbakedModel model, TextureSlots textures,
-                                            float rotationX, float rotationY) {
+                                            float rotationX, float rotationY, float rotationZ) {
         if (model == null) return null;
-        return model.bake(textures, rotationX, rotationY);
+        return model.bake(textures, rotationX, rotationY, rotationZ);
     }
 
     // ==================== 缓存管理 ====================

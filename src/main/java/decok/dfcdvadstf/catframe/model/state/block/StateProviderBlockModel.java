@@ -74,14 +74,17 @@ public class StateProviderBlockModel implements BlockStateModel {
 
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(properties);
-                if (applies && mpc.apply != null && mpc.apply.model != null) {
-                    BlockStateModelPart subPart = AtlasGuard.gate(ModelBaker.bake(mpc.apply.model), mpc.apply.model);
-                    if (subPart != null) {
-                        for (Direction dir : Direction.values()) {
-                            mergedFace.computeIfAbsent(dir, k -> new java.util.ArrayList<>())
-                                    .addAll(subPart.getQuads(dir));
+                if (applies && mpc.apply != null) {
+                    BlockstateJson.Variant v = mpc.apply.getVariant(0);
+                    if (v != null && v.model != null) {
+                        BlockStateModelPart subPart = AtlasGuard.gate(ModelBaker.bake(v.model), v.model);
+                        if (subPart != null) {
+                            for (Direction dir : Direction.values()) {
+                                mergedFace.computeIfAbsent(dir, k -> new java.util.ArrayList<>())
+                                        .addAll(subPart.getQuads(dir));
+                            }
+                            mergedGeneral.addAll(subPart.getGeneralQuads());
                         }
-                        mergedGeneral.addAll(subPart.getGeneralQuads());
                     }
                 }
             }

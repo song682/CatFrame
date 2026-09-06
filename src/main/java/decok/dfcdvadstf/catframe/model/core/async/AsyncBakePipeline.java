@@ -50,13 +50,15 @@ public class AsyncBakePipeline {
         public final String modelPath;
         public final float rotX;
         public final float rotY;
+        public final float rotZ;
         @Nullable
         public final Map<String, IIcon> iconMap;
 
-        public BakeTask(String modelPath, float rotX, float rotY, @Nullable Map<String, IIcon> iconMap) {
+        public BakeTask(String modelPath, float rotX, float rotY, float rotZ, @Nullable Map<String, IIcon> iconMap) {
             this.modelPath = modelPath;
             this.rotX = rotX;
             this.rotY = rotY;
+            this.rotZ = rotZ;
             this.iconMap = iconMap;
         }
     }
@@ -183,10 +185,10 @@ public class AsyncBakePipeline {
             ListenableFuture<BakeResult> f = RenderExecutors.get().submit(new Callable<BakeResult>() {
                 @Override
                 public BakeResult call() {
-                    String cacheKey = BakedModelCache.buildKey(task.modelPath, task.rotX, task.rotY);
+                    String cacheKey = BakedModelCache.buildKey(task.modelPath, task.rotX, task.rotY, task.rotZ);
                     BlockStateModelPart part;
                     try {
-                        part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.iconMap);
+                        part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.rotZ, task.iconMap);
                     } catch (Throwable t) {
                         // [FIX] 单任务失败隔离：任何一个模型抛异常都不得经由 fail-fast 聚合
                         //     拖垮整轮烘焙（否则整批物品模型被作废 → 物品消失）。失败模型
@@ -195,8 +197,8 @@ public class AsyncBakePipeline {
                         //     fail-fast aggregate and discard the whole round (item models would
                         //     vanish). A failed model yields a null part; applyResults skips it
                         //     and the render path lazily retries it.
-                        CatFrame.logger.error("[AsyncBake] bake task failed for '{}' @{}@{}: {}",
-                                task.modelPath, task.rotX, task.rotY, t.toString());
+                        CatFrame.logger.error("[AsyncBake] bake task failed for '{}' @{}@{}@{}: {}",
+                                task.modelPath, task.rotX, task.rotY, task.rotZ, t.toString());
                         part = null;
                     }
                     return new BakeResult(cacheKey, part);
@@ -295,16 +297,16 @@ public class AsyncBakePipeline {
             ListenableFuture<BakeResult> f = RenderExecutors.get().submit(new Callable<BakeResult>() {
                 @Override
                 public BakeResult call() {
-                    String cacheKey = BakedModelCache.buildKey(task.modelPath, task.rotX, task.rotY);
+                    String cacheKey = BakedModelCache.buildKey(task.modelPath, task.rotX, task.rotY, task.rotZ);
                     BlockStateModelPart part;
                     try {
-                        part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.iconMap);
+                        part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.rotZ, task.iconMap);
                     } catch (Throwable t) {
                         // [FIX] 单任务失败隔离（见阻塞路径同名注释）：不得拖垮整轮烘焙。
                         // [FIX] Per-task isolation (see blocking path): one bad model must not
                         //     fail the fail-fast aggregate and discard the whole bake round.
-                        CatFrame.logger.error("[AsyncBake] bake task failed for '{}' @{}@{}: {}",
-                                task.modelPath, task.rotX, task.rotY, t.toString());
+                        CatFrame.logger.error("[AsyncBake] bake task failed for '{}' @{}@{}@{}: {}",
+                                task.modelPath, task.rotX, task.rotY, task.rotZ, t.toString());
                         part = null;
                     }
                     return new BakeResult(cacheKey, part);
@@ -449,8 +451,14 @@ public class AsyncBakePipeline {
         }
         if (bs.multipart != null) {
             for (BlockstateJson.MultipartCase mpc : bs.multipart) {
-                if (mpc.apply != null && mpc.apply.model != null) {
-                    paths.add(ensureNamespace(mpc.apply.model, namespace));
+                if (mpc.apply != null) {
+                    if (mpc.apply.isArray()) {
+                        for (BlockstateJson.Variant v : mpc.apply.list) {
+                            if (v.model != null) paths.add(ensureNamespace(v.model, namespace));
+                        }
+                    } else if (mpc.apply.single != null && mpc.apply.single.model != null) {
+                        paths.add(ensureNamespace(mpc.apply.single.model, namespace));
+                    }
                 }
             }
         }
@@ -465,12 +473,12 @@ public class AsyncBakePipeline {
 
         for (String path : sortedPaths) {
             // 基础烘焙（无旋转）
-            tasks.add(new BakeTask(path, 0, 0, iconMap));
+            tasks.add(new BakeTask(path, 0, 0, 0, iconMap));
 
             // Y 轴旋转
             for (float rotY : rotations) {
                 if (rotY != 0) {
-                    tasks.add(new BakeTask(path, 0, rotY, iconMap));
+                    tasks.add(new BakeTask(path, 0, rotY, 0, iconMap));
                 }
             }
         }

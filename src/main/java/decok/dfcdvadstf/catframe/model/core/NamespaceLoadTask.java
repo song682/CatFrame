@@ -310,7 +310,13 @@ public class NamespaceLoadTask {
         if (bs.multipart != null) {
             for (BlockstateJson.MultipartCase mpc : bs.multipart) {
                 if (mpc.apply != null) {
-                    collectTexturesFromModel(mpc.apply.model, false, textures);
+                    if (mpc.apply.isArray()) {
+                        for (BlockstateJson.Variant v : mpc.apply.list) {
+                            collectTexturesFromModel(v.model, false, textures);
+                        }
+                    } else if (mpc.apply.single != null) {
+                        collectTexturesFromModel(mpc.apply.single.model, false, textures);
+                    }
                 }
             }
         }

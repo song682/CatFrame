@@ -5,6 +5,7 @@ import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -67,6 +68,24 @@ public class RenderJsonItemModel implements IItemRenderer {
 
     /** 单例，所有物品共用（渲染逻辑委托给各 IItemStateProvider）。 */
     public static final RenderJsonItemModel INSTANCE = new RenderJsonItemModel();
+
+    /**
+     * 当前渲染线程正在渲染的掉落物实体（仅 ENTITY 阶段，由 Forge {@code renderEntityItem}
+     * 经 {@link #renderItem} 的 data[1] 传入）。客户端渲染单线程、提交与写入同栈，
+     * 普通静态字段即可；非掉落物渲染（GUI / 手持 / 展示框等）恒为 null。
+     */
+    @javax.annotation.Nullable
+    private static EntityItem currentDroppedEntity;
+
+    /**
+     * 供 QuadWriter 在掉落物阶段采样实体位置世界光照的上下文读取口。
+     *
+     * @return 当前掉落物实体；非掉落物阶段或上下文已清除时为 null
+     */
+    @javax.annotation.Nullable
+    public static EntityItem getCurrentDroppedEntity() {
+        return currentDroppedEntity;
+    }
 
     private RenderJsonItemModel() {}
 
@@ -196,10 +215,20 @@ public class RenderJsonItemModel implements IItemRenderer {
         RenderPhase phase = toRenderPhase(type, stack);
         if (phase == null) return;
 
-        // ---- 提取手持实体（data[0]=renderBlocks, data[1]=entity） ----
+        // ---- 提取手持实体 / 掉落物实体（data[0]=renderBlocks, data[1]=entity） ----
         EntityLivingBase entity = null;
-        if (data != null && data.length > 1 && data[1] instanceof EntityLivingBase) {
-            entity = (EntityLivingBase) data[1];
+        EntityItem droppedEntity = null;
+        if (data != null && data.length > 1) {
+            if (data[1] instanceof EntityLivingBase) {
+                entity = (EntityLivingBase) data[1];
+            } else if ((phase == RenderPhase.DROPPED_ITEM_GROUND
+                    || phase == RenderPhase.DROPPED_BLOCK_GROUND)
+                    && data[1] instanceof EntityItem) {
+                // Forge renderEntityItem 传入的 EntityItem（非 EntityLivingBase）：
+                // 建立掉落物亮度上下文，供 QuadWriter 写入顶点时采样实体位置世界光照，
+                // 使夜间/无光源处掉落物与环境同暗（对标手持阶段 handBrightness 语义）。
+                droppedEntity = (EntityItem) data[1];
+            }
         }
 
         // ---- 计算反抵消预变换 ----
@@ -209,8 +238,17 @@ public class RenderJsonItemModel implements IItemRenderer {
         // getRegisteredItemModel 只返回显式注册的物品模型（无方块 fallback）
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
         if (model == null) return;
-    
-        model.render(stack, phase, preTransform);
+
+        if (droppedEntity != null) {
+            currentDroppedEntity = droppedEntity;
+        }
+        try {
+            model.render(stack, phase, preTransform);
+        } finally {
+            if (droppedEntity != null) {
+                currentDroppedEntity = null;
+            }
+        }
     }
 
     // ==================== 内部映射 ====================

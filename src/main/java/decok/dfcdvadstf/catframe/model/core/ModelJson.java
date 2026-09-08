@@ -3,6 +3,8 @@ package decok.dfcdvadstf.catframe.model.core;
 import com.google.gson.*;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -144,10 +146,28 @@ public class ModelJson {
             ModelJson model = new ModelJson();
 
             model.parent = obj.has("parent") ? obj.get("parent").getAsString() : null;
-            model.textures = obj.has("textures")
-                    ? context.deserialize(obj.get("textures"), Map.class) : null;
-            model.elements = obj.has("elements")
-                    ? context.deserialize(obj.get("elements"), List.class) : null;
+
+            // textures: {key: value}，值均为字符串，需逐项解析
+            // 不能使用 context.deserialize(..., Map.class)：丢失泛型信息会导致
+            // Gson 将其解析为 LinkedTreeMap，而这里需要 Map<String, String>
+            if (obj.has("textures") && obj.get("textures").isJsonObject()) {
+                JsonObject texturesObj = obj.getAsJsonObject("textures");
+                model.textures = new HashMap<>();
+                for (Map.Entry<String, JsonElement> e : texturesObj.entrySet()) {
+                    model.textures.put(e.getKey(), e.getValue().getAsString());
+                }
+            }
+
+            // elements: Element 数组，需逐项指定 Element.class
+            // 不能使用 context.deserialize(..., List.class)：Gson 无法从原始类型
+            // 推断元素类型，会把每个元素解析成 LinkedTreeMap 而非 ModelJson.Element
+            if (obj.has("elements") && obj.get("elements").isJsonArray()) {
+                JsonArray elementsArray = obj.getAsJsonArray("elements");
+                model.elements = new ArrayList<>();
+                for (JsonElement elem : elementsArray) {
+                    model.elements.add(context.deserialize(elem, Element.class));
+                }
+            }
 
             if (obj.has("texture_size")) {
                 JsonArray tsArray = obj.getAsJsonArray("texture_size");
@@ -155,8 +175,17 @@ public class ModelJson {
             }
 
             model.guiLight = obj.has("gui_light") ? obj.get("gui_light").getAsString() : null;
-            model.display = obj.has("display")
-                    ? context.deserialize(obj.get("display"), Map.class) : null;
+
+            // display: {slot: DisplayTransform}，值需逐项指定 DisplayTransform.class
+            // 不能使用 context.deserialize(..., Map.class)：同上，会解析成 LinkedTreeMap
+            if (obj.has("display") && obj.get("display").isJsonObject()) {
+                JsonObject displayObj = obj.getAsJsonObject("display");
+                model.display = new HashMap<>();
+                for (Map.Entry<String, JsonElement> e : displayObj.entrySet()) {
+                    model.display.put(e.getKey(),
+                            context.deserialize(e.getValue(), DisplayTransform.class));
+                }
+            }
 
             return model;
         }

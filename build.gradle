@@ -97,6 +97,8 @@ dependencies {
 
     
     implementation fileTree(dir: 'lib', includes: ['*.jar'])
+
+    testImplementation 'junit:junit:4.13.2'
 }
 
 def dependenciesList = []

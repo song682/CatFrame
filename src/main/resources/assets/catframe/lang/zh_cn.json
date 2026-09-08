@@ -1,6 +1,7 @@
 {
   "item.bluey_plushy.name": "布鲁伊玩偶",
-  "ui.searching": "搜索一些什么呢？",
+  "ui.searching": "搜索...",
+  "item.bingo_plushy.name": "宾果玩偶",
   "menu.paused": "暂停",
   "toast.title": "\u00a7bCatFrame",
   "toast.description": "欢迎使用 CatFrame",

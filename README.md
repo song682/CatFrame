@@ -42,6 +42,6 @@ dependencies {
 ## License
 
 **Source Code**: [MIT License](LICENSE).  
-**Assets**: CopyRight © dfdvdsf 2026, [All rights reserved](LICENSE-Assets) — Third-party character assets (Bluey & Bingo) are excluded from the open-source license and may not be redistributed without permission from their respective rights holders.    
+**Assets**: [Copyright © dfdvdsf 2026, All rights reserved](LICENSE-Assets) — Third-party character assets (Bluey & Bingo) are excluded from the open-source license and may not be redistributed without permission from their respective rights holders.    
 ***These assets are not affiliated with a Ludo Studio Production.***
 

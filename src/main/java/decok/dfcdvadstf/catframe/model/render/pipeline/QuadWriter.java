@@ -15,15 +15,20 @@ import javax.vecmath.Vector3d;
 import java.util.List;
 
 /**
- * 顶点写入器：把原 {@code UniformRenderPipeline} 中"逐顶点写 Tessellator 的循环体"
+ * 顶点写入器：把原 {@code UniformRenderPipeline} 中“逐顶点写 Tessellator 的循环体”
  * 抽取为可复用的纯写入静态方法，对标原版 26w+ 管线中的 {@code QuadWriter}。
  * <p>
- * <b>职责边界（严格）</b>：本类<em>只写顶点</em> —— 运行扩展链
- * （{@link ModelRenderRegistry#apply(RenderContext)}）、计算亮度/颜色/UV、执行旋转与
- * display/preTransform 向量变换、调用 {@code t.addVertexWithUV}。
- * <b>不</b>做 {@code startDrawingQuads}/{@code draw}、<b>不</b>改 GL 状态、<b>不</b>绑纹理、
- * <b>不</b>调用 {@code applyBeforePart}/{@code applyAfterPart}（这些生命周期由
- * {@link FeatureRenderDispatcher} 按提交项管理）。
+ * <b>职责边界（严格，DBF 化后）</b>：本类<em>只发射顶点</em> —— 按
+ * {@link RenderSubmit}（完全解析的提交输入）与扩展链结果，计算颜色/UV、执行顶点变换、
+ * 调用 {@code t.addVertexWithUV}。<b>不</b>做 {@code startDrawingQuads}/{@code draw}、
+ * <b>不</b>改 GL 状态、<b>不</b>绑纹理、<b>不</b>调用 {@code applyBeforePart}/{@code applyAfterPart}
+ * （这些生命周期由 {@link FeatureRenderDispatcher} 按提交项管理）。
+ * <p>
+ * 阶段政策（亮度基线 / GL 光照模式判定）已外移至 {@link RenderPhasePolicy} 与提交构造点
+ * （UniformRenderPipeline / RenderDispatcher）：本类不再按 {@code RenderPhase} 做任何决策，
+ * 仅在 {@code RenderSubmit.baselineBrightness = -1}（未经新构造点的直接构造方）时回退旧路径。
+ * 残余的“几何 / 着色发射规则”（按面方向烘焙 shade、GUI 屏幕空间方向光、destroy UV 投影）
+ * 属逐 quad 发射语义，留在本类。
  * <p>
  * 逐顶点逻辑与原 {@code UniformRenderPipeline} 保持逐行一致，确保零渲染回归。
  */
@@ -263,19 +268,8 @@ public final class QuadWriter {
                 double U = icon.getInterpolatedU(q.up[i]);
                 double V = icon.getInterpolatedV(q.vp[i]);
 
-                // 向量空间变换：先应用 display transform，再应用 transformation（items JSON
-                // 的物品模型渲染变换，永远在 display 之后），最后应用 preTransform
-                // 顶点变换顺序：v' = M_pre × M_transformation × M_display × v
                 tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
-                if (ctx.displayTransform != null) {
-                    ctx.displayTransform.transform(tmpVec);
-                }
-                if (transformation != null) {
-                    transformation.transform(tmpVec);
-                }
-                if (preTransform != null) {
-                    preTransform.transform(tmpVec);
-                }
+                applyTransformChain(tmpVec, ctx.displayTransform, transformation, preTransform);
                 t.addVertexWithUV(tmpVec.x, tmpVec.y, tmpVec.z, U, V);
             }
         }
@@ -344,18 +338,9 @@ public final class QuadWriter {
             t.setColorRGBA_F(cr, cg, cb, 1.0f);
 
             for (int i = 0; i < 4; i++) {
-                // 顶点变换顺序与 writeItemQuads 一致：v' = M_pre × M_transformation × M_display × v
-                tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
-                if (ctx.displayTransform != null) {
-                    ctx.displayTransform.transform(tmpVec);
-                }
-                if (transformation != null) {
-                    transformation.transform(tmpVec);
-                }
-                if (preTransform != null) {
-                    preTransform.transform(tmpVec);
-                }
                 // 无纹理时 UV 被忽略，但 addVertexWithUV 是 Tessellator 唯一的提交 API
+                tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
+                applyTransformChain(tmpVec, ctx.displayTransform, transformation, preTransform);
                 t.addVertexWithUV(tmpVec.x, tmpVec.y, tmpVec.z, 0, 0);
             }
         }
@@ -436,19 +421,42 @@ public final class QuadWriter {
                 double U = (icon != null) ? icon.getInterpolatedU(q.up[i]) : 0.0;
                 double V = (icon != null) ? icon.getInterpolatedV(q.vp[i]) : 0.0;
 
-                // 顶点变换顺序与 writeItemQuads 一致：v' = M_pre × M_transformation × M_display × v
                 tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
-                if (ctx.displayTransform != null) {
-                    ctx.displayTransform.transform(tmpVec);
-                }
-                if (transformation != null) {
-                    transformation.transform(tmpVec);
-                }
-                if (preTransform != null) {
-                    preTransform.transform(tmpVec);
-                }
+                applyTransformChain(tmpVec, ctx.displayTransform, transformation, preTransform);
                 t.addVertexWithUV(tmpVec.x, tmpVec.y, tmpVec.z, U, V);
             }
+        }
+    }
+
+    /**
+     * 顶点变换链单源：v' = M_pre × M_transformation × M_display × v。
+     * <p>
+     * 供 {@link #writeItemQuads} / {@link #writeSolidColorQuads} /
+     * {@link #writeGlintQuads} 共用（三个 pass 的几何必须逐位一致，否则 glint 重放
+     * 与正常 pass 不重合）：先应用 display transform（扩展链注入），再应用
+     * transformation（items JSON {@code transformation} 标签，永远在 display 之后），
+     * 最后应用 preTransform（反抵消）。各矩阵均可为 null（跳过对应环节）。
+     * <p>
+     * {@link #writeBlockQuads} 不使用本链：方块相位几何语义不同（旋转绕 0.5 轴心 +
+     * displayTransform 逐顶点，无 items transformation / preTransform），保持各自分支。
+     * Single source for the vertex transform chain shared by the three item passes;
+     * block-phase writing keeps its own rotation branch instead.
+     *
+     * @param tmp            顶点缓冲（就地变换）
+     * @param display        扩展链注入的 display 矩阵，可为 null
+     * @param transformation items JSON 物品模型渲染变换，可为 null
+     * @param preTransform   预变换（反抵消），可为 null
+     */
+    private static void applyTransformChain(Point3d tmp, Matrix4d display,
+                                            Matrix4d transformation, Matrix4d preTransform) {
+        if (display != null) {
+            display.transform(tmp);
+        }
+        if (transformation != null) {
+            transformation.transform(tmp);
+        }
+        if (preTransform != null) {
+            preTransform.transform(tmp);
         }
     }
 

@@ -12,27 +12,28 @@ import net.minecraft.world.IBlockAccess;
 import javax.annotation.Nullable;
 
 /**
- * 渲染阶段 → 执行政策的单一映射（pipeline 内部工具）。
+ * 渲染阶段 → 默认亮度计算工具（pipeline 内部，配合扩展链使用）。
  * <p>
- * 收编 {@link QuadWriter} / {@link FeatureRenderDispatcher} 中原本按 {@link RenderPhase}
- * 分支内联的执行政策：亮度基线选择（GUI 恒 255 / 手持取玩家光 / 掉落取实体光 /
- * 方块取世界混合亮度）与 GL 光照模式判定（{@link #isItemGlLit}）。
- * 提交端（构造 {@link RenderSubmit} 处）据此把"该提交用什么基础亮度"解析成完全确定的
- * 提交输入，DBF（顶点发射器）不再自行做阶段决策（QuadWriter DBF 化：政策外移）。
+ * 收编原 {@link QuadWriter} 中按 {@link RenderPhase} 分支内联的亮度政策计算：
+ * GUI 恒 255 / 手持取玩家位置光 / 掉落取实体位置光 / 方块取世界混合亮度，
+ * 语义逐位复刻（无状态纯函数）。
+ * <b>消费方（B' 形态）</b>：光政策统一居住于扩展链 —— 内建
+ * {@code LightPolicyExtension}（extension 包）在 beforePart 计算物品提交级亮度、
+ * 在 apply 对 AO 退化 quad 现算方块亮度，均经本工具取值后写
+ * {@code ctx.brightnessOverride}；QuadWriter 仅在
+ * {@link RenderSubmit#baselineBrightness} = -1 且扩展链未写 override 时回退调用
+ * 本工具（链缺失安全网）。GL 光照模式判定（{@link #isItemGlLit}）由
+ * FeatureRenderDispatcher / QuadWriter 直接调用本类，与亮度政策同源。
  * <p>
- * 语义基准：迁移前的 QuadWriter / FeatureRenderDispatcher 分支逐位复刻，行为零回归；
- * {@link RenderSubmit#baselineBrightness} = -1（未指定）时 QuadWriter 回退调用
- * {@link #baselineBrightness} 按 phase 旧路径计算，兼容未经 UniformRenderPipeline 的
- * 直接构造方。
+ * 时点前提（write 期采样语义的依据）：物品渲染路径一律在 RenderDispatcher 的
+ * beginScope/endScope 内提交，endScope 触发 flush 于同一调用栈，且处于
+ * RenderJsonItemModel 掉落实体 thread-local 窗口内 —— 冲刷期（扩展 write 期）
+ * 读取的实体/玩家上下文与提交期相同（GUI 场景亮度恒 255，实体同帧位置冻结）。
  * <p>
- * 时点前提（submit 期采样与旧 write 期采样等价的依据）：物品渲染路径一律在
- * RenderDispatcher 的 beginScope/endScope 内提交，endScope 触发 flush 于同一调用栈，
- * 且处于 RenderJsonItemModel 掉落实体 thread-local 窗口内 —— 提交期与冲刷期读取的
- * 实体/玩家上下文相同（GUI 场景亮度恒 255，实体同帧位置冻结）。
- * <p>
- * Single mapping from {@link RenderPhase} to execution policy. The submitters
- * resolve the per-submit brightness baseline through this class so the vertex
- * emitter (QuadWriter) never makes phase decisions on its own.
+ * Single mapping from {@link RenderPhase} to the default-brightness computation,
+ * consumed by the built-in LightPolicyExtension and by QuadWriter as the
+ * chain-missing fallback; the GL-lighting mode judgment ({@link #isItemGlLit})
+ * lives here as the single source for FeatureRenderDispatcher and QuadWriter.
  */
 public final class RenderPhasePolicy {
 
@@ -78,7 +79,8 @@ public final class RenderPhasePolicy {
         }
         if (phase == RenderPhase.BLOCK_WORLD || phase == RenderPhase.BLOCK_DESTROY) {
             // 方块相位：原 writeBlockQuads 语义 —— 有世界上下文取混合亮度，否则 0。
-            // （quad 循环内逐 quad 采样原为不变量，现于提交期解析一次。）
+            // （现由 LightPolicyExtension 对 BLOCK_WORLD AO 退化 quad 在 apply 现算；
+            // BLOCK_DESTROY 被 BlockDestroyExtension override 取代，此处仅兜底。）
             return (world != null && block != null)
                     ? block.getMixedBrightnessForBlock(world, x, y, z)
                     : 0;

@@ -24,9 +24,11 @@ import java.util.List;
  * <b>不</b>改 GL 状态、<b>不</b>绑纹理、<b>不</b>调用 {@code applyBeforePart}/{@code applyAfterPart}
  * （这些生命周期由 {@link FeatureRenderDispatcher} 按提交项管理）。
  * <p>
- * 阶段政策（亮度基线 / GL 光照模式判定）已外移至 {@link RenderPhasePolicy} 与提交构造点
- * （UniformRenderPipeline / RenderDispatcher）：本类不再按 {@code RenderPhase} 做任何决策，
- * 仅在 {@code RenderSubmit.baselineBrightness = -1}（未经新构造点的直接构造方）时回退旧路径。
+ * 阶段政策（亮度基线 / GL 光照模式判定）已外移至内建 {@code LightPolicyExtension}
+ * （扩展链 apply 期写 {@code brightnessOverride}，override 恒优先于构造输入）与
+ * {@link RenderPhasePolicy}（唯一计算工具）：本类不再按 {@code RenderPhase} 做任何决策，
+ * 仅在 {@code RenderSubmit.baselineBrightness = -1}（直接构造方 / 内建扩展缺席）时回退
+ * 经 {@code RenderPhasePolicy} 计算作链缺失兜底（fallback 保留）。
  * 残余的“几何 / 着色发射规则”（按面方向烘焙 shade、GUI 屏幕空间方向光、destroy UV 投影）
  * 属逐 quad 发射语义，留在本类。
  * <p>
@@ -56,8 +58,9 @@ public final class QuadWriter {
         Point3d tmpVec = new Point3d();
 
         boolean hasVertices = false;
-        // 亮度基线：提交期已解析（RenderSubmit.baselineBrightness）；-1（直接构造方）
-        // 回退按 phase 旧路径计算，语义与迁移前逐位一致。基础亮度与 quad 无关，
+        // 亮度基线：正常路径由内建 LightPolicyExtension 在 apply 写 brightnessOverride
+        // （override 优先于本构造输入）；此处仅作 fallback —— -1（直接构造方 / 链缺失）
+        // 回退按 phase 经 RenderPhasePolicy 计算（fallback 保留）。基础亮度与 quad 无关，
         // 提升到循环外消除每 quad 重复采样（AO 逐顶点路径经 aoBrightness 覆盖）。
         int baseBrightness = s.baselineBrightness >= 0
                 ? s.baselineBrightness
@@ -214,9 +217,10 @@ public final class QuadWriter {
         Point3d tmpVec = new Point3d();
         Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
-        // 亮度（lightmap）：提交期已解析（UniformRenderPipeline 经 RenderPhasePolicy 按
-        // phase 填 GUI 255 / 手持玩家光 / 掉落实体光）；-1（直接构造方）回退旧路径按
-        // phase 计算——夜间 / 无光源处掉落物与环境同暗，不再恒定全亮而刺眼。
+        // 亮度（lightmap）：正常路径由内建 LightPolicyExtension（beforePart 接力计算 →
+        // apply 写 brightnessOverride，override 优先于本构造输入）；此处仅作 fallback ——
+        // -1（直接构造方 / 链缺失）回退按 phase 经 RenderPhasePolicy 计算，保持夜间 /
+        // 无光源处掉落物与环境同暗、GUI 恒 255 的语义。
         int baseBrightness = s.baselineBrightness >= 0
                 ? s.baselineBrightness
                 : RenderPhasePolicy.baselineBrightness(s.phase, s.world, s.x, s.y, s.z, s.block);
@@ -298,7 +302,8 @@ public final class QuadWriter {
         Point3d tmpVec = new Point3d();
         Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
-        // 亮度分支与 writeItemQuads 一致：提交期已解析；-1（直接构造方）回退旧路径按 phase 计算
+        // 亮度分支与 writeItemQuads 一致：LightPolicyExtension 写 override 优先；
+        // 此处 -1 回退仅作链缺失兜底（fallback 保留，按 phase 经 RenderPhasePolicy 计算）
         int baseBrightness = s.baselineBrightness >= 0
                 ? s.baselineBrightness
                 : RenderPhasePolicy.baselineBrightness(s.phase, s.world, s.x, s.y, s.z, s.block);

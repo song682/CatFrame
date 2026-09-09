@@ -51,7 +51,7 @@ public enum RenderPhase {
      * <p>
      * 手持阶段不启用 GL_LIGHTING（避免与烘焙阴影双重着色，对标 1.7.10 物品路径的
      * {@code glDisable(GL_LIGHTING)} 语义），但亮度（lightmap）取玩家位置的世界光照
-     * （见 {@code QuadWriter#handBrightness}），完全无外部光照时物品渲染为全黑。
+     * （见 {@code RenderPhasePolicy} 私有 handBrightness），完全无外部光照时物品渲染为全黑。
      * Whether this phase renders an item held in hand (first/third person);
      * hand phases skip GL_LIGHTING, but their brightness comes from the world
      * light at the player's position (black in fully dark areas).

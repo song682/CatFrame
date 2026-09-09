@@ -86,13 +86,15 @@ public final class RenderSubmit implements RenderSubmitView {
 
     /**
      * 基础亮度（packed sky<<20 | block<<4 格式；GUI 阶段为 255 屏幕光语义）。
-     * 由提交端（UniformRenderPipeline / RenderDispatcher）经
-     * {@link decok.dfcdvadstf.catframe.model.render.pipeline.RenderPhasePolicy#baselineBrightness}
-     * 在构造期解析；<b>-1 = 未指定</b>：直接构造本对象的调用方未填时，
-     * QuadWriter 回退按 phase 旧路径计算（fallback 保留）。
+     * 内建扩展 LightPolicyExtension 就绪后，其 write 期写入的
+     * {@code ctx.brightnessOverride} 优先于本字段（光政策统一居住于扩展链）；
+     * 本字段仅作两类兜底：<b>(a)</b> 直接构造方显式指定（≥ 0）时，QuadWriter 构造
+     * ctx 以其为 baseline；(b) <b>-1 = 未指定</b> —— QuadWriter 回退按 phase 经
+     * RenderPhasePolicy 计算（链缺失时的安全网，fallback 保留）。
      * <p>
-     * The per-submit brightness baseline, resolved by the submitter at
-     * construction time; -1 means unspecified (legacy fallback path).
+     * The per-submit brightness baseline. Once the built-in LightPolicyExtension
+     * is installed its write-time override takes precedence; this field remains
+     * a fallback for direct constructors and for chains without the extension.
      */
     public final int baselineBrightness;
 
@@ -113,9 +115,9 @@ public final class RenderSubmit implements RenderSubmitView {
     }
 
     /**
-     * 兼容重载：未指定基础亮度（-1）—— 由 QuadWriter 回退按 phase 旧路径计算
-     * （{@link decok.dfcdvadstf.catframe.model.render.pipeline.RenderPhasePolicy#baselineBrightness}），
-     * 供直接构造本对象的调用方使用（fallback 保留，行为与改造前一致）。
+     * 兼容重载：未指定基础亮度（-1）—— 正常渲染路径下由内建扩展
+     * LightPolicyExtension 在 write 期决定；QuadWriter 的 -1 回退（按 phase 经
+     * RenderPhasePolicy 计算）仅作链缺失兜底（fallback 保留）。
      */
     public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
                         int x, int y, int z, float rotationDeg,

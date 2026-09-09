@@ -10,6 +10,7 @@ import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtensio
 import decok.dfcdvadstf.catframe.model.render.extension.BlockDestroyExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.FaceCullExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.GuiLightExtension;
+import decok.dfcdvadstf.catframe.model.render.extension.LightPolicyExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.AOComputeExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.AOShadeExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRenderExtension;
@@ -37,6 +38,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *   <li>{@link AOComputeExtension}：链头扩展，
  *       在 BLOCK_WORLD 阶段执行逐顶点 AO 计算，将结果写入 {@link RenderContext#aoBrightness} 和
  *       {@link RenderContext#aoColorMul}。</li>
+ *   <li>{@link LightPolicyExtension}：阶段默认亮度政策（光政策收口扩展）——物品阶段
+ *       经 beforePart 接力计算、apply 写入 {@link RenderContext#brightnessOverride}；
+ *       方块世界仅 AO 退化 quad 现算默认亮度。须在 AOCompute 之后执行。</li>
  *   <li>{@link FaceCullExtension}：处理 JSON face 中的 {@code "cullface"}，
  *       根据相邻方块是否完整不透明自动剔除隐藏面。</li>
  *   <li>{@link AOShadeExtension}：处理 JSON element 中的 {@code "ambientocclusion"} 和 {@code "shade"}，
@@ -199,6 +203,9 @@ public final class ModelRenderRegistry {
         // [S3 修复] FaceCullExtension 在 AOComputeExtension 之前，先剔除不可见面再计算 AO
         insertSorted(new FaceCullExtension(), p++);
         insertSorted(new AOComputeExtension(), p++);
+        // 阶段默认亮度政策：须在 AOCompute 之后（读 aoBrightness 判定退化 quad）；
+        // 物品亮度经 beforePart 接力（接力协议见 LightPolicyExtension 类注释）。
+        insertSorted(new LightPolicyExtension(), p++);
         insertSorted(new AOShadeExtension(), p++);
         insertSorted(new GuiLightExtension(), p++);
         insertSorted(new TintRenderExtension(), p++);

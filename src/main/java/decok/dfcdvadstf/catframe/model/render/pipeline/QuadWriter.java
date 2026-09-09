@@ -3,16 +3,11 @@ package decok.dfcdvadstf.catframe.model.render.pipeline;
 import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
-import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLighting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.IIcon;
-import net.minecraft.util.MathHelper;
 
 import javax.vecmath.Matrix4d;
 import javax.vecmath.Point3d;
@@ -56,9 +51,13 @@ public final class QuadWriter {
         Point3d tmpVec = new Point3d();
 
         boolean hasVertices = false;
+        // 亮度基线：提交期已解析（RenderSubmit.baselineBrightness）；-1（直接构造方）
+        // 回退按 phase 旧路径计算，语义与迁移前逐位一致。基础亮度与 quad 无关，
+        // 提升到循环外消除每 quad 重复采样（AO 逐顶点路径经 aoBrightness 覆盖）。
+        int baseBrightness = s.baselineBrightness >= 0
+                ? s.baselineBrightness
+                : RenderPhasePolicy.baselineBrightness(s.phase, s.world, s.x, s.y, s.z, s.block);
         for (BakedQuad q : allQuads) {
-            int baseBrightness = s.world != null
-                    ? s.block.getMixedBrightnessForBlock(s.world, s.x, s.y, s.z) : 0;
             // 方向阴影：按面方向取 CardinalLighting 系数。
             float baseShade = CardinalLighting.DEFAULT.byFace(q.face);
 
@@ -210,11 +209,12 @@ public final class QuadWriter {
         Point3d tmpVec = new Point3d();
         Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
-        // 亮度（lightmap）：GUI 恒定 255（屏幕空间无环境光）；手持阶段取玩家位置
-        // 世界光照（无光时全黑，见 handBrightness）；掉落物阶段取实体位置世界光照
-        // （见 droppedItemBrightness，无实体上下文时回退全亮，保持既有兜底行为）——
-        // 夜间 / 无光源处掉落物与环境同暗，不再恒定全亮而刺眼。
-        int baseBrightness = gui ? 255 : (s.phase.isHandPhase() ? handBrightness() : droppedItemBrightness());
+        // 亮度（lightmap）：提交期已解析（UniformRenderPipeline 经 RenderPhasePolicy 按
+        // phase 填 GUI 255 / 手持玩家光 / 掉落实体光）；-1（直接构造方）回退旧路径按
+        // phase 计算——夜间 / 无光源处掉落物与环境同暗，不再恒定全亮而刺眼。
+        int baseBrightness = s.baselineBrightness >= 0
+                ? s.baselineBrightness
+                : RenderPhasePolicy.baselineBrightness(s.phase, s.world, s.x, s.y, s.z, s.block);
         boolean hasSolidColor = false;
 
         for (BakedQuad q : allQuads) {
@@ -303,8 +303,10 @@ public final class QuadWriter {
         Point3d tmpVec = new Point3d();
         Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
-        // 亮度分支与 writeItemQuads 一致：GUI 恒 255 / 手持取玩家光 / 掉落取实体光（回退全亮）
-        int baseBrightness = gui ? 255 : (s.phase.isHandPhase() ? handBrightness() : droppedItemBrightness());
+        // 亮度分支与 writeItemQuads 一致：提交期已解析；-1（直接构造方）回退旧路径按 phase 计算
+        int baseBrightness = s.baselineBrightness >= 0
+                ? s.baselineBrightness
+                : RenderPhasePolicy.baselineBrightness(s.phase, s.world, s.x, s.y, s.z, s.block);
 
         for (BakedQuad q : allQuads) {
             if (q.solidColor == 0)
@@ -526,55 +528,4 @@ public final class QuadWriter {
         return 0.8f; // 正对屏幕方向（南北面语义）
     }
 
-    /**
-     * 掉落物阶段的基础亮度：取掉落物实体所在位置的世界光照（天空光 + 方块光），
-     * 与手持阶段 {@link #handBrightness()} 同构——夜间 / 无光源处掉落物与环境同暗，
-     * 不再恒定全亮（修复“掉落物在黑暗环境相对环境高亮、注意力被吸引”）。
-     * 实体上下文由 {@link RenderJsonItemModel} 在 Forge ENTITY 渲染时建立
-     * （ForgeHooksClient.renderEntityItem 将 EntityItem 作为 renderItem 的 data[1] 传入）；
-     * 无实体上下文（非 Forge 掉落路径的自定义调用）回退全亮，保持既有兜底行为。
-     * 返回值与 {@link Tessellator#setBrightness} 的 packed 格式一致（sky<<20 | block<<4）。
-     * <p>
-     * Base brightness for dropped-item phases: world light sampled at the entity's
-     * position, mirroring the hand-held {@link #handBrightness()} semantics, so
-     * dropped items darken together with the environment instead of staying
-     * full-bright; falls back to full-bright when no entity context is present.
-     *
-     * @return packed brightness（15728880 = 全亮，0 = 全黑）
-     */
-    private static int droppedItemBrightness() {
-        EntityItem e = RenderJsonItemModel.getCurrentDroppedEntity();
-        if (e == null || e.worldObj == null) {
-            return 15728880;
-        }
-        return e.worldObj.getLightBrightnessForSkyBlocks(
-                MathHelper.floor_double(e.posX),
-                MathHelper.floor_double(e.posY),
-                MathHelper.floor_double(e.posZ), 0);
-    }
-
-    /**
-     * 手持阶段的基础亮度：取玩家所在位置的世界光照（天空光 + 方块光），
-     * 对标 1.7.10 {@code ItemRenderer.renderItemInFirstPerson} 的
-     * {@code getLightBrightnessForSkyBlocks(玩家坐标, 0)} 语义——完全无外部
-     * 光照时返回 0，手持物品渲染为全黑；玩家或世界上下文缺失时回退全亮兜底。
-     * 返回值与 {@link Tessellator#setBrightness} 的 packed 格式一致（sky<<20 | block<<4）。
-     * <p>
-     * Base brightness for hand-held phases: world light sampled at the player's
-     * position (same semantics as 1.7.10 {@code ItemRenderer}), so held items
-     * render fully black when no external light is available.
-     *
-     * @return packed brightness（15728880 = 全亮，0 = 全黑）
-     */
-    private static int handBrightness() {
-        Minecraft mc = Minecraft.getMinecraft();
-        EntityPlayer player = (mc != null) ? mc.thePlayer : null;
-        if (player == null || player.worldObj == null) {
-            return 15728880;
-        }
-        return player.worldObj.getLightBrightnessForSkyBlocks(
-                MathHelper.floor_double(player.posX),
-                MathHelper.floor_double(player.posY),
-                MathHelper.floor_double(player.posZ), 0);
-    }
 }

@@ -85,6 +85,18 @@ public final class RenderSubmit implements RenderSubmitView {
     public final Map<String, Comparable<?>> itemProps;
 
     /**
+     * 基础亮度（packed sky<<20 | block<<4 格式；GUI 阶段为 255 屏幕光语义）。
+     * 由提交端（UniformRenderPipeline / RenderDispatcher）经
+     * {@link decok.dfcdvadstf.catframe.model.render.pipeline.RenderPhasePolicy#baselineBrightness}
+     * 在构造期解析；<b>-1 = 未指定</b>：直接构造本对象的调用方未填时，
+     * QuadWriter 回退按 phase 旧路径计算（fallback 保留）。
+     * <p>
+     * The per-submit brightness baseline, resolved by the submitter at
+     * construction time; -1 means unspecified (legacy fallback path).
+     */
+    public final int baselineBrightness;
+
+    /**
      * 旧签名构造器兼容 shim：blockstateProps / itemProps 均为 null。
      */
     public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
@@ -100,6 +112,11 @@ public final class RenderSubmit implements RenderSubmitView {
                 disableCull, blend, null, null);
     }
 
+    /**
+     * 兼容重载：未指定基础亮度（-1）—— 由 QuadWriter 回退按 phase 旧路径计算
+     * （{@link decok.dfcdvadstf.catframe.model.render.pipeline.RenderPhasePolicy#baselineBrightness}），
+     * 供直接构造本对象的调用方使用（fallback 保留，行为与改造前一致）。
+     */
     public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
                         int x, int y, int z, float rotationDeg,
                         @Nullable Block block, @Nullable ItemStack stack,
@@ -109,6 +126,22 @@ public final class RenderSubmit implements RenderSubmitView {
                         boolean disableCull, boolean blend,
                         @Nullable Map<String, String> blockstateProps,
                         @Nullable Map<String, Comparable<?>> itemProps) {
+        this(phase, part, type, x, y, z, rotationDeg,
+                block, stack, world, metadata,
+                preTransform, transformation,
+                disableCull, blend, blockstateProps, itemProps, -1);
+    }
+
+    public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
+                        int x, int y, int z, float rotationDeg,
+                        @Nullable Block block, @Nullable ItemStack stack,
+                        @Nullable IBlockAccess world, int metadata,
+                        @Nullable Matrix4d preTransform,
+                        @Nullable Matrix4d transformation,
+                        boolean disableCull, boolean blend,
+                        @Nullable Map<String, String> blockstateProps,
+                        @Nullable Map<String, Comparable<?>> itemProps,
+                        int baselineBrightness) {
         this.phase = phase;
         this.part = part;
         this.type = type;
@@ -126,6 +159,7 @@ public final class RenderSubmit implements RenderSubmitView {
         this.blend = blend;
         this.blockstateProps = blockstateProps;
         this.itemProps = itemProps;
+        this.baselineBrightness = baselineBrightness;
     }
 
     // ==================== RenderSubmitView（只读视图实现） ====================

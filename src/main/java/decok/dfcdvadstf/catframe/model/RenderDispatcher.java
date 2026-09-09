@@ -8,6 +8,7 @@ import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
 import decok.dfcdvadstf.catframe.model.render.extension.BlockDestroyExtension;
 import decok.dfcdvadstf.catframe.model.render.pipeline.FeatureRenderDispatcher;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderCommandBuffers;
+import decok.dfcdvadstf.catframe.model.render.pipeline.RenderPhasePolicy;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderTypeRegistry;
 import decok.dfcdvadstf.catframe.model.state.*;
@@ -135,10 +136,13 @@ public class RenderDispatcher {
         int metadata = world.getBlockMetadata(x, y, z);
         ResolvedModel rm = resolveBlockModel(world, x, y, z, block, metadata);
         if (rm == null) return;
+        // 亮度基线：破坏贴花复用方块世界混合亮度（提交期解析；无世界上下文回退 0）。
+        int baselineBrightness = RenderPhasePolicy.baselineBrightness(
+                RenderPhase.BLOCK_DESTROY, world, x, y, z, block);
         RenderSubmit s = new RenderSubmit(RenderPhase.BLOCK_DESTROY, rm.part,
                 RenderTypeRegistry.BLOCK_ATLAS_DESTROY, x, y, z, rm.rot,
                 block, null, world, metadata, null, null, false, false,
-                rm.blockstateProps, null);
+                rm.blockstateProps, null, baselineBrightness);
         BlockDestroyExtension.setCurrentIcon(destroyIcon);
         try {
             FeatureRenderDispatcher.flushInline(s);

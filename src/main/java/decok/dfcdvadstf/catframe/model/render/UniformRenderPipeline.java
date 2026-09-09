@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.model.render;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.api.RenderTypeKey;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderCommandBuffers;
-import decok.dfcdvadstf.catframe.model.render.pipeline.RenderPhasePolicy;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderTypeRegistry;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -106,17 +105,16 @@ public final class UniformRenderPipeline {
         RenderTypeKey type = translucent
                 ? RenderTypeRegistry.BLOCK_ATLAS_TRANSLUCENT
                 : RenderTypeRegistry.BLOCK_ATLAS_SOLID;
-        // 亮度基线：方块世界混合亮度，提交期解析一次（同提交所有 quad 共享；
-        // AO 逐顶点路径由扩展链经 ctx.aoBrightness 覆盖）。
-        int baselineBrightness = RenderPhasePolicy.baselineBrightness(
-                phase, world, x, y, z, block);
+        // 亮度政策由内建扩展 LightPolicyExtension 在 write 期决定：BLOCK_WORLD 的逐顶点
+        // AO quad 走 aoBrightness 通道，仅 AO 退化 quad 由它现算默认方块亮度；
+        // 提交端不再解析亮度（-1 语义见 RenderSubmit，QuadWriter 回退仅作链缺失兜底）。
         RenderSubmit s = new RenderSubmit(
                 phase, part, type,
                 x, y, z, rotationDeg,
                 block, null, world, metadata,
                 null, null,
                 false, false,
-                blockstateProps, null, baselineBrightness);
+                blockstateProps, null);
         RenderCommandBuffers.submit(s);
     }
 
@@ -188,11 +186,9 @@ public final class UniformRenderPipeline {
                 || phase == RenderPhase.DROPPED_ITEM_GROUND
                 || phase == RenderPhase.DROPPED_BLOCK_GROUND
                 || phase == RenderPhase.ITEM_FIXED);
-        // 亮度基线（lightmap）：提交期按 phase 解析 —— GUI 恒 255（屏幕空间无环境光）；
-        // 手持取玩家位置世界光（无光时全黑）；掉落 / 展示框取实体位置世界光（无实体回退
-        // 全亮，夜间与环境同暗）。atlasSplit 两次提交共享同一值；-1 语义见 RenderSubmit。
-        int baselineBrightness = RenderPhasePolicy.baselineBrightness(
-                phase, world, x, y, z, block);
+        // 亮度政策由内建扩展 LightPolicyExtension 在 write 期决定（GUI 恒 255 / 手持
+        // 取玩家光 / 掉落与展示框取实体光；beforePart 每提交项计算一次，atlasSplit
+        // 两次提交同值）—— 提交不再解析亮度（-1 语义见 RenderSubmit）。
 
         // 纹理图集选择：以烘焙期写入的 quad 标记为准（ModelJsonUnbakedAdapter →
         // BakedQuad.blockAtlas），渲染期零猜测。混合图集模型拆分为最多两次提交，
@@ -213,7 +209,7 @@ public final class UniformRenderPipeline {
                     preTransform,
                     transformation,
                     false, blendRequired,
-                    null, itemProps, baselineBrightness);
+                    null, itemProps);
             RenderCommandBuffers.submit(s);
         }
     }

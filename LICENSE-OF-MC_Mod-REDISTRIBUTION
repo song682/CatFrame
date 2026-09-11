@@ -4,6 +4,13 @@ Copyright (c) 2026 dfdvdsf
 Project: CatFrame
 Contact: seniye0987@gmail.com
 
+Specific License Precedence
+If the project includes a separate LICENSE, LICENSE-ASSETS, LICENSE-Assets,
+or another specific license file, that license controls the files it covers.
+In case of conflict, the specific license for that part takes precedence over
+this Redistribution License.
+This Redistribution License applies only to parts not covered by a specific license.
+
 1. Scope
 This License governs the Mod's jar, binary, official releases, and Assets.
 Source Code is governed by its own Source Code License, such as MIT, Apache-2.0,
@@ -37,8 +44,10 @@ Keep copyright and license notices. Clearly mark your version as modified or for
 Do not claim your fork is official or endorsed by the author.
 
 5. Assets
-You may use the author's assets only if you preserve the author's copyright notice
-and any applicable asset license.
+If there is a LICENSE-ASSETS / LICENSE-Assets or similar asset license,
+that asset license controls the assets it covers.
+If no asset license applies, you may use the author's assets only if you preserve
+the author's copyright notice and any applicable asset license.
 If assets are marked ARR / All Rights Reserved, commercial use is strictly prohibited.
 You may not sell, paywall, sublicense, or commercially exploit them.
 You may not extract, redistribute, or modify them separately without written permission.
@@ -102,6 +111,5 @@ You must remove all unauthorized copies under your control.
 12. Disclaimer
 This Mod is provided “AS IS”, without warranty. The author is not liable for any damages
 arising from or related to the Mod or this License.
-
 
 Full version see here: https://github.com/song682/license-of-redistribute/blob/main/REDISTRIBUTE-License.md

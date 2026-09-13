@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.model.render.pipeline;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.IRenderGroupHandler;
+import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.api.RenderSubmitView;
 import decok.dfcdvadstf.catframe.model.render.api.RenderTypeKey;
@@ -103,7 +104,10 @@ public final class FeatureRenderDispatcher {
             for (RenderSubmit s : group) {
                 // 生命周期：quad 处理前（DisplayTransformExtension 计算矩阵、
                 // GuiLightExtension 视需要关闭 GL_LIGHTING）
-                ModelRenderRegistry.applyBeforePart(s.part.getAllQuads(), s.phase, s.part);
+                // 提交级 ctx：每提交项构造一次，beforePart/afterPart 配对共用（独立快照语义：
+                // 其输出字段不会传递到 per-quad ctx；整组级桥接由扩展自行 ThreadLocal 接力）
+                RenderContext partCtx = newPartContext(s);
+                ModelRenderRegistry.applyBeforePart(s.part.getAllQuads(), partCtx, s.part);
                 try {
                     t.startDrawingQuads();
                     boolean hasSolidColor;
@@ -139,7 +143,7 @@ public final class FeatureRenderDispatcher {
                 } finally {
                     // 生命周期：quad 处理后（GuiLightExtension 恢复 GL_LIGHTING、
                     // DisplayTransformExtension 清矩阵）
-                    ModelRenderRegistry.applyAfterPart();
+                    ModelRenderRegistry.applyAfterPart(partCtx);
                 }
             }
         } finally {
@@ -177,12 +181,29 @@ public final class FeatureRenderDispatcher {
     public static void flushInline(RenderSubmit s) {
         // 不绑定纹理：vanilla 已绑定 blocks atlas，此处再 bind 属冗余，
         // 且后台线程（Beddium 多线程区块编译）执行 GL 调用会破坏 GL 状态所有权。
-        ModelRenderRegistry.applyBeforePart(s.part.getAllQuads(), s.phase, s.part);
+        RenderContext partCtx = newPartContext(s);
+        ModelRenderRegistry.applyBeforePart(s.part.getAllQuads(), partCtx, s.part);
         try {
             QuadWriter.writeBlockQuads(s, Tessellator.instance);
         } finally {
-            ModelRenderRegistry.applyAfterPart();
+            ModelRenderRegistry.applyAfterPart(partCtx);
         }
+    }
+
+    /**
+     * 构造提交级 RenderContext（beforePart/afterPart 阶段使用，每提交项一次）。
+     * <p>
+     * 独立快照语义（2026-09 定案）：仅作为提交级上下文的读取载体 —— {@code quad} 为 null，
+     * quad 级字段（aoBrightness / shade 等）无渲染语义；对其输出字段的写入不会传递到
+     * per-quad ctx（整组级桥接由扩展自行用 ThreadLocal 接力，见 LightPolicyExtension）。
+     * {@code shade} 为占位值 1.0f（无渲染语义）；baselineBrightness 取提交项字段
+     * （B' 后构造点回 -1，字段保留供直接构造方指定）。
+     */
+    private static RenderContext newPartContext(RenderSubmit s) {
+        return new RenderContext(s.phase, null,
+                s.world, s.x, s.y, s.z, s.block, s.stack,
+                s.baselineBrightness, 1.0f,
+                s.blockstateProps, s.itemProps);
     }
 
     private static boolean isBlockPhase(RenderPhase phase) {

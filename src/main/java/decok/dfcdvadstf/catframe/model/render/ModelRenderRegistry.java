@@ -4,7 +4,6 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
-import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
 import decok.dfcdvadstf.catframe.model.render.extension.BlockDestroyExtension;
@@ -123,14 +122,16 @@ public final class ModelRenderRegistry {
     }
 
     /**
-     * 渲染器内部使用：按优先级对 quad 列表调用每个扩展的 {@link IModelRenderExtension#beforePart}。
-     * 在各 quad 处理循环之前调用一次。单个扩展异常被隔离（记日志后继续）。
+     * 渲染器内部使用：按优先级对 quad 列表调用每个扩展的
+     * {@link IModelRenderExtension#beforePart(List, RenderContext, BlockStateModelPart)}。
+     * 在各 quad 处理循环之前调用一次（{@code ctx} 为提交级上下文，语义见接口方法说明）。
+     * 单个扩展异常被隔离（记日志后继续）。
      */
-    public static void applyBeforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
+    public static void applyBeforePart(List<BakedQuad> allQuads, RenderContext ctx, BlockStateModelPart part) {
         ensureDefaults();
         for (ExtEntry e : EXTS) {
             try {
-                e.ext.beforePart(allQuads, phase, part);
+                e.ext.beforePart(allQuads, ctx, part);
             } catch (Throwable t) {
                 logExtError(e, "beforePart", t);
             }
@@ -138,14 +139,16 @@ public final class ModelRenderRegistry {
     }
 
     /**
-     * 渲染器内部使用：按优先级调用每个扩展的 {@link IModelRenderExtension#afterPart}。
-     * 在各 quad 处理循环之后调用一次。单个扩展异常被隔离（记日志后继续）。
+     * 渲染器内部使用：按优先级调用每个扩展的
+     * {@link IModelRenderExtension#afterPart(RenderContext)}。
+     * 在各 quad 处理循环之后调用一次（传入与 applyBeforePart 配对的提交级 ctx）。
+     * 单个扩展异常被隔离（记日志后继续）。
      */
-    public static void applyAfterPart() {
+    public static void applyAfterPart(RenderContext ctx) {
         ensureDefaults();
         for (ExtEntry e : EXTS) {
             try {
-                e.ext.afterPart();
+                e.ext.afterPart(ctx);
             } catch (Throwable t) {
                 logExtError(e, "afterPart", t);
             }

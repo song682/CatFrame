@@ -14,6 +14,16 @@ import java.util.Map;
 /**
  * 一次 quad 渲染的上下文，扩展链 {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry#apply(RenderContext)}
  * 会按注册顺序遍历 {@link IModelRenderExtension}，每个扩展都可以读 / 改本对象。
+ * <p>
+ * <b>两个使用层次（2026-09 定案）</b>：
+ * <ul>
+ *   <li><b>per-quad ctx</b>：{@code apply} 阶段由 QuadWriter 每 quad 构造，quad 级数据齐全，
+ *       输出字段由发射器消费。</li>
+ *   <li><b>提交级 ctx</b>：{@code beforePart / afterPart} 阶段每提交项构造一次，
+ *       {@link #quad} 为 null，quad 级字段（{@link #aoBrightness} / shade 等）无渲染语义；
+ *       对其输出字段的写入不会传递到 per-quad ctx（整组级桥接由扩展自行 ThreadLocal 接力，
+ *       见内建 LightPolicyExtension）。</li>
+ * </ul>
  *
  * <h3>字段语义</h3>
  * <ul>

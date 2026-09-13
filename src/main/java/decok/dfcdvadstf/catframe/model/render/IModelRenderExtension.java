@@ -2,7 +2,6 @@ package decok.dfcdvadstf.catframe.model.render;
 
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
-import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 
 import java.util.List;
@@ -18,11 +17,11 @@ import java.util.List;
  *
  * <h3>生命周期</h3>
  * <ol>
- *   <li>{@link #beforePart(List, RenderPhase)} — 处理一组 quad 之前调用一次，
- *       适用于 GL 状态设置等全局操作。</li>
- *   <li>{@link #apply(RenderContext)} — 对每个 quad 依次调用。</li>
- *   <li>{@link #afterPart()} — 一组 quad 全部处理完后调用一次，
- *       适用于 GL 状态恢复等清理操作。</li>
+ *   <li>{@link #beforePart(List, RenderContext, BlockStateModelPart)} — 处理一组 quad 之前
+ *       调用一次，适用于 GL 状态设置等全局操作（收到提交级 ctx）。</li>
+ *   <li>{@link #apply(RenderContext)} — 对每个 quad 依次调用（per-quad ctx）。</li>
+ *   <li>{@link #afterPart(RenderContext)} — 一组 quad 全部处理完后调用一次，
+ *       适用于 GL 状态恢复等清理操作（与 beforePart 配对的同一提交级 ctx）。</li>
  * </ol>
  *
  * <p>除了 {@link #apply(RenderContext)} 为强制实现外，其余两个方法都有默认空实现，
@@ -58,12 +57,18 @@ public interface IModelRenderExtension {
      * <p>
      * 适用于需要在处理所有 quad 之前执行的全局操作，
      * 例如检测模型光照模式并设置 GL_LIGHTING 状态。
+     * <p>
+     * {@code ctx} 为<b>提交级上下文</b>（每提交项构造一次）：携带 phase / world / 坐标 /
+     * block / stack / blockstateProps / itemProps 等提交级信息；{@link RenderContext#quad}
+     * 为 null，quad 级字段（aoBrightness / shade 等）无渲染语义。对其输出字段的写入
+     * <b>不会</b>传递到 {@link #apply(RenderContext)} 的 per-quad ctx —— 需要整组级桥接时
+     * 请自行用 ThreadLocal 接力（参见内建 LightPolicyExtension 接力协议）。
      *
      * @param allQuads 当前部件的所有 BakedQuad
-     * @param phase    当前渲染阶段
+     * @param ctx      提交级渲染上下文（quad 为 null）
      * @param part     当前渲染的 BlockStateModelPart（提供 part 级别元数据）
      */
-    default void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
+    default void beforePart(List<BakedQuad> allQuads, RenderContext ctx, BlockStateModelPart part) {
     }
 
     /**
@@ -77,15 +82,10 @@ public interface IModelRenderExtension {
      * <p>
      * 适用于需要在处理完所有 quad 之后执行的清理操作，
      * 例如恢复 {@code beforePart} 中修改的 GL 状态。
+     * <p>
+     * 收到的 {@code ctx} 与 {@link #beforePart(List, RenderContext, BlockStateModelPart)}
+     * 的为同一提交级实例（配对使用）。
      */
-    default void afterPart() {
-    }
-
-    /**
-     * 旧版两参数 beforePart，默认委托给三参数版本（part=null）。
-     * 实现类应优先覆写 {@link #beforePart(List, RenderPhase, BlockStateModelPart)}。
-     */
-    default void beforePart(List<BakedQuad> allQuads, RenderPhase phase) {
-        beforePart(allQuads, phase, null);
+    default void afterPart(RenderContext ctx) {
     }
 }

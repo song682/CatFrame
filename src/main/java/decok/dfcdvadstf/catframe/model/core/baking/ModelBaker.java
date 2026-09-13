@@ -209,14 +209,4 @@ public class ModelBaker {
         return model.bake(textures, rotationX, rotationY, rotationZ);
     }
 
-    // ==================== 缓存管理 ====================
-
-    /**
-     * 清除烘焙缓存。
-     * @deprecated 缓存已由 {@link BakedModelCache} 统一管理，本方法为 no-op。
-     */
-    @Deprecated
-    public static void clearCache() {
-        // No-op: 缓存已由 BakedModelCache 统一管理
-    }
 }

@@ -31,14 +31,6 @@ public abstract class TabBar implements ILayout {
     // ──── Constants ────
 
     /**
-     * Default tab button texture path. / 默认 Tab 按钮纹理路径。
-     * 
-     * @deprecated Use {@link Tab#DEFAULT_TAB_TEXTURE} instead.
-     */
-    @Deprecated
-    public static final ResourceLocation DEFAULT_TAB_TEXTURE = Tab.DEFAULT_TAB_TEXTURE;
-
-    /**
      * Default tile size for background texture. / 背景贴图默认平铺块大小。
      */
     protected static final int DEFAULT_TILE_SIZE = 16;
@@ -443,24 +435,6 @@ public abstract class TabBar implements ILayout {
         // 在导航栏底部绘制贯穿的分隔线，左右各缩进 2px
         int barBottom = NAV_HEIGHT - 2;
         ContentPanelRenderer.drawHeaderSeparator(2, barBottom, navWidth - 4);
-    }
-
-    /**
-     * <p>
-     * 绘制单个 Tab 按钮。<br>
-     * 
-     * @deprecated 由 {@link TabButton} 组件替代，保留此方法仅为向后兼容。<br>
-     *             Replaced by the {@link TabButton} component; kept for backward
-     *             compatibility.
-     *             </p>
-     */
-    @Deprecated
-    private void drawSingleTabButton(int index, Tab tab, int mouseX, int mouseY, TabManager tabManager) {
-        if (index >= 0 && index < tabButtons.size()) {
-            TabButton btn = tabButtons.get(index);
-            btn.setSelected(tabManager != null && tabManager.getCurrentTab() == tab);
-            btn.extractRenderState(GuiGraphicsExtractor.getInstance(), mouseX, mouseY, 0);
-        }
     }
 
     // ==================== Navigation — Input handling ====================

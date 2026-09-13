@@ -14,14 +14,5 @@
   "commands.catframe.title.times": "已更改 %s 的标题显示时间",
   "commands.catframe.title.title": "正在为 %s 显示新标题",
   "commands.catframe.title.subtitle": "正在为 %s 显示新副标题",
-  "commands.catframe.title.actionbar": "正在为 %s 显示新动作栏标题",
-  "commands.catframe.cftitle.usage": "/cftitle <目标> (clear|reset) 或 /cftitle <目标> (title|subtitle|actionbar) <文本> 或 /cftitle <目标> times <淡入> <停留> <淡出>",
-  "commands.catframe.cftitle.noTargets": "没有玩家匹配该目标选择器",
-  "commands.catframe.cftitle.playersOnly": "/cftitle 的目标只能是玩家",
-  "commands.catframe.cftitle.cleared": "已清除 %s 名玩家的标题",
-  "commands.catframe.cftitle.reset": "已重置 %s 名玩家的标题选项",
-  "commands.catframe.cftitle.times": "已更改 %s 名玩家的标题显示时间",
-  "commands.catframe.cftitle.title": "正在为 %s 名玩家显示新标题",
-  "commands.catframe.cftitle.subtitle": "正在为 %s 名玩家显示新副标题",
-  "commands.catframe.cftitle.actionbar": "正在为 %s 名玩家显示新动作栏标题"
+  "commands.catframe.title.actionbar": "正在为 %s 显示新动作栏标题"
 }

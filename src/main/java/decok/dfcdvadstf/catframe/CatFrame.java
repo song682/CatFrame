@@ -5,8 +5,6 @@ import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import decok.dfcdvadstf.catframe.command.CommandTitleServer;
 import decok.dfcdvadstf.catframe.proxy.CommonProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,12 +43,5 @@ public class CatFrame {
         proxyCommon.init(event);
 
         logger.info("Initialization logic complete");
-    }
-
-    @EventHandler
-    public void onServerStarting(FMLServerStartingEvent event) {
-        // Register the server-side /cftitle command (OP level 2)
-        // 注册服务端 /cftitle 命令（OP 等级 2）
-        event.registerServerCommand(new CommandTitleServer());
     }
 }

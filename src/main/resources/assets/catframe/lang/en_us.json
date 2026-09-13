@@ -14,14 +14,5 @@
   "commands.catframe.title.times": "Changed the title display times for %s",
   "commands.catframe.title.title": "Showing new title for %s",
   "commands.catframe.title.subtitle": "Showing new subtitle for %s",
-  "commands.catframe.title.actionbar": "Showing new actionbar title for %s",
-  "commands.catframe.cftitle.usage": "/cftitle <targets> (clear|reset) OR /cftitle <targets> (title|subtitle|actionbar) <text> OR /cftitle <targets> times <fadeIn> <stay> <fadeOut>",
-  "commands.catframe.cftitle.noTargets": "No players matched the target selector",
-  "commands.catframe.cftitle.playersOnly": "Only players may be targeted by /cftitle",
-  "commands.catframe.cftitle.cleared": "Cleared the title for %s player(s)",
-  "commands.catframe.cftitle.reset": "Reset the title options for %s player(s)",
-  "commands.catframe.cftitle.times": "Changed the title display times for %s player(s)",
-  "commands.catframe.cftitle.title": "Showing new title for %s player(s)",
-  "commands.catframe.cftitle.subtitle": "Showing new subtitle for %s player(s)",
-  "commands.catframe.cftitle.actionbar": "Showing new actionbar title for %s player(s)"
+  "commands.catframe.title.actionbar": "Showing new actionbar title for %s"
 }

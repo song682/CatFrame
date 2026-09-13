@@ -14,9 +14,6 @@ import java.util.function.Consumer;
 public abstract class AbstractScreenTab implements Tab {
     protected TabManager tabManager;
     protected Minecraft mc;
-    /** @deprecated 只保留按钮，新代码请用 {@link #tabWidgets} */
-    @Deprecated
-    protected List<GuiButton> tabButtons = new ArrayList<>();
     /**
      * 通用控件列表，不限于 GuiButton，也可放 GuiTextField、Component 等。
      */
@@ -81,7 +78,6 @@ public abstract class AbstractScreenTab implements Tab {
     @Override
     public void initGui(TabManager tabManager, int width, int height) {
         this.tabManager = tabManager;
-        tabButtons.clear();
         tabWidgets.clear();
         tabGuiScreenEvents.clear();
     }
@@ -118,8 +114,10 @@ public abstract class AbstractScreenTab implements Tab {
     @Override
     public void setVisible(boolean visible) {
         this.visible = visible;
-        for (GuiButton button : tabButtons) {
-            button.visible = visible;
+        for (Object widget : tabWidgets) {
+            if (widget instanceof GuiButton) {
+                ((GuiButton) widget).visible = visible;
+            }
         }
     }
 
@@ -127,7 +125,6 @@ public abstract class AbstractScreenTab implements Tab {
      * 注册一个 GuiButton 到 Tab（同时加入 buttonList）。
      */
     protected void addButton(GuiButton button) {
-        tabButtons.add(button);
         tabWidgets.add(button);
         tabManager.addButton(button);
     }

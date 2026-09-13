@@ -1,49 +1,67 @@
 package decok.dfcdvadstf.catframe.command;
 
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.network.simpleimpl.IMessage;
+import cpw.mods.fml.relauncher.Side;
+import decok.dfcdvadstf.catframe.network.OverlayNetwork;
+import decok.dfcdvadstf.catframe.network.PacketTitleOverlay;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.Title;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.command.PlayerNotFoundException;
 import net.minecraft.command.WrongUsageException;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentTranslation;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * <p>
- * {@code /title} 客户端命令 —— 复刻高版本 {@code /title} 的完整语法：
+ * {@code /title} 命令 —— 复刻高版本 {@code /title} 的完整语法，
+ * 同时承担客户端与服务端职责：
  * </p>
  * <pre>{@code
  *   /title <targets> (clear|reset)
- *   /title <targets> (title|subtitle|actionbar) <title>
+ *   /title <targets> (title|subtitle|actionbar) <text>
  *   /title <targets> times <fadeIn> <stay> <fadeOut>
  * }</pre>
  * <p>
- * The {@code /title} client command — full modern {@code /title} syntax as above.
+ * The {@code /title} command — full modern {@code /title} syntax as above,
+ * combining client and server responsibilities in a single class.
  * </p>
  *
- * <h3>单人与多人模式 / Singleplayer vs. multiplayer</h3>
+ * <h3>客户端侧 / Client side</h3>
  * <p>
- * 单人/局域网模式下，本命令在本地客户端直接执行，{@code <targets>} 收敛为本地玩家匹配。
- * <br>In singleplayer / LAN, this command executes locally;
- * {@code <targets>} narrows to the local player.
+ * 通过 {@code ClientCommandHandler} 注册，拦截玩家在聊天框中输入的 {@code /title}。
+ * 单人/局域网模式下本地执行，{@code <targets>} 收敛为本地玩家匹配；
+ * 多人联机时自动将输入转发为同名 {@code /title} 发往服务端。
+ * <br>Registered via {@code ClientCommandHandler}, intercepts player-typed {@code /title}.
+ * In singleplayer / LAN, executes locally; on multiplayer, auto-forwards as
+ * {@code /title} to the server.
  * </p>
+ *
+ * <h3>服务端侧 / Server side</h3>
  * <p>
- * 多人联机时，本命令自动将输入转发为同名 {@code /title} 发往服务端，
- * 由服务端 {@code CommandTitleServer} 解析目标选择器并通过网络包下发到目标客户端。
- * <br>On multiplayer, this command auto-forwards the input as {@code /title}
- * to the server; the server resolves target selectors and pushes Title /
- * ActionBar to target clients via network packets.
+ * 通过 {@code FMLServerStartingEvent} 注册，处理来自服务端控制台、命令方块、
+ * OP 玩家以及客户端转发的请求。使用 {@code PlayerSelector} 解析目标选择器，
+ * 通过 S2C 网络包向任意在线玩家下发 Title / ActionBar。
+ * <br>Registered via {@code FMLServerStartingEvent}, handles requests from the server
+ * console, command blocks, OPs and forwarded client input. Resolves target selectors
+ * via {@code PlayerSelector} and pushes Title / ActionBar to any online player via
+ * S2C network packets.
  * </p>
  *
  * <h3>文本参数 / Text argument</h3>
  * <p>
- * {@code <title>} 由第 3 个参数起以空格拼接，经 {@link Text#fromJson(String)} 宽容解析：
+ * {@code <text>} 由第 3 个参数起以空格拼接，经 {@link Text#fromJson(String)} 宽容解析：
  * 合法的原始 JSON 文本组件（含样式与 {@code extra}）按富文本处理，非 JSON 输入降级为字面文本。
- * <br>{@code <title>} joins the remaining args with spaces and goes through the lenient
+ * <br>{@code <text>} joins the remaining args with spaces and goes through the lenient
  * {@link Text#fromJson(String)}: valid raw JSON text components (styles and {@code extra}
  * included) render as rich text, non-JSON input degrades to a literal.
  * </p>
@@ -63,18 +81,28 @@ public class CommandTitle extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "commands.catframe.title.usage";
+        return isServerSide()
+                ? "commands.catframe.title.server.usage"
+                : "commands.catframe.title.usage";
     }
 
     /**
-     * Always usable — the command is client-local and touches no server state, so the
-     * vanilla op-level gate (permission level 2 for {@code /title}) does not apply.
-     * <p>始终可用 —— 命令纯客户端本地执行、不触碰服务端状态，故不适用原版
-     * {@code /title} 的 OP 权限门槛（等级 2）。</p>
+     * Client side: always returns {@code true} — the command is client-local in
+     * singleplayer and touches no server state, so the vanilla op-level gate does
+     * not apply.
+     * <br>Server side: delegates to {@link #getRequiredPermissionLevel()} (OP level 2).
+     * <p>客户端侧：始终返回 {@code true} —— 单人模式下命令纯客户端本地执行、不触碰
+     * 服务端状态，故不适用原版 OP 权限门槛。服务端侧：委托至
+     * {@link #getRequiredPermissionLevel()}（OP 等级 2）。</p>
      */
     @Override
     public boolean canCommandSenderUseCommand(ICommandSender sender) {
-        return true;
+        return !isServerSide() || getRequiredPermissionLevel() <= 2;
+    }
+
+    @Override
+    public int getRequiredPermissionLevel() {
+        return 2;
     }
 
     @Override
@@ -83,14 +111,135 @@ public class CommandTitle extends CommandBase {
             throw new WrongUsageException(getCommandUsage(sender));
         }
 
-        // Multiplayer: forward to server as /title for server-side target resolution
-        // 多人联机：转发为同名 /title 到服务端，由服务端解析目标选择器
+        if (isServerSide()) {
+            processServerCommand(sender, args);
+        } else {
+            processClientCommand(sender, args);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  Server-side logic / 服务端逻辑
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * Server-side command processing: resolves target selectors via
+     * {@code PlayerSelector} and dispatches S2C overlay packets to all matched players.
+     * <p>服务端命令处理：通过 {@code PlayerSelector} 解析目标选择器，
+     * 向所有匹配玩家发送 S2C 覆盖层包。</p>
+     */
+    private void processServerCommand(ICommandSender sender, String[] args) {
+        EntityPlayerMP[] targets = resolveTargets(sender, args[0]);
+        if (targets.length == 0) {
+            throw new PlayerNotFoundException("commands.catframe.title.noTargets");
+        }
+
+        String sub = args[1].toLowerCase(Locale.ROOT);
+
+        if ("clear".equals(sub)) {
+            requireArgCount(args, 2, sender);
+            sendToAll(targets, PacketTitleOverlay.simple(PacketTitleOverlay.Action.CLEAR));
+            notifySender(sender, "commands.catframe.title.cleared", targets.length);
+        } else if ("reset".equals(sub)) {
+            requireArgCount(args, 2, sender);
+            sendToAll(targets, PacketTitleOverlay.simple(PacketTitleOverlay.Action.RESET));
+            notifySender(sender, "commands.catframe.title.reset", targets.length);
+        } else if ("times".equals(sub)) {
+            requireArgCount(args, 5, sender);
+            int fadeIn = parseIntWithMin(sender, args[2], 0);
+            int stay = parseIntWithMin(sender, args[3], 0);
+            int fadeOut = parseIntWithMin(sender, args[4], 0);
+            sendToAll(targets, PacketTitleOverlay.times(fadeIn, stay, fadeOut));
+            notifySender(sender, "commands.catframe.title.times", targets.length);
+        } else if ("title".equals(sub) || "subtitle".equals(sub) || "actionbar".equals(sub)) {
+            if (args.length < 3) {
+                throw new WrongUsageException(getCommandUsage(sender));
+            }
+            String rawText = joinArgs(args, 2);
+            Text text = Text.fromJson(rawText);
+            String json = text.toJson();
+
+            PacketTitleOverlay.Action action;
+            if ("title".equals(sub)) {
+                action = PacketTitleOverlay.Action.TITLE;
+            } else if ("subtitle".equals(sub)) {
+                action = PacketTitleOverlay.Action.SUBTITLE;
+            } else {
+                action = PacketTitleOverlay.Action.ACTIONBAR;
+            }
+            sendToAll(targets, PacketTitleOverlay.text(action, json));
+            notifySender(sender, "commands.catframe.title." + sub, targets.length);
+        } else {
+            throw new WrongUsageException(getCommandUsage(sender));
+        }
+    }
+
+    /**
+     * Resolves the target token to an array of server players.
+     * Rejects {@code @e}; accepts {@code @a/@p/@r/@s} (with optional selector args)
+     * and plain player names looked up via {@code PlayerSelector} /
+     * {@code MinecraftServer}.
+     * <p>将目标令牌解析为服务端玩家数组。拒绝 {@code @e}；接受 {@code @a/@p/@r/@s}
+     * （可附带选择器参数）以及通过 {@code PlayerSelector} / {@code MinecraftServer}
+     * 查找的纯玩家名。</p>
+     *
+     * @throws CommandException      if {@code @e} is used / 使用了 {@code @e} 时抛出
+     * @throws PlayerNotFoundException if no players match / 无玩家匹配时抛出
+     */
+    private static EntityPlayerMP[] resolveTargets(ICommandSender sender, String token) {
+        if (token.startsWith("@e") && (token.length() == 2 || token.charAt(2) == '[')) {
+            throw new CommandException("commands.catframe.title.playersOnly");
+        }
+        if (token.startsWith("@")) {
+            EntityPlayerMP[] matched = net.minecraft.command.PlayerSelector.matchPlayers(sender, token);
+            if (matched != null && matched.length > 0) {
+                return matched;
+            }
+            throw new PlayerNotFoundException();
+        }
+        EntityPlayerMP player = MinecraftServer.getServer().getConfigurationManager().func_152612_a(token);
+        if (player != null) {
+            return new EntityPlayerMP[]{player};
+        }
+        throw new PlayerNotFoundException();
+    }
+
+    /**
+     * Sends the given packet to every target player via the overlay network channel.
+     * <p>通过覆盖层网络通道向每位目标玩家发送指定包。</p>
+     */
+    private static void sendToAll(EntityPlayerMP[] targets, IMessage message) {
+        for (EntityPlayerMP player : targets) {
+            OverlayNetwork.INSTANCE.sendTo(message, player);
+        }
+    }
+
+    private static void notifySender(ICommandSender sender, String translationKey, int targetCount) {
+        sender.addChatMessage(new ChatComponentTranslation(translationKey, targetCount));
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  Client-side logic / 客户端逻辑
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * Client-side command processing.
+     * In multiplayer, forwards the raw input as {@code /title} to the server.
+     * In singleplayer / LAN, executes locally against the local player.
+     * <p>客户端命令处理。多人联机时将原始输入转发为 {@code /title} 到服务端；
+     * 单人/局域网模式下对本地玩家执行。</p>
+     */
+    private void processClientCommand(ICommandSender sender, String[] args) {
         Minecraft mc = Minecraft.getMinecraft();
+
+        // Multiplayer: forward to server for server-side target resolution
+        // 多人联机：转发到服务端，由服务端解析目标选择器
         if (!mc.isSingleplayer()) {
             mc.thePlayer.sendChatMessage("/title " + joinArgs(args, 0));
             return;
         }
 
+        // Singleplayer: execute locally
         EntityPlayer player = mc.thePlayer;
         if (player == null) {
             throw new CommandException("commands.catframe.title.noPlayer");
@@ -98,7 +247,7 @@ public class CommandTitle extends CommandBase {
         String playerName = player.getCommandSenderName();
         requireLocalTarget(args[0], playerName);
 
-        String sub = args[1].toLowerCase(java.util.Locale.ROOT);
+        String sub = args[1].toLowerCase(Locale.ROOT);
 
         if ("clear".equals(sub)) {
             requireArgCount(args, 2, sender);
@@ -135,8 +284,6 @@ public class CommandTitle extends CommandBase {
         }
     }
 
-    // ──── Target resolution / 目标解析 ────
-
     /**
      * Validates that the target token includes the local player: a player-type selector
      * ({@code @p/@a/@r/@s}, selector arguments like {@code @a[r=10]} are accepted without
@@ -166,6 +313,23 @@ public class CommandTitle extends CommandBase {
         if (!token.equalsIgnoreCase(playerName)) {
             throw new CommandException("commands.catframe.title.notLocal", playerName);
         }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  Shared helpers / 共用辅助方法
+    // ════════════════════════════════════════════════════════════════════
+
+    /**
+     * Detects whether the current execution context is the server side.
+     * Uses {@link FMLCommonHandler#getEffectiveSide()} which checks the current
+     * thread name — {@code "Server thread"} maps to {@link Side#SERVER}, everything
+     * else to {@link Side#CLIENT}.
+     * <p>检测当前执行上下文是否为服务端侧。使用 {@link FMLCommonHandler#getEffectiveSide()}
+     * 依据当前线程名判断 —— {@code "Server thread"} 映射为 {@link Side#SERVER}，
+     * 其余映射为 {@link Side#CLIENT}。</p>
+     */
+    private static boolean isServerSide() {
+        return FMLCommonHandler.instance().getEffectiveSide() == Side.SERVER;
     }
 
     /**
@@ -199,6 +363,9 @@ public class CommandTitle extends CommandBase {
     @SuppressWarnings("rawtypes")
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
+            if (isServerSide()) {
+                return getListOfStringsMatchingLastWord(args, getServerPlayerNames());
+            }
             EntityPlayer player = Minecraft.getMinecraft().thePlayer;
             String name = player != null ? player.getCommandSenderName() : "";
             return getListOfStringsMatchingLastWord(args, "@p", "@a", "@r", "@s", name);
@@ -207,6 +374,16 @@ public class CommandTitle extends CommandBase {
             return getListOfStringsMatchingLastWord(args, SUB_COMMANDS);
         }
         return null;
+    }
+
+    private static String[] getServerPlayerNames() {
+        @SuppressWarnings("unchecked")
+        List<EntityPlayerMP> players = MinecraftServer.getServer().getConfigurationManager().playerEntityList;
+        String[] names = new String[players.size()];
+        for (int i = 0; i < players.size(); i++) {
+            names[i] = players.get(i).getCommandSenderName();
+        }
+        return names;
     }
 
     @Override

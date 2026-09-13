@@ -32,7 +32,7 @@ import java.util.*;
  * Each pass renders a separate full-brightness flat quad in the GUI.
  *
  * <h3>2. Dual-model rendering (2D inventory + 3D handheld)</h3>
- * Call {@link #setModels(String, String)} in the constructor to specify
+ * Use {@link #setModels(String, String)} to specify
  * separate 2D (inventory) and 3D (handheld) model paths.
  * Internally an {@link ItemStateNode} decision tree is built which
  * automatically dispatches:
@@ -68,21 +68,17 @@ public class ModernItem extends Item implements IItemStateProvider {
     // ==================== Dual-model configuration ====================
 
     /**
-     * @deprecated use {@link IItemStateProvider} Item model system instead<br>
-     *             2D inventory model path (e.g. "item/bluey_inventory"), used for
-     *             GUI and dropped item rendering.
-     *             Set by {@link #setModels(String, String)}.
+     * 2D inventory model path (e.g. "item/bluey_inventory"), used for
+     * GUI and dropped item rendering.
+     * Set by {@link #setModels(String, String)}.
      */
-    @Deprecated
     protected String inventoryModelPath;
 
     /**
-     * @deprecated use {@link IItemStateProvider} Item model system instead<br>
-     *             3D handheld model path (e.g. "item/bluey"), used for first/third
-     *             person hand rendering.
-     *             Set by {@link #setModels(String, String)}.
+     * 3D handheld model path (e.g. "item/bluey"), used for first/third
+     * person hand rendering.
+     * Set by {@link #setModels(String, String)}.
      */
-    @Deprecated
     protected String handModelPath;
 
     /**
@@ -217,14 +213,7 @@ public class ModernItem extends Item implements IItemStateProvider {
     // ==================== Dual-model API ====================
 
     /**
-     * <p>
-     * 
-     * @deprecated use {@link IItemStateProvider} Item model system instead
-     *             </p>
-     * 
-     *             <p>
-     *             Set separate 2D and 3D model paths for this item.
-     *             </p>
+     * Set separate 2D and 3D model paths for this item.
      *             <p>
      *             Set an internal {@link ItemStateNode} node：
      *             <ul>
@@ -234,7 +223,7 @@ public class ModernItem extends Item implements IItemStateProvider {
      *             ITEM_HAND_THIRD_PERSON）→ 3D handheld model</li>
      *             </ul>
      *             If only a model is input, regressed to the single
-     *             {@link ItemStateNode.ModelLeaf}。
+     *             {@link ItemStateNode.ModelLeaf}.
      *             <p>
      *             Must be called <b>before</b>
      *             {@link ModelManagerDataLoader#init()}
@@ -247,7 +236,6 @@ public class ModernItem extends Item implements IItemStateProvider {
      *                       "item/bluey")
      * @return this
      */
-    @Deprecated
     public ModernItem setModels(String inventoryModel, String handModel) {
         this.inventoryModelPath = inventoryModel;
         this.handModelPath = handModel;
@@ -292,10 +280,8 @@ public class ModernItem extends Item implements IItemStateProvider {
     }
 
     /**
-     * @deprecated use {@link IItemStateProvider} Item model system instead<br>
-     *             Returns true if this item has dual-model configuration.
+     * Returns true if this item has dual-model configuration.
      */
-    @Deprecated
     public boolean hasDualModels() {
         return inventoryModelPath != null && handModelPath != null;
     }

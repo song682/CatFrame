@@ -25,25 +25,18 @@ import java.util.List;
  * The {@code /title} client command — full modern {@code /title} syntax as above.
  * </p>
  *
- * <h3>客户端命令定位 / Why a client command</h3>
+ * <h3>单人与多人模式 / Singleplayer vs. multiplayer</h3>
  * <p>
- * Title / ActionBar 的全部状态都是客户端单例（{@code TitleOverlay} / {@code ActionBarOverlay}），
- * CatFrame 没有网络通道，也不保证存在于服务端，因此本命令经
- * {@code ClientCommandHandler} 注册、只在本地客户端执行。{@code <targets>} 据此收敛为
- * 本地玩家匹配：选择器（{@code @p/@a/@r/@s}）或与本地玩家名一致时生效，否则报错且
- * 不产生任何效果——与原版“时间值只发送到目标自己的客户端”的语义同构。
- * <br>All Title / ActionBar state lives in client singletons ({@code TitleOverlay} /
- * {@code ActionBarOverlay}); CatFrame has no network channel and is not guaranteed
- * server-side, so this command registers via {@code ClientCommandHandler} and executes
- * locally only. {@code <targets>} therefore narrows to local-player matching: a selector
- * ({@code @p/@a/@r/@s}) or the local player's name applies, anything else errors with no
- * effect — isomorphic to vanilla's "times are sent only to the target's own client".
+ * 单人/局域网模式下，本命令在本地客户端直接执行，{@code <targets>} 收敛为本地玩家匹配。
+ * <br>In singleplayer / LAN, this command executes locally;
+ * {@code <targets>} narrows to the local player.
  * </p>
  * <p>
- * <b>注意 / Note:</b> 客户端命令会拦截同名输入——若所连服务器自带 {@code /title}
- * （如插件实现），本地这条会优先生效、遮蔽服务端版本。
- * <br>A client command intercepts matching chat input — if the connected server provides
- * its own {@code /title} (e.g. via a plugin), this local one takes precedence and shadows it.
+ * 多人联机时，本命令自动将输入转发为同名 {@code /title} 发往服务端，
+ * 由服务端 {@code CommandTitleServer} 解析目标选择器并通过网络包下发到目标客户端。
+ * <br>On multiplayer, this command auto-forwards the input as {@code /title}
+ * to the server; the server resolves target selectors and pushes Title /
+ * ActionBar to target clients via network packets.
  * </p>
  *
  * <h3>文本参数 / Text argument</h3>
@@ -90,7 +83,15 @@ public class CommandTitle extends CommandBase {
             throw new WrongUsageException(getCommandUsage(sender));
         }
 
-        EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+        // Multiplayer: forward to server as /title for server-side target resolution
+        // 多人联机：转发为同名 /title 到服务端，由服务端解析目标选择器
+        Minecraft mc = Minecraft.getMinecraft();
+        if (!mc.isSingleplayer()) {
+            mc.thePlayer.sendChatMessage("/title " + joinArgs(args, 0));
+            return;
+        }
+
+        EntityPlayer player = mc.thePlayer;
         if (player == null) {
             throw new CommandException("commands.catframe.title.noPlayer");
         }

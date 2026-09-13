@@ -93,11 +93,9 @@ public class ClientProxy extends CommonProxy {
         LanguageReloadListener.register();
         ResourcePackModelDetector.register();
 
-        // Client-side /title command — all Title/ActionBar state lives in client
-        // singletons and CatFrame has no network channel, so the command executes
-        // locally and <targets> narrows to the local player (see CommandTitle docs).
-        // 客户端 /title 命令 —— Title/ActionBar 状态全在客户端单例、无网络通道，
-        // 故本地执行，<targets> 收敛为本地玩家（详见 CommandTitle 类注释）。
+        // Client-side /title command — in singleplayer it executes locally;
+        // on multiplayer it auto-forwards to the server (see CommandTitle docs).
+        // 客户端 /title 命令 —— 单人模式本地执行；多人联机时自动转发到服务端。
         ClientCommandHandler.instance.registerCommand(new CommandTitle());
     }
 }

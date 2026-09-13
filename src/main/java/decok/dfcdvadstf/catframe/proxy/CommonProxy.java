@@ -13,6 +13,7 @@ import decok.dfcdvadstf.catframe.adapter.forge.language.LanguageRegister;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.RenderItemInFrameHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.TexturesStitch;
 import decok.dfcdvadstf.catframe.core.RegisteredComponents;
+import decok.dfcdvadstf.catframe.network.OverlayNetwork;
 import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;
 import net.minecraftforge.common.MinecraftForge;
 
@@ -21,6 +22,8 @@ public class CommonProxy {
     protected BingoPlushyItem bingoPlushy;
 
     public void preInit(FMLPreInitializationEvent event) {
+        OverlayNetwork.init();
+
         // Scan CatFrame's own jar/directory for JSON lang files and inject them
         // 扫描 CatFrame 自身 jar/目录中的 JSON 语言文件并注入
         LanguageRegister.load();

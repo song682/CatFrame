@@ -14,5 +14,7 @@
   "commands.catframe.title.times": "已更改 %s 的标题显示时间",
   "commands.catframe.title.title": "正在为 %s 显示新标题",
   "commands.catframe.title.subtitle": "正在为 %s 显示新副标题",
-  "commands.catframe.title.actionbar": "正在为 %s 显示新动作栏标题"
+  "commands.catframe.title.actionbar": "正在为 %s 显示新动作栏标题",
+  "commands.catframe.title.server.usage": "/title <目标> (clear|reset) 或 /title <目标> (title|subtitle|actionbar) <文本> 或 /title <目标> times <淡入> <停留> <淡出>",
+  "commands.catframe.title.noTargets": "没有玩家匹配该目标选择器"
 }

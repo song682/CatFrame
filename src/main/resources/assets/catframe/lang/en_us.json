@@ -14,5 +14,7 @@
   "commands.catframe.title.times": "Changed the title display times for %s",
   "commands.catframe.title.title": "Showing new title for %s",
   "commands.catframe.title.subtitle": "Showing new subtitle for %s",
-  "commands.catframe.title.actionbar": "Showing new actionbar title for %s"
+  "commands.catframe.title.actionbar": "Showing new actionbar title for %s",
+  "commands.catframe.title.server.usage": "/title <targets> (clear|reset) OR /title <targets> (title|subtitle|actionbar) <text> OR /title <targets> times <fadeIn> <stay> <fadeOut>",
+  "commands.catframe.title.noTargets": "No players matched the target selector"
 }

@@ -16,5 +16,7 @@
   "commands.catframe.title.subtitle": "Showing new subtitle for %s",
   "commands.catframe.title.actionbar": "Showing new actionbar title for %s",
   "commands.catframe.title.server.usage": "/title <targets> (clear|reset) OR /title <targets> (title|subtitle|actionbar) <text> OR /title <targets> times <fadeIn> <stay> <fadeOut>",
-  "commands.catframe.title.noTargets": "No players matched the target selector"
+  "commands.catframe.title.noTargets": "No players matched the target selector",
+  "resourcePack.catframe.builtin.example.name": "CatFrame Example Pack",
+  "resourcePack.catframe.builtin.example.description": "A demonstration built-in resource pack shipped by CatFrame"
 }

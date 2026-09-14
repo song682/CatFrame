@@ -6,6 +6,12 @@ repositories {
 
 def unimixinsVersion = project.findProperty('unimixinsVersion')
 
+// Coremod entry of the early mixin channel: it seeds the built-in resource pack
+// registry and registers the early mixins. FML learns about the coremod from the
+// jar manifest in production and from the JVM argument in dev runs (it only
+// scans the mods folder otherwise).
+def earlyMixinPlugin = "decok.dfcdvadstf.catframe.mixin.CatFrameEarlyMixinPlugin"
+
 dependencies {
     implementation("com.github.LegacyModdingMC.UniMixins:unimixins-all-1.7.10:$unimixinsVersion:dev")
     annotationProcessor("com.github.LegacyModdingMC.UniMixins:unimixins-all-1.7.10:$unimixinsVersion:dev")
@@ -13,10 +19,12 @@ dependencies {
 
 runClient {
     args("--tweakClass", "org.spongepowered.asm.launch.MixinTweaker")
+    jvmArgs("-Dfml.coreMods.load=${earlyMixinPlugin}")
 }
 
 runServer {
     args("--tweakClass", "org.spongepowered.asm.launch.MixinTweaker")
+    jvmArgs("-Dfml.coreMods.load=${earlyMixinPlugin}")
 }
 
 def outSrgFile = "${tasks.compileJava.temporaryDir}/outSrg.srg"
@@ -24,9 +32,14 @@ def outRefMapFile = "${tasks.compileJava.temporaryDir}/mixins.${modId}.refmap.js
 
 jar {
     manifest {
+        // MixinConfigs lists only the regular config on purpose: the early config is
+        // registered by GTNHMixins at the coremod stage (Mixin ignores duplicate
+        // registrations). FMLCorePlugin is not redundant next to TweakClass: FML skips
+        // containers carrying a tweaker, and Mixin's FML platform agent re-injects it.
         attributes (
                 'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
                 'MixinConfigs': "mixins.${modId}.json",
+                'FMLCorePlugin': earlyMixinPlugin,
                 'ForceLoadAsMod': 'true',
                 'FMLCorePluginContainsFMLMod': 'true',
         )

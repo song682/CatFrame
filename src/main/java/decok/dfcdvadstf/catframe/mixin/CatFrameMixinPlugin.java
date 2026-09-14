@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.mixin;
 
+import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import decok.dfcdvadstf.catframe.Tags;
 import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -26,18 +27,20 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
     public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {}
 
     /**
-     * Return {@code null} to delegate mixin selection to the JSON configuration
-     * ({@code mixins.catframe.json}), which uses the {@code "client"} list for
-     * client-only mixins and an empty {@code "mixins"} list (no common mixins).
+     * Selects the regular mixins from {@link Mixins.NormalMixin} at config load
+     * time: the GTNHMixins builder evaluates the load-time state (physical side,
+     * {@code applyIf} conditions) and returns only the classes valid for this
+     * run, which replaces the former static {@code "client"} list of the JSON
+     * configuration.
      * <p>
-     * 返回 {@code null} 以将 mixin 选择委托给 JSON 配置（{@code mixins.catframe.json}），
-     * 该配置通过 {@code "client"} 列表限定客户端专用 mixin，{@code "mixins"} 为空
-     * （无公共 mixin），从而在专用服务器上不会尝试加载客户端类。
+     * 在配置加载时从 {@link Mixins.NormalMixin} 选择普通 mixin：GTNHMixins 的
+     * builder 依据加载时的状态（物理侧别、{@code applyIf} 条件）只返回本次
+     * 运行有效的类，取代原先 JSON 配置中的静态 {@code "client"} 列表。
      * </p>
      */
     @Override
     public List<String> getMixins() {
-        return null;
+        return IMixins.getMixins(Mixins.NormalMixin.class);
     }
 
     @Override

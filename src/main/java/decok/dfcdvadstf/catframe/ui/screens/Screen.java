@@ -14,6 +14,8 @@ import decok.dfcdvadstf.catframe.ui.overlay.OverlayManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.EnumChatFormatting;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
@@ -209,6 +211,23 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
     protected void clearWidgets() {
         this.renderables.clear();
         this.children.clear();
+    }
+
+    /**
+     * 收集物品的 tooltip 文本行——对标 26.1.2 {@code Screen.getTooltipFromItem(Minecraft, ItemStack)}。
+     * <p>
+     * 1.7.10 适配：行文本委托原版 {@link ItemStack#getTooltip}；着色沿用原版
+     * {@code GuiScreen.renderToolTip} 的规则（首行稀有度颜色、其余行 {@code GRAY}），
+     * 保证物品 tooltip 切换到 CatFrame 管线后视觉表现与原版一致。
+     * </p>
+     */
+    @SuppressWarnings("unchecked")
+    public static List<String> getTooltipFromItem(final Minecraft mc, final ItemStack itemStack) {
+        final List<String> lines = itemStack.getTooltip(mc.thePlayer, mc.gameSettings.advancedItemTooltips);
+        for (int i = 0; i < lines.size(); i++) {
+            lines.set(i, (i == 0 ? itemStack.getRarity().rarityColor : EnumChatFormatting.GRAY.toString()) + lines.get(i));
+        }
+        return lines;
     }
 
     @Override

@@ -2,6 +2,8 @@ package decok.dfcdvadstf.catframe.ui.screens.container;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.core.component.DataComponents;
+import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.components.Renderable;
 import decok.dfcdvadstf.catframe.ui.components.events.CatFrameInputScreen;
@@ -11,8 +13,14 @@ import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
 import decok.dfcdvadstf.catframe.ui.components.events.ScreenKeyboardInput;
 import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
+import decok.dfcdvadstf.catframe.ui.screens.Screen;
+import decok.dfcdvadstf.catframe.ui.tooltip.ClientTooltipComponent;
+import decok.dfcdvadstf.catframe.ui.tooltip.ItemTooltipImages;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.inventory.Slot;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.ResourceLocation;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
@@ -155,6 +163,10 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
                 ((Renderable) renderable).extractRenderState(graphics, mouseX, mouseY, partialTicks);
             }
         }
+
+        // Deferred hovered-slot tooltip — collected last so it stays topmost
+        // 悬停槽位延迟 tooltip——最后收集，保证绘制在最上层
+        extractTooltip(graphics, mouseX, mouseY);
     }
 
     /**
@@ -180,6 +192,77 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
         // Default: draw title and inventory label
         this.fontRendererObj.drawString(this.menu.getContainer().getInventoryName(), 8, 6, 4210752);
         this.fontRendererObj.drawString("Inventory", 8, this.imageHeight - 96 + 2, 4210752);
+    }
+
+    // ──── Hovered-slot tooltip ────
+
+    /**
+     * Suppress the vanilla immediate tooltip draw.
+     * <p>
+     * 原版 {@link GuiContainer#drawScreen} 在帧尾为悬停槽位直接调用本方法绘制旧工具提示；
+     * CatFrame 改由 {@link #extractTooltip} 走延迟管线统一绘制（对标 26.1.2），
+     * 若保留原版路径会出现双重 tooltip，故在此显式抑制。
+     * </p>
+     */
+    @Override
+    protected void renderToolTip(final ItemStack stack, final int mouseX, final int mouseY) {
+        // Handled by extractTooltip() via the CatFrame deferred tooltip pipeline.
+    }
+
+    /**
+     * Collect the deferred tooltip for the hovered slot — corresponds to 26.1.2
+     * {@code AbstractContainerScreen.extractTooltip()}.
+     * <p>
+     * Shown only when no item is carried, or when the item's tooltip image
+     * declares it should stay visible while an item is held.
+     * </p>
+     * <p>为悬停槽位收集延迟 tooltip——对标 26.1.2。仅当未持取物品、
+     * 或物品图像组件声明「持物时仍显示」时才显示。</p>
+     *
+     * @param graphics the rendering context / 渲染上下文
+     * @param mouseX   mouse X / 鼠标 X
+     * @param mouseY   mouse Y / 鼠标 Y
+     */
+    protected void extractTooltip(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY) {
+        if (this.hoveredSlot == null || !this.hoveredSlot.getHasStack()) {
+            return;
+        }
+        final ItemStack item = this.hoveredSlot.getStack();
+        if (this.menu.getCarried(this.mc.thePlayer) == null || this.showTooltipWithItemInHand(item)) {
+            // Vanilla resolved the item's custom font when present (GuiScreen.renderToolTip)
+            final FontRenderer itemFont = item.getItem().getFontRenderer(item);
+            final String styleId = ItemStackComponents.get(item).get(DataComponents.TOOLTIP_STYLE);
+            graphics.setTooltipForNextFrame(
+                    itemFont != null ? itemFont : this.fontRendererObj,
+                    this.getTooltipFromContainerItem(item),
+                    ItemTooltipImages.get(item),
+                    mouseX, mouseY,
+                    styleId != null ? new ResourceLocation(styleId) : null
+            );
+        }
+    }
+
+    /**
+     * Whether the hovered item's tooltip stays visible while an item is held on
+     * the cursor — corresponds to 26.1.2 same-name method; decided by the client
+     * renderer dispatched from the item's tooltip image.
+     * <p>由物品图像组件的客户端分派决定（无图像或未声明时为 {@code false}）。</p>
+     */
+    private boolean showTooltipWithItemInHand(final ItemStack item) {
+        return ItemTooltipImages.get(item)
+                .map(ClientTooltipComponent::create)
+                .map(ClientTooltipComponent::showTooltipWithItemInHand)
+                .orElse(false);
+    }
+
+    /**
+     * Collect the tooltip lines for a container item — corresponds to 26.1.2
+     * {@code AbstractContainerScreen.getTooltipFromContainerItem(ItemStack)};
+     * subclasses may override (e.g. creative-style screens).
+     * <p>收集容器内物品的 tooltip 文本行——对标 26.1.2；子类可覆写。</p>
+     */
+    protected List<String> getTooltipFromContainerItem(final ItemStack itemStack) {
+        return Screen.getTooltipFromItem(this.mc, itemStack);
     }
 
     // ──── Mouse events (vanilla → CatFrame dispatch) ────

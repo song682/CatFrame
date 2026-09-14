@@ -123,5 +123,6 @@ public final class RegisteredComponents {
         DataComponents.register(DAMAGE);
         DataComponents.register(DataComponents.ENCHANTMENT_GLINT);
         DataComponents.register(DataComponents.ITEM_MODEL);
+        DataComponents.register(DataComponents.TOOLTIP_STYLE);
     }
 }

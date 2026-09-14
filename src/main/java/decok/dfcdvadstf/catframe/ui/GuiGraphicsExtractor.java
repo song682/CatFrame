@@ -10,6 +10,7 @@ import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import decok.dfcdvadstf.catframe.ui.render.GuiRenderState;
 import decok.dfcdvadstf.catframe.ui.render.pip.*;
+import decok.dfcdvadstf.catframe.ui.screens.Screen;
 import decok.dfcdvadstf.catframe.ui.tooltip.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -465,8 +466,47 @@ public class GuiGraphicsExtractor {
         for (String line : lines) {
             components.add(ClientTooltipComponent.create(line));
         }
-        // TODO: 当 component 非空时，插入到第二行位置
+        // 结构化组件插入到第 2 行位置（无文本行时为第 1 行）— 对标 26.1.2
+        component.ifPresent(image -> components.add(components.isEmpty() ? 0 : 1, ClientTooltipComponent.create(image)));
         setTooltipForNextFrameInternal(font, components, xo, yo, positioner, style, replaceExisting);
+    }
+
+    /**
+     * 设置多行文本 tooltip（带结构化组件，使用默认定位器）。
+     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, int, int)}。</p>
+     */
+    public void setTooltipForNextFrame(FontRenderer font, List<String> lines,
+                                       Optional<TooltipComponent> component,
+                                       int xo, int yo) {
+        setTooltipForNextFrame(font, lines, component, xo, yo, null);
+    }
+
+    /**
+     * 设置多行文本 tooltip（带结构化组件与样式，使用默认定位器）。
+     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, int, int, Identifier)}。</p>
+     */
+    public void setTooltipForNextFrame(FontRenderer font, List<String> lines,
+                                       Optional<TooltipComponent> component,
+                                       int xo, int yo, @Nullable ResourceLocation style) {
+        List<ClientTooltipComponent> components = new ArrayList<>();
+        for (String line : lines) {
+            components.add(ClientTooltipComponent.create(line));
+        }
+        // 结构化组件插入到第 2 行位置（无文本行时为第 1 行）— 对标 26.1.2
+        component.ifPresent(image -> components.add(components.isEmpty() ? 0 : 1, ClientTooltipComponent.create(image)));
+        setTooltipForNextFrameInternal(font, components, xo, yo, DefaultTooltipPositioner.INSTANCE, style, false);
+    }
+
+    /**
+     * 设置物品 tooltip（使用默认定位器）。
+     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, ItemStack, int, int)}：
+     * 文本行为 {@link Screen#getTooltipFromItem} 收集结果，图像组件来自
+     * {@link ItemTooltipImages}，样式取自 {@link DataComponents#TOOLTIP_STYLE}。</p>
+     */
+    public void setTooltipForNextFrame(FontRenderer font, ItemStack stack, int xo, int yo) {
+        String styleId = ItemStackComponents.get(stack).get(DataComponents.TOOLTIP_STYLE);
+        setTooltipForNextFrame(font, Screen.getTooltipFromItem(this.mc, stack), ItemTooltipImages.get(stack),
+                xo, yo, styleId != null ? new ResourceLocation(styleId) : null);
     }
 
     /**

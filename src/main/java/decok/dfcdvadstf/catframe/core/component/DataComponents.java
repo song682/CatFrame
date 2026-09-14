@@ -54,6 +54,19 @@ public final class DataComponents {
                     .networkSynchronized(ComponentSerializers.ofString("ItemModel"))
                     .build();
 
+    /**
+     * 工具提示样式（对标 26.1.2 {@code minecraft:tooltip_style} / {@code DataComponents.TOOLTIP_STYLE}）。
+     * <p>
+     * 值为命名空间 ID 字符串（如 {@code "catframe:my_style"}），渲染时解析为
+     * {@code assets/<命名空间>/textures/gui/tooltips/<路径>_background.png} 与
+     * {@code _frame.png} 贴图对；未设置时使用默认样式贴图。
+     */
+    public static final DataComponentType<String> TOOLTIP_STYLE =
+            DataComponentType.<String>builder(new ResourceLocation("minecraft", "tooltip_style"))
+                    .persistent(ComponentSerializers.ofString("TooltipStyle"))
+                    .networkSynchronized(ComponentSerializers.ofString("TooltipStyle"))
+                    .build();
+
     // ========== 类型注册表 ==========
 
     private static final Map<ResourceLocation, DataComponentType<?>> BY_ID = new LinkedHashMap<>();

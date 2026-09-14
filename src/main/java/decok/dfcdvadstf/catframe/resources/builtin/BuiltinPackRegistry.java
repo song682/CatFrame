@@ -15,19 +15,25 @@ import java.util.Map;
  * FML coremod stage and by any mod at any later point.
  * <p>
  * Registration is keyed by pack id and repeatable: registering the same id
- * again replaces the previous descriptor. A pack registered while the game is
- * already running shows up the next time the repository rebuilds its entry
- * list (opening the resource pack screen); its persisted enabled state is
- * restored on the next launch only when the registration runs before the
- * repository is first built (the FML coremod stage), since the vanilla
- * repository constructor performs its name-matching restore at that point.
+ * again replaces the previous descriptor. The enabled state of a pack is
+ * restored by name from {@code options.txt} at two points: the vanilla
+ * repository constructor (which only reaches packs registered before it runs,
+ * the FML coremod stage) and the startup bootstrap that runs on the vanilla
+ * resource refresh following preInit (which reaches every pack registered up
+ * to postInit — so ordinary mods get the full behaviour by registering during
+ * preInit). A pack registered even later, while the game is already running,
+ * shows up the next time the repository rebuilds its entry list (opening the
+ * resource pack screen); its enabled state cannot be restored automatically,
+ * because such a registration only ever runs after the bootstrap.
  * <p>
  * 内置资源包注册表。刻意不引用任何 Minecraft 类（见 {@link BuiltinPackDescriptor}），
  * 因此既可在 FML coremod 阶段注册，也可由任意模组在之后任意时刻注册。
- * 注册以包 id 为键、可重复：同 id 再次注册将替换旧描述。游戏运行中注册的包会在
- * 仓库下次重建条目列表时出现（打开资源包界面）；其持久化的启用状态仅当注册发生在
- * 仓库首次构建之前（FML coremod 阶段）时，才会在下次启动时被恢复——原版仓库
- * 构造器正是在那个时点执行按名匹配。
+ * 注册以包 id 为键、可重复：同 id 再次注册将替换旧描述。包的启用状态会在两个
+ * 时点按名从 {@code options.txt} 恢复：原版仓库构造器（只能覆盖在其运行之前
+ * ——即 FML coremod 阶段——注册的包）与 preInit 之后那次原版资源刷新上的启动
+ * 引导（可覆盖直到 postInit 为止注册的所有包，因此普通模组在 preInit 注册即可
+ * 获得完整行为）。更晚注册（游戏已在运行）的包会在仓库下次重建条目列表时出现
+ * （打开资源包界面），但其启用状态无法自动恢复——这类注册只会运行于引导之后。
  */
 public final class BuiltinPackRegistry {
 

@@ -80,7 +80,10 @@ public class Mixins {
         SCREEN_INPUT(Side.CLIENT, "middle.MixinGuiScreen", "middle.MixinGuiScreenEventBridge"),
 
         /** Render pipeline interception: block rendering and chunk compile hooks. */
-        RENDERING(Side.CLIENT, "middle.MixinRenderBlocks", "middle.MixinWorldRenderer");
+        RENDERING(Side.CLIENT, "middle.MixinRenderBlocks", "middle.MixinWorldRenderer"),
+
+        /** Built-in pack startup bootstrap on the first vanilla refresh after preInit. */
+        BUILTIN_PACK_BOOTSTRAP(Side.CLIENT, "middle.MixinMinecraftRefreshResources");
 
         private final MixinBuilder builder;
 

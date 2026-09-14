@@ -23,6 +23,7 @@ A modern rendering & UI framework for **Minecraft 1.7.10**. Backports the **1.21
 | **[Recipe System](src/main/java/decok/dfcdvadstf/catframe/recipe)** | `CatFrameRecipeManager`, `ShapedTagRecipe`, `ShapelessTagRecipe` | Tag-aware shaped/shapeless crafting & smelting recipes. Recipe removal API (by output, by predicate). |
 | **[UI Toolkit](src/main/java/decok/dfcdvadstf/catframe/ui)** | `Screen`, `Layout`, components | Component-based GUI framework: `Screen` base class with focus navigation & event dispatch; layouts (`Grid`, `Linear`, `Frame`, `HeaderFooter`); widgets (buttons, edit boxes, scroll areas, selection lists, tabs, toasts); overlay system with auto-stacking for both Screen and HUD. |
 | **[Language](src/main/java/decok/dfcdvadstf/catframe/adapter/forge/language/LanguageRegister.java)** | `LanguageRegister` | JSON lang file (`xx_xx.json`) loader — injects into Forge `LanguageRegistry` with resource-pack override support. |
+| **[Built-in Resource](src/main/java/decok/dfcdvadstf/catframe/resources/builtin)** || Modern feelings of the register0ing  |
 | **[Search Tree](src/main/java/decok/dfcdvadstf/catframe/searching)** | `TextSearchTree`, `SuffixArray` | Suffix-array / trie-based search tree for item/block lookup. |
 
 ## Installation

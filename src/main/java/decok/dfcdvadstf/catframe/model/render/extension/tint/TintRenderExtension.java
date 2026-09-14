@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.model.render.extension.tint;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
+import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import net.minecraft.item.ItemStack;
 
@@ -44,7 +45,7 @@ public final class TintRenderExtension implements IModelRenderExtension {
     }
 
     @Override
-    public void beforePart(List<BakedQuad> allQuads, RenderContext ctx, BlockStateModelPart part) {
+    public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
         // 新部件 = 新 ItemStack，清空上一部件的 tint 记忆。
         // New part = new ItemStack; drop the previous part's tint memo.
         Arrays.fill(itemTintMemo.get().cached, false);

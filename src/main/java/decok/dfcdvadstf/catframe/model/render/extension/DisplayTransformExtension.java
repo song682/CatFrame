@@ -67,9 +67,9 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
     private static final ThreadLocal<String> LAST_DT_SIG = new ThreadLocal<>();
 
     @Override
-    public void beforePart(List<BakedQuad> allQuads, RenderContext ctx, BlockStateModelPart part) {
+    public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
         // 确定当前阶段对应的 display key
-        String displayKey = ctx.phase.getDisplayKey();
+        String displayKey = phase.getDisplayKey();
         if (displayKey == null) {
             currentMatrix.set(null);
             return;
@@ -90,16 +90,16 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
             RenderPhase lastPhase = LAST_DISPLAY_PHASE.get();
             String lastKey = LAST_DISPLAY_KEY.get();
             String lastSig = LAST_DT_SIG.get();
-            boolean phaseChanged = (ctx.phase != lastPhase);
+            boolean phaseChanged = (phase != lastPhase);
             boolean keyChanged = (displayKey != null && !displayKey.equals(lastKey));
             boolean dtChanged = !dtSig.equals(lastSig);
             boolean shouldLog = (phaseChanged || keyChanged || dtChanged);
             if (shouldLog) {
-                LAST_DISPLAY_PHASE.set(ctx.phase);
+                LAST_DISPLAY_PHASE.set(phase);
                 LAST_DISPLAY_KEY.set(displayKey);
                 LAST_DT_SIG.set(dtSig);
                 LOGGER.info(String.format("[DFXDBG] DisplayExt phase=%s key=%s dt=%s",
-                        ctx.phase.name(), displayKey, dtSig));
+                        phase.name(), displayKey, dtSig));
             }
 
             // ====== 诊断结束 ======
@@ -125,7 +125,7 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
     }
 
     @Override
-    public void afterPart(RenderContext ctx) {
+    public void afterPart() {
         currentMatrix.remove();
     }
 

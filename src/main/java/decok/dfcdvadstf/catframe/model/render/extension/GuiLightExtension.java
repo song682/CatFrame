@@ -29,8 +29,8 @@ import java.util.List;
  * 绝不主动开启 GL_LIGHTING，避免破坏外层已设定的 OpenGL 光照状态。</p>
  *
  * <h3>生命周期</h3>
- * <p>本扩展通过 {@link IModelRenderExtension#beforePart(List, RenderContext, BlockStateModelPart)} 和
- * {@link IModelRenderExtension#afterPart(RenderContext)} 生命周期回调管理 GL_LIGHTING 状态，
+ * <p>本扩展通过 {@link IModelRenderExtension#beforePart(List, RenderPhase)} 和
+ * {@link IModelRenderExtension#afterPart()} 生命周期回调管理 GL_LIGHTING 状态，
  * 由 {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry} 统一调度。
  */
 public final class GuiLightExtension implements IModelRenderExtension {
@@ -46,13 +46,13 @@ public final class GuiLightExtension implements IModelRenderExtension {
 
     @Override
     @SuppressWarnings("deprecation")
-    public void beforePart(List<BakedQuad> allQuads, RenderContext ctx, BlockStateModelPart part) {
+    public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
 
         // 破坏贴花阶段不管理 GL_LIGHTING：原版破坏批次（drawBlockDamageTexture）
         // 的 GL 状态由外层统一管理，gui_light 对破坏贴图无意义。
         // Destroy-texture pass: GL_LIGHTING is owned by the vanilla destroy batch,
         // gui_light does not apply to the crack overlay.
-        if (ctx.phase == RenderPhase.BLOCK_DESTROY) {
+        if (phase == RenderPhase.BLOCK_DESTROY) {
             changedLighting.set(Boolean.FALSE);
             return;
         }
@@ -61,7 +61,7 @@ public final class GuiLightExtension implements IModelRenderExtension {
         // glDisable(GL_LIGHTING) 语义）：物品恒定亮度、不随外部光源变化，
         // 即使 gui_light="side" 也强制关闭，避免手持物品受场景方向光照影响。
         // Hand phases always disable GL_LIGHTING so held items ignore scene lighting.
-        if (ctx.phase.isHandPhase()) {
+        if (phase.isHandPhase()) {
             changedLighting.set(Boolean.TRUE);
             GL11.glDisable(GL11.GL_LIGHTING);
             return;
@@ -92,7 +92,7 @@ public final class GuiLightExtension implements IModelRenderExtension {
     }
 
     @Override
-    public void afterPart(RenderContext ctx) {
+    public void afterPart() {
         if (Boolean.TRUE.equals(changedLighting.get())) {
             GL11.glEnable(GL11.GL_LIGHTING);
         }

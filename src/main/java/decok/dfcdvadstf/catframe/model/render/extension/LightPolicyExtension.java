@@ -58,13 +58,13 @@ public final class LightPolicyExtension implements IModelRenderExtension {
     private final ThreadLocal<Integer> pending = new ThreadLocal<>();
 
     @Override
-    public void beforePart(List<BakedQuad> allQuads, RenderContext ctx, BlockStateModelPart part) {
-        if (isItemPhase(ctx.phase)) {
+    public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
+        if (isItemPhase(phase)) {
             // 物品阶段亮度是提交级常量：GUI 恒 255（便宜）；手持 / 掉落 / 展示框
             // 在 RenderPhasePolicy 内部经 Minecraft 玩家单例与 RenderJsonItemModel
             // 掉落实体 thread-local 自取上下文（write 期 flush 与 submit 同处
             // 实体窗口内，见 RenderPhasePolicy 类注释）。
-            pending.set(RenderPhasePolicy.baselineBrightness(ctx.phase, null, 0, 0, 0, null));
+            pending.set(RenderPhasePolicy.baselineBrightness(phase, null, 0, 0, 0, null));
         } else {
             // BLOCK_WORLD / BLOCK_DESTROY / null：无提交级常量（方块亮度需要坐标，
             // 只能在 apply 对退化 quad 现算；destroy 由 BlockDestroyExtension 全权）。
@@ -97,7 +97,7 @@ public final class LightPolicyExtension implements IModelRenderExtension {
     }
 
     @Override
-    public void afterPart(RenderContext ctx) {
+    public void afterPart() {
         pending.remove();
     }
 

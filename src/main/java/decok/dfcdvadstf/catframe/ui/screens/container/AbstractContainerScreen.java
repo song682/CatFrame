@@ -4,6 +4,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.core.component.DataComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
+import decok.dfcdvadstf.catframe.core.tooltip.ItemTooltipImages;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.components.Renderable;
 import decok.dfcdvadstf.catframe.ui.components.events.CatFrameInputScreen;
@@ -15,7 +16,6 @@ import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import decok.dfcdvadstf.catframe.ui.screens.Screen;
 import decok.dfcdvadstf.catframe.ui.tooltip.ClientTooltipComponent;
-import decok.dfcdvadstf.catframe.ui.tooltip.ItemTooltipImages;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.inventory.Slot;
@@ -260,6 +260,8 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
      * {@code AbstractContainerScreen.getTooltipFromContainerItem(ItemStack)};
      * subclasses may override (e.g. creative-style screens).
      * <p>收集容器内物品的 tooltip 文本行——对标 26.1.2；子类可覆写。</p>
+     * <p>Legacy hooks ({@code Item#addInformation} / Forge {@code ItemTooltipEvent}) fire inside
+     * the delegated collection — see {@link Screen#getTooltipFromItem}.</p>
      */
     protected List<String> getTooltipFromContainerItem(final ItemStack itemStack) {
         return Screen.getTooltipFromItem(this.mc, itemStack);

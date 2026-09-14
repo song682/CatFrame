@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.ui.components;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.ui.tooltip.TooltipComponent;
+import decok.dfcdvadstf.catframe.core.tooltip.TooltipComponent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
 

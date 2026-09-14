@@ -220,6 +220,12 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * {@code GuiScreen.renderToolTip} 的规则（首行稀有度颜色、其余行 {@code GRAY}），
      * 保证物品 tooltip 切换到 CatFrame 管线后视觉表现与原版一致。
      * </p>
+     * <p>
+     * 兼容点：{@link ItemStack#getTooltip} 内部调用物品侧 {@code Item#addInformation}
+     * （Item.java 736-741）并经 {@code ForgeEventFactory#onItemTooltip} 派发 Forge
+     * {@code ItemTooltipEvent}——1.7.10 的两条旧扩展钩子均由本委托保证生效，
+     * 收集行文本时应继续走该路径。
+     * </p>
      */
     @SuppressWarnings("unchecked")
     public static List<String> getTooltipFromItem(final Minecraft mc, final ItemStack itemStack) {

@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui.tooltip;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.core.tooltip.TooltipComponent;
 import net.minecraft.client.gui.FontRenderer;
 
 import java.util.HashMap;

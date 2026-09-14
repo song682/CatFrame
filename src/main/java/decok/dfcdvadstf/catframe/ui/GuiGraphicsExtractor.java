@@ -2,6 +2,8 @@ package decok.dfcdvadstf.catframe.ui;
 
 import decok.dfcdvadstf.catframe.core.component.DataComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
+import decok.dfcdvadstf.catframe.core.tooltip.ItemTooltipImages;
+import decok.dfcdvadstf.catframe.core.tooltip.TooltipComponent;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;

@@ -159,6 +159,27 @@ public final class Style {
         return font;
     }
 
+    /**
+     * Returns the raw tri-state value of a style flag — {@code TRUE} / {@code FALSE}
+     * (explicitly set) or {@code null} (inherited / unset). The boolean {@code isXxx()}
+     * getters cannot express an explicit {@code false}; the vanilla bridge needs it
+     * to faithfully map a component's {@code bold:false} etc.
+     * <p>返回样式标记的原始三态值 —— {@code TRUE} / {@code FALSE}（已显式设置）或
+     * {@code null}（继承/未设置）。布尔型 {@code isXxx()} getter 无法表达显式的
+     * {@code false}；原版桥接需要它来忠实映射组件的 {@code bold:false} 等字段。</p>
+     */
+    @Nullable
+    public Boolean getRawFlag(TextFormat format) {
+        switch (format) {
+            case OBFUSCATED: return obfuscated;
+            case BOLD: return bold;
+            case STRIKETHROUGH: return strikethrough;
+            case UNDERLINE: return underlined;
+            case ITALIC: return italic;
+            default: return null;
+        }
+    }
+
     // ──── withX() helper ────
 
     private static <T> Style checkEmptyAfterChange(Style newStyle, @Nullable T previous, @Nullable T next) {

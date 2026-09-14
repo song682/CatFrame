@@ -22,51 +22,38 @@ public final class FontHelper {
     }
 
     /**
-     * Draw styled text at the given position.
-     * <p>在指定位置绘制带样式的文本。</p>
+     * Draw styled text at the given position. The whole Text tree is rendered with
+     * legacy {@code §} codes resolved per node (nested styles no longer get lost);
+     * the {@code style} parameter acts as a base style the tree renders on top of.
+     * <p>在指定位置绘制带样式的文本。整棵 Text 树按节点解析旧版 {@code §} 格式码渲染
+     * （嵌套样式不再丢失）；{@code style} 参数作为整树渲染所依托的基础样式。</p>
      *
      * @param text  the Text to draw / 要绘制的文本
      * @param x     X position / X 坐标
      * @param y     Y position / Y 坐标
-     * @param style the style to apply (may be null) / 要应用的样式（可为 null）
+     * @param style base style (may be null) / 基础样式（可为 null）
      * @return the width of the drawn text / 绘制的文本宽度
      */
     public static int draw(Text text, int x, int y, Style style) {
         if (text == null) return 0;
-        String str = text.getString();
-        if (str == null || str.isEmpty()) return 0;
 
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 
-        // Resolve effective style: text's own style overridden by parameter
-        Style effectiveStyle = style;
-        if (text.getStyle() != null) {
-            effectiveStyle = (style != null) ? style.applyTo(text.getStyle()) : text.getStyle();
-        }
+        // The parameter acts as a base style the Text tree renders on top of;
+        // every node's own style wins over inherited values (see Text#getFormattedString).
+        // 参数作为 Text 树渲染所依托的基础样式；每个节点自身的样式优先于继承值
+        // （见 Text#getFormattedString）。
+        Style baseStyle = (style != null) ? style : Style.EMPTY;
+        String str = text.getFormattedString(baseStyle);
+        if (str.isEmpty()) return 0;
 
-        int color = resolveColor(effectiveStyle, 0xFFFFFF);
-        boolean shadow = true;
+        // The colour parameter only applies until the first § colour code inside
+        // the string; take it from the root node's effective colour.
+        // 颜色参数只在字符串内首个 § 颜色码之前生效；取根节点的有效颜色。
+        Style rootStyle = (text.getStyle() != null) ? text.getStyle().applyTo(baseStyle) : baseStyle;
+        int color = resolveColor(rootStyle, 0xFFFFFF);
 
-        // Apply formatting via legacy colour codes
-        StringBuilder formatted = new StringBuilder();
-        if (effectiveStyle != null) {
-            if (effectiveStyle.isBold()) formatted.append("\u00a7l");
-            if (effectiveStyle.isItalic()) formatted.append("\u00a7o");
-            if (effectiveStyle.isUnderlined()) formatted.append("\u00a7n");
-            if (effectiveStyle.isStrikethrough()) formatted.append("\u00a7m");
-            if (effectiveStyle.isObfuscated()) formatted.append("\u00a7k");
-            if (effectiveStyle.getColor() != null) {
-                // Use the colour value directly through the color parameter
-                color = effectiveStyle.getColor().getRgb() | 0xFF000000;
-            }
-        }
-        formatted.append(str);
-
-        if (shadow) {
-            return font.drawStringWithShadow(formatted.toString(), x, y, color);
-        } else {
-            return font.drawString(formatted.toString(), x, y, color);
-        }
+        return font.drawStringWithShadow(str, x, y, color);
     }
 
     /**

@@ -1,13 +1,17 @@
 package decok.dfcdvadstf.catframe.ui;
 
 import com.google.gson.*;
-import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.StatCollector;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IllegalFormatException;
 import java.util.List;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * A text wrapper supporting literal strings and translatable keys —
@@ -21,10 +25,22 @@ import java.util.List;
  *   // Literal
  *   Text.literal("Hello");
  *
- *   // Translatable flat key (via I18n / StatCollector)
+ *   // Translatable template key (resolved via StatCollector, so it is side-agnostic)
  *   Text.translatable("menu.paused");
  *   Text.translatable("item.count", 5, 10);
+ *
+ *   // Translatable with a fallback template when the key is missing
+ *   Text.translatableWithFallback("mod.greeting", "Hello, %s!", name);
  * }</pre>
+ * <p>
+ * Traversal follows the high-version {@code FormattedText#visit} contract: the tree
+ * is decomposed into styled segments (a translatable node's template is split at its
+ * {@code %s} placeholders so embedded components contribute their own segments), and
+ * consumers may stop early via {@link #STOP_ITERATION}.
+ * <br>遍历遵循高版本 {@code FormattedText#visit} 契约：整树被拆解为带样式的片段
+ * （可翻译节点的模板按其 {@code %s} 占位符拆分，使内嵌组件贡献自己的片段），
+ * 消费者可通过 {@link #STOP_ITERATION} 提前终止。
+ * </p>
  */
 public class Text {
 
@@ -33,6 +49,25 @@ public class Text {
     private Object[] args = new Object[0];
     @Nullable
     private Style style;
+    /**
+     * Fallback template used when this Text is translatable but the key is missing
+     * from the active language table; {@code null} means "no fallback" (the raw key
+     * is shown, mirroring vanilla {@code ChatComponentTranslation}).
+     * <p>当本 Text 可翻译但活动语言表中缺少该键时使用的回退模板；{@code null}
+     * 表示无回退（显示原始键，对齐原版 {@code ChatComponentTranslation}）。</p>
+     */
+    @Nullable
+    private String fallback;
+
+    /**
+     * Matches one format conversion inside a translation template — plain or
+     * indexed (e.g. {@code %s}, {@code %1$s}), and {@code %%}, mirroring the
+     * vanilla {@code ChatComponentTranslation#stringVariablePattern}.
+     * <p>匹配翻译模板中的单次格式转换 —— 普通或索引形式（如 {@code %s}、
+     * {@code %1$s}）以及 {@code %%}，对齐原版
+     * {@code ChatComponentTranslation#stringVariablePattern}。</p>
+     */
+    private static final Pattern FORMAT_PATTERN = Pattern.compile("%(?:(\\d+)\\$)?([A-Za-z%]|$)");
 
     /**
      * Child components appended after this one — counterpart of the raw JSON text
@@ -58,16 +93,12 @@ public class Text {
         this.translatable = false;
     }
 
-    private Text(String key, boolean translatable, Object... args) {
-        this.key = key;
-        this.translatable = translatable;
-        this.args = args;
-    }
-
-    private Text(String key, boolean translatable, @Nullable Style style, Object... args) {
+    private Text(String key, boolean translatable, @Nullable Style style,
+                 @Nullable String fallback, Object... args) {
         this.key = key;
         this.translatable = translatable;
         this.style = style;
+        this.fallback = fallback;
         this.args = args;
     }
 
@@ -79,7 +110,7 @@ public class Text {
      * 创建一个字面（不可翻译）文本。
      */
     public static Text literal(String text) {
-        return new Text(text, false);
+        return new Text(text, false, null, null);
     }
 
     /**
@@ -87,22 +118,37 @@ public class Text {
      * <p>使用指定样式创建字面文本。</p>
      */
     public static Text literal(String text, Style style) {
-        Text t = new Text(text, false);
-        t.style = style;
-        return t;
+        return new Text(text, false, style, null);
     }
 
     /**
-     * Creates a translatable Text with a flat key (via {@link I18n#format}).
+     * Creates a translatable Text with a template key, resolved via
+     * {@link StatCollector#translateToLocalFormatted} — side-agnostic, unlike the
+     * client-only {@code I18n}.
      * <p>
-     * 使用扁平键创建可翻译文本（通过 {@link I18n#format}）。
+     * 使用模板键创建可翻译文本，通过
+     * {@link StatCollector#translateToLocalFormatted} 解析 —— 与仅客户端的
+     * {@code I18n} 不同，服务端同样可用。
      * <pre>{@code
      *   Text.translatable("menu.paused");
      *   Text.translatable("item.count", 5, 10);
      * }</pre>
      */
     public static Text translatable(String key, Object... args) {
-        return new Text(key, true, args);
+        return new Text(key, true, null, null, args);
+    }
+
+    /**
+     * Creates a translatable Text with a fallback flat template, used when the key
+     * is missing from the active language table.
+     * <p>创建带回退扁平模板的可翻译文本，当活动语言表中缺少该键时使用。
+     *
+     * <pre>{@code
+     *   Text.translatableWithFallback("mod.greeting", "Hello, %s!", name);
+     * }</pre>
+     */
+    public static Text translatableWithFallback(String key, @Nullable String fallback, Object... args) {
+        return new Text(key, true, null, fallback, args);
     }
 
     /**
@@ -110,7 +156,7 @@ public class Text {
      * <p>使用扁平键和样式创建可翻译文本。</p>
      */
     public static Text translatable(@Nullable Style style, String key, Object... args) {
-        return new Text(key, true, style, args);
+        return new Text(key, true, style, null, args);
     }
 
     /**
@@ -164,26 +210,49 @@ public class Text {
      * 子组件依次解析并拼接在本节点内容之后。
      */
     public String getString() {
-        String self = selfString();
-        if (siblings.isEmpty()) {
-            return self;
-        }
-        StringBuilder sb = new StringBuilder(self);
-        for (Text sibling : siblings) {
-            sb.append(sibling.getString());
-        }
+        StringBuilder sb = new StringBuilder();
+        visit((style, contents) -> {
+            sb.append(contents);
+            return Optional.<Void>empty();
+        }, Style.EMPTY);
         return sb.toString();
     }
 
     /**
-     * Resolves only this node's own content, ignoring siblings.
-     * <p>仅解析本节点自身内容，不含子组件。</p>
+     * Resolves this node's own template — the active translation when the key is
+     * known, otherwise the fallback, otherwise the raw key (mirrors vanilla
+     * {@code ChatComponentTranslation}'s translation lookup).
+     * <p>解析本节点自身的模板 —— 键已知时取活动翻译，否则取回退模板，最后取原始键
+     * （对齐原版 {@code ChatComponentTranslation} 的翻译查找）。</p>
      */
-    private String selfString() {
-        if (translatable) {
-            return I18n.format(key, args);
+    private String resolvedTemplate() {
+        if (!translatable) {
+            return key;
         }
-        return key;
+        if (fallback != null && !StatCollector.canTranslate(key)) {
+            return fallback;
+        }
+        return StatCollector.translateToLocal(key);
+    }
+
+    /**
+     * Formats this node's own content into a single flat string with
+     * {@link String#format} semantics — the legacy rendering path. Reproduces the
+     * vanilla {@code "Format error: "} prefix when the template and arguments do
+     * not match.
+     * <p>将本节点自身内容按 {@link String#format} 语义格式化为单个扁平字符串 ——
+     * 旧版渲染路径。模板与参数不匹配时复现原版 {@code "Format error: "} 前缀。</p>
+     */
+    private String ownFlatText() {
+        if (!translatable) {
+            return key;
+        }
+        String template = resolvedTemplate();
+        try {
+            return String.format(template, args);
+        } catch (IllegalFormatException e) {
+            return "Format error: " + template;
+        }
     }
 
     /**
@@ -214,6 +283,16 @@ public class Text {
      */
     public Object[] getArgs() {
         return args;
+    }
+
+    /**
+     * Returns the fallback template used when the key is missing from the active
+     * language table, or {@code null} if none was set.
+     * <p>返回活动语言表中缺少该键时使用的回退模板；未设置时返回 {@code null}。</p>
+     */
+    @Nullable
+    public String getFallback() {
+        return fallback;
     }
 
     // ──── Siblings / 子组件 ────
@@ -255,6 +334,159 @@ public class Text {
         return !siblings.isEmpty();
     }
 
+    // ──── Traversal / 遍历 ────
+
+    /**
+     * Return value telling a traversal to stop early — counterpart of the
+     * high-version {@code FormattedText.STOP_ITERATION}.
+     * <p>告知遍历提前终止的返回值 —— 对标高版本 {@code FormattedText.STOP_ITERATION}。</p>
+     */
+    public static final Optional<Boolean> STOP_ITERATION = Optional.of(Boolean.TRUE);
+
+    /**
+     * Consumer of plain contents during a traversal.
+     * <p>遍历过程中的纯内容消费者。</p>
+     */
+    public interface ContentConsumer<T> {
+        Optional<T> accept(String contents);
+    }
+
+    /**
+     * Consumer of styled segments during a traversal — receives each segment's
+     * <em>effective</em> style (own values merged onto the inherited chain).
+     * <p>遍历过程中的带样式片段消费者 —— 接收每个片段的<em>有效</em>样式
+     * （自身值合并到继承链之上）。</p>
+     */
+    public interface StyledContentConsumer<T> {
+        Optional<T> accept(Style style, String contents);
+    }
+
+    /**
+     * Visits the whole tree's plain contents (styles ignored), in render order.
+     * <p>按渲染顺序遍历整棵树的纯内容（忽略样式）。</p>
+     */
+    public <T> Optional<T> visit(ContentConsumer<T> consumer) {
+        return visit((style, contents) -> consumer.accept(contents), Style.EMPTY);
+    }
+
+    /**
+     * Visits the tree in render order, handing each segment its effective style.
+     * A translatable node's template is decomposed around its {@code %s} placeholders
+     * first, so embedded components contribute their own styled segments. Returning
+     * {@link #STOP_ITERATION} from the consumer aborts the traversal.
+     * <p>按渲染顺序遍历整棵树，为每个片段传入其有效样式。可翻译节点的模板先按其
+     * {@code %s} 占位符拆解，使内嵌组件贡献各自的带样式片段。消费者返回
+     * {@link #STOP_ITERATION} 即中止遍历。</p>
+     *
+     * @param consumer    segment consumer / 片段消费者
+     * @param parentStyle style inherited from the enclosing context / 来自外层上下文的继承样式
+     */
+    public <T> Optional<T> visit(StyledContentConsumer<T> consumer, Style parentStyle) {
+        Style selfStyle = (this.style != null) ? this.style.applyTo(parentStyle) : parentStyle;
+        for (Object part : decompose()) {
+            Optional<T> result;
+            if (part instanceof Text) {
+                result = ((Text) part).visit(consumer, selfStyle);
+            } else {
+                result = consumer.accept(selfStyle, (String) part);
+            }
+            if (result.isPresent()) {
+                return result;
+            }
+        }
+        for (Text sibling : siblings) {
+            Optional<T> result = sibling.visit(consumer, selfStyle);
+            if (result.isPresent()) {
+                return result;
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Flattens the tree into a list of single-segment Texts, each carrying its
+     * effective style — counterpart of the high-version {@code FormattedText#toFlatList}.
+     * <p>将整树拍平为单片段 Text 列表，每个片段携带其有效样式 —— 对标高版本
+     * {@code FormattedText#toFlatList}。</p>
+     */
+    public List<Text> toFlatList() {
+        return toFlatList(Style.EMPTY);
+    }
+
+    /**
+     * Flattens the tree on top of the given root style.
+     * <p>在给定根样式之上拍平整棵树。</p>
+     */
+    public List<Text> toFlatList(Style rootStyle) {
+        final List<Text> result = new ArrayList<Text>();
+        visit((style, contents) -> {
+            result.add(Text.literal(contents, style));
+            return Optional.<Void>empty();
+        }, rootStyle);
+        return result;
+    }
+
+    /**
+     * Decomposes this node's own content into render-ordered parts: plain strings
+     * and embedded Text components (from translatable arguments).
+     * <p>将本节点自身的内容拆解为渲染顺序的部件：普通字符串与内嵌 Text 组件
+     * （来自可翻译参数）。</p>
+     * <p>
+     * Only {@code %s} placeholders (plain or indexed like {@code %1$s}) and {@code %%}
+     * are decomposed; any other conversion, a stray {@code %}, or an out-of-range
+     * index degrades the whole node to a single flat segment formatted with
+     * {@link String#format} semantics (mirroring the legacy {@code I18n} behaviour,
+     * including {@code "Format error: "} on failure).
+     * <br>仅拆解 {@code %s} 占位符（含 {@code %1$s} 索引形式）与 {@code %%}；遇到其它
+     * 转换符、游离 {@code %} 或越界索引时，整个节点降级为单个扁平片段，按
+     * {@link String#format} 语义格式化（对齐旧版 {@code I18n} 行为，失败时含
+     * {@code "Format error: "}）。
+     * </p>
+     */
+    private List<Object> decompose() {
+        if (!translatable || args.length == 0) {
+            return Collections.<Object>singletonList(ownFlatText());
+        }
+        String template = resolvedTemplate();
+        List<Object> parts = new ArrayList<Object>();
+        Matcher matcher = FORMAT_PATTERN.matcher(template);
+        int lastEnd = 0;
+        int nextArg = 0;
+        try {
+            while (matcher.find()) {
+                int start = matcher.start();
+                if (start > lastEnd) {
+                    parts.add(template.substring(lastEnd, start));
+                }
+                lastEnd = matcher.end();
+                String conversion = matcher.group(2);
+                if ("%".equals(conversion)) {
+                    parts.add("%");
+                    continue;
+                }
+                if (!"s".equals(conversion)) {
+                    throw new IllegalArgumentException("Unsupported conversion: " + conversion);
+                }
+                String indexGroup = matcher.group(1);
+                int index = (indexGroup != null) ? Integer.parseInt(indexGroup) - 1 : nextArg++;
+                if (index < 0 || index >= args.length) {
+                    throw new IllegalArgumentException("Argument index out of range: " + index);
+                }
+                Object arg = args[index];
+                parts.add((arg instanceof Text) ? arg : String.valueOf(arg));
+            }
+            if (lastEnd < template.length()) {
+                parts.add(template.substring(lastEnd));
+            }
+            return parts;
+        } catch (IllegalArgumentException e) {
+            // Degrade to the flat legacy string — e.g. "%d"/"%f" conversions or a
+            // malformed template that String.format would reject.
+            // 降级为扁平旧版字符串 —— 例如 "%d"/"%f" 转换符或 String.format 会拒绝的坏模板。
+            return Collections.<Object>singletonList(ownFlatText());
+        }
+    }
+
     // ──── Legacy-formatted output / 旧版格式化输出 ────
 
     /**
@@ -269,39 +501,63 @@ public class Text {
      * FontRenderer 只认 {@code §} 码。</p>
      */
     public String getFormattedString() {
-        StringBuilder sb = new StringBuilder();
-        appendFormatted(Style.EMPTY, sb, new boolean[]{false});
+        return getFormattedString(Style.EMPTY);
+    }
+
+    /**
+     * Resolves the whole tree into a single legacy {@code §}-coded string on top of
+     * the given base style. Adjacent segments sharing the same effective style are
+     * merged into one run; a {@code §r} reset separates runs whose codes would
+     * otherwise leak into each other.
+     * <p>在给定基础样式之上把整棵树解析为单个旧版 {@code §} 格式字符串。有效样式相同的
+     * 相邻片段合并为同一段；格式码可能互相泄漏的段之间以 {@code §r} 重置分隔。</p>
+     */
+    public String getFormattedString(Style baseStyle) {
+        final StringBuilder sb = new StringBuilder();
+        final boolean[] anyCodes = {false};
+        final Style[] previous = {null};
+        visit((style, contents) -> {
+            appendSegment(sb, previous, anyCodes, style, contents);
+            return Optional.<Void>empty();
+        }, baseStyle != null ? baseStyle : Style.EMPTY);
         return sb.toString();
     }
 
     /**
-     * Recursive worker for {@link #getFormattedString()} — emits {@code §r} between
-     * differently-styled segments so formatting never leaks across nodes.
-     * <p>{@link #getFormattedString()} 的递归实现 —— 在样式不同的片段之间插入
-     * {@code §r}，避免格式泄漏到后续节点。</p>
+     * Appends one styled segment to the legacy output, merging with the previous
+     * segment when the effective styles are equal and resetting with {@code §r}
+     * before a different style whenever codes were already emitted.
+     * <p>把一个带样式片段追加到旧版输出：有效样式与上一片段相同时直接合并，
+     * 不同且之前已输出过格式码时先以 {@code §r} 重置。</p>
      *
-     * @param inherited style inherited from the parent chain / 从父链继承的样式
-     * @param sb        output buffer / 输出缓冲
-     * @param anyCodes  single-element flag: whether codes were already emitted / 单元素标记：之前是否已输出过格式码
+     * @param sb       output buffer / 输出缓冲
+     * @param previous single-element array holding the last segment's style / 单元素数组，保存上一片段的样式
+     * @param anyCodes single-element flag: whether codes were already emitted / 单元素标记：之前是否已输出过格式码
+     * @param style    the segment's effective style / 片段的有效样式
+     * @param contents the segment's contents / 片段内容
      */
-    private void appendFormatted(Style inherited, StringBuilder sb, boolean[] anyCodes) {
-        Style effective = (this.style != null) ? this.style.applyTo(inherited) : inherited;
-        String self = selfString();
-        if (self != null && !self.isEmpty()) {
-            String codes = legacyCodes(effective);
-            if (anyCodes[0]) {
-                // Previous segment emitted codes — reset before this segment's own codes.
-                // 前一片段输出过格式码，先重置再输出本片段自身的格式码。
-                sb.append('\u00a7').append('r');
-            }
-            sb.append(codes).append(self);
-            if (!codes.isEmpty()) {
-                anyCodes[0] = true;
-            }
+    private static void appendSegment(StringBuilder sb, Style[] previous, boolean[] anyCodes,
+                                      Style style, String contents) {
+        if (contents == null || contents.isEmpty()) {
+            return;
         }
-        for (Text sibling : siblings) {
-            sibling.appendFormatted(effective, sb, anyCodes);
+        if (previous[0] != null && previous[0].equals(style)) {
+            // Same effective style as the previous segment — keep the run going.
+            // 与上一片段有效样式相同 —— 延续同一段，不重复输出格式码。
+            sb.append(contents);
+            return;
         }
+        if (anyCodes[0]) {
+            // Previous segment emitted codes — reset before this segment's own codes.
+            // 前一片段输出过格式码，先重置再输出本片段自身的格式码。
+            sb.append('\u00a7').append('r');
+        }
+        String codes = legacyCodes(style);
+        sb.append(codes).append(contents);
+        if (!codes.isEmpty()) {
+            anyCodes[0] = true;
+        }
+        previous[0] = style;
     }
 
     /**
@@ -330,8 +586,10 @@ public class Text {
     // ──── Convenience static String methods ────
 
     /**
-     * Translates a key directly via {@link I18n#format}, returning the translated string.
-     * <p>直接通过 {@link I18n#format} 翻译键，返回翻译后的字符串。</p>
+     * Translates a key directly via {@link StatCollector}, returning the translated
+     * string — side-agnostic, unlike the client-only {@code I18n}.
+     * <p>直接通过 {@link StatCollector} 翻译键并返回翻译后的字符串 —— 与仅客户端的
+     * {@code I18n} 不同，服务端同样可用。</p>
      *
      * <pre>{@code
      *   Text.translatableString("gui.no");
@@ -339,7 +597,7 @@ public class Text {
      * }</pre>
      */
     public static String translatableString(String key, Object... args) {
-        return I18n.format(key, args);
+        return StatCollector.translateToLocalFormatted(key, args);
     }
 
     /**
@@ -375,8 +633,7 @@ public class Text {
      * <p>返回内容相同但应用了指定样式的新 Text。子组件按引用携带。</p>
      */
     public Text withStyle(Style style) {
-        Text result = new Text(this.key, this.translatable, this.args);
-        result.style = style;
+        Text result = new Text(this.key, this.translatable, style, this.fallback, this.args);
         result.siblings.addAll(this.siblings);
         return result;
     }
@@ -388,8 +645,7 @@ public class Text {
      */
     public Text withStyleApplied(Style style) {
         Style merged = (this.style != null) ? style.applyTo(this.style) : style;
-        Text result = new Text(this.key, this.translatable, this.args);
-        result.style = merged;
+        Text result = new Text(this.key, this.translatable, merged, this.fallback, this.args);
         result.siblings.addAll(this.siblings);
         return result;
     }
@@ -410,6 +666,7 @@ public class Text {
                 && key.equals(other.key)
                 && java.util.Arrays.equals(args, other.args)
                 && java.util.Objects.equals(style, other.style)
+                && java.util.Objects.equals(fallback, other.fallback)
                 && siblings.equals(other.siblings);
     }
 
@@ -419,6 +676,7 @@ public class Text {
         result = 31 * result + (translatable ? 1 : 0);
         result = 31 * result + java.util.Arrays.hashCode(args);
         result = 31 * result + (style != null ? style.hashCode() : 0);
+        result = 31 * result + (fallback != null ? fallback.hashCode() : 0);
         result = 31 * result + siblings.hashCode();
         return result;
     }
@@ -442,6 +700,9 @@ public class Text {
         JsonObject obj = new JsonObject();
         if (translatable) {
             obj.addProperty("translate", key);
+            if (fallback != null) {
+                obj.addProperty("fallback", fallback);
+            }
             if (args.length > 0) {
                 JsonArray with = new JsonArray();
                 for (Object arg : args) {
@@ -509,12 +770,12 @@ public class Text {
      *   <li>JSON 字符串 → 字面文本 / JSON string → literal text</li>
      *   <li>JSON 数组 → 首元素为父节点，其余作为子组件追加 / JSON array → first element
      *       as parent, rest appended as siblings</li>
-     *   <li>JSON 对象 → {@code text} / {@code translate}+{@code with} 内容，搭配样式字段
+     *   <li>JSON 对象 → {@code text} / {@code translate}+{@code with}+{@code fallback} 内容，搭配样式字段
      *       （{@code color}、{@code bold}、{@code italic}、{@code underlined}、
      *       {@code strikethrough}、{@code obfuscated}、{@code insertion}、{@code font}、
      *       {@code clickEvent}、{@code hoverEvent}）及 {@code extra} 子组件数组 /
-     *       JSON object → {@code text} or {@code translate}+{@code with} content plus the
-     *       style fields and the {@code extra} children array</li>
+     *       JSON object → {@code text} or {@code translate}+{@code with}+{@code fallback}
+     *       content plus the style fields and the {@code extra} children array</li>
      * </ul>
      * <p>
      * 不支持需要游戏内实体上下文的内容类型（{@code score}、{@code selector}、
@@ -580,25 +841,32 @@ public class Text {
                 result = Text.literal(obj.get("text").getAsString());
             } else if (obj.has("translate")) {
                 String translateKey = obj.get("translate").getAsString();
+                String translateFallback = obj.has("fallback") ? obj.get("fallback").getAsString() : null;
                 if (obj.has("with") && obj.get("with").isJsonArray()) {
                     JsonArray with = obj.getAsJsonArray("with");
                     Object[] withArgs = new Object[with.size()];
                     for (int i = 0; i < with.size(); i++) {
                         JsonElement arg = with.get(i);
                         if (arg.isJsonPrimitive() && !arg.getAsJsonPrimitive().isString()) {
-                            // Numbers / booleans pass through as-is for I18n.format.
-                            // 数字/布尔直接传给 I18n.format。
+                            // Numbers / booleans pass through as-is for template formatting.
+                            // 数字/布尔直接传给模板格式化。
                             JsonPrimitive prim = arg.getAsJsonPrimitive();
                             withArgs[i] = prim.isNumber() ? (Object) prim.getAsNumber() : (Object) prim.getAsBoolean();
                         } else {
-                            // Nested components resolve to their formatted string form.
-                            // 嵌套组件解析为其格式化字符串形态。
-                            withArgs[i] = fromJson(arg).getFormattedString();
+                            Text parsed = fromJson(arg);
+                            // Plain literals collapse to String (keeps formatting lean);
+                            // anything carrying style/siblings stays a component so its
+                            // style survives into the rendered output — same leniency as
+                            // the vanilla IChatComponent deserializer.
+                            // 纯字面量收敛为 String（保持格式化轻量）；带样式/子组件的保持
+                            // 组件形态，使其样式保留到渲染输出 —— 与原版 IChatComponent
+                            // 反序列化器的宽容度一致。
+                            withArgs[i] = isPlainLiteral(parsed) ? parsed.getKey() : parsed;
                         }
                     }
-                    result = Text.translatable(translateKey, withArgs);
+                    result = Text.translatableWithFallback(translateKey, translateFallback, withArgs);
                 } else {
-                    result = Text.translatable(translateKey);
+                    result = Text.translatableWithFallback(translateKey, translateFallback);
                 }
             } else {
                 // Unsupported content type (score/selector/nbt/keybind) — degrade to empty literal.
@@ -620,6 +888,19 @@ public class Text {
                 }
             }
             return result;
+        }
+
+        /**
+         * Whether the given Text carries nothing but its literal content — no
+         * translatable key, no style, no siblings. Such nodes can safely collapse
+         * into a plain String inside a {@code with} argument array.
+         * <p>给定 Text 是否仅携带字面内容 —— 无可翻译键、无样式、无子组件。
+         * 这类节点可以安全地收敛为 {@code with} 参数数组中的纯字符串。</p>
+         */
+        private static boolean isPlainLiteral(Text text) {
+            return !text.translatable
+                    && (text.style == null || text.style.isEmpty())
+                    && !text.hasSiblings();
         }
 
         /**
@@ -677,9 +958,11 @@ public class Text {
 
         /**
          * Parses a {@code hoverEvent} object; {@code show_text} values become Text,
-         * other actions keep their raw string value. Unknown actions yield {@code null}.
+         * other actions keep their raw string value (non-primitive payloads degrade
+         * to their JSON text instead of throwing). Unknown actions yield {@code null}.
          * <p>解析 {@code hoverEvent} 对象；{@code show_text} 的值解析为 Text，
-         * 其余 action 保留原始字符串。未知 action 返回 {@code null}。</p>
+         * 其余 action 保留原始字符串（非原始载荷降级为 JSON 文本而非抛异常）。
+         * 未知 action 返回 {@code null}。</p>
          */
         @Nullable
         private static Style.HoverEvent parseHoverEvent(JsonObject obj) {
@@ -689,9 +972,18 @@ public class Text {
             try {
                 Style.HoverEvent.Action action = Style.HoverEvent.Action.valueOf(
                         obj.get("action").getAsString().toUpperCase(java.util.Locale.ROOT));
-                Object value = (action == Style.HoverEvent.Action.SHOW_TEXT)
-                        ? fromJson(obj.get("value"))
-                        : obj.get("value").getAsString();
+                JsonElement valueElement = obj.get("value");
+                Object value;
+                if (action == Style.HoverEvent.Action.SHOW_TEXT) {
+                    value = fromJson(valueElement);
+                } else if (valueElement.isJsonPrimitive()) {
+                    value = valueElement.getAsString();
+                } else {
+                    // Non-primitive values (e.g. modern show_item object payloads)
+                    // degrade to their raw JSON text instead of throwing.
+                    // 非原始值（如现代 show_item 的对象载荷）降级为原始 JSON 文本，避免抛异常。
+                    value = valueElement.toString();
+                }
                 return new Style.HoverEvent(action, value);
             } catch (IllegalArgumentException e) {
                 return null;

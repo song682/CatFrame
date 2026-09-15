@@ -29,15 +29,22 @@ jar {
         // ("Skipping already parsed coremod or tweaker"). ForceLoadAsMod makes Mixin's
         // FML platform agent remove this jar from that list again (see
         // MixinPlatformAgentFMLLegacy.loadAsMod), which is what gets the jar loaded as
-        // a regular mod. MixinConfigs carries the ordinary config; the container is
-        // registered by Mixin itself because the manifest declares the mixin tweaker
-        // (see MixinServiceLaunchWrapper.getContainersFromClassPath). FMLAT declares
-        // the access transformer shipped inside the jar: FML's ModAccessTransformer
-        // reads this manifest attribute first and silently ignores META-INF/*_at.cfg
-        // when it is absent (see CoreModManager.addJar).
+        // a regular mod. FMLCorePluginContainsFMLMod, despite its historical name, is
+        // what makes the same agent add a tweaker jar that is not on the boot class
+        // path to FML's "reparseable coremods" collection; that collection is skipped
+        // during class path mod discovery, and without it the jar is found twice (once
+        // on the class path, where the tweaker was injected, and once in the mods
+        // directory), which FML rejects as a duplicate mod. MixinConfigs carries the
+        // ordinary config; the container is registered by Mixin itself because the
+        // manifest declares the mixin tweaker (see
+        // MixinServiceLaunchWrapper.getContainersFromClassPath). FMLAT declares the
+        // access transformer shipped inside the jar: FML's ModAccessTransformer reads
+        // this manifest attribute first and silently ignores META-INF/*_at.cfg when it
+        // is absent (see CoreModManager.addJar).
         attributes (
                 'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
                 'ForceLoadAsMod': 'true',
+                'FMLCorePluginContainsFMLMod': 'true',
                 'MixinConfigs': "mixins.${modId}.json",
                 'FMLAT': 'catframe_at.cfg',
         )

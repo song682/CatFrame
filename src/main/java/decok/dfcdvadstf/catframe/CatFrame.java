@@ -8,6 +8,8 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import decok.dfcdvadstf.catframe.command.CommandTitle;
 import decok.dfcdvadstf.catframe.proxy.CommonProxy;
+import decok.dfcdvadstf.catframe.resources.builtin.BuiltinPackDescriptor;
+import decok.dfcdvadstf.catframe.resources.builtin.BuiltinPackRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -33,6 +35,15 @@ public class CatFrame {
         // Pre initialization logic
         logger = event.getModLog();
         config = new CatFrameConfig(event.getSuggestedConfigurationFile());
+
+        // Registered here, not in the coremod: the coremod stage runs before
+        // the config exists and before any game class may be loaded.
+        if (config.enableBuiltinExampleResource) {
+            BuiltinPackRegistry.register(new BuiltinPackDescriptor(
+                    "example",
+                    "resourcePack.catframe.builtin.example.name",
+                    "resourcePack.catframe.builtin.example.description"));
+        }
 
         proxyCommon.preInit(event);
 

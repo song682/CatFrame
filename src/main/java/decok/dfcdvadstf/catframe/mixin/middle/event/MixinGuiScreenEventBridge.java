@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.mixin.middle;
+package decok.dfcdvadstf.catframe.mixin.middle.event;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;

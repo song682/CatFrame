@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.mixin.middle;
+package decok.dfcdvadstf.catframe.mixin.middle.render;
 
 import decok.dfcdvadstf.catframe.model.render.extension.ao.light.BlockModelLighter;
 import net.minecraft.client.renderer.WorldRenderer;

@@ -1,18 +1,20 @@
 package decok.dfcdvadstf.catframe.ui.components.events;
 
+import decok.dfcdvadstf.catframe.mixin.middle.event.MixinGuiScreen;
+
 import javax.annotation.Nullable;
 
 /**
  * <p>
  * CatFrame 输入屏幕接口 —— 由宿主 {@code GuiScreen} 子类实现以「接入」CatFrame 的
  * 拆分键盘事件（keyPressed/keyReleased/charTyped）与 Tab 焦点导航。<br>
- * {@link decok.dfcdvadstf.catframe.mixin.middle.MixinGuiScreen} 会检测本接口，读取 LWJGL2
+ * {@link MixinGuiScreen} 会检测本接口，读取 LWJGL2
  * 键盘事件并自动路由到 {@link #getEventRoot()} 返回的根组件。
  * </p>
  * <p>
  * CatFrame input screen marker — implemented by a host {@code GuiScreen} subclass to opt
  * into CatFrame's split keyboard events (keyPressed/keyReleased/charTyped) and Tab focus
- * navigation. {@link decok.dfcdvadstf.catframe.mixin.middle.MixinGuiScreen} detects this
+ * navigation. {@link MixinGuiScreen} detects this
  * interface, reads the LWJGL2 keyboard event and auto-routes it to the component returned
  * by {@link #getEventRoot()}.
  * </p>
@@ -38,7 +40,7 @@ public interface CatFrameInputScreen {
     /**
      * Whether this screen dispatches CatFrame split keyboard events on its own — e.g. by
      * overriding {@code GuiScreen.handleKeyboardInput()} and calling {@code ScreenKeyboardInput}
-     * directly. When {@code true}, {@link decok.dfcdvadstf.catframe.mixin.middle.MixinGuiScreen}
+     * directly. When {@code true}, {@link MixinGuiScreen}
      * <strong>must not</strong> dispatch for this screen, otherwise every key would be delivered
      * twice (once by the screen, once by the mixin).
      * <p>
@@ -49,7 +51,7 @@ public interface CatFrameInputScreen {
      * <p>
      * 本屏幕是否自行派发 CatFrame 拆分键盘事件——例如覆写 {@code GuiScreen.handleKeyboardInput()}
      * 并直接调用 {@code ScreenKeyboardInput}。返回 {@code true} 时，
-     * {@link decok.dfcdvadstf.catframe.mixin.middle.MixinGuiScreen} <strong>不得</strong>再为本屏幕派发，
+     * {@link MixinGuiScreen} <strong>不得</strong>再为本屏幕派发，
      * 否则每个按键会被投递两次（屏幕一次、mixin 一次）。<br>
      * 默认 {@code false}：仅实现本接口的外部宿主 {@code GuiScreen}（原版 / 他模组）无法自派发，
      * 由 mixin 代为驱动；内建 {@link decok.dfcdvadstf.catframe.ui.screens.Screen} 基类覆写为 {@code true}。

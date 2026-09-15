@@ -15,6 +15,7 @@ public class CatFrameConfig {
     public boolean enableBlueyPlushy;
     /** Whether to show the welcome Toast when joining a world / 进入世界时是否显示欢迎 Toast */
     public boolean welcomeToast;
+    public boolean enableBuiltinExampleResource;
     public static boolean debugLogThingsEnabled = false;
 
     public CatFrameConfig(File file){
@@ -46,7 +47,8 @@ public class CatFrameConfig {
         }
     }
 
-    public void Options(){
+    public void Options() {
+        enableBuiltinExampleResource = config.getBoolean("enableBuiltinExampleResource", "dev", false, "Enable builtin example resourcepack");
         enableBlueyPlushy = config.getBoolean("enableBlueyPlushy", "features", false, "Set to true to enable the Bluey plushy item.");
         welcomeToast = config.getBoolean("welcomeToast", "features", true, "Set to true to show the CatFrame welcome toast when joining a world.");
         debugLogThingsEnabled = config.getBoolean("debugLogThingsEnabled", "dev", false, "Set to true to enable debug logging for the render system (Mixin logs, etc.).");

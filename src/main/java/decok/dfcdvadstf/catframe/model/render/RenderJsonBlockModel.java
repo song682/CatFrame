@@ -4,6 +4,7 @@ import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.mixin.middle.render.MixinRenderBlocks;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.RenderDispatcher;
@@ -72,7 +73,7 @@ public class RenderJsonBlockModel implements ISimpleBlockRenderingHandler {
     /**
      * 检查方块是否通过 {@link RenderJsonBlockModel} 注册。
      * <p>
-     * 供 {@link decok.dfcdvadstf.catframe.mixin.middle.MixinRenderBlocks}
+     * 供 {@link MixinRenderBlocks}
      * 判断是否跳过 Mixin 拦截（已注册 ISBRH 的方块由 Forge 直接分派到 ISBRH 处理器）。
      *
      * @param block 方块实例

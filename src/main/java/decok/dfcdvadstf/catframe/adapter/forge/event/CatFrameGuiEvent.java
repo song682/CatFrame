@@ -15,7 +15,7 @@ import net.minecraft.client.gui.GuiScreen;
  * <p>
  * All events are posted on {@code MinecraftForge.EVENT_BUS} (not the FML bus), mirroring the
  * bus choice of Forge's own {@code GuiScreenEvent}. They are fired from
- * {@code decok.dfcdvadstf.catframe.mixin.middle.MixinGuiScreenEventBridge}, which wraps the
+ * {@code decok.dfcdvadstf.catframe.mixin.middle.event.MixinGuiScreenEventBridge}, which wraps the
  * {@code this.handleKeyboardInput()} call site inside {@code GuiScreen.handleInput()} — the
  * same patch shape Forge 1.8+ applies — so screens overriding {@code handleKeyboardInput}
  * (including CatFrame's own {@code ui.screens.Screen}) are covered as well.

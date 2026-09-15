@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.mixin.middle;
+package decok.dfcdvadstf.catframe.mixin.middle.event;
 
 import decok.dfcdvadstf.catframe.ui.components.events.CatFrameInputScreen;
 import decok.dfcdvadstf.catframe.ui.components.events.ScreenKeyboardInput;

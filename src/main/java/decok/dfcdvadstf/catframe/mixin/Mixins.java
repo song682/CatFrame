@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.mixin;
 
+import com.gtnewhorizon.gtnhmixins.builders.IBaseTransformer;
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
 
@@ -37,7 +38,6 @@ import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
  * GTNHMixins 的加载器在生成类清单时求值，而不是固化进 JSON 数组。
  */
 public class Mixins {
-
     /**
      * Early mixins, registered by {@link CatFrameEarlyMixinPlugin} before any
      * game class is loaded; every builder must set {@code Phase.EARLY}.
@@ -77,10 +77,10 @@ public class Mixins {
     public enum NormalMixin implements IMixins {
 
         /** Keyboard dispatch and the public keyboard event bridge for screens. */
-        SCREEN_INPUT(Side.CLIENT, "middle.MixinGuiScreen", "middle.MixinGuiScreenEventBridge"),
+        SCREEN_INPUT(Side.CLIENT, "middle.event.MixinGuiScreen", "middle.event.MixinGuiScreenEventBridge"),
 
         /** Render pipeline interception: block rendering and chunk compile hooks. */
-        RENDERING(Side.CLIENT, "middle.MixinRenderBlocks", "middle.MixinWorldRenderer"),
+        RENDERING(Side.CLIENT, "middle.render.MixinRenderBlocks", "middle.render.MixinWorldRenderer"),
 
         /** Built-in pack startup bootstrap on the first vanilla refresh after preInit. */
         BUILTIN_PACK_BOOTSTRAP(Side.CLIENT, "middle.MixinMinecraftRefreshResources");

@@ -110,16 +110,13 @@ public final class BuiltinPackInjector {
     private static ResourcePackRepository.Entry createEntry(ResourcePackRepository repository,
             BuiltinPackDescriptor descriptor) {
         try {
-            Constructor<ResourcePackRepository.Entry> constructor = findEntryConstructor(descriptor);
+            Constructor<ResourcePackRepository.Entry> constructor = findEntryConstructor();
             if (constructor == null) {
                 return null;
             }
             constructor.setAccessible(true);
-            File packDirectory = new File(BuiltinResourcePack.ROOT_DIR, descriptor.getId());
-            Object[] arguments = constructor.getParameterTypes().length == 2
-                    ? new Object[] { repository, packDirectory }
-                    : new Object[] { repository, packDirectory, null };
-            ResourcePackRepository.Entry entry = constructor.newInstance(arguments);
+            ResourcePackRepository.Entry entry = constructor.newInstance(repository,
+                    new File(BuiltinResourcePack.ROOT_DIR, descriptor.getId()));
             if (!(entry instanceof BuiltinPackEntry)) {
                 LOGGER.error("Early mixins are not applied — cannot create a repository entry for built-in pack '{}'",
                         descriptor.getId());
@@ -138,40 +135,27 @@ public final class BuiltinPackInjector {
     }
 
     /**
-     * Locates the entry constructor at runtime instead of pinning an exact
-     * signature. The obfuscated production jar carries the vanilla-private
-     * {@code (ResourcePackRepository, File)} constructor next to a javac
-     * bridge constructor whose dummy third parameter is typed
-     * {@code ResourcePackRepository$1} — not {@code Object} as the MCP
-     * recompiled source shows — so matching only the leading
-     * {@code (ResourcePackRepository, File)} parameter pair accepts both
-     * layouts. Returns {@code null} (logged) when nothing matches.
+     * Looks up the vanilla-private {@code Entry(ResourcePackRepository, File)}
+     * constructor — the real constructor behind the source-level
+     * {@code private Entry(File)}. It is the only entry constructor present in
+     * both layouts: the MCP recompile behind the development classes and the
+     * obfuscated production jar (checked with javap against the production
+     * jar). The javac access bridge next to it is deliberately ignored: its
+     * synthetic dummy parameter is typed {@code Object} in the MCP recompile
+     * but {@code ResourcePackRepository$1} in the obfuscated jar, and
+     * depending on that synthetic member is exactly what broke the previous
+     * exact-signature lookup. Returns {@code null} (logged with the actual
+     * signatures) when the constructor is missing.
      */
-    @SuppressWarnings("unchecked")
-    private static Constructor<ResourcePackRepository.Entry> findEntryConstructor(
-            BuiltinPackDescriptor descriptor) {
-        Constructor<ResourcePackRepository.Entry> privateConstructor = null;
-        Constructor<ResourcePackRepository.Entry> bridgeConstructor = null;
-        for (Constructor<?> candidate : ResourcePackRepository.Entry.class.getDeclaredConstructors()) {
-            Class<?>[] parameterTypes = candidate.getParameterTypes();
-            if (parameterTypes.length < 2 || parameterTypes[0] != ResourcePackRepository.class
-                    || parameterTypes[1] != File.class) {
-                continue;
-            }
-            if (parameterTypes.length == 2) {
-                privateConstructor = (Constructor<ResourcePackRepository.Entry>) candidate;
-            } else if (parameterTypes.length == 3 && bridgeConstructor == null) {
-                bridgeConstructor = (Constructor<ResourcePackRepository.Entry>) candidate;
-            }
+    private static Constructor<ResourcePackRepository.Entry> findEntryConstructor() {
+        try {
+            return ResourcePackRepository.Entry.class
+                    .getDeclaredConstructor(ResourcePackRepository.class, File.class);
+        } catch (NoSuchMethodException missing) {
+            LOGGER.error("No (ResourcePackRepository, File) constructor on {} — found {}",
+                    ResourcePackRepository.Entry.class, describeConstructors());
+            return null;
         }
-        if (privateConstructor != null) {
-            return privateConstructor;
-        }
-        if (bridgeConstructor == null) {
-            LOGGER.error("No usable constructor on {} — found {}", ResourcePackRepository.Entry.class,
-                    describeConstructors());
-        }
-        return bridgeConstructor;
     }
 
     /** Signature dump for diagnostics; only read when no constructor matched. */

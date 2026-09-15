@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.proxy;
 
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.command.CommandTitle;
 import decok.dfcdvadstf.catframe.adapter.vanilla.ClientOverlayHandler;
@@ -17,6 +18,8 @@ import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesInHandTintPro
 import decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.RedstoneWireTintProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
+import decok.dfcdvadstf.catframe.resources.builtin.BuiltinPackDescriptor;
+import decok.dfcdvadstf.catframe.resources.builtin.BuiltinPackRegistry;
 import decok.dfcdvadstf.catframe.ui.UiTextureAtlasManager;
 import decok.dfcdvadstf.catframe.ui.components.ActionBarOverlay;
 import decok.dfcdvadstf.catframe.ui.components.TitleOverlay;
@@ -30,6 +33,16 @@ public class ClientProxy extends CommonProxy {
     @Override
     public void preInit(FMLPreInitializationEvent event) {
         super.preInit(event);
+
+        // Built-in resource packs are a client-only subsystem: the repository,
+        // the refresh loop and the pack GUI all live client-side. Still inside
+        // CatFrame.preInit, well within the BuiltinPackBootstrap window.
+        if (CatFrame.config.enableBuiltinExampleResource) {
+            BuiltinPackRegistry.register(new BuiltinPackDescriptor(
+                    "example",
+                    "resourcePack.catframe.builtin.example.name",
+                    "resourcePack.catframe.builtin.example.description"));
+        }
 
         // Drive GuiGraphicsExtractor's deferred pipeline (item/PiP/tooltip) via Forge
         // DrawScreenEvent Pre/Post so it works in GuiContainer screens too

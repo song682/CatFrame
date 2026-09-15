@@ -36,12 +36,16 @@ jar {
         // registered by GTNHMixins at the coremod stage (Mixin ignores duplicate
         // registrations). FMLCorePlugin is not redundant next to TweakClass: FML skips
         // containers carrying a tweaker, and Mixin's FML platform agent re-injects it.
+        // FMLAT declares the access transformer shipped inside the jar: FML's
+        // ModAccessTransformer reads this manifest attribute first and silently ignores
+        // META-INF/*_at.cfg when it is absent (see CoreModManager.addJar).
         attributes (
                 'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
                 'MixinConfigs': "mixins.${modId}.json",
                 'FMLCorePlugin': earlyMixinPlugin,
                 'ForceLoadAsMod': 'true',
                 'FMLCorePluginContainsFMLMod': 'true',
+                'FMLAT': 'catframe_at.cfg',
         )
     }
 

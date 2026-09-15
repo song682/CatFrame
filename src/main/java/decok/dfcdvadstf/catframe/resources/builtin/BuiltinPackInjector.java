@@ -8,7 +8,6 @@ import org.apache.logging.log4j.Logger;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -103,19 +102,15 @@ public final class BuiltinPackInjector {
 
     /**
      * Constructs a repository entry for a built-in pack through the vanilla
-     * constructor located by {@link #findEntryConstructor} (the fake file is
+     * {@code Entry(ResourcePackRepository, File)} constructor, made public by an
+     * access transformer (see {@code META-INF/catframe_at.cfg}). The fake file is
      * never opened: the entry's fields are filled by
-     * {@link BuiltinPackEntry#catframe$setupBuiltin}).
+     * {@link BuiltinPackEntry#catframe$setupBuiltin}.
      */
     private static ResourcePackRepository.Entry createEntry(ResourcePackRepository repository,
             BuiltinPackDescriptor descriptor) {
         try {
-            Constructor<ResourcePackRepository.Entry> constructor = findEntryConstructor();
-            if (constructor == null) {
-                return null;
-            }
-            constructor.setAccessible(true);
-            ResourcePackRepository.Entry entry = constructor.newInstance(repository,
+            ResourcePackRepository.Entry entry = repository.new Entry(
                     new File(BuiltinResourcePack.ROOT_DIR, descriptor.getId()));
             if (!(entry instanceof BuiltinPackEntry)) {
                 LOGGER.error("Early mixins are not applied — cannot create a repository entry for built-in pack '{}'",
@@ -132,50 +127,6 @@ public final class BuiltinPackInjector {
             LOGGER.error("Failed to create the repository entry for built-in pack '{}'", descriptor.getId(), throwable);
             return null;
         }
-    }
-
-    /**
-     * Looks up the vanilla-private {@code Entry(ResourcePackRepository, File)}
-     * constructor — the real constructor behind the source-level
-     * {@code private Entry(File)}. It is the only entry constructor present in
-     * both layouts: the MCP recompile behind the development classes and the
-     * obfuscated production jar (checked with javap against the production
-     * jar). The javac access bridge next to it is deliberately ignored: its
-     * synthetic dummy parameter is typed {@code Object} in the MCP recompile
-     * but {@code ResourcePackRepository$1} in the obfuscated jar, and
-     * depending on that synthetic member is exactly what broke the previous
-     * exact-signature lookup. Returns {@code null} (logged with the actual
-     * signatures) when the constructor is missing.
-     */
-    private static Constructor<ResourcePackRepository.Entry> findEntryConstructor() {
-        try {
-            return ResourcePackRepository.Entry.class
-                    .getDeclaredConstructor(ResourcePackRepository.class, File.class);
-        } catch (NoSuchMethodException missing) {
-            LOGGER.error("No (ResourcePackRepository, File) constructor on {} — found {}",
-                    ResourcePackRepository.Entry.class, describeConstructors());
-            return null;
-        }
-    }
-
-    /** Signature dump for diagnostics; only read when no constructor matched. */
-    private static String describeConstructors() {
-        StringBuilder signatures = new StringBuilder();
-        for (Constructor<?> candidate : ResourcePackRepository.Entry.class.getDeclaredConstructors()) {
-            if (signatures.length() > 0) {
-                signatures.append(", ");
-            }
-            signatures.append('(');
-            Class<?>[] parameterTypes = candidate.getParameterTypes();
-            for (int i = 0; i < parameterTypes.length; i++) {
-                if (i > 0) {
-                    signatures.append(", ");
-                }
-                signatures.append(parameterTypes[i].getName());
-            }
-            signatures.append(')');
-        }
-        return signatures.toString();
     }
 
     /**

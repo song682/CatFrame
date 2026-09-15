@@ -1,0 +1,18 @@
+{
+  "model": {
+    "type": "minecraft:condition",
+    "property": "minecraft:display_context",
+    "on_true": {
+      "type": "minecraft:select",
+      "property": "minecraft:display_context",
+      "cases": [
+        {
+          "when": ["item_hand_first_person", "item_hand_third_person"],
+          "model": { "type": "minecraft:model", "model": "catframe:item/bluey" }
+        }
+      ],
+      "fallback": { "type": "minecraft:model", "model": "catframe:item/bluey" }
+    },
+    "on_false": { "type": "minecraft:model", "model": "catframe:item/bluey" }
+  }
+}

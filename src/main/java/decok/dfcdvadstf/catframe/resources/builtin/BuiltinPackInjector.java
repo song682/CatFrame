@@ -103,17 +103,23 @@ public final class BuiltinPackInjector {
 
     /**
      * Constructs a repository entry for a built-in pack through the vanilla
-     * package-private constructor (the fake file is never opened: the entry's
-     * fields are filled by {@link BuiltinPackEntry#catframe$setupBuiltin}).
+     * constructor located by {@link #findEntryConstructor} (the fake file is
+     * never opened: the entry's fields are filled by
+     * {@link BuiltinPackEntry#catframe$setupBuiltin}).
      */
     private static ResourcePackRepository.Entry createEntry(ResourcePackRepository repository,
             BuiltinPackDescriptor descriptor) {
         try {
-            Constructor<ResourcePackRepository.Entry> constructor = ResourcePackRepository.Entry.class
-                    .getDeclaredConstructor(ResourcePackRepository.class, File.class, Object.class);
+            Constructor<ResourcePackRepository.Entry> constructor = findEntryConstructor(descriptor);
+            if (constructor == null) {
+                return null;
+            }
             constructor.setAccessible(true);
-            ResourcePackRepository.Entry entry = constructor.newInstance(repository,
-                    new File(BuiltinResourcePack.ROOT_DIR, descriptor.getId()), null);
+            File packDirectory = new File(BuiltinResourcePack.ROOT_DIR, descriptor.getId());
+            Object[] arguments = constructor.getParameterTypes().length == 2
+                    ? new Object[] { repository, packDirectory }
+                    : new Object[] { repository, packDirectory, null };
+            ResourcePackRepository.Entry entry = constructor.newInstance(arguments);
             if (!(entry instanceof BuiltinPackEntry)) {
                 LOGGER.error("Early mixins are not applied — cannot create a repository entry for built-in pack '{}'",
                         descriptor.getId());
@@ -129,6 +135,63 @@ public final class BuiltinPackInjector {
             LOGGER.error("Failed to create the repository entry for built-in pack '{}'", descriptor.getId(), throwable);
             return null;
         }
+    }
+
+    /**
+     * Locates the entry constructor at runtime instead of pinning an exact
+     * signature. The obfuscated production jar carries the vanilla-private
+     * {@code (ResourcePackRepository, File)} constructor next to a javac
+     * bridge constructor whose dummy third parameter is typed
+     * {@code ResourcePackRepository$1} — not {@code Object} as the MCP
+     * recompiled source shows — so matching only the leading
+     * {@code (ResourcePackRepository, File)} parameter pair accepts both
+     * layouts. Returns {@code null} (logged) when nothing matches.
+     */
+    @SuppressWarnings("unchecked")
+    private static Constructor<ResourcePackRepository.Entry> findEntryConstructor(
+            BuiltinPackDescriptor descriptor) {
+        Constructor<ResourcePackRepository.Entry> privateConstructor = null;
+        Constructor<ResourcePackRepository.Entry> bridgeConstructor = null;
+        for (Constructor<?> candidate : ResourcePackRepository.Entry.class.getDeclaredConstructors()) {
+            Class<?>[] parameterTypes = candidate.getParameterTypes();
+            if (parameterTypes.length < 2 || parameterTypes[0] != ResourcePackRepository.class
+                    || parameterTypes[1] != File.class) {
+                continue;
+            }
+            if (parameterTypes.length == 2) {
+                privateConstructor = (Constructor<ResourcePackRepository.Entry>) candidate;
+            } else if (parameterTypes.length == 3 && bridgeConstructor == null) {
+                bridgeConstructor = (Constructor<ResourcePackRepository.Entry>) candidate;
+            }
+        }
+        if (privateConstructor != null) {
+            return privateConstructor;
+        }
+        if (bridgeConstructor == null) {
+            LOGGER.error("No usable constructor on {} — found {}", ResourcePackRepository.Entry.class,
+                    describeConstructors());
+        }
+        return bridgeConstructor;
+    }
+
+    /** Signature dump for diagnostics; only read when no constructor matched. */
+    private static String describeConstructors() {
+        StringBuilder signatures = new StringBuilder();
+        for (Constructor<?> candidate : ResourcePackRepository.Entry.class.getDeclaredConstructors()) {
+            if (signatures.length() > 0) {
+                signatures.append(", ");
+            }
+            signatures.append('(');
+            Class<?>[] parameterTypes = candidate.getParameterTypes();
+            for (int i = 0; i < parameterTypes.length; i++) {
+                if (i > 0) {
+                    signatures.append(", ");
+                }
+                signatures.append(parameterTypes[i].getName());
+            }
+            signatures.append(')');
+        }
+        return signatures.toString();
     }
 
     /**

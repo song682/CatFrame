@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.mixin.early;
+package decok.dfcdvadstf.catframe.mixin.middle;
 
 import decok.dfcdvadstf.catframe.resources.builtin.BuiltinPackInjector;
 import net.minecraft.client.resources.ResourcePackRepository;
@@ -17,20 +17,20 @@ import java.util.List;
  * <p>
  * The vanilla method replaces the entry list wholesale, so the built-in
  * entries would otherwise disappear on every rebuild. The HEAD/RETURN pair
- * also covers the very first rebuild inside the {@code Minecraft} constructor
- * (the only run of this method that happens before any mod code), which is what
- * lets the vanilla constructor's own name-matching loop restore the enabled
- * state of built-in packs from {@code options.txt}.
+ * also covers the very first rebuild during {@code Minecraft.startGame()}
+ * (when the repository is constructed), which is what lets the vanilla
+ * name-matching loop of the constructor restore the enabled state of built-in
+ * packs from {@code options.txt} once the startup bootstrap has injected them.
  * <p>
  * 把 {@link BuiltinPackInjector} 挂进原版仓库的重建周期：在
  * {@code updateRepositoryEntriesAll} 的 HEAD 捕获当前列表中的内置条目，在其
  * RETURN 重新加回。原版方法会整体替换条目列表，若不处理，内置条目会在每次
- * 重建时消失。HEAD/RETURN 这对注入同样覆盖 {@code Minecraft} 构造器中的首次
- * 重建（该方法唯一早于任何模组代码的运行时机），这正是原版构造器自身的按名
- * 匹配循环能够从 {@code options.txt} 恢复内置包启用状态的原因。
+ * 重建时消失。HEAD/RETURN 这对注入同样覆盖 {@code Minecraft.startGame()} 中
+ * 的首次重建（仓库构造之时），这正是启动引导注入内置包之后，原版构造器自身
+ * 的按名匹配循环能够从 {@code options.txt} 恢复其启用状态的原因。
  */
 @Mixin(ResourcePackRepository.class)
-public abstract class MixinResourcePackRepository {
+public abstract class MixinBuiltinResourcePackRepository {
 
     /** Vanilla-private list of every known entry; the target method rewrites it wholesale. */
     @Shadow

@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.mixin.early;
+package decok.dfcdvadstf.catframe.mixin.middle;
 
 import decok.dfcdvadstf.catframe.resources.builtin.BuiltinPackDescriptor;
 import decok.dfcdvadstf.catframe.resources.builtin.BuiltinPackEntry;
@@ -28,7 +28,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 因为它本就是以 {@code ChatComponentTranslation} 形式流转的。
  */
 @Mixin(ResourcePackListEntryFound.class)
-public abstract class MixinResourcePackListEntryFound {
+public abstract class MixinBuiltinResourcePackListEntryFound {
 
     /** The vanilla getter for the wrapped repository entry. */
     @Shadow

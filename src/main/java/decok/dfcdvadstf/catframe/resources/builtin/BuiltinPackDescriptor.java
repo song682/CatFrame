@@ -1,21 +1,18 @@
 package decok.dfcdvadstf.catframe.resources.builtin;
 
-import decok.dfcdvadstf.catframe.mixin.CatFrameEarlyMixinPlugin;
 
 /**
  * Immutable description of a built-in resource pack: the pack identity plus the
  * translation keys used by the resource pack GUI and by synthesized pack
  * metadata.
  * <p>
- * This class deliberately touches no Minecraft class, because instances are
- * created during the FML coremod stage (see {@link CatFrameEarlyMixinPlugin}) — the only
- * code that runs before {@code Minecraft} builds its
- * {@code ResourcePackRepository}.
+ * This class deliberately touches no Minecraft class, so descriptors can be
+ * built and registered at any point, including stages where the game classes
+ * are not loadable yet.
  * <p>
  * 内置资源包的不可变描述：包标识，以及资源包 GUI 与合成 metadata 使用的翻译键。
- * 本类刻意不引用任何 Minecraft 类——实例在 FML coremod 阶段（见
- * {@link CatFrameEarlyMixinPlugin}）创建，那是早于 {@code Minecraft} 构造
- * {@code ResourcePackRepository} 的唯一执行时机。
+ * 本类刻意不引用任何 Minecraft 类，因此描述符可在任意时点构建与注册，包括
+ * 游戏类尚不可加载的阶段。
  */
 public final class BuiltinPackDescriptor {
 

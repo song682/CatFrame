@@ -1,8 +1,0 @@
-{
-  "required": true,
-  "target": "@env(DEFAULT)",
-  "package": "decok.dfcdvadstf.catframe.mixin",
-  "minVersion": "0.8.5",
-  "refmap": "mixins.catframe.refmap.json",
-  "compatibilityLevel": "JAVA_8"
-}

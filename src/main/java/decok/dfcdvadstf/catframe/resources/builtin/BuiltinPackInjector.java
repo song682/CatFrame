@@ -15,23 +15,25 @@ import java.util.Map;
 
 /**
  * Bridges {@link BuiltinPackRegistry} into the vanilla repository. Invoked from
- * the early mixins on the client thread while
+ * the repository mixins on the client thread while
  * {@code ResourcePackRepository.updateRepositoryEntriesAll()} rebuilds its
- * entry list — including the very first build inside the {@code Minecraft}
- * constructor, which is what lets the vanilla constructor's own name-matching
- * loop restore the enabled state of built-in packs from {@code options.txt}.
+ * entry list, including the very first rebuild inside the repository
+ * constructor. Restoring the enabled state of the packs registered by ordinary
+ * mods at startup is {@link BuiltinPackBootstrap}'s job, on the first vanilla
+ * resource refresh after preInit.
  * <p>
- * The mixin cannot pass the vanilla-private serializer around, and the
- * repository field of {@code Minecraft} is still null during its construction,
- * so the metadata serializer is always taken from the repository instance that
- * is being rebuilt.
+ * Everything vanilla needed here (the metadata serializer, the default pack)
+ * is read from the repository instance that is being rebuilt: the rebuild
+ * window includes the repository constructor, during which the
+ * {@code Minecraft} field holding the repository is not assigned yet.
  * <p>
- * 将 {@link BuiltinPackRegistry} 桥接进原版仓库。由 early mixin 在客户端线程、
- * {@code ResourcePackRepository.updateRepositoryEntriesAll()} 重建条目列表时调用——包括
- * {@code Minecraft} 构造器中的首次重建，这就是原版构造器自身的按名匹配循环能够从
- * {@code options.txt} 恢复内置包启用状态的原因。metadata serializer 始终取自正在重建的
- * 仓库实例（构造期间 {@code Minecraft.getMinecraft().getResourcePackRepository()} 尚为 null，
- * 不能使用）。
+ * 将 {@link BuiltinPackRegistry} 桥接进原版仓库。由仓库 mixin 在客户端线程、
+ * {@code ResourcePackRepository.updateRepositoryEntriesAll()} 重建条目列表时调用——
+ * 包括仓库构造器内的首次重建。普通模组注册的包的启动启用状态恢复由
+ * {@link BuiltinPackBootstrap} 在 preInit 之后的那次原版资源刷新上完成。
+ * 这里需要的一切原版状态（metadata serializer、默认包）均取自正在重建的仓库
+ * 实例：重建窗口包含仓库构造器本身，此时 {@code Minecraft} 中持有仓库的字段
+ * 尚未赋值。
  */
 public final class BuiltinPackInjector {
 
@@ -113,7 +115,7 @@ public final class BuiltinPackInjector {
             ResourcePackRepository.Entry entry = repository.new Entry(
                     new File(BuiltinResourcePack.ROOT_DIR, descriptor.getId()));
             if (!(entry instanceof BuiltinPackEntry)) {
-                LOGGER.error("Early mixins are not applied — cannot create a repository entry for built-in pack '{}'",
+                LOGGER.error("Repository mixins are not applied — cannot create a repository entry for built-in pack '{}'",
                         descriptor.getId());
                 return null;
             }

@@ -6,6 +6,7 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.BakedModelCache;
+import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.RenderDispatcher;
 import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
@@ -35,6 +36,8 @@ import java.util.*;
  * <ol>
  *   <li>typed {@link CatStateDefinition}：{@code def.getStateFromMeta(meta)} 解出常驻状态，
  *       再由 {@link DynamicPropertyResolver} 覆盖动态属性</li>
+ *   <li>无 typed 定义但实现 {@link IBlockStateProvider}：逐渲染回落调用
+ *       {@link IBlockStateProvider#getStateProperties}，返回非空属性表即参与 variant 匹配</li>
  *   <li>都没有：走 blockstate 的 {@code meta=} / 数字键 / {@code normal} 回退</li>
  * </ol>
  *
@@ -178,6 +181,15 @@ public final class ResidentStateModel implements BlockStateModel {
         if (def != null) {
             CatBlockState state = def.getStateFromMeta(metadata);
             return propsFromState(state);
+        }
+        // 无 typed 定义时回落 legacy provider：逐渲染调用 getStateProperties，
+        // 恢复 IBlockStateProvider 的动态属性契约 —— 否则该方块会被无属性来源的
+        // 常驻模型遮蔽，落入 variants 首键回退（所有 metadata 恒渲染首个 variant）。
+        // provider 返回 null / 空表时保持原有 meta= / 数字键 / normal 回退链不变。
+        if (block instanceof IBlockStateProvider) {
+            Map<String, String> providerProps =
+                    ((IBlockStateProvider) block).getStateProperties(world, x, y, z, metadata);
+            if (providerProps != null && !providerProps.isEmpty()) return providerProps;
         }
         return null;
     }

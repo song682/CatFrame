@@ -308,28 +308,38 @@ public class JsonModelBake {
 
     /**
      * 计算 rescale 非均匀缩放因子，对齐 26.1 {@code CuboidRotation.computeRescale}。
-     * <p>通用实现：从旋转矩阵各行取绝对值之和的倒数作为各轴缩放因子。
+     * <p>通用实现：将各轴正方向单位向量经旋转矩阵变换（等价于取旋转矩阵的对应列），
+     * 取变换结果各分量的最大绝对值，缩放因子 = 1 / 该最大绝对值。
      * 对单轴旋转 θ 退化为：
      * <ul>
      *   <li>Y 轴旋转：scaleX = scaleZ = 1 / max(|cosθ|, |sinθ|), scaleY = 1</li>
      *   <li>X 轴旋转：scaleY = scaleZ = 1 / max(|cosθ|, |sinθ|), scaleX = 1</li>
      *   <li>Z 轴旋转：scaleX = scaleY = 1 / max(|cosθ|, |sinθ|), scaleZ = 1</li>
      * </ul>
-     * 多轴旋转时，每行绝对值之和 = 该轴单位向量经旋转后各分量的最大投影，
-     * 缩放因子 = 1 / 该值，确保旋转后最大投影恢复原始大小。
+     * 45° 时该因子为 √2（> 1）：先放大再旋转，使旋转后的最大投影分量恢复原始大小，
+     * 补偿旋转造成的视觉收缩。
+     * <p>[FIX] 不能用「各行绝对值之和取倒数」：该值在任意 θ ∈ (0°, 90°) 恒 &gt; 1，
+     * 倒数恒 &lt; 1，会把元素整体压瘦（45° 时压到 1/√2），cross 类模型因此变窄。
      *
      * @param rot 旋转矩阵（单轴或多轴合成）
      * @return [sx, sy, sz] 缩放因子
      */
     private static double[] computeRescaleFactors(Matrix4d rot) {
-        double sx = Math.abs(rot.m00) + Math.abs(rot.m01) + Math.abs(rot.m02);
-        double sy = Math.abs(rot.m10) + Math.abs(rot.m11) + Math.abs(rot.m12);
-        double sz = Math.abs(rot.m20) + Math.abs(rot.m21) + Math.abs(rot.m22);
+        // 26.1 scaleFactorForAxis：rotation.transformDirection(axis.getPositive().getUnitVec3f())，
+        // 即 (1,0,0)/(0,1,0)/(0,0,1) 变换后得到的第 0/1/2 列（vecmath 记法 m<row><col>）。
         return new double[]{
-            sx > 1e-10 ? 1.0 / sx : 1.0,
-            sy > 1e-10 ? 1.0 / sy : 1.0,
-            sz > 1e-10 ? 1.0 / sz : 1.0
+            scaleFactorForAxis(rot.m00, rot.m10, rot.m20),
+            scaleFactorForAxis(rot.m01, rot.m11, rot.m21),
+            scaleFactorForAxis(rot.m02, rot.m12, rot.m22)
         };
+    }
+
+    /**
+     * 1 / max(|a|, |b|, |c|)：单位向量变换后分量最大绝对值取倒数（26.1 {@code scaleFactorForAxis}）。
+     */
+    private static double scaleFactorForAxis(double a, double b, double c) {
+        double maxComponent = Math.max(Math.abs(a), Math.max(Math.abs(b), Math.abs(c)));
+        return maxComponent > 1e-10 ? 1.0 / maxComponent : 1.0;
     }
 
     /**

@@ -360,6 +360,30 @@ public class ModernItem extends Item implements IItemStateProvider {
         return handModelPath;
     }
 
+    /**
+     * IItemState: 接口驱动声明本物品需要纹理收集的模型路径
+     * （{@link IItemStateProvider#getDeclaredModelPaths()}）。
+     * <p>
+     * 实现即接入：发现阶段不再 instanceof 特判 ModernItem，统一经本方法收集；
+     * 每轮纹理缝合无条件重跑（集合幂等），迟到的
+     * {@link #setModels(String, String)} 声明在下一轮自动补票。
+     * <p>
+     * 语义与历史特判完全一致：inventory 未设置时不收集任何路径；
+     * 双模型返回 {@code [inventory, hand]}；单模型仅返回 {@code [inventory]}。
+     *
+     * @return 声明的模型路径（可能为空）
+     */
+    @Override
+    public List<String> getDeclaredModelPaths() {
+        if (inventoryModelPath == null) {
+            return Collections.emptyList();
+        }
+        if (handModelPath != null) {
+            return Arrays.asList(inventoryModelPath, handModelPath);
+        }
+        return Collections.singletonList(inventoryModelPath);
+    }
+
     // ==================== Convenience ====================
 
     /**

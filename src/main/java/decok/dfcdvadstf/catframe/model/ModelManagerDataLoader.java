@@ -3,17 +3,18 @@ package decok.dfcdvadstf.catframe.model;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.core.NamespaceLoadResult;
 import decok.dfcdvadstf.catframe.model.core.NamespaceLoadTask;
 import decok.dfcdvadstf.catframe.model.core.async.RenderExecutors;
-import decok.dfcdvadstf.catframe.model.impl.ModernItem;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonBlockModel;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.BlockstateKeyValidator;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateRoot;
 import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyRegistry;
 import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyProvider;
 import net.minecraft.block.Block;
@@ -36,6 +37,10 @@ public class ModelManagerDataLoader {
 
     public static final Gson blockstateGson = BlockstateJson.createGson();
 
+    /** items/ ItemState JSON 的纯 Gson（根级字段经 {@link ItemStateNode#parseRootFull} 解析）。
+     *  Plain Gson for items/ ItemState JSON (root fields parsed via {@link ItemStateNode#parseRootFull}). */
+    private static final Gson itemStateGson = new Gson();
+
     /** Cache for redirect target blockstates loaded during init. */
     public static final Map<String, BlockstateJson> cachedRedirectBlockstates = new HashMap<>();
 
@@ -49,6 +54,13 @@ public class ModelManagerDataLoader {
     /** 已尝试加载 blockstate 的 state-provider 方块，避免每轮缝合重复尝试/告警。
      *  State-provider blocks already attempted, so stitch passes never retry or re-warn. */
     private static final Set<Block> attemptedStateBlocks = new HashSet<>();
+    /** 已尝试加载 ItemState JSON 的 state-provider 物品，避免每轮缝合重复尝试。
+     *  State-provider items whose ItemState JSON was already attempted — never retried. */
+    private static final Set<Item> attemptedStateItems = new HashSet<>();
+    /** item → 已尝试注册的声明属性 key 集合（attempted-once 去重，缝合重扫不重复注册/告警）。
+     *  item → declared property keys already attempted (attempted-once dedup, so stitch
+     *  re-scans neither re-register nor repeat warnings). */
+    private static final Map<Item, Set<String>> registeredDeclaredProps = new HashMap<>();
     /** 已完成 redirect 目标预载的方块。 Blocks whose redirect targets were already preloaded. */
     private static final Set<Block> preloadedRedirectBlocks = new HashSet<>();
     public static final Map<String, Map<String, BlockstateJson>> loadedBlockstates = new HashMap<>();
@@ -135,32 +147,36 @@ public class ModelManagerDataLoader {
         }
 
         // Scan Item.itemRegistry for IItemState implementations (Tier 3 discovery, incremental)
+        // 接口实现即接入：每轮缝合重新扫描注册表 —— 迟到的注册在下一轮自动补票
+        // Implementation as declaration: the registry is re-scanned on every stitch —
+        // late registrations are picked up on the next pass
         for (Object obj : Item.itemRegistry) {
             if (obj instanceof IItemStateProvider) {
                 IItemStateProvider is = (IItemStateProvider) obj;
                 if (!is.shouldHandle()) continue;  // explicitly opt out
                 Item item = (Item) obj;
-                if (interfaceItemStates.containsKey(item)) continue;  // already discovered / 已发现过
-                // 纹理收集：ModernItem 提供 getModelPath() / getHandModelPath()
-                if (obj instanceof ModernItem) {
-                    ModernItem mi = (ModernItem) obj;
-                    String modelPath = mi.getModelPath();
-                    if (modelPath != null) {
-                        VanillaTextureTracker.collectTexturesFromModel(modelPath, true);
-                        if (mi.hasDualModels()) {
-                            VanillaTextureTracker.collectTexturesFromModel(mi.getHandModelPath(), true);
-                        }
-                    }
+                // 接口驱动纹理收集：每轮无条件重跑（集合幂等），迟到的声明自动补票
+                // Interface-driven texture collection: rerun every pass (idempotent sets),
+                // so late declarations are picked up on the next stitch
+                for (String modelPath : is.getDeclaredModelPaths()) {
+                    VanillaTextureTracker.collectTexturesFromModel(modelPath, true);
                 }
-                interfaceItemStates.put(item, is);
+                if (interfaceItemStates.put(item, is) == null) {
+                    CatFrame.logger.debug("[VMM] IItemState discovered: {}",
+                            Item.itemRegistry.getNameForObject(item));
+                }
                 // 接口化属性声明：对标方块侧 getStateDefinition() 的可选钩子，
-                // 实现类声明的自定义属性在发现时自动注册
+                // 实现类声明的自定义属性在发现时自动注册（attempted-once 去重）
                 // Interface-based property declaration: mirrors the block-side
                 // getStateDefinition() optional hook — declared custom properties
-                // are auto-registered at discovery time
+                // are auto-registered at discovery time (attempted-once dedup)
                 registerDeclaredProperties(item, is);
-                CatFrame.logger.debug("[VMM] IItemState discovered: {}",
-                        Item.itemRegistry.getNameForObject(item));
+                // 实现即接入：ItemState JSON —— 显式声明优先、缺省从注册名推导，
+                // 解析出的决策树按注册名绑定（Baking 4a 按注册名回查）
+                // Implementation as declaration: ItemState JSON — explicit declarations
+                // win, missing parts fall back to the registry name; the parsed tree
+                // binds under the registry name (Baking 4a looks items up by registry name)
+                loadStateProviderItem(item, is);
             }
         }
         if (!interfaceItemStates.isEmpty()) {
@@ -228,10 +244,14 @@ public class ModelManagerDataLoader {
         }
         for (Object obj : Item.itemRegistry) {
             if (obj instanceof IItemStateProvider && ((IItemStateProvider) obj).shouldHandle()) {
-                String itemId = Item.itemRegistry.getNameForObject(obj);
-                int colon = itemId != null ? itemId.indexOf(':') : -1;
-                if (colon > 0) {
-                    registerNamespace(itemId.substring(0, colon));
+                IItemStateProvider provider = (IItemStateProvider) obj;
+                // 实现即接入：命名空间未显式声明时从物品注册名推导
+                // Implementation as declaration: fall back to the item's registry
+                // name when the namespace is not declared explicitly
+                String[] path = resolveItemStatePath((Item) obj, provider);
+                String ns = path != null ? path[0] : provider.getItemStateNamespace();
+                if (ns != null && !ns.isEmpty()) {
+                    registerNamespace(ns);
                 }
             }
         }
@@ -249,14 +269,21 @@ public class ModelManagerDataLoader {
      * declaration (bare name / empty key / null provider) is skipped with a warning
      * instead of aborting discovery; valid entries go through
      * {@link ItemPropertyRegistry#register} (namespace enforcement + defaults-first).
+     * <p>
+     * attempted-once 语义：每个 key 至多处理一次（含非法 key 只告警一次），
+     * 缝合轮次重扫不会重复注册或重复告警。
+     * <br>Attempted-once: each key is processed at most once (an invalid key warns a
+     * single time), so stitch re-scans neither re-register nor repeat warnings.
      */
     private static void registerDeclaredProperties(Item item, IItemStateProvider provider) {
         Map<String, ItemPropertyProvider> declarations = provider.getPropertyDefinitions();
         if (declarations == null || declarations.isEmpty()) return;
 
+        Set<String> attempted = registeredDeclaredProps.computeIfAbsent(item, k -> new HashSet<>());
         String itemId = Item.itemRegistry.getNameForObject(item);
         for (Map.Entry<String, ItemPropertyProvider> entry : declarations.entrySet()) {
             String key = entry.getKey();
+            if (!attempted.add(key)) continue;
             int colon = key != null ? key.indexOf(':') : -1;
             // 要求完整 modid:name 形式，两段均非空
             // Require the full modid:name form with both parts non-empty
@@ -472,6 +499,132 @@ public class ModelManagerDataLoader {
             CatFrame.logger.info("Loaded blockstate for state-block: {}:{}", namespace, name);
         } else {
             CatFrame.logger.warn("Failed to load blockstate for state-block: {}:{}", namespace, name);
+        }
+    }
+
+    /**
+     * 解析 provider 物品的 ItemState 资源路径：显式声明优先，缺失部分从物品注册名
+     * （{@code namespace:name}，无冒号 → {@code minecraft}）推导。
+     * <p>
+     * 实现即接入的关键一环：物品无需 register，只要 ItemState JSON 位于注册名对应的
+     * 标准路径（或显式声明的路径），即可被自动发现、加载并绑定到该物品。
+     * <p>
+     * Resolves the ItemState resource path of a provider item — explicit declarations
+     * win, missing parts fall back to the item's registry name ({@code namespace:name};
+     * no colon → {@code minecraft}). This is what lets implementation alone suffice:
+     * no register call as long as the JSON sits at the standardized path.
+     *
+     * @return {@code [namespace, name]}；注册名缺失且显式声明不完整时返回 {@code null}
+     */
+    @Nullable
+    private static String[] resolveItemStatePath(Item item, IItemStateProvider provider) {
+        String namespace = provider.getItemStateNamespace();
+        String name = provider.getItemStateName();
+        if (namespace != null && !namespace.isEmpty() && name != null && !name.isEmpty()) {
+            return new String[]{namespace, name};
+        }
+        String itemId = Item.itemRegistry.getNameForObject(item);
+        if (itemId == null || itemId.isEmpty()) return null;
+        int colon = itemId.indexOf(':');
+        String derivedNs = colon > 0 ? itemId.substring(0, colon) : "minecraft";
+        String derivedName = colon > 0 ? itemId.substring(colon + 1) : itemId;
+        return new String[]{
+                namespace == null || namespace.isEmpty() ? derivedNs : namespace,
+                name == null || name.isEmpty() ? derivedName : name
+        };
+    }
+
+    /**
+     * Load the ItemState JSON for a registered IItemStateProvider item
+     * ("implementation as declaration"). Attempted at most once per item.
+     * 为 provider 物品加载 ItemState JSON（实现即接入），每个物品至多尝试一次。
+     * <p>
+     * The resource path falls back to the registry name when the provider leaves parts
+     * empty; the parsed tree binds under the item's <b>registry name</b>, so Baking
+     * step 4a ({@code Utilities.findItem}) finds it regardless of where the file was
+     * declared. A declared path that differs from the registry name wins for reading
+     * the file (explicit over convention), while the binding key stays the registry
+     * name. Failure stays silent for derived paths (an interface item without JSON is
+     * the normal case — the provider itself renders) and warns only when the
+     * declaration was fully explicit.
+     * <p>
+     * 路径缺省部分从注册名推导；解析出的树按「注册名」绑定 —— Baking 4a 以注册名回查，
+     * 显式声明的跨命名空间文件也能落到正确的物品上（显式声明只影响读取路径，
+     * 不影响绑定键）。派生路径加载失败静默（接口物品本就允许没有 JSON，由 provider
+     * 自渲染），仅在两个路径段都显式声明时才告警。
+     */
+    private static void loadStateProviderItem(Item item, IItemStateProvider provider) {
+        if (!attemptedStateItems.add(item)) return;
+        String[] path = resolveItemStatePath(item, provider);
+        if (path == null) return;  // 无注册名且显式声明不完整 — 无法定位资源
+        String declNs = path[0];
+        String declName = path[1];
+        String declaredNs = provider.getItemStateNamespace();
+        String declaredName = provider.getItemStateName();
+        boolean explicit = declaredNs != null && !declaredNs.isEmpty()
+                && declaredName != null && !declaredName.isEmpty();
+
+        // 绑定键 = 物品注册名（Baking 4a 按注册名回查）；注册名缺失时退回声明路径
+        // Binding key = registry name (Baking 4a looks items up by registry name);
+        // falls back to the declared path when no registry name exists
+        String itemId = Item.itemRegistry.getNameForObject(item);
+        String bindNs = declNs;
+        String bindName = declName;
+        if (itemId != null && !itemId.isEmpty()) {
+            int colon = itemId.indexOf(':');
+            bindNs = colon > 0 ? itemId.substring(0, colon) : "minecraft";
+            bindName = colon > 0 ? itemId.substring(colon + 1) : itemId;
+        }
+
+        // 命名空间扫描已加载同一资源（声明路径 == 绑定键）时跳过
+        // Skip when the namespace scan already loaded this same resource
+        if (declNs.equals(bindNs) && declName.equals(bindName)) {
+            Map<String, ItemStateNode> nsStates = loadedItemStates.get(bindNs);
+            if (nsStates != null && nsStates.containsKey(bindName)) return;
+        }
+
+        String resource = "/assets/" + declNs + "/items/" + declName + ".json";
+        try (InputStream stream = ModelManagerDataLoader.class.getResourceAsStream(resource)) {
+            if (stream == null) {
+                if (explicit) {
+                    CatFrame.logger.warn("[VMM] Item {} declared ItemState '{}:{}' but {} not found",
+                            itemId, declNs, declName, resource);
+                }
+                return;
+            }
+            JsonObject json = itemStateGson.fromJson(new InputStreamReader(stream), JsonObject.class);
+            ItemStateRoot rootFull = json != null ? ItemStateNode.parseRootFull(json) : null;
+            if (rootFull == null || rootFull.model == null) {
+                if (explicit) {
+                    CatFrame.logger.warn("[VMM] Item {} declared ItemState '{}:{}' but it has no valid model tree",
+                            itemId, declNs, declName);
+                }
+                return;
+            }
+
+            loadedItemStates.computeIfAbsent(bindNs, k -> new ConcurrentHashMap<>()).put(bindName, rootFull.model);
+            if (rootFull.oversizedInGui) {
+                loadedOversizedItems.computeIfAbsent(bindNs, k -> new HashSet<>()).add(bindName);
+            } else {
+                Set<String> oversized = loadedOversizedItems.get(bindNs);
+                if (oversized != null) oversized.remove(bindName);
+            }
+            // 收集决策树引用的模型纹理（前缀分流，幂等）
+            // Collect the textures referenced by the tree (prefix routing, idempotent)
+            Set<String> modelPaths = new LinkedHashSet<>();
+            rootFull.model.collectModelPaths(modelPaths);
+            for (String modelPath : modelPaths) {
+                VanillaTextureTracker.collectTexturesFromModel(modelPath, true);
+            }
+            CatFrame.logger.info("Loaded ItemState for state-item: {}:{}", bindNs, bindName);
+        } catch (Exception e) {
+            if (explicit) {
+                CatFrame.logger.warn("[VMM] Error loading declared ItemState {}/items/{} for {}: {}",
+                        declNs, declName, itemId, e.getMessage());
+            } else {
+                CatFrame.logger.debug("[VMM] Derived ItemState path {}/items/{} unusable for {}: {}",
+                        declNs, declName, itemId, e.getMessage());
+            }
         }
     }
 

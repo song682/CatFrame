@@ -49,6 +49,22 @@ import java.util.Map;
  * <br>Mirroring the optional declaration hook {@link IBlockStateProvider#getStateDefinition()}
  * on the block side, {@link #getPropertyDefinitions()} lets implementations declare
  * custom item properties in place, auto-registered during discovery.
+ *
+ * <h3>实现即接入 / Implementation as declaration</h3>
+ * 与方块侧「实现即接入」哲学对齐：物品注册到 {@code Item.itemRegistry} 且实现本接口，
+ * 这个动作本身就是接入声明——
+ * <ul>
+ *   <li>纹理收集接口化：经 {@link #getDeclaredModelPaths()} 完成，无 instanceof 特判；</li>
+ *   <li>ItemState JSON 路径可显式声明（{@link #getItemStateNamespace()} /
+ *       {@link #getItemStateName()}），缺省部分从注册名推导，位于标准路径即被自动加载；</li>
+ *   <li>迟到的注册与声明在下一轮纹理缝合自动补票；</li>
+ *   <li>显式注册入口仍然保留，但不再是接入的前提。</li>
+ * </ul>
+ * Aligned with the block-side philosophy: a registered item implementing this interface
+ * IS the declaration — texture collection is interface-driven
+ * ({@link #getDeclaredModelPaths()}), the ItemState JSON path may be declared explicitly
+ * or fall back to the registry name, late registrations are picked up on the next
+ * texture stitch, and explicit registration stays optional, never a prerequisite.
  */
 public interface IItemStateProvider {
 
@@ -136,5 +152,61 @@ public interface IItemStateProvider {
      */
     default Map<String, ItemPropertyProvider> getPropertyDefinitions() {
         return Collections.emptyMap();
+    }
+
+    /**
+     * 可选声明本物品 ItemState JSON 的命名空间
+     * （资源定位 {@code assets/<namespace>/items/<name>.json}）。
+     * <p>
+     * 实现即接入，对标方块侧 {@link IBlockStateProvider#getBlockstateNamespace()}：
+     * 返回空串时从物品注册名推导（{@code namespace:name} 的命名空间部分；
+     * 无冒号 → {@code minecraft}），显式声明优先。缺省即可接入——
+     * 只要 JSON 位于注册名对应的标准路径，无需任何注册调用。
+     * <p>
+     * Optional namespace of this item's ItemState JSON
+     * ({@code assets/<namespace>/items/<name>.json}). Mirrors the block-side
+     * {@link IBlockStateProvider#getBlockstateNamespace()}: an empty string falls
+     * back to the item's registry name (no colon → {@code minecraft}), and explicit
+     * declarations win.
+     *
+     * @return ItemState 命名空间；空串表示从注册名推导
+     */
+    default String getItemStateNamespace() {
+        return "";
+    }
+
+    /**
+     * 可选声明本物品 ItemState JSON 的名称部分
+     * （与 {@link #getItemStateNamespace()} 配对组成资源路径）。
+     * <p>
+     * 缺省时从物品注册名推导（{@code namespace:name} 的 {@code name} 部分）；
+     * 显式声明优先。
+     * <p>
+     * Optional name part of this item's ItemState JSON, paired with
+     * {@link #getItemStateNamespace()}. Falls back to the name part of the item's
+     * registry name when empty; explicit declarations win.
+     *
+     * @return ItemState 名称；空串表示从注册名推导
+     */
+    default String getItemStateName() {
+        return "";
+    }
+
+    /**
+     * 声明本物品需要收集纹理的模型路径（接口驱动纹理收集，替代历史 instanceof 特判）。
+     * <p>
+     * 实现即接入的一环：发现阶段每轮纹理缝合无条件重跑本方法（收集集合幂等），
+     * 迟到的声明（如运行期设置的模型路径）会在下一轮自动补票；
+     * 返回的路径按纹理前缀自动分流到方块/物品图集。
+     * <p>
+     * Interface-driven texture collection, replacing the historical instanceof
+     * special case: the discovery pass reruns this method on every texture stitch
+     * (collection sets are idempotent), so late declarations are picked up on the
+     * next pass; returned paths are routed to the block/item atlas by prefix.
+     *
+     * @return 模型路径列表（可带命名空间），可为空
+     */
+    default List<String> getDeclaredModelPaths() {
+        return Collections.emptyList();
     }
 }

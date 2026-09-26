@@ -5,12 +5,12 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.BakedModelCache;
+import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.core.ModelResolver;
 import decok.dfcdvadstf.catframe.model.core.baking.BakingCore;
-import decok.dfcdvadstf.catframe.model.impl.ModernItem;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
@@ -410,19 +410,10 @@ public class AsyncBakePipeline {
             }
         }
 
-        // 从 IItemState 的 ModernItem 收集（双模型物品的 hand 模型等）
-        for (Object obj : ModelManagerDataLoader.interfaceItemStates.keySet()) {
-            if (obj instanceof ModernItem) {
-                ModernItem mi = (ModernItem) obj;
-                String modelPath = mi.getModelPath();
-                if (modelPath != null) {
-                    // ModernItem 通常已带 namespace
-                    paths.add(modelPath);
-                }
-                if (mi.hasDualModels()) {
-                    paths.add(mi.getHandModelPath());
-                }
-            }
+        // 从 IItemState 接口声明收集（双模型物品的 hand 模型等）
+        // Collect from the IItemState interface declarations (e.g. dual-model hand paths)
+        for (IItemStateProvider provider : ModelManagerDataLoader.interfaceItemStates.values()) {
+            paths.addAll(provider.getDeclaredModelPaths());
         }
 
         return paths;

@@ -38,6 +38,7 @@ dependencies {
 }
 ```
 
+> [!NOTE]
 > Extra extension for more mod compatibility and tools, see CatFrame Compat ([GitHub](https://github.com/song682/CatFrame-Compat), [CodeBerg](https://codeberg.org/song682/cat-frame-compat)).
 
 ## License

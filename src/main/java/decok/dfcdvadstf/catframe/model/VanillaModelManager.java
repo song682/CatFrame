@@ -394,8 +394,14 @@ public class VanillaModelManager {
                 return;
             }
 
-            // 常规 variants/multipart
-            ResidentStateModel.Builder nb = ResidentStateModel.builder(block).blockstate(bs);
+            // 常规 variants/multipart —— 补查 typed 状态表：常驻模型每轮重建（纹理缝合 /
+            // 资源重载）时保留已登记的 CatStateDefinition，否则 typed 能力丢失后会落入
+            // 无属性回退链（首键回退）。表内无值时传 null，等价于原有行为。
+            // Plain variants/multipart — re-apply the registered typed definition so resident
+            // rebuilds keep property-driven matching instead of degrading to the
+            // attribute-less fallback chain. null is a no-op (unchanged behavior).
+            ResidentStateModel.Builder nb = ResidentStateModel.builder(block).blockstate(bs)
+                    .stateDefinition(ModelRegistry.getStateDefinition(block));
             ModelRegistry.registerBlockModel(block, nb.build());
         }
 

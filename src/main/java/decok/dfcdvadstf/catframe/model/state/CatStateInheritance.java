@@ -3,6 +3,8 @@ package decok.dfcdvadstf.catframe.model.state;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
+import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.block.Block;
@@ -204,6 +206,43 @@ public final class CatStateInheritance {
 
         return new Inherited(builder.create(), redirect, redirectNamespace,
                 dynamicResolver, connectionMultipart, fullModel);
+    }
+
+    /**
+     * 解析继承链并把 typed 状态定义登记进全局表（幂等）—— 继承即接入的物化步骤：
+     * 全局表中已有登记时直接返回；provider 显式覆写的
+     * {@link IBlockStateProvider#getStateDefinition()} 优先；否则沿继承链合并基类片段。
+     * 供发现流程与常驻模型重建共用；无任何来源时返回 {@code null}，调用方保持原有
+     * 无 typed 行为。
+     * <p>
+     * Materializes inheritance as declaration: returns the existing global-table entry
+     * when present, honors an explicit {@link IBlockStateProvider#getStateDefinition()}
+     * override, otherwise merges base-class fragments along the class hierarchy.
+     * Idempotent; returns {@code null} when no source applies.
+     *
+     * @param block 目标方块实例
+     * @return 已登记（或本次登记）的 typed 状态定义；无来源时返回 {@code null}
+     */
+    @Nullable
+    public static CatStateDefinition<?> resolveAndRegister(Block block) {
+        CatStateDefinition<?> existing = ModelRegistry.getStateDefinition(block);
+        if (existing != null) return existing;
+
+        // provider 显式覆写 getStateDefinition() 时优先采用（接口声明的 typed 钩子）
+        if (block instanceof IBlockStateProvider) {
+            CatStateDefinition<?> declared = ((IBlockStateProvider) block).getStateDefinition();
+            if (declared != null) {
+                ModelRegistry.registerStateDefinition(block, declared);
+                return declared;
+            }
+        }
+
+        Inherited inherited = resolve(block);
+        if (inherited == null) return null;
+        ModelRegistry.registerStateDefinition(block, inherited.def);
+        CatFrame.logger.info("[CatStateInheritance] inherited state definition for {} from base class chain",
+                block.getClass().getName());
+        return inherited.def;
     }
 
     /**

@@ -19,6 +19,7 @@ import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyProvider;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 
+import javax.annotation.Nullable;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
@@ -213,7 +214,15 @@ public class ModelManagerDataLoader {
                 Block block = (Block) obj;
                 if (!registeredStateBlocks.contains(block)) {
                     registeredStateBlocks.add(block);
-                    registerNamespace(((IBlockStateProvider) block).getBlockstateNamespace());
+                    // 继承即接入：命名空间未显式声明时从方块注册名推导
+                    // Inheritance as declaration: fall back to the block's registry
+                    // name when the namespace is not declared explicitly
+                    String[] path = resolveBlockstatePath(block);
+                    String ns = path != null
+                            ? path[0] : ((IBlockStateProvider) block).getBlockstateNamespace();
+                    if (ns != null && !ns.isEmpty()) {
+                        registerNamespace(ns);
+                    }
                 }
             }
         }
@@ -299,8 +308,14 @@ public class ModelManagerDataLoader {
         }
         if (!registeredStateBlocks.contains(block)) {
             registeredStateBlocks.add(block);
-            String ns = ((IBlockStateProvider) block).getBlockstateNamespace();
-            registerNamespace(ns);
+            // 继承即接入：命名空间未显式声明时从方块注册名推导
+            // Inheritance as declaration: fall back to the block's registry name
+            String[] path = resolveBlockstatePath(block);
+            String ns = path != null
+                    ? path[0] : ((IBlockStateProvider) block).getBlockstateNamespace();
+            if (ns != null && !ns.isEmpty()) {
+                registerNamespace(ns);
+            }
 
             if (initialized) {
                 loadStateProviderBlock(block);
@@ -393,15 +408,58 @@ public class ModelManagerDataLoader {
     // ==================== 内部加载方法 ====================
 
     /**
+     * 解析 provider 方块的 blockstate 资源路径：显式声明优先，缺失部分从方块注册名
+     * （{@code namespace:name}，无冒号 → {@code minecraft}）推导。
+     * <p>
+     * 继承即接入的关键一环：子类无需 setBlockstate / register，只要 blockstate JSON
+     * 位于注册名对应的标准路径，即可被自动发现、加载与注册。
+     * <p>
+     * Resolves the blockstate resource path of a provider block — explicit declarations
+     * win, missing parts fall back to the block's registry name ({@code namespace:name};
+     * no colon → {@code minecraft}). This is what lets inheritance alone suffice: no
+     * setBlockstate / register call as long as the JSON sits at the standard path.
+     *
+     * @return {@code [namespace, name]}；注册名缺失且显式声明不完整时返回 {@code null}
+     */
+    @Nullable
+    private static String[] resolveBlockstatePath(Block block) {
+        IBlockStateProvider provider = (IBlockStateProvider) block;
+        String namespace = provider.getBlockstateNamespace();
+        String name = provider.getBlockstateName();
+        if (namespace != null && !namespace.isEmpty() && name != null && !name.isEmpty()) {
+            return new String[]{namespace, name};
+        }
+        String blockId = Block.blockRegistry.getNameForObject(block);
+        if (blockId == null || blockId.isEmpty()) return null;
+        int colon = blockId.indexOf(':');
+        String derivedNs = colon > 0 ? blockId.substring(0, colon) : "minecraft";
+        String derivedName = colon > 0 ? blockId.substring(colon + 1) : blockId;
+        return new String[]{
+                namespace == null || namespace.isEmpty() ? derivedNs : namespace,
+                name == null || name.isEmpty() ? derivedName : name
+        };
+    }
+
+    /**
      * Load blockstate data for a registered IBlockStateProvider block.
      * Attempted at most once per block — stitch passes never retry or re-warn.
      * 每个方块至多尝试一次 —— 缝合轮次不会重试或重复告警。
+     * <p>
+     * The resource path falls back to the registry name when the provider leaves
+     * parts empty (inheritance as declaration).
+     * 路径缺省部分从注册名推导（继承即接入）。
      */
     private static void loadStateProviderBlock(Block block) {
         if (!attemptedStateBlocks.add(block)) return;
         IBlockStateProvider provider = (IBlockStateProvider) block;
-        String namespace = provider.getBlockstateNamespace();
-        String name = provider.getBlockstateName();
+        String[] path = resolveBlockstatePath(block);
+        if (path == null) {
+            CatFrame.logger.warn("Cannot resolve blockstate path for state-block {}: " +
+                    "no registry name and incomplete explicit declaration", block.getClass().getName());
+            return;
+        }
+        String namespace = path[0];
+        String name = path[1];
 
         BlockstateJson bs = loadSingleBlockstate(namespace, name);
         if (bs != null) {

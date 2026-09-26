@@ -10,6 +10,7 @@ import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.BlockstateKeyValidator;
+import decok.dfcdvadstf.catframe.model.state.CatStateInheritance;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
@@ -353,6 +354,18 @@ public class VanillaModelManager {
             String blockId = Block.blockRegistry.getNameForObject(block);
             String ns = (blockId != null && blockId.contains(":"))
                     ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
+            // 继承即接入：实现了 IBlockStateProvider 的方块，其类继承链上登记的基类片段
+            // 在此物化为 typed 状态定义（幂等，每轮重建重试 —— 迟到的 registerBase 也能
+            // 在下一轮生效）；无片段时保持原有无 typed 行为。必须位于下方分支分发之前：
+            // 常规分支要读取本表，Pane/Stairs/redirect 分支不受影响。
+            // Inheritance as declaration: for IBlockStateProvider blocks, base-class
+            // fragments along the class hierarchy are materialized into a typed
+            // definition here (idempotent, retried every rebuild so late registerBase
+            // calls still land). No fragments → previous no-typed behavior. Runs before
+            // the branch dispatch below — the plain branch reads this table.
+            if (block instanceof IBlockStateProvider) {
+                CatStateInheritance.resolveAndRegister(block);
+            }
             // Rotation angle validation is definition-independent and must run here too:
             // blocks without a typed CatStateDefinition never reach
             // BlockstateKeyValidator.validate() (no-op when def == null), and this method

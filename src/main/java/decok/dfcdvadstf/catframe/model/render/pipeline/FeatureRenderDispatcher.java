@@ -9,8 +9,10 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderTypeKey;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,9 @@ import java.util.Map;
  * 逐部件 draw 与原单部件路径完全等价，仅共享纹理绑定并重排顺序，故零渲染回归。
  */
 public final class FeatureRenderDispatcher {
+
+    /** 复用查询缓冲：读取 GL_ALPHA_TEST_REF（客户端渲染单线程，无并发）。 */
+    private static final FloatBuffer STATE_QUERY = BufferUtils.createFloatBuffer(1);
 
     private FeatureRenderDispatcher() {
     }
@@ -99,6 +104,26 @@ public final class FeatureRenderDispatcher {
             GL11.glEnable(GL11.GL_NORMALIZE);
         }
 
+        // glint 深度遮罩的写入侧前提：正常 pass 需开启 alpha test，透明纹素（alpha ≤ 0.1）
+        // 被裁剪、不写深度，renderEnchantmentGlint 的 GL_EQUAL 才会在透明像素处失败；
+        // 深度测试同时确保正常 pass 写入供 GL_EQUAL 比较的深度值。
+        // 原版逐次自管（RenderItem.renderItemIntoGUI 开 alpha test、画完即关，renderEffect 再开），
+        // Forge 自定义渲染器路径（IItemRenderer）两不管——继承的环境状态不可信
+        // （前一次绘制可能刚把它关掉），故按组强制建立、组后精确恢复。
+        // Write-side preconditions of the glint depth mask: the normal pass must run with
+        // alpha test enabled so transparent texels are trimmed and never write depth, and
+        // depth test must be on so the compared depth value exists. Vanilla establishes
+        // these per draw; the Forge custom-renderer path inherits unreliable state.
+        boolean prevAlphaTest = GL11.glIsEnabled(GL11.GL_ALPHA_TEST);
+        int prevAlphaFunc = GL11.glGetInteger(GL11.GL_ALPHA_TEST_FUNC);
+        STATE_QUERY.clear();
+        GL11.glGetFloat(GL11.GL_ALPHA_TEST_REF, STATE_QUERY);
+        float prevAlphaRef = STATE_QUERY.get(0);
+        boolean prevDepthTest = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        GL11.glEnable(GL11.GL_ALPHA_TEST);
+        GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+
         try {
             for (RenderSubmit s : group) {
                 // 生命周期：quad 处理前（DisplayTransformExtension 计算矩阵、
@@ -152,6 +177,16 @@ public final class FeatureRenderDispatcher {
             }
             if (itemGlLit) {
                 GL11.glDisable(GL11.GL_NORMALIZE);
+            }
+            // 恢复本组前的 alpha test（含 func/ref——glPushAttrib 不覆盖 alpha func）与深度测试开关
+            GL11.glAlphaFunc(prevAlphaFunc, prevAlphaRef);
+            if (prevAlphaTest) {
+                GL11.glEnable(GL11.GL_ALPHA_TEST);
+            } else {
+                GL11.glDisable(GL11.GL_ALPHA_TEST);
+            }
+            if (!prevDepthTest) {
+                GL11.glDisable(GL11.GL_DEPTH_TEST);
             }
         }
     }

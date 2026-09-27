@@ -1,8 +1,10 @@
 package decok.dfcdvadstf.catframe.model.lazy;
 
 import decok.dfcdvadstf.catframe.model.BakedModelCache;
+import decok.dfcdvadstf.catframe.model.ParticleIconResolver;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 /**
@@ -28,5 +30,15 @@ public class LazySingleBlockModel implements BlockStateModel {
 
     public String getModelPath() {
         return modelPath;
+    }
+
+    /**
+     * 粒子纹理解析：单模型缓存获取后走「显式 particle 槽 → 首 quad」回退链。
+     */
+    @Override
+    public IIcon particleIcon(int metadata) {
+        if (modelPath == null) return null;
+        String cacheKey = BakedModelCache.buildKey(modelPath, 0, 0);
+        return ParticleIconResolver.fromPart(BakedModelCache.INSTANCE.get(cacheKey));
     }
 }

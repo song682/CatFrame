@@ -1,11 +1,13 @@
 package decok.dfcdvadstf.catframe.model.state.block;
 
 import decok.dfcdvadstf.catframe.core.Direction;
+import decok.dfcdvadstf.catframe.model.ParticleIconResolver;
 import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
 import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.ArrayList;
@@ -56,6 +58,22 @@ public class MultipartBlockModel implements BlockStateModel {
     @Override
     public boolean isFullModel() {
         return false; // Multipart 通常是叠加层
+    }
+
+    // ==================== 粒子纹理解析（模型驱动） ====================
+
+    /**
+     * 粒子纹理解析：取首个 entry 的模型（对标 26.1.2 首 selector 语义，与条件匹配无关），
+     * 走「显式 particle 槽 → 首 quad」回退链。本类为后期预留（当前生产路径不经过），
+     * 保持与其它实现同构的语义即可。
+     */
+    @Override
+    public IIcon particleIcon(int metadata) {
+        if (entries.isEmpty()) return null;
+        MultipartEntry first = entries.get(0);
+        if (first.modelPath == null) return null;
+        BlockStateModelPart part = AtlasGuard.gate(ModelBaker.bake(first.modelPath), first.modelPath);
+        return ParticleIconResolver.fromPart(part);
     }
 
     /**

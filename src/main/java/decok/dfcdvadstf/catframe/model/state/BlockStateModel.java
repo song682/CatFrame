@@ -122,6 +122,24 @@ public interface BlockStateModel {
         return null;
     }
 
+    /**
+     * 粒子纹理材质（带 metadata 上下文）——供破坏/hit/blockdust 粒子生成时解析。
+     * <p>
+     * 通过对标 26.1.2 的 {@code BlockStateModel#particleMaterial()}：实现类按 metadata
+     * 解析方块状态的主部件（无世界/坐标上下文，粒子生成时方块可能已被移除），
+     * 走「显式 particle 槽 → 首 quad」回退链。默认 null = 不支持 metadata 级解析
+     * （调用方回退原版 block.getIcon）。
+     * Metadata-aware particle icon resolution mirroring 26.1.2 particleMaterial();
+     * null = unsupported (caller falls back to vanilla getIcon).
+     *
+     * @param metadata 方块 metadata
+     * @return 粒子用的 IIcon，可为 null
+     */
+    @Nullable
+    default IIcon particleIcon(int metadata) {
+        return null;
+    }
+
     // ==================== Unbaked 子接口 ====================
 
     /**

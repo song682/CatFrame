@@ -299,6 +299,8 @@ public class VanillaTextureTracker {
         // 对标高版本 MaterialBaker 实例化闭包模式：iconMap 作为参数传入缓存和烘焙管线
         BakedModelCache.INSTANCE.clear(textureIcons);
         ModelResolver.clearCache();
+        // 粒子纹理解析缓存与 iconMap 同周期失效（避免残留上一周期的 IIcon）
+        ParticleIconResolver.clear();
 
         CatFrame.logger.info("[VTT-diag] BakedModelCache.clear(iconMap) called | textureIcons.size={}",
                 textureIcons.size());
@@ -344,6 +346,8 @@ public class VanillaTextureTracker {
         // 不清理 pendingItemTextures —— 保留数据供多次 stitch 重新收集
         // item iconMap 更新到缓存（懒烘焙时使用）
         BakedModelCache.INSTANCE.clear(textureIcons);
+        // 粒子纹理解析缓存与 iconMap 同周期失效
+        ParticleIconResolver.clear();
         // [W2 修复] 仅增量更新 item 模型注册（懒模型，无需实际烘焙）
         VanillaModelManager.Baking.registerItemModels();
         // item atlas 就绪后再次并行预烤并阻塞至完成（确保 item 模型也在返回前就绪，零现场烘焙）

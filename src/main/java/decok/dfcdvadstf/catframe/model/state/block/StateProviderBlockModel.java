@@ -1,7 +1,9 @@
 package decok.dfcdvadstf.catframe.model.state.block;
 
 import decok.dfcdvadstf.catframe.core.Direction;
+import decok.dfcdvadstf.catframe.model.BakedModelCache;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
+import decok.dfcdvadstf.catframe.model.ParticleIconResolver;
 import decok.dfcdvadstf.catframe.model.RenderDispatcher;
 import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
@@ -9,6 +11,7 @@ import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
+import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.Map;
@@ -102,5 +105,49 @@ public class StateProviderBlockModel implements BlockStateModel {
         Map<String, String> exposed = properties.isEmpty()
                 ? null : java.util.Collections.unmodifiableMap(properties);
         return new BlockStateModel.CollectedPart(part, exposed);
+    }
+
+    // ==================== 粒子纹理解析（模型驱动） ====================
+
+    /**
+     * 粒子纹理解析（模型驱动）。provider 属性以 null world 解析
+     * （collectParts 契约允许物品渲染场景传 null），种子取 {@code metadata * 31}；
+     * multipart 取首个可解析 case（对标 26.1.2 首 selector 语义）。
+     * Particle resolution mirroring collectPartsWithProps without world context.
+     */
+    @Override
+    public IIcon particleIcon(int metadata) {
+        if (blockstate == null) return null;
+
+        Map<String, String> properties = provider.getStateProperties(null, 0, 0, 0, metadata);
+        if (properties == null) properties = java.util.Collections.emptyMap();
+
+        if (blockstate.variants != null) {
+            String variantKey = RenderDispatcher.buildVariantKey(properties);
+            BlockstateJson.VariantEntry entry = blockstate.variants.get(variantKey);
+            if (entry == null) entry = blockstate.variants.get("normal");
+            if (entry == null) return null;
+
+            BlockstateJson.Variant variant = entry.getVariant(metadata * 31);
+            if (variant == null || variant.model == null) return null;
+
+            BlockStateModelPart part = BakedModelCache.INSTANCE.get(
+                    BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z));
+            return ParticleIconResolver.fromPart(part);
+        }
+
+        if (blockstate.multipart != null) {
+            // 26.1.2 首 selector 语义：取首个可解析 case，不做属性匹配筛选
+            for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
+                if (mpc.apply == null) continue;
+                BlockstateJson.Variant v = mpc.apply.getVariant(metadata * 31);
+                if (v != null && v.model != null) {
+                    BlockStateModelPart part = BakedModelCache.INSTANCE.get(
+                            BakedModelCache.buildKey(v.model, v.x, v.y, v.z));
+                    return ParticleIconResolver.fromPart(part);
+                }
+            }
+        }
+        return null;
     }
 }

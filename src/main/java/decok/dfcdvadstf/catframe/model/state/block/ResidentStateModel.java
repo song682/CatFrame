@@ -8,6 +8,7 @@ import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.BakedModelCache;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
+import decok.dfcdvadstf.catframe.model.ParticleIconResolver;
 import decok.dfcdvadstf.catframe.model.RenderDispatcher;
 import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
@@ -15,6 +16,7 @@ import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.*;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.block.Block;
+import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 import javax.annotation.Nullable;
@@ -135,6 +137,65 @@ public final class ResidentStateModel implements BlockStateModel {
     @Override
     public boolean isFullModel() {
         return fullModel;
+    }
+
+    // ==================== 粒子纹理解析（模型驱动） ====================
+
+    /**
+     * 粒子纹理解析（模型驱动，对标 26.1.2 BlockStateModel#particleMaterial）。
+     * <p>
+     * 与 {@link #collectPartsWithProps} 同一匹配逻辑，但无世界/坐标上下文
+     * （破坏粒子生成时方块可能已被移除）：variants 用 {@code metadata * 31}
+     * 确定种子，解析失败按 collectVariants 同款回退链（meta-0 variant →
+     * builtin/missing）；multipart / 连接 multipart 取**首个可解析 case** 的模型
+     * （对标 26.1.2 首 selector 语义，与属性匹配结果无关）。
+     * Particle resolution mirroring collectPartsWithProps without world context;
+     * multipart takes the first resolvable case (26.1.2 first-selector semantics).
+     */
+    @Override
+    public IIcon particleIcon(int metadata) {
+        BlockstateJson target = resolveTarget(metadata);
+        if (target == null) return null;
+
+        if (target.variants != null) {
+            return particleFromVariant(metadata, target);
+        }
+        if (target.multipart != null) {
+            // 26.1.2 首 selector 语义：取首个可解析 case，不做属性匹配筛选
+            for (BlockstateJson.MultipartCase mpc : target.multipart) {
+                if (mpc.apply == null) continue;
+                BlockstateJson.Variant v = mpc.apply.getVariant(metadata * 31);
+                if (v != null && v.model != null) {
+                    BlockStateModelPart part = BakedModelCache.INSTANCE.get(
+                            BakedModelCache.buildKey(v.model, v.x, v.y, v.z));
+                    return ParticleIconResolver.fromPart(part);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * variants 路径：无坐标种子解析 + meta-0 / builtin/missing 回退
+     * （与 {@link #collectVariants} 的回退链一致）。
+     */
+    @Nullable
+    private IIcon particleFromVariant(int metadata, BlockstateJson target) {
+        Map<String, String> props = resolveProps(null, 0, 0, 0, metadata);
+        int seed = metadata * 31;
+        BlockstateJson.Variant variant = resolveVariant(metadata, target, props, seed);
+        if (variant == null || variant.model == null) {
+            variant = resolveVariant(0, target, propsForMeta(0), seed);
+        }
+
+        BlockStateModelPart part;
+        if (variant != null && variant.model != null) {
+            part = BakedModelCache.INSTANCE.get(
+                    BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z));
+        } else {
+            part = BakedModelCache.INSTANCE.get(BakedModelCache.buildKey("builtin/missing", 0, 0, 0));
+        }
+        return ParticleIconResolver.fromPart(part);
     }
 
     // ==================== 目标 blockstate 解析 ====================

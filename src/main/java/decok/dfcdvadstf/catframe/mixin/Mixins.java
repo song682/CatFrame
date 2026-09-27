@@ -24,7 +24,8 @@ public enum Mixins implements IMixins {
         SCREEN_INPUT(Side.CLIENT, "middle.event.MixinGuiScreen", "middle.event.MixinGuiScreenEventBridge"),
 
         /** Render pipeline interception: block rendering and chunk compile hooks. */
-        RENDERING(Side.CLIENT, "middle.render.MixinRenderBlocks", "middle.render.MixinWorldRenderer"),
+        RENDERING(Side.CLIENT, "middle.render.MixinRenderBlocks", "middle.render.MixinWorldRenderer",
+                "middle.render.MixinEntityDiggingFX"),
 
         /** Built-in pack startup bootstrap on the first vanilla refresh after preInit. */
         BUILTIN_PACK_BOOTSTRAP(Side.CLIENT, "middle.MixinMinecraftRefreshResources");

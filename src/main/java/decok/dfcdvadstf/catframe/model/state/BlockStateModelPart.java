@@ -32,17 +32,36 @@ public class BlockStateModelPart {
     @Nullable
     private final Map<String, ModelJson.DisplayTransform> partDisplay;
 
+    /**
+     * 模型 JSON textures.particle 槽解析出的粒子纹理（烘焙期捕获）。
+     * <p>
+     * 槽缺失时为 null —— 调用方按「显式槽 → {@link #particleIcon()}（首 quad）→
+     * 原版 getIcon」回退链处理。
+     * Particle texture captured from the model's textures.particle slot at bake time;
+     * null when the slot was absent (caller-side fallback chain handles it).
+     */
+    @Nullable
+    private final IIcon particleSlotIcon;
+
     private BlockStateModelPart(Map<Direction, List<BakedQuad>> faceQuads,
                                 List<BakedQuad> generalQuads) {
-        this(faceQuads, generalQuads, null);
+        this(faceQuads, generalQuads, null, null);
     }
 
     private BlockStateModelPart(Map<Direction, List<BakedQuad>> faceQuads,
                                 List<BakedQuad> generalQuads,
                                 @Nullable Map<String, ModelJson.DisplayTransform> partDisplay) {
+        this(faceQuads, generalQuads, partDisplay, null);
+    }
+
+    private BlockStateModelPart(Map<Direction, List<BakedQuad>> faceQuads,
+                                List<BakedQuad> generalQuads,
+                                @Nullable Map<String, ModelJson.DisplayTransform> partDisplay,
+                                @Nullable IIcon particleSlotIcon) {
         this.faceQuads = faceQuads;
         this.generalQuads = generalQuads;
         this.partDisplay = partDisplay;
+        this.particleSlotIcon = particleSlotIcon;
     }
 
     // ==================== 工厂方法 ====================
@@ -51,11 +70,22 @@ public class BlockStateModelPart {
      * 从 BakedQuad 列表构建 BlockStateModelPart，自动按 cullface 分组。
      */
     public static BlockStateModelPart fromQuads(List<BakedQuad> quads) {
-        return fromQuads(quads, null);
+        return fromQuads(quads, null, null);
     }
 
     public static BlockStateModelPart fromQuads(List<BakedQuad> quads,
                                                  @Nullable Map<String, ModelJson.DisplayTransform> display) {
+        return fromQuads(quads, display, null);
+    }
+
+    /**
+     * 从 BakedQuad 列表构建 BlockStateModelPart，并携带模型 textures.particle
+     * 槽解析出的粒子纹理（可为 null = 槽缺失）。
+     * Builds a part carrying the baked particle-slot icon (null = slot absent).
+     */
+    public static BlockStateModelPart fromQuads(List<BakedQuad> quads,
+                                                 @Nullable Map<String, ModelJson.DisplayTransform> display,
+                                                 @Nullable IIcon particleSlotIcon) {
         Map<Direction, List<BakedQuad>> faceMap = new EnumMap<>(Direction.class);
         List<BakedQuad> general = new ArrayList<>();
 
@@ -69,7 +99,7 @@ public class BlockStateModelPart {
             }
         }
 
-        return new BlockStateModelPart(faceMap, general, display);
+        return new BlockStateModelPart(faceMap, general, display, particleSlotIcon);
     }
 
     /**
@@ -114,7 +144,7 @@ public class BlockStateModelPart {
     public BlockStateModelPart withDisplay(@Nullable Map<String, ModelJson.DisplayTransform> display) {
         if (display == this.partDisplay) return this;
         if (display != null && display.equals(this.partDisplay)) return this;
-        return new BlockStateModelPart(faceQuads, generalQuads, display);
+        return new BlockStateModelPart(faceQuads, generalQuads, display, particleSlotIcon);
     }
 
     // ==================== 查询 ====================
@@ -199,8 +229,8 @@ public class BlockStateModelPart {
                     (q.blockAtlas ? blockQuads : itemQuads).add(q);
                 }
                 atlasSplitCache = new BlockStateModelPart[]{
-                        fromQuads(blockQuads, partDisplay),
-                        fromQuads(itemQuads, partDisplay)};
+                        fromQuads(blockQuads, partDisplay, particleSlotIcon),
+                        fromQuads(itemQuads, partDisplay, particleSlotIcon)};
             }
         }
         return atlasSplitCache;
@@ -233,7 +263,10 @@ public class BlockStateModelPart {
         Map<String, ModelJson.DisplayTransform> mergedDisplay = this.partDisplay != null
                 ? this.partDisplay
                 : other.partDisplay;
-        return new BlockStateModelPart(mergedFace, mergedGeneral, mergedDisplay);
+        // 粒子槽：this 优先、无则取 other（与 display 合并优先级一致）
+        // Particle slot: this-first priority, mirroring the display merge.
+        IIcon mergedParticle = this.particleSlotIcon != null ? this.particleSlotIcon : other.particleSlotIcon;
+        return new BlockStateModelPart(mergedFace, mergedGeneral, mergedDisplay, mergedParticle);
     }
 
     // ==================== 新增（对齐 26.1.2） ====================
@@ -262,6 +295,19 @@ public class BlockStateModelPart {
             }
         }
         return false;
+    }
+
+    /**
+     * 模型 JSON textures.particle 槽解析出的粒子纹理（烘焙期捕获）。
+     * <p>
+     * 槽缺失时为 null —— 调用方按「显式槽 → {@link #particleIcon()}（首 quad）→
+     * 原版 getIcon」回退链处理。
+     *
+     * @return 显式 particle 槽的 IIcon，槽缺失时为 null
+     */
+    @Nullable
+    public IIcon particleSlotIcon() {
+        return particleSlotIcon;
     }
 
     /**

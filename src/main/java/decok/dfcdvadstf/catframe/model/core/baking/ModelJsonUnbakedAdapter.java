@@ -176,7 +176,12 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         CatFrame.logger.debug("[ModelJsonUnbakedAdapter] bake: '{}' | elements={} | quads={} | rotX={} rotY={} rotZ={}",
                 modelPath, json.elements.size(), quads.size(), rotationX, rotationY, rotationZ);
 
-        // 9. 包装为 BlockStateModelPart（携带 display transforms）
-        return BlockStateModelPart.fromQuads(quads, json.display);
+        // 9. 捕获 textures.particle 槽（烘焙期唯一保留点；槽缺失为 null，由调用方回退链处理）。
+        //    引用链（"#texture"）已由 ModelResolver 展开、TextureSlots 已解析为 IIcon。
+        //    Capture the textures.particle slot — the single bake-time retention point.
+        IIcon particleIcon = textures.getIcon("particle");
+
+        // 10. 包装为 BlockStateModelPart（携带 display transforms + 粒子槽）
+        return BlockStateModelPart.fromQuads(quads, json.display, particleIcon);
     }
 }

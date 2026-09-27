@@ -18,6 +18,7 @@ import decok.dfcdvadstf.catframe.model.state.block.StateProviderBlockModel;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.Collections;
@@ -306,6 +307,17 @@ public class ModernBlock extends Block implements IBlockStateProvider {
             return model != null
                     ? model.collectParts(world, x, y, z, metadata)
                     : BlockStateModelPart.empty();
+        }
+
+        /**
+         * 粒子纹理解析：委托给懒加载的 delegate（与 collectParts 同构），
+         * delegate 未就绪（blockstate 未加载）时返回 null 由调用方回退原版 getIcon。
+         * Particle resolution delegating to the lazily built delegate model.
+         */
+        @Override
+        public IIcon particleIcon(int metadata) {
+            BlockStateModel model = getDelegate();
+            return model != null ? model.particleIcon(metadata) : null;
         }
     }
 }

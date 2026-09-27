@@ -102,10 +102,11 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         // 2. 构建 iconMap（向后兼容 BlockJsonModelBake.bakeElement 的 Map<String, IIcon> 参数）
         Map<String, IIcon> iconMap = textures.toIconMap();
 
-        // 3. 检查 elements
+        // 3. 检查 elements（对标 26.1.2：particleMaterial 独立于几何烘焙 —— 无 elements
+        //    仍要捕获 particle 槽，否则空几何模型会丢失已声明的粒子纹理）
         if (json.elements == null || json.elements.isEmpty()) {
             CatFrame.logger.warn("[ModelJsonUnbakedAdapter] bake: model '{}' has no elements", modelPath);
-            return BlockStateModelPart.empty();
+            return BlockStateModelPart.fromQuads(null, null, textures.getIcon("particle"));
         }
 
         // 4. 遍历 elements 烘焙为 BakedQuad
@@ -176,7 +177,8 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         CatFrame.logger.debug("[ModelJsonUnbakedAdapter] bake: '{}' | elements={} | quads={} | rotX={} rotY={} rotZ={}",
                 modelPath, json.elements.size(), quads.size(), rotationX, rotationY, rotationZ);
 
-        // 9. 捕获 textures.particle 槽（烘焙期唯一保留点；槽缺失为 null，由调用方回退链处理）。
+        // 9. 捕获 textures.particle 槽（烘焙期唯一保留点；槽缺失为 null ——
+        //    ParticleIconResolver 按高版本语义映射 missingno）。
         //    引用链（"#texture"）已由 ModelResolver 展开、TextureSlots 已解析为 IIcon。
         //    Capture the textures.particle slot — the single bake-time retention point.
         IIcon particleIcon = textures.getIcon("particle");

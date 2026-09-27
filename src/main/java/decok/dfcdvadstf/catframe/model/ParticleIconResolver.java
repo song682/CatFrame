@@ -2,11 +2,14 @@ package decok.dfcdvadstf.catframe.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.CatFrame;
+import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonBlockModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.block.StateProviderBlockModel;
+import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
 
@@ -18,8 +21,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * 方块破坏 / hit / blockdust 粒子的模型驱动纹理解析入口。
  * <p>
  * 对标 26.1.2 的 {@code BlockStateModelSet#getParticleMaterial(state)}：按
- * {@code (block, metadata)} 解析 CatFrame 接管方块的粒子纹理，语义链为
- * 「模型 textures.particle 槽 → 首 quad 回退 → null（调用方回退原版 getIcon）」。
+ * {@code (block, metadata)} 解析 CatFrame 接管方块的粒子纹理，语义与高版本一致 ——
+ * 显式 textures.particle 槽优先；槽缺失/无法解析时直接映射 missingno（紫黑格，
+ * 对标 {@code MaterialBaker#reportMissingReference} → {@code blockMissing}），
+ * 不猜测替代纹理。
  * <p>
  * 不取世界/坐标上下文（粒子生成时方块可能已被移除；26.1.2 亦为 per-state）。
  * 解析结果按 {@code (blockId, meta)} 缓存：一次破坏会生成 64 个粒子，
@@ -43,7 +48,8 @@ public final class ParticleIconResolver {
     /**
      * 解析方块的粒子纹理（模型驱动）。
      * <p>
-     * 未接管方块（无模型）或解析失败时返回 null —— 调用方应回退原版
+     * 接管方块的槽缺失/无法解析按高版本语义映射 missingno；仅未接管方块
+     * （或 missingno 极端不可得）返回 null —— 调用方放行原版
      * {@code block.getIcon(side, meta)}。
      *
      * @param block    方块实例
@@ -68,16 +74,17 @@ public final class ParticleIconResolver {
     }
 
     /**
-     * 回退链居中点：显式 particle 槽优先，缺失回退既有首 quad
-     * （{@link BlockStateModelPart#particleIcon()}，项目规则保留的既有回退）。
-     * Fallback-chain midpoint: explicit particle slot first, preserved first-quad
-     * fallback otherwise.
+     * 提取部件的显式 particle 槽图标（null = 槽缺失或部件不可解析）。
+     * <p>
+     * 高版本语义下不存在替代猜想 —— 返回 null 由 {@link #getParticleIcon} 统一映射
+     * missingno。{@link BlockStateModelPart#particleIcon()}（首 quad）为既有保留项，
+     * 已不再接入本语义链。
+     * Extracts the explicit particle-slot icon only; null is mapped to missingno
+     * by {@link #getParticleIcon} (26.1.2 semantics, no substitute guessing).
      */
     @Nullable
     public static IIcon fromPart(@Nullable BlockStateModelPart part) {
-        if (part == null) return null;
-        IIcon slot = part.particleSlotIcon();
-        return slot != null ? slot : part.particleIcon();
+        return part == null ? null : part.particleSlotIcon();
     }
 
     /**
@@ -96,7 +103,7 @@ public final class ParticleIconResolver {
 
         BlockStateModel model = ModelRegistry.registeredBlockModels.get(block);
         if (model != null) {
-            return model.particleIcon(metadata);
+            return orMissingno(model.particleIcon(metadata), block, metadata);
         }
 
         // 与 RenderDispatcher 路径 3 同构：无注册实例但 stateBlockData 含该方块 ——
@@ -104,9 +111,26 @@ public final class ParticleIconResolver {
         if (block instanceof IBlockStateProvider && ModelManagerDataLoader.stateBlockData.containsKey(block)) {
             BlockstateJson bs = ModelManagerDataLoader.stateBlockData.get(block);
             if (bs != null) {
-                return new StateProviderBlockModel((IBlockStateProvider) block, bs, null).particleIcon(metadata);
+                IIcon slot = new StateProviderBlockModel((IBlockStateProvider) block, bs, null).particleIcon(metadata);
+                return orMissingno(slot, block, metadata);
             }
         }
+        // 已接管判定成立但无模型实例（如仅 ISBRH 注册的模组方块）→ 不介入，放行原版 getIcon。
         return null;
+    }
+
+    /**
+     * 高版本缺省映射：接管方块的显式槽缺失/无法解析 → missingno（对标
+     * {@code MaterialBaker#reportMissingReference} → {@code blockMissing}），
+     * 不猜测替代纹理。极端情况下 missingno 不可得时回 null（调用方放行原版 getIcon）。
+     */
+    @Nullable
+    private static IIcon orMissingno(@Nullable IIcon slot, Block block, int metadata) {
+        if (slot != null) return slot;
+        if (CatFrameConfig.shouldLogDebug()) {
+            CatFrame.logger.info("[ParticleIconResolver] missing particle slot: block={} meta={} -> missingno",
+                    Block.blockRegistry.getNameForObject(block), metadata);
+        }
+        return CatAtlasManager.getMissingIcon("particle");
     }
 }

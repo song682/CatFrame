@@ -127,10 +127,11 @@ public interface BlockStateModel {
      * <p>
      * 通过对标 26.1.2 的 {@code BlockStateModel#particleMaterial()}：实现类按 metadata
      * 解析方块状态的主部件（无世界/坐标上下文，粒子生成时方块可能已被移除），
-     * 走「显式 particle 槽 → 首 quad」回退链。默认 null = 不支持 metadata 级解析
-     * （调用方回退原版 block.getIcon）。
+     * 返回显式 particle 槽的 IIcon；缺失/无法解析时为 null（ParticleIconResolver
+     * 按高版本语义统一映射 missingno）。默认 null = 不支持 metadata 级解析
+     * （调用方放行原版 block.getIcon）。
      * Metadata-aware particle icon resolution mirroring 26.1.2 particleMaterial();
-     * null = unsupported (caller falls back to vanilla getIcon).
+     * returns the explicit particle-slot icon or null (mapped to missingno upstream).
      *
      * @param metadata 方块 metadata
      * @return 粒子用的 IIcon，可为 null

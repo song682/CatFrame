@@ -64,8 +64,8 @@ public class MultipartBlockModel implements BlockStateModel {
 
     /**
      * 粒子纹理解析：取首个 entry 的模型（对标 26.1.2 首 selector 语义，与条件匹配无关），
-     * 走「显式 particle 槽 → 首 quad」回退链。本类为后期预留（当前生产路径不经过），
-     * 保持与其它实现同构的语义即可。
+     * 返回其显式 particle 槽（缺失为 null，由 ParticleIconResolver 映射 missingno）。
+     * 本类为后期预留（当前生产路径不经过），保持与其它实现同构的语义即可。
      */
     @Override
     public IIcon particleIcon(int metadata) {

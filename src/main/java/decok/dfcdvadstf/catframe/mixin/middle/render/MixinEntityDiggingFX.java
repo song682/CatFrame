@@ -17,12 +17,12 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  * {@code EntityBlockDustFX} both delegate to it — so destroy (64 particles), hit
  * (1 particle) and block-dust particles are all covered by this one redirect.
  * For blocks managed by CatFrame (model registry / ISBRH registration) the icon
- * is resolved from the model's {@code textures.particle} slot with the preserved
- * fallback chain (explicit slot → first quad → vanilla icon); unmanaged blocks
- * fall through to the vanilla per-side icon untouched.
+ * is resolved from the model's {@code textures.particle} slot; a missing slot
+ * maps to missingno (26.1.2 {@code blockMissing} semantics, no substitute
+ * guessing). Unmanaged blocks fall through to the vanilla per-side icon untouched.
  * <p>
  * 拦截 EntityDiggingFX 的粒子纹理采样点：CatFrame 接管方块的破坏/hit/blockdust
- * 粒子改由模型 particle 槽（经 ParticleIconResolver 回退链）决定，未接管方块放行原版。
+ * 粒子改由模型 particle 槽决定（槽缺失即 missingno，对标高版本），未接管方块放行原版。
  */
 @Mixin(EntityDiggingFX.class)
 public class MixinEntityDiggingFX {

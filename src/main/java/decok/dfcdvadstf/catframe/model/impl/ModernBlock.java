@@ -311,7 +311,8 @@ public class ModernBlock extends Block implements IBlockStateProvider {
 
         /**
          * 粒子纹理解析：委托给懒加载的 delegate（与 collectParts 同构），
-         * delegate 未就绪（blockstate 未加载）时返回 null 由调用方回退原版 getIcon。
+         * delegate 未就绪（blockstate 未加载）时返回 null，由 ParticleIconResolver
+         * 按高版本语义映射 missingno。
          * Particle resolution delegating to the lazily built delegate model.
          */
         @Override

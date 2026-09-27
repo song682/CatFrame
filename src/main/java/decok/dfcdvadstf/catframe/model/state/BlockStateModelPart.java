@@ -35,10 +35,11 @@ public class BlockStateModelPart {
     /**
      * 模型 JSON textures.particle 槽解析出的粒子纹理（烘焙期捕获）。
      * <p>
-     * 槽缺失时为 null —— 调用方按「显式槽 → {@link #particleIcon()}（首 quad）→
-     * 原版 getIcon」回退链处理。
+     * 槽缺失时为 null —— ParticleIconResolver 按高版本语义将其映射为 missingno
+     * （对标 blockMissing）；{@link #particleIcon()}（首 quad）为既有保留项，
+     * 已不接入本语义链。
      * Particle texture captured from the model's textures.particle slot at bake time;
-     * null when the slot was absent (caller-side fallback chain handles it).
+     * null when the slot was absent (26.1.2 semantics: mapped to missingno upstream).
      */
     @Nullable
     private final IIcon particleSlotIcon;
@@ -300,8 +301,7 @@ public class BlockStateModelPart {
     /**
      * 模型 JSON textures.particle 槽解析出的粒子纹理（烘焙期捕获）。
      * <p>
-     * 槽缺失时为 null —— 调用方按「显式槽 → {@link #particleIcon()}（首 quad）→
-     * 原版 getIcon」回退链处理。
+     * 槽缺失时为 null —— 由 ParticleIconResolver 按高版本语义映射 missingno。
      *
      * @return 显式 particle 槽的 IIcon，槽缺失时为 null
      */

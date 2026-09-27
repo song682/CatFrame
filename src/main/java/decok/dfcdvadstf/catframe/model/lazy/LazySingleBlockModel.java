@@ -33,7 +33,8 @@ public class LazySingleBlockModel implements BlockStateModel {
     }
 
     /**
-     * 粒子纹理解析：单模型缓存获取后走「显式 particle 槽 → 首 quad」回退链。
+     * 粒子纹理解析：单模型缓存获取后返回显式 particle 槽
+     * （缺失为 null，由 ParticleIconResolver 映射 missingno）。
      */
     @Override
     public IIcon particleIcon(int metadata) {

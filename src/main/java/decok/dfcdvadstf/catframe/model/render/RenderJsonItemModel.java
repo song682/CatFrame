@@ -87,6 +87,33 @@ public class RenderJsonItemModel implements IItemRenderer {
         return currentDroppedEntity;
     }
 
+    /**
+     * 当前渲染线程正在渲染的手持物品持有实体（仅手持阶段，由 Forge
+     * {@code renderEquippedItem} / {@code ItemRenderer.renderItem} 经 {@link #renderItem}
+     * 的 data[1] 传入）。客户端渲染单线程、提交与写入同栈，普通静态字段即可；
+     * 非手持渲染（GUI / 掉落物 / 展示框等）恒为 null。
+     * <p>
+     * 供 {@code RenderPhasePolicy} 在手持阶段按持有实体（怪物 / 其他玩家）位置采样世界光照
+     * （对标原版 {@code RenderManager.renderEntityStatic} 的实体光照贴图语义），
+     * 避免按本地玩家位置取光导致的错位高亮。
+     * <p>
+     * The entity currently holding the item, visible only inside {@link #renderItem}'s
+     * hand-phase window; lets the brightness policy sample world light at the holder's
+     * position for mobs / other players.
+     */
+    @javax.annotation.Nullable
+    private static EntityLivingBase currentHandEntity;
+
+    /**
+     * 供 {@code RenderPhasePolicy} 在手持阶段采样持有实体光照的上下文读取口。
+     *
+     * @return 当前手持实体；非手持阶段或上下文已清除时为 null
+     */
+    @javax.annotation.Nullable
+    public static EntityLivingBase getCurrentHandEntity() {
+        return currentHandEntity;
+    }
+
     private RenderJsonItemModel() {}
 
     // ==================== handleRenderType ====================
@@ -235,6 +262,11 @@ public class RenderJsonItemModel implements IItemRenderer {
         // 将反抵消变换计算为 Matrix4d 矩阵，由管线在顶点提交时统一变换
         Matrix4d preTransform = computePreTransform(type, entity, stack);
 
+        // ---- 手持实体上下文（手持阶段） ----
+        // 与掉落实体同构：供 RenderPhasePolicy 在冲刷期按持有实体（怪物 / 其他玩家）
+        // 位置采样光照；固定取本地玩家位置光会让远处怪物的手持物品呈现错位高亮。
+        EntityLivingBase handEntity = phase.isHandPhase() ? entity : null;
+
         // getRegisteredItemModel 只返回显式注册的物品模型（无方块 fallback）
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
         if (model == null) return;
@@ -242,11 +274,17 @@ public class RenderJsonItemModel implements IItemRenderer {
         if (droppedEntity != null) {
             currentDroppedEntity = droppedEntity;
         }
+        if (handEntity != null) {
+            currentHandEntity = handEntity;
+        }
         try {
             model.render(stack, phase, preTransform);
         } finally {
             if (droppedEntity != null) {
                 currentDroppedEntity = null;
+            }
+            if (handEntity != null) {
+                currentHandEntity = null;
             }
         }
     }

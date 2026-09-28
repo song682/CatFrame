@@ -13,7 +13,7 @@ import java.util.List;
  * 内建渲染扩展：阶段默认亮度政策（光政策统一居住于扩展链的收口扩展）。
  * <p>
  * 收编提交端（UniformRenderPipeline / RenderDispatcher）原亮度解析职责：
- * 每提交项的基础亮度（GUI 恒 255 / 手持取玩家位置世界光 / 掉落与展示框取实体位置
+ * 每提交项的基础亮度（GUI 恒 255 / 手持取持有者位置世界光 / 掉落与展示框取实体位置
  * 世界光 / 方块世界 AO 退化 quad 取方块混合亮度）由本扩展写入
  * {@link RenderContext#brightnessOverride}，供发射器经
  * {@link RenderContext#effectiveBrightness()} 消费 —— QuadWriter 与提交端不再
@@ -62,7 +62,7 @@ public final class LightPolicyExtension implements IModelRenderExtension {
         if (isItemPhase(phase)) {
             // 物品阶段亮度是提交级常量：GUI 恒 255（便宜）；手持 / 掉落 / 展示框
             // 在 RenderPhasePolicy 内部经 Minecraft 玩家单例与 RenderJsonItemModel
-            // 掉落实体 thread-local 自取上下文（write 期 flush 与 submit 同处
+            // 手持 / 掉落实体上下文自取上下文（write 期 flush 与 submit 同处
             // 实体窗口内，见 RenderPhasePolicy 类注释）。
             pending.set(RenderPhasePolicy.baselineBrightness(phase, null, 0, 0, 0, null));
         } else {
@@ -104,7 +104,7 @@ public final class LightPolicyExtension implements IModelRenderExtension {
     /**
      * 是否为物品渲染阶段（非方块世界 / 非破坏贴花）。
      * 与 {@link RenderPhasePolicy#isItemGlLit} 不同：GUI 与手持阶段同样需要默认亮度
-     * （255 / 玩家光），故此处是全集判定而非 GL 光照判定。
+     * （255 / 持有者光），故此处是全集判定而非 GL 光照判定。
      */
     private static boolean isItemPhase(RenderPhase phase) {
         return phase != null

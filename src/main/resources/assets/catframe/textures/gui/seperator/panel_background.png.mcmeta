@@ -3,7 +3,7 @@
         "type": "static",
         "default": {
             "width": 16,
-            "height": 2
+            "height": 16
         }
     }
 }

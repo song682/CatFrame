@@ -44,7 +44,20 @@ public enum RenderPhase {
      * 物品在展示框（Item Frame）中渲染（有 ItemStack）。
      * 对应 JSON model 的 fixed。
      */
-    ITEM_FIXED;
+    ITEM_FIXED,
+    /**
+     * 物品附着在实体头部槽渲染（有 ItemStack）。
+     * <p>
+     * 1.7.10 共有三处头部宿主以 EQUIPPED 类型进入物品渲染：玩家头盔槽
+     * （{@code RenderPlayer}）、怪物头顶装备槽（{@code RenderBiped}）、
+     * 雪傀儡南瓜（{@code RenderSnowMan}）。三者对应 26.1 的
+     * {@code CustomHeadLayer.translateToHead}（雪傀儡为独立的
+     * {@code SnowGolemHeadLayer}）变换链，display 取 JSON model 的 head 条目
+     * （如 {@code generated.json} 的 {@code "head"} 定义）。
+     * Item worn on an entity head slot (player helmet slot / mob head slot /
+     * snow golem pumpkin); maps to the JSON model "head" display transform.
+     */
+    ITEM_HEAD;
 
     /**
      * 是否手持渲染阶段（第一人称 / 第三人称）。
@@ -52,7 +65,7 @@ public enum RenderPhase {
      * 手持阶段不启用 GL_LIGHTING（避免与烘焙阴影双重着色，对标 1.7.10 物品路径的
      * {@code glDisable(GL_LIGHTING)} 语义），但亮度（lightmap）取持有者位置的世界光照
      * （本地玩家取玩家位置光；怪物 / 其他玩家取持有实体自身光照，见 {@code RenderPhasePolicy}
-     * 私有 handBrightness），完全无外部光照时物品渲染为全黑。
+     * 私有 holderBrightness），完全无外部光照时物品渲染为全黑。
      * Whether this phase renders an item held in hand (first/third person);
      * hand phases skip GL_LIGHTING, but their brightness comes from the world
      * light at the holder's position (the local player, or the owning entity for
@@ -61,6 +74,20 @@ public enum RenderPhase {
     public boolean isHandPhase() {
         return this == ITEM_HAND_FIRST_PERSON
                 || this == ITEM_HAND_THIRD_PERSON;
+    }
+
+    /**
+     * 是否附着渲染阶段（手持 / 头部槽）。
+     * <p>
+     * 附着阶段均不启用 GL_LIGHTING（避免与烘焙阴影双重着色，对标 1.7.10 物品路径的
+     * {@code glDisable(GL_LIGHTING)} 语义），但亮度（lightmap）取附着实体位置的世界光照
+     * （见 {@code RenderPhasePolicy} 私有 holderBrightness），完全无外部光照时物品渲染为全黑。
+     * Whether this phase renders an item attached to an entity (held in a hand
+     * or worn on the head slot); attached phases skip GL_LIGHTING, but their
+     * brightness comes from the world light at the attached entity's position.
+     */
+    public boolean isAttachedItemPhase() {
+        return isHandPhase() || this == ITEM_HEAD;
     }
 
     /**
@@ -84,6 +111,8 @@ public enum RenderPhase {
                 return "ground";
             case ITEM_FIXED:
                 return "fixed";
+            case ITEM_HEAD:
+                return "head";
             default:
                 return null;
         }

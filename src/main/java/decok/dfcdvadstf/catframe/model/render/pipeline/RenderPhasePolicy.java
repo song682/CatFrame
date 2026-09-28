@@ -16,7 +16,7 @@ import javax.annotation.Nullable;
  * 渲染阶段 → 默认亮度计算工具（pipeline 内部，配合扩展链使用）。
  * <p>
  * 收编原 {@link QuadWriter} 中按 {@link RenderPhase} 分支内联的亮度政策计算：
- * GUI 恒 255 / 手持取持有者位置光 / 掉落取实体位置光 / 方块取世界混合亮度，
+ * GUI 恒 255 / 附着（手持 / 头部槽）取附着实体位置光 / 掉落取实体位置光 / 方块取世界混合亮度，
  * 语义逐位复刻（无状态纯函数）。
  * <b>消费方（B' 形态）</b>：光政策统一居住于扩展链 —— 内建
  * {@code LightPolicyExtension}（extension 包）在 beforePart 计算物品提交级亮度、
@@ -28,7 +28,7 @@ import javax.annotation.Nullable;
  * <p>
  * 时点前提（write 期采样语义的依据）：物品渲染路径一律在 RenderDispatcher 的
  * beginScope/endScope 内提交，endScope 触发 flush 于同一调用栈，且处于
- * RenderJsonItemModel 手持 / 掉落实体上下文窗口内 —— 冲刷期（扩展 write 期）
+ * RenderJsonItemModel 附着（手持 / 头部槽）/ 掉落实体上下文窗口内 —— 冲刷期（扩展 write 期）
  * 读取的实体/玩家上下文与提交期相同（GUI 场景亮度恒 255，实体同帧位置冻结）。
  * <p>
  * Single mapping from {@link RenderPhase} to the default-brightness computation,
@@ -50,9 +50,9 @@ public final class RenderPhasePolicy {
      * 逐 phase 语义（迁移自 QuadWriter 原分支，逐位一致）：
      * <ul>
      *   <li>{@code ITEM_GUI} → 255（屏幕空间无环境光，恒定全亮）；</li>
-     *   <li>手持阶段（{@link RenderPhase#isHandPhase()}）→ 持有者位置世界光：
-     *       本地玩家取玩家位置光（对标 1.7.10 {@code ItemRenderer} 语义），
-     *       怪物 / 其他玩家取持有实体自身光照（对标 {@code RenderManager.renderEntityStatic}
+     *   <li>附着阶段（{@link RenderPhase#isAttachedItemPhase()}，手持 / 头部槽）→
+     *       附着实体位置世界光：本地玩家取玩家位置光（对标 1.7.10 {@code ItemRenderer} 语义），
+     *       怪物 / 其他玩家 / 雪傀儡取附着实体自身光照（对标 {@code RenderManager.renderEntityStatic}
      *       的实体光照贴图语义）；完全无外部光照时全黑，上下文缺失回退全亮；</li>
      *   <li>{@code BLOCK_WORLD} / {@code BLOCK_DESTROY} → 方块位置世界混合亮度
      *       （无世界上下文回退 0）；</li>
@@ -60,7 +60,7 @@ public final class RenderPhasePolicy {
      *       （无实体上下文回退全亮，保持既有兜底行为）。</li>
      * </ul>
      * 无状态纯函数：方块相位经入参 world/x/y/z/block 计算；物品相位内部经 Minecraft
-     * 玩家单例与 {@link RenderJsonItemModel} 手持 / 掉落实体上下文读取。
+     * 玩家单例与 {@link RenderJsonItemModel} 附着（手持 / 头部槽）/ 掉落实体上下文读取。
      *
      * @param phase 渲染阶段
      * @param world 世界访问（方块相位使用；物品相位忽略）
@@ -77,8 +77,8 @@ public final class RenderPhasePolicy {
         if (phase == RenderPhase.ITEM_GUI) {
             return 255;
         }
-        if (phase != null && phase.isHandPhase()) {
-            return handBrightness();
+        if (phase != null && phase.isAttachedItemPhase()) {
+            return holderBrightness();
         }
         if (phase == RenderPhase.BLOCK_WORLD || phase == RenderPhase.BLOCK_DESTROY) {
             // 方块相位：原 writeBlockQuads 语义 —— 有世界上下文取混合亮度，否则 0。
@@ -96,64 +96,65 @@ public final class RenderPhasePolicy {
      * 该渲染阶段是否使用 GL_LIGHTING + 逐面法线的物品光照模式（方案B）。
      * <p>
      * 语义基准 = FeatureRenderDispatcher 原私有 isItemGlLitPhase：非 BLOCK_WORLD、
-     * 非 ITEM_GUI、非手持阶段（即掉落物 / 展示框）—— 这些阶段启用 GL_NORMALIZE 并
+     * 非 ITEM_GUI、非附着阶段（即掉落物 / 展示框）—— 这些阶段启用 GL_NORMALIZE 并
      * 由发射器按面写入法线，方向光照交予 GL 计算而非烘焙进顶点色；
-     * GUI 与手持阶段维持烘焙阴影（手持对标 1.7.10 ItemRenderer glDisable(GL_LIGHTING)）。
+     * GUI 与附着阶段维持烘焙阴影（附着对标 1.7.10 ItemRenderer glDisable(GL_LIGHTING)）。
      * <p>
      * Whether the phase renders items lit by GL_LIGHTING with per-face normals
-     * (dropped / item-frame); GUI and hand phases keep baked shading instead.
+     * (dropped / item-frame); GUI and attached-item phases keep baked shading instead.
      */
     public static boolean isItemGlLit(RenderPhase phase) {
         return phase != null && phase != RenderPhase.BLOCK_WORLD
-                && phase != RenderPhase.ITEM_GUI && !phase.isHandPhase();
+                && phase != RenderPhase.ITEM_GUI && !phase.isAttachedItemPhase();
     }
 
     /**
-     * 手持阶段的基础亮度：取持有该物品的实体所在位置的世界光照（天空光 + 方块光）。
+     * 附着阶段（手持 / 头部槽）的基础亮度：取附着该物品的实体所在位置的世界光照（天空光 + 方块光）。
      * <p>
-     * 两条分支（对标 1.7.10 原版对两类手持物品的独立光照语义）：
+     * 两条分支（对标 1.7.10 原版对两类附着物品的独立光照语义）：
      * <ul>
-     *   <li><b>非玩家持有实体</b>（怪物 / 其他玩家）：取持有实体自身位置的实体光照，
+     *   <li><b>非玩家附着实体</b>（怪物 / 其他玩家 / 雪傀儡）：取附着实体自身位置的实体光照，
      *       对标 {@code RenderManager.renderEntityStatic} 的实体光照贴图语义
-     *       （{@code getBrightnessForRender}；燃烧实体强制全亮）——持有实体上下文由
-     *       {@link RenderJsonItemModel#getCurrentHandEntity()} 在手持渲染窗口内提供。
+     *       （{@code getBrightnessForRender}；燃烧实体强制全亮）——附着实体上下文由
+     *       {@link RenderJsonItemModel#getCurrentHolderEntity()} 在附着渲染窗口内提供。
      *       修复“远距离观察怪物手持物品按玩家位置光照渲染而诡亮”的错位：怪物在暗处、
      *       玩家在亮处时物品呈现高亮，走近后光照收敛又恢复“正常”；</li>
-     *   <li><b>本地玩家</b>（第一 / 第三人称）：取玩家所在位置的世界光照，对标
+     *   <li><b>本地玩家</b>（第一 / 第三人称 / 玩家头盔槽）：取玩家所在位置的世界光照，对标
      *       {@code ItemRenderer.renderItemInFirstPerson} 的
      *       {@code getLightBrightnessForSkyBlocks(玩家坐标, 0)} 语义——完全无外部
      *       光照时返回 0，手持物品渲染为全黑；玩家或世界上下文缺失时回退全亮兜底。</li>
      * </ul>
      * 自 QuadWriter 迁移（DBF 化：亮度政策外移至提交期）。
      * <p>
-     * Base brightness for hand-held phases: world light sampled at the holder's
-     * position — the entity's own lightmap for mobs / other players (same as
-     * 1.7.10 {@code RenderManager.renderEntityStatic}), and the player-position
-     * light for the local player (same as 1.7.10 {@code ItemRenderer}).
+     * Base brightness for attached-item phases (hand / head slot): world light
+     * sampled at the attached entity's position — the entity's own lightmap for
+     * mobs / other players / snow golems (same as 1.7.10
+     * {@code RenderManager.renderEntityStatic}), and the player-position light for
+     * the local player (same as 1.7.10 {@code ItemRenderer}).
      *
      * @return packed brightness（15728880 = 全亮，0 = 全黑）
      */
-    private static int handBrightness() {
+    private static int holderBrightness() {
         Minecraft mc = Minecraft.getMinecraft();
         EntityPlayer player = (mc != null) ? mc.thePlayer : null;
 
-        // 非玩家持有实体（怪物 / 其他玩家）：实体自身光照贴图语义
-        // （渲染窗口内的持有实体上下文，见 RenderJsonItemModel 手持实体窗口）
-        EntityLivingBase handEntity = RenderJsonItemModel.getCurrentHandEntity();
-        if (handEntity != null && handEntity != player) {
-            if (handEntity.worldObj == null) {
+        // 非玩家附着实体（怪物 / 其他玩家 / 雪傀儡）：实体自身光照贴图语义
+        // （渲染窗口内的附着实体上下文，见 RenderJsonItemModel 附着实体窗口）
+        EntityLivingBase holderEntity = RenderJsonItemModel.getCurrentHolderEntity();
+        if (holderEntity != null && holderEntity != player) {
+            if (holderEntity.worldObj == null) {
                 // 异常窗口（实体已脱离世界）：沿用全亮兜底
                 return FULL_BRIGHT;
             }
             // 对标 RenderManager.renderEntityStatic：燃烧实体光照贴图强制全亮
-            if (handEntity.isBurning()) {
+            if (holderEntity.isBurning()) {
                 return FULL_BRIGHT;
             }
             // partialTicks 传 0：原版实现按当前 tick 坐标取光，不消费该参数
-            return handEntity.getBrightnessForRender(0.0F);
+            return holderEntity.getBrightnessForRender(0.0F);
         }
 
-        // 本地玩家（第一 / 第三人称）：沿用 1.7.10 ItemRenderer 玩家位置光语义
+        // 本地玩家（第一 / 第三人称 / 玩家头盔槽）：沿用 1.7.10 ItemRenderer 玩家位置光语义
         if (player == null || player.worldObj == null) {
             return FULL_BRIGHT;
         }
@@ -165,7 +166,7 @@ public final class RenderPhasePolicy {
 
     /**
      * 掉落物阶段的基础亮度：取掉落物实体所在位置的世界光照（天空光 + 方块光），
-     * 与手持阶段 {@link #handBrightness()} 同构——夜间 / 无光源处掉落物与环境同暗，
+     * 与附着阶段 {@link #holderBrightness()} 同构——夜间 / 无光源处掉落物与环境同暗，
      * 不再恒定全亮（修复"掉落物在黑暗环境相对环境高亮、注意力被吸引"）。
      * 实体上下文由 {@link RenderJsonItemModel} 在 Forge ENTITY 渲染时建立
      * （ForgeHooksClient.renderEntityItem 将 EntityItem 作为 renderItem 的 data[1] 传入）；
@@ -173,7 +174,7 @@ public final class RenderPhasePolicy {
      * 自 QuadWriter 迁移（DBF 化：亮度政策外移至提交期）。
      * <p>
      * Base brightness for dropped-item phases: world light sampled at the entity's
-     * position, mirroring the hand-held {@link #handBrightness()} semantics, so
+     * position, mirroring the attached-item {@link #holderBrightness()} semantics, so
      * dropped items darken together with the environment instead of staying
      * full-bright; falls back to full-bright when no entity context is present.
      *

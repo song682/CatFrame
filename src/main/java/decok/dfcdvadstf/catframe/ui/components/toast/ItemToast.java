@@ -45,7 +45,7 @@ public class ItemToast extends BaseToast {
         GL11.glPushMatrix();
         GL11.glScalef(2.0F, 2.0F, 1.0F);
         // TODO: Use RenderHelper to render the item
-        // mc.getRenderItem().renderItemAndEffectIntoGUI(itemStack, 4, 4);
+        
         GL11.glPopMatrix();
 
         // Render title

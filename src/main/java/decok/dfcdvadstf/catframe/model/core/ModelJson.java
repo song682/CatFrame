@@ -88,7 +88,7 @@ public class ModelJson {
          * <p>当为 {@code true} 时，在旋转前对顶点沿各局部坐标轴应用非均匀缩放，
          * 使旋转后的最大投影分量恢复至原始大小，补偿旋转造成的视觉收缩。
          * 缩放因子 = 1 / max(abs(rotated_axis_unit))，以旋转中心为原点。
-         * 对齐 26.1 {@link net.minecraft.client.resources.model.cuboid.CuboidRotation#computeRescale}。
+         * 对齐 26.1 {@code net.minecraft.client.resources.model.cuboid.CuboidRotation#computeRescale}。
          */
         public boolean rescale;
 

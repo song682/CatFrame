@@ -16,7 +16,13 @@ import org.apache.logging.log4j.Logger;
         name = Tags.NAME,
         version = Tags.VERSION,
         acceptedMinecraftVersions = "[1.7.10]",
-        useMetadata = true
+        useMetadata = true,
+        customProperties = {
+                @Mod.CustomProperty(k = "license", v = "MIT"),
+                @Mod.CustomProperty(k = "issueTrackerUrl", v = "https://github.com/song682/CatFrame/issues"),
+                @Mod.CustomProperty(k = "iconFile", v = "assets/catframe/logo.png"),
+                @Mod.CustomProperty(k = "backgroundFile", v = "assets/catalogue/background.png")
+        }
 )
 public class CatFrame {
     public static Logger logger = LogManager.getLogger(Tags.NAME);

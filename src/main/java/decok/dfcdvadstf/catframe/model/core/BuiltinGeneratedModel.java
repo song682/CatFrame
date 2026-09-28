@@ -49,13 +49,12 @@ public final class BuiltinGeneratedModel {
         // display transforms
         model.display = new HashMap<>();
         model.display.put("gui",             display(0, 0, 0, 0, 0, 0, 1, 1, 1));
-        model.display.put("ground",          display(0, 0, 0, 0, 2, 0, 0.5f, 0.5f, 0.5f));
+        model.display.put("ground",          display(0, 2, 0, 0, 0, 0, 0.5f, 0.5f, 0.5f));
         model.display.put("fixed",           display(0, 0, 0, 0, 0, 0, 1, 1, 1));
-        // head：头部装备槽变换，与 26.1 原版 generated.json 的 display.head 逐值一致
-        // （rotation [0, 180, 0] / translation [0, 13, 7] / scale [1, 1, 1]）
+        // head 头部装备槽变换：与 26.1 原版 generated.json 的 display.head 逐值一致
         model.display.put("head",            display(0, 13, 7, 0, 180, 0, 1, 1, 1));
-        model.display.put("thirdperson_righthand",  display(0, 0, 0, 0, 3, 1, 0.55f, 0.55f, 0.55f));
-        model.display.put("firstperson_righthand",  display(1.13f, 3.2f, 1.13f, 0, 0, 0, 0.68f, 0.68f, 0.68f));
+        model.display.put("thirdperson_righthand",  display(0, 3, 1, 0, 0, 0, 0.55f, 0.55f, 0.55f));
+        model.display.put("firstperson_righthand",  display(1.13f, 3.2f, 1.13f, 0, -90, 25, 0.68f, 0.68f, 0.68f));
         model.display.put("firstperson_lefthand",   display(1.13f, 3.2f, 1.13f, 0, 0, 0, 0.68f, 0.68f, 0.68f));
         return model;
     }

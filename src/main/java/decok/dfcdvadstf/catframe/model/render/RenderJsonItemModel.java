@@ -35,7 +35,7 @@ import javax.vecmath.Vector3d;
  *       {@code BlockStateItemState}，该机制已移除——未实现 ItemState 的方块物品
  *       退回原版物品渲染。</li>
  *   <li><b>{@link #shouldUseRenderHelper} 对 EQUIPPED_BLOCK 返回 true
- *       （仅 ItemBlock），对 INVENTORY_BLOCK 始终返回 false</b>——
+ *       （所有物品，统一让 Forge 做 translate(-0.5) 前置），对 INVENTORY_BLOCK 始终返回 false</b>——
  *       手持路径让 Forge 做 translate(-0.5) 前置，GUI 路径不依赖 Forge，
  *       等距旋转完全由 model JSON 的 {@code display.gui} 字段控制，
  *       由 {@link DisplayTransformExtension} 在
@@ -634,7 +634,8 @@ public class RenderJsonItemModel implements IItemRenderer {
             //    方块路径: T(0,0.1875,-0.3125) × RX(20) × RY(45) × S(0.375,-0.375,0.375)
             //    S(2.667,-2.667,2.667) 逆 S(0.375,-0.375,0.375)
             tmp.setIdentity();
-            tmp.m00 = 2.667; tmp.m11 = -2.667; tmp.m22 = 2.667;
+            double invScale = 1.0 / 0.375; // ≈ 2.667
+            tmp.m00 = invScale; tmp.m11 = -invScale; tmp.m22 = invScale;
             m.mul(tmp);
 
             //    RY(-45) 逆 RY(45)

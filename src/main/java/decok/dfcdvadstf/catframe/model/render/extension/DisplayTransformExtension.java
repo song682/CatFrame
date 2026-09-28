@@ -82,6 +82,7 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
         }
 
         // ====== 状态驱动诊断：仅 phase/key/dt 签名变更时触发 ======
+        boolean shouldLog = false;
         if (CatFrameConfig.shouldLogDebug()) {
             String dtSig = dt != null ? String.format("rot=%s t=%s s=%s",
                     dt.rotation != null ? java.util.Arrays.toString(dt.rotation) : "null",
@@ -93,7 +94,7 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
             boolean phaseChanged = (phase != lastPhase);
             boolean keyChanged = (displayKey != null && !displayKey.equals(lastKey));
             boolean dtChanged = !dtSig.equals(lastSig);
-            boolean shouldLog = (phaseChanged || keyChanged || dtChanged);
+            shouldLog = (phaseChanged || keyChanged || dtChanged);
             if (shouldLog) {
                 LAST_DISPLAY_PHASE.set(phase);
                 LAST_DISPLAY_KEY.set(displayKey);
@@ -101,18 +102,17 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
                 LOGGER.info(String.format("[DFXDBG] DisplayExt phase=%s key=%s dt=%s",
                         phase.name(), displayKey, dtSig));
             }
+        }
+        // ====== 诊断结束 ======
 
-            // ====== 诊断结束 ======
-
-            // 当 dt == null 时，使用基于 display key 的默认变换
-            if (dt == null) {
-                dt = getDefaultTransform(displayKey);
-                if (shouldLog) LOGGER.info(String.format("[DFXDBG] DisplayExt DEFAULT: key=%s dt=rot=%s t=%s s=%s",
-                        displayKey,
-                        java.util.Arrays.toString(dt.rotation),
-                        java.util.Arrays.toString(dt.translation),
-                        java.util.Arrays.toString(dt.scale)));
-            }
+        // 当 dt == null 时，使用基于 display key 的默认变换
+        if (dt == null) {
+            dt = getDefaultTransform(displayKey);
+            if (shouldLog) LOGGER.info(String.format("[DFXDBG] DisplayExt DEFAULT: key=%s dt=rot=%s t=%s s=%s",
+                    displayKey,
+                    java.util.Arrays.toString(dt.rotation),
+                    java.util.Arrays.toString(dt.translation),
+                    java.util.Arrays.toString(dt.scale)));
         }
 
         // 计算 display transform 矩阵（向量空间）
@@ -240,7 +240,8 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
 
         switch (displayKey) {
             case "firstperson_righthand":
-                dt.translation = new float[]{0, 0, 0};
+                dt.rotation = new float[]{0, -90, 25};
+                dt.translation = new float[]{1.13f, 3.2f, 1.13f};
                 dt.scale = new float[]{0.68f, 0.68f, 0.68f};
                 break;
             case "thirdperson_righthand":
@@ -257,7 +258,11 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
                 break;
             case "fixed":
                 dt.translation = new float[]{0, 0, 0};
-                dt.scale = new float[]{0.5f, 0.5f, 0.5f};
+                dt.scale = new float[]{1, 1, 1};
+                break;
+            case "head":
+                dt.rotation = new float[]{0, 180, 0};
+                dt.translation = new float[]{0, 13, 7};
                 break;
             default:
                 dt.translation = new float[]{0, 0, 0};

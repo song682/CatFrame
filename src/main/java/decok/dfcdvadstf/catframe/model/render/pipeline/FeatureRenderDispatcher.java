@@ -38,8 +38,11 @@ import java.util.Map;
  */
 public final class FeatureRenderDispatcher {
 
-    /** 复用查询缓冲：读取 GL_ALPHA_TEST_REF（客户端渲染单线程，无并发）。 */
-    private static final FloatBuffer STATE_QUERY = BufferUtils.createFloatBuffer(1);
+    /** 复用查询缓冲：读取 GL_ALPHA_TEST_REF（客户端渲染单线程，无并发）。
+     * <p>注意：必须分配 16 个元素 —— LWJGL2 的 {@code glGetFloat} 底层共用 {@code glGetFloatv}
+     * （矩阵查询最多返回 16 个浮点），{@code BufferChecks.checkBuffer} 无视实际枚举
+     * 返回数量、无条件要求缓冲区至少 16 个元素，否则抛 IllegalArgumentException。 */
+    private static final FloatBuffer STATE_QUERY = BufferUtils.createFloatBuffer(16);
 
     private FeatureRenderDispatcher() {
     }

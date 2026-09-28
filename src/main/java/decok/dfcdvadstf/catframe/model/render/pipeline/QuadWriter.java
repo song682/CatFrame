@@ -93,6 +93,9 @@ public final class QuadWriter {
 
             // 提交到 Tessellator
             boolean hasVertexAO = ctx.aoBrightness[0] >= 0;
+            // UV 覆写（模型空间 0-16）局部引用：null = 无覆写；AO / 非 AO 普通分支共用。
+            // destroy 贴花投影分支不消费（贴花 UV 与模型 UV 解耦，设计如此）。
+            final float[] uvOv = ctx.effectiveUvOverride();
 
             if (hasVertexAO) {
                 for (int i = 0; i < 4; i++) {
@@ -116,8 +119,8 @@ public final class QuadWriter {
                         vy = tmpVec.y;
                         vz = tmpVec.z;
                     }
-                    double U = icon.getInterpolatedU(q.up[i]);
-                    double V = icon.getInterpolatedV(q.vp[i]);
+                    double U = icon.getInterpolatedU(uvOv != null ? uvOv[i * 2] : q.up[i]);
+                    double V = icon.getInterpolatedV(uvOv != null ? uvOv[i * 2 + 1] : q.vp[i]);
                     t.addVertexWithUV(s.x + vx, s.y + vy, s.z + vz, U, V);
                 }
             } else {
@@ -175,12 +178,14 @@ public final class QuadWriter {
                         } else {
                             // face 为 null（cross 等无向 quad）兜底回退模型 UV
                             // Fall back to baked model UVs for direction-less quads
+                            // destroy 分支不消费 uvOverride（贴花 UV 与模型 UV 解耦，设计如此）
                             U = icon.getInterpolatedU(q.up[i]);
                             V = icon.getInterpolatedV(q.vp[i]);
                         }
                     } else {
-                        U = icon.getInterpolatedU(q.up[i]);
-                        V = icon.getInterpolatedV(q.vp[i]);
+                        // 非 destroy：uvOverride（模型空间覆写）优先
+                        U = icon.getInterpolatedU(uvOv != null ? uvOv[i * 2] : q.up[i]);
+                        V = icon.getInterpolatedV(uvOv != null ? uvOv[i * 2 + 1] : q.vp[i]);
                     }
                     t.addVertexWithUV(s.x + vx, s.y + vy, s.z + vz, U, V);
                 }
@@ -268,9 +273,10 @@ public final class QuadWriter {
             }
 
             IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
+            final float[] uvOv = ctx.effectiveUvOverride();
             for (int i = 0; i < 4; i++) {
-                double U = icon.getInterpolatedU(q.up[i]);
-                double V = icon.getInterpolatedV(q.vp[i]);
+                double U = icon.getInterpolatedU(uvOv != null ? uvOv[i * 2] : q.up[i]);
+                double V = icon.getInterpolatedV(uvOv != null ? uvOv[i * 2 + 1] : q.vp[i]);
 
                 tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
                 applyTransformChain(tmpVec, ctx.displayTransform, transformation, preTransform);
@@ -344,6 +350,7 @@ public final class QuadWriter {
 
             for (int i = 0; i < 4; i++) {
                 // 无纹理时 UV 被忽略，但 addVertexWithUV 是 Tessellator 唯一的提交 API
+                // 本 pass 不消费 uvOverride（无纹理渲染，UV 不参与采样）
                 tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
                 applyTransformChain(tmpVec, ctx.displayTransform, transformation, preTransform);
                 t.addVertexWithUV(tmpVec.x, tmpVec.y, tmpVec.z, 0, 0);
@@ -420,11 +427,12 @@ public final class QuadWriter {
             t.setColorRGBA_F(gr, gg, gb, 1.0f);
 
             IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
+            final float[] uvOv = ctx.effectiveUvOverride();
             for (int i = 0; i < 4; i++) {
                 // solidColor quad 可能无 icon，UV 兜底为 0（流纹动画仍由纹理矩阵驱动）
                 // solid-color quads may lack an icon; fall back to UV 0
-                double U = (icon != null) ? icon.getInterpolatedU(q.up[i]) : 0.0;
-                double V = (icon != null) ? icon.getInterpolatedV(q.vp[i]) : 0.0;
+                double U = (icon != null) ? icon.getInterpolatedU(uvOv != null ? uvOv[i * 2] : q.up[i]) : 0.0;
+                double V = (icon != null) ? icon.getInterpolatedV(uvOv != null ? uvOv[i * 2 + 1] : q.vp[i]) : 0.0;
 
                 tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
                 applyTransformChain(tmpVec, ctx.displayTransform, transformation, preTransform);

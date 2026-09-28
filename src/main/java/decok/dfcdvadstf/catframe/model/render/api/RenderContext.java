@@ -108,6 +108,22 @@ public final class RenderContext {
     public IIcon iconOverride = null;
 
     /**
+     * 逐顶点 UV 覆写（模型空间 0-16，与 {@link BakedQuad#up}/{@link BakedQuad#vp} 单位一致）。
+     * <p>
+     * null = 不覆写（默认）；非 null 须为长度 8 的数组，布局
+     * {@code [u0,v0,u1,v1,u2,v2,u3,v3]}，与管线顶点调用序 0..3 对应。管线以本数组替代
+     * {@code q.up[i]}/{@code q.vp[i]} 作为 {@code icon.getInterpolatedU/V} 的入参：
+     * sprite 的 padding / UV shrink / 动画帧 / 图集映射仍全部由 icon 负责。与
+     * {@link #iconOverride} 正交（后者决定用哪个 sprite，本字段决定其上的采样位置）。
+     * <p>
+     * 引用仅在扩展链调用期间有效（同帧同线程），不得跨帧保留；扩展应自持并复用数组
+     * （渲染热路径，不得每 quad 分配）。destroy 贴花投影与 solidColor 无纹理 pass
+     * 不消费本字段；建议经 {@link #effectiveUvOverride()} 读取（含长度防御）。
+     */
+    @Nullable
+    public float[] uvOverride = null;
+
+    /**
      * Display transform 矩阵（向量空间）。
      * 由 {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
      * 在扩展链中计算并设置，管线在提交顶点前应用此矩阵变换顶点坐标。
@@ -164,5 +180,13 @@ public final class RenderContext {
      */
     public int effectiveBrightness() {
         return brightnessOverride >= 0 ? brightnessOverride : baselineBrightness;
+    }
+
+    /**
+     * 长度合法的 UV 覆写数组；null 或长度不足 8 时返回 null（按不覆写处理）。
+     */
+    @Nullable
+    public float[] effectiveUvOverride() {
+        return (uvOverride != null && uvOverride.length >= 8) ? uvOverride : null;
     }
 }

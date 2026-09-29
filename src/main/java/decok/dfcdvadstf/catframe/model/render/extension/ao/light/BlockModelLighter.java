@@ -268,8 +268,11 @@ public final class BlockModelLighter {
         ctx.brightnessOverride = cache.getBrightness(lightBlock, world, lightX, lightY, lightZ);
 
         // shade = shadeEnabled ? cardinal.byFace : cardinal.up()
-        boolean useShade = quad.shadeEnabled == null || quad.shadeEnabled;
-        float dirLight = useShade ? cardinal.byFace(direction) : cardinal.up();
+        // 26.3+: shade_direction_override 优先，按覆写方向查表（面实际朝向仅用于亮度采样位置）
+        boolean useShade = quad.shadeDirectionOverride != null
+                || quad.shadeEnabled == null || quad.shadeEnabled;
+        Direction shadeFace = quad.shadeDirectionOverride != null ? quad.shadeDirectionOverride : direction;
+        float dirLight = useShade ? cardinal.byFace(shadeFace) : cardinal.up();
         ctx.shade = dirLight;
     }
 

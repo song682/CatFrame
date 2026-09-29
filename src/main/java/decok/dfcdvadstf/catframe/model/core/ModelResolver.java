@@ -268,6 +268,7 @@ public class ModelResolver {
         dst.to   = src.to   != null ? src.to.clone()   : null;
         dst.ambientocclusion = src.ambientocclusion;
         dst.shade = src.shade;
+        dst.shadeDirectionOverride = src.shadeDirectionOverride;
         if (src.rotation != null) {
             dst.rotation = new ModelJson.Rotation();
             dst.rotation.angle = src.rotation.angle;

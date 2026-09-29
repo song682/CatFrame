@@ -35,6 +35,8 @@ public class JsonModelBake {
         // Read the element-level ambientocclusion and shade settings
         final Boolean elemAO = e.ambientocclusion;
         final Boolean elemShade = e.shade;
+        // 26.3+: element-level shade direction override; takes precedence over "shade" when both are present
+        final Direction elemShadeDir = parseShadeDirectionOverride(e.shadeDirectionOverride);
         double x0 = e.from[0] / 16.0, y0 = e.from[1] / 16.0, z0 = e.from[2] / 16.0;
         double x1 = e.to[0] / 16.0, y1 = e.to[1] / 16.0, z1 = e.to[2] / 16.0;
         Vector3d[] C = new Vector3d[8];
@@ -142,17 +144,17 @@ public class JsonModelBake {
                 C[i].add(origin);
             }
         }
-        emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, Direction.NORTH, elemFrom, elemTo, elemAO, elemShade, textureSize);
-        emitFaceFromCorners(out, e.faces.south, iconMap, C, new int[]{idx(0, 1, 1), idx(0, 0, 1), idx(1, 0, 1), idx(1, 1, 1)}, Direction.SOUTH, elemFrom, elemTo, elemAO, elemShade, textureSize);
-        emitFaceFromCorners(out, e.faces.west, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 0, 0), idx(0, 0, 1), idx(0, 1, 1)}, Direction.WEST, elemFrom, elemTo, elemAO, elemShade, textureSize);
-        emitFaceFromCorners(out, e.faces.east, iconMap, C, new int[]{idx(1, 1, 1), idx(1, 0, 1), idx(1, 0, 0), idx(1, 1, 0)}, Direction.EAST, elemFrom, elemTo, elemAO, elemShade, textureSize);
-        emitFaceFromCorners(out, e.faces.down, iconMap, C, new int[]{idx(0, 0, 1), idx(0, 0, 0), idx(1, 0, 0), idx(1, 0, 1)}, Direction.DOWN, elemFrom, elemTo, elemAO, elemShade, textureSize);
-        emitFaceFromCorners(out, e.faces.up, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 1, 1), idx(1, 1, 1), idx(1, 1, 0)}, Direction.UP, elemFrom, elemTo, elemAO, elemShade, textureSize);
+        emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, Direction.NORTH, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, textureSize);
+        emitFaceFromCorners(out, e.faces.south, iconMap, C, new int[]{idx(0, 1, 1), idx(0, 0, 1), idx(1, 0, 1), idx(1, 1, 1)}, Direction.SOUTH, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, textureSize);
+        emitFaceFromCorners(out, e.faces.west, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 0, 0), idx(0, 0, 1), idx(0, 1, 1)}, Direction.WEST, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, textureSize);
+        emitFaceFromCorners(out, e.faces.east, iconMap, C, new int[]{idx(1, 1, 1), idx(1, 0, 1), idx(1, 0, 0), idx(1, 1, 0)}, Direction.EAST, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, textureSize);
+        emitFaceFromCorners(out, e.faces.down, iconMap, C, new int[]{idx(0, 0, 1), idx(0, 0, 0), idx(1, 0, 0), idx(1, 0, 1)}, Direction.DOWN, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, textureSize);
+        emitFaceFromCorners(out, e.faces.up, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 1, 1), idx(1, 1, 1), idx(1, 1, 0)}, Direction.UP, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, textureSize);
         return out;
     }
 
     private static void emitFaceFromCorners(List<BakedQuad> out, ModelJson.Face f, Map<String, IIcon> iconMap, Vector3d[] C, int[] id, Direction facing,
-                                            float[] elemFrom, float[] elemTo, Boolean elemAO, Boolean elemShade, int[] textureSize) {
+                                            float[] elemFrom, float[] elemTo, Boolean elemAO, Boolean elemShade, Direction elemShadeDir, int[] textureSize) {
         if (f == null || f.texture == null) {
             return;
         }
@@ -190,6 +192,7 @@ public class JsonModelBake {
         // Propagate the element-level AO and shade settings
         q.ambientOcclusion = elemAO;
         q.shadeEnabled = elemShade;
+        q.shadeDirectionOverride = elemShadeDir;
         out.add(q);
     }
 
@@ -485,6 +488,7 @@ public class JsonModelBake {
         q.cullface = src.cullface;
         q.ambientOcclusion = src.ambientOcclusion;
         q.shadeEnabled = src.shadeEnabled;
+        q.shadeDirectionOverride = src.shadeDirectionOverride;
         q.guiLight = src.guiLight;
         q.solidColor = src.solidColor;
         return q;
@@ -590,6 +594,14 @@ public class JsonModelBake {
     }
 
     /**
+     * Parse the 26.3+ {@code shade_direction_override} value (up/down/north/south/east/west) to a Direction.
+     * Returns null when absent; values already rejected by the JSON deserializer are null here.
+     */
+    private static Direction parseShadeDirectionOverride(String value) {
+        return Direction.byName(value != null && !value.isEmpty() ? value.toLowerCase() : null);
+    }
+
+    /**
      * Parse cullface string (e.g. "south", "up") to Direction. Returns null if invalid or null.
      */
     private static Direction parseCullface(String cullface) {
@@ -620,6 +632,13 @@ public class JsonModelBake {
          * Directional shading flag: null = use the model-level default, true = enabled, false = disabled (emissive)
          */
         public Boolean shadeEnabled = null;
+
+        /**
+         * 26.3+ shading direction override ({@code shade_direction_override}): null = shade by the quad's actual
+         * face direction (default); non-null = every face of this element uses this direction for the cardinal
+         * shading lookup instead (the actual face direction still drives light-sampling positions).
+         */
+        public Direction shadeDirectionOverride = null;
 
         /**
          * Atlas ownership flag (mirroring how 26.1.2 {@code BakedQuad.MaterialInfo} picks a RenderType by

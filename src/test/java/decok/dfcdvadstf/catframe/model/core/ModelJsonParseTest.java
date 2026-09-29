@@ -108,4 +108,24 @@ public class ModelJsonParseTest {
         assertTrue(model.elements.get(0) instanceof ModelJson.Element);
         assertTrue(model.elements.get(1) instanceof ModelJson.Element);
     }
+
+    @Test
+    public void parsesShadeDirectionOverrideWithShadeMutualExclusion() {
+        String json = "{ \"elements\": ["
+                + "  { \"from\": [0,0,0], \"to\": [16,16,16], \"shade_direction_override\": \"UP\" },"
+                + "  { \"from\": [0,0,0], \"to\": [16,16,16], \"shade\": false, \"shade_direction_override\": \"north\" },"
+                + "  { \"from\": [0,0,0], \"to\": [16,16,16], \"shade_direction_override\": \"middle\" }"
+                + "] }";
+        ModelJson model = ModelJson.createGson().fromJson(json, ModelJson.class);
+        assertNotNull(model);
+        assertEquals(3, model.elements.size());
+        // 26.3+ field: case-insensitive input is normalized to lowercase
+        assertEquals("up", model.elements.get(0).shadeDirectionOverride);
+        // duplicate declaration ('shade' + 'shade_direction_override') is preserved as parsed; a warning is logged
+        // and precedence is resolved at bake/render time (override wins)
+        assertEquals("north", model.elements.get(1).shadeDirectionOverride);
+        assertEquals(Boolean.FALSE, model.elements.get(1).shade);
+        // invalid values are dropped with a warning (falls back to face-direction shading)
+        assertEquals(null, model.elements.get(2).shadeDirectionOverride);
+    }
 }

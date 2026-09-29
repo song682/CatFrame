@@ -4,9 +4,11 @@ import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLighting;
 
 /**
- * 内建渲染扩展：处理 JSON element 中的 {@code "ambientocclusion"} 和 {@code "shade"} 字段。
+ * 内建渲染扩展：处理 JSON element 中的 {@code "ambientocclusion"}、{@code "shade"}
+ * 和 {@code "shade_direction_override"}（26.3+）字段。
  *
  * <h3>逐顶点 AO 原理（对齐 26.1 {@code BlockModelLighter} 算法）</h3>
  * <p>在 {@link RenderPhase#BLOCK_WORLD} 阶段，
@@ -26,6 +28,9 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
  *     {@code BlockModelLighter.prepareQuadFlat} 路径。</li>
  *   <li>{@code shadeEnabled = false}：禁用方向阴影，强制 {@code shade = 1.0f}（均匀照明）。
  *     逐顶点 AO 数据保留，仅方向系数被抹平。</li>
+ *   <li>{@code shadeDirectionOverride != null}（26.3+）：不按面实际朝向，改用指定方向查
+ *     {@link CardinalLighting} 表计算方向阴影；与 {@code shade} 互斥，同时声明时本字段优先
+ *     （解析阶段已按重复告警，见 {@code ModelJson} 的 ElementDeserializer）。</li>
  * </ul>
  *
  * <p>本扩展由 {@link ModelRenderRegistry} 在首次使用时自动安装。
@@ -47,8 +52,10 @@ public final class AOShadeExtension implements IModelRenderExtension {
             }
         }
 
-        // 处理 shade
-        if (ctx.quad.shadeEnabled != null && !ctx.quad.shadeEnabled) {
+        // 处理 shade_direction_override（26.3+）：按指定方向查表计算方向阴影，优先级高于 shade
+        if (ctx.quad.shadeDirectionOverride != null) {
+            ctx.shade = CardinalLighting.DEFAULT.byFace(ctx.quad.shadeDirectionOverride);
+        } else if (ctx.quad.shadeEnabled != null && !ctx.quad.shadeEnabled) {
             // 禁用方向阴影：抹平方向系数，逐顶点 AO 数据保留
             ctx.shade = 1.0f;
         }

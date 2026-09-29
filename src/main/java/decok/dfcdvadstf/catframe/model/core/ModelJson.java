@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.model.core;
 
 import com.google.gson.*;
+import decok.dfcdvadstf.catframe.CatFrame;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -49,6 +50,20 @@ public class ModelJson {
                 .create();
     }
 
+    /**
+     * 校验 26.3+ {@code shade_direction_override} 取值是否为 6 个方向名之一
+     * （up/down/north/south/east/west）。
+     */
+    private static boolean isValidShadeDirection(String name) {
+        if (name == null) return false;
+        switch (name) {
+            case "down": case "up": case "north": case "south": case "west": case "east":
+                return true;
+            default:
+                return false;
+        }
+    }
+
     public static class Element {
         public float[] from;
         public float[] to;
@@ -64,6 +79,14 @@ public class ModelJson {
          * 方向阴影: true(默认) 根据法线应用方向光照衰减(top=1.0/side=0.8/bottom=0.5), false 均匀照明
          */
         public Boolean shade;
+
+        /**
+         * 26.3+ 阴影方向覆写: up/down/north/south/east/west 之一。
+         * <p>指定后该元素的所有面在计算方向阴影时不再使用面的实际朝向，而统一以本方向查表；
+         * 与 {@link #shade} 互斥（同时声明视为重复并告警，本字段优先）。
+         * 取值非法时告警并忽略（回退为按面实际朝向计算）。
+         */
+        public String shadeDirectionOverride;
     }
 
     public static class Rotation {
@@ -223,6 +246,23 @@ public class ModelJson {
                     ? obj.get("ambientocclusion").getAsBoolean() : null;
             element.shade = obj.has("shade")
                     ? obj.get("shade").getAsBoolean() : null;
+
+            // 26.3+: "shade_direction_override" 与旧 "shade" 互斥，同时出现时按重复声明告警（本字段优先）
+            if (obj.has("shade_direction_override")) {
+                if (obj.has("shade")) {
+                    CatFrame.logger.warn("[ModelJson] element declares both 'shade' and 'shade_direction_override' "
+                            + "(duplicate); they are mutually exclusive - 'shade_direction_override' takes precedence "
+                            + "and 'shade' is ignored");
+                }
+                String raw = obj.get("shade_direction_override").getAsString();
+                String normalized = raw != null ? raw.toLowerCase() : null;
+                if (isValidShadeDirection(normalized)) {
+                    element.shadeDirectionOverride = normalized;
+                } else {
+                    CatFrame.logger.warn("[ModelJson] invalid 'shade_direction_override' value '{}', expected one of "
+                            + "up/down/north/south/east/west; ignoring", raw);
+                }
+            }
 
             return element;
         }

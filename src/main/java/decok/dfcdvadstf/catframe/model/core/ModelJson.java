@@ -200,6 +200,13 @@ public class ModelJson {
         public float[] rotation;
         public float[] translation;
         public float[] scale;
+
+        /**
+         * Raw snapshot of unrecognized keys (same convention as {@link ModelJson#raw}); null when none.
+         * The display slot name itself is always retained as a key of {@link ModelJson#display}, including
+         * slots this mod does not yet consume (e.g. firstperson_lefthand, on_shelf).
+         */
+        public Map<String, JsonElement> raw;
     }
 
     // ==================== Custom Deserializers ====================
@@ -440,6 +447,9 @@ public class ModelJson {
                 JsonArray scaleArray = obj.getAsJsonArray("scale");
                 transform.scale = new float[]{scaleArray.get(0).getAsFloat(), scaleArray.get(1).getAsFloat(), scaleArray.get(2).getAsFloat()};
             }
+
+            // 未识别变换键 → raw 快照（只存不解释）
+            transform.raw = collectUnknown("display transform", obj, "rotation", "translation", "scale");
 
             return transform;
         }

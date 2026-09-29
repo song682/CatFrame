@@ -163,4 +163,33 @@ public class ModelJsonParseTest {
         assertEquals("x", element.faces.north.raw.get("future_face_field").getAsString());
         assertEquals(null, element.faces.south.raw);
     }
+
+    @Test
+    public void retainsUnconsumedDisplaySlotsAndUnknownTransformKeys() {
+        String json = "{ \"display\": {"
+                + "  \"firstperson_lefthand\": { \"rotation\": [0, 225, 0], \"translation\": [0, 0, 0],"
+                + "    \"scale\": [0.4, 0.4, 0.4], \"future_transform_field\": \"x\" },"
+                + "  \"on_shelf\": { \"rotation\": [0, 180, 0] },"
+                + "  \"gui\": { \"rotation\": [30, 135, 0] }"
+                + " } }";
+        ModelJson model = ModelJson.createGson().fromJson(json, ModelJson.class);
+        assertNotNull(model);
+        assertNotNull(model.display);
+
+        // slots this mod does not consume yet are still retained by name (compat layer contract)
+        assertTrue(model.display.containsKey("firstperson_lefthand"));
+        assertTrue(model.display.containsKey("on_shelf"));
+
+        // known transform fields parse normally; unknown fields land in the per-slot raw snapshot
+        ModelJson.DisplayTransform left = model.display.get("firstperson_lefthand");
+        assertEquals(225.0f, left.rotation[1], 1e-4);
+        assertNotNull(left.raw);
+        assertEquals(1, left.raw.size());
+        assertEquals("x", left.raw.get("future_transform_field").getAsString());
+        assertEquals(null, left.raw.get("rotation"));
+
+        // transforms without unknown fields keep raw null
+        assertEquals(null, model.display.get("on_shelf").raw);
+        assertEquals(null, model.display.get("gui").raw);
+    }
 }

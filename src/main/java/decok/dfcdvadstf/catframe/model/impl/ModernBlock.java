@@ -25,7 +25,7 @@ import java.util.Collections;
 import java.util.Map;
 
 /**
- * ModernBlock — CatFrame 模组方块基类。
+ * ModernBlock — CatFrame Mod Blocks Base class
  *
  * <p>类似 {@link ModernItem}，为方块提供一键接入 CatFrame blockstate JSON 模型管线的能力：
  * <ul>

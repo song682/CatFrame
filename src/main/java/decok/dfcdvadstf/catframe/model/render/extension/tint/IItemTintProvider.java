@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render.extension.tint;
 
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 /**

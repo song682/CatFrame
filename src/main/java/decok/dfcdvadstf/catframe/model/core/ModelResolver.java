@@ -184,6 +184,13 @@ public class ModelResolver {
         // gui_light: child overrides parent
         merged.guiLight = (child.guiLight != null) ? child.guiLight : parent.guiLight;
 
+        // raw: 未识别键合并（child 覆盖 parent，与 textures/display 同策略），保证兼容快照不因继承链丢失
+        if (parent.raw != null || child.raw != null) {
+            merged.raw = new HashMap<>();
+            if (parent.raw != null) merged.raw.putAll(parent.raw);
+            if (child.raw != null) merged.raw.putAll(child.raw);
+        }
+
         // builtinGenerated: OR 传播 — 只要任一祖先来自 builtin/generated，子模型就继承该标记
         merged.builtinGenerated = parent.builtinGenerated || child.builtinGenerated;
 
@@ -269,6 +276,7 @@ public class ModelResolver {
         dst.ambientocclusion = src.ambientocclusion;
         dst.shade = src.shade;
         dst.shadeDirectionOverride = src.shadeDirectionOverride;
+        dst.raw = src.raw;
         if (src.rotation != null) {
             dst.rotation = new ModelJson.Rotation();
             dst.rotation.angle = src.rotation.angle;
@@ -299,6 +307,7 @@ public class ModelResolver {
         dst.rotation = src.rotation;
         dst.cullface = src.cullface;
         dst.tintIndex = src.tintIndex;
+        dst.raw = src.raw;
         return dst;
     }
 
@@ -509,6 +518,7 @@ public class ModelResolver {
         if (source.display != null) {
             copy.display = new HashMap<>(source.display);
         }
+        copy.raw = source.raw;
         copy.guiLight = source.guiLight;
         copy.builtinGenerated = source.builtinGenerated;
         if (source.texture_size != null) {

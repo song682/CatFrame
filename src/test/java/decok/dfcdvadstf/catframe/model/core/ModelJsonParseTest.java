@@ -128,4 +128,39 @@ public class ModelJsonParseTest {
         // invalid values are dropped with a warning (falls back to face-direction shading)
         assertEquals(null, model.elements.get(2).shadeDirectionOverride);
     }
+
+    @Test
+    public void retainsUnrecognizedKeysInRawSnapshot() {
+        String json = "{ \"parent\": \"block/cube_all\","
+                + "  \"future_root_field\": 7,"
+                + "  \"textures\": { \"all\": \"blocks/stone\" },"
+                + "  \"elements\": [ {"
+                + "    \"from\": [0,0,0], \"to\": [16,16,16], \"shade\": true,"
+                + "    \"future_element_field\": { \"nested\": [1,2] },"
+                + "    \"faces\": {"
+                + "      \"north\": { \"texture\": \"#all\", \"uv\": [0,0,16,16], \"future_face_field\": \"x\" },"
+                + "      \"south\": { \"texture\": \"#all\" }"
+                + "    } } ] }";
+        ModelJson model = ModelJson.createGson().fromJson(json, ModelJson.class);
+        assertNotNull(model);
+
+        // root: only the unknown key is captured; known keys must not leak into raw
+        assertNotNull(model.raw);
+        assertEquals(1, model.raw.size());
+        assertEquals(7, model.raw.get("future_root_field").getAsInt());
+
+        // element: unknown retained while known keys keep parsing normally
+        ModelJson.Element element = model.elements.get(0);
+        assertNotNull(element.raw);
+        assertEquals(1, element.raw.size());
+        assertTrue(element.raw.get("future_element_field").isJsonObject());
+        assertEquals(Boolean.TRUE, element.shade);
+        assertEquals(null, element.raw.get("shade"));
+
+        // face: unknown retained; faces without unknowns stay null (no allocation)
+        assertNotNull(element.faces.north.raw);
+        assertEquals(1, element.faces.north.raw.size());
+        assertEquals("x", element.faces.north.raw.get("future_face_field").getAsString());
+        assertEquals(null, element.faces.south.raw);
+    }
 }

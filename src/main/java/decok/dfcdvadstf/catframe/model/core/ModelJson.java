@@ -6,6 +6,7 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -37,6 +38,13 @@ public class ModelJson {
     public Map<String, DisplayTransform> display;
 
     /**
+     * Raw snapshot of unrecognized JSON keys (every key besides the known ones), retained as-is and never
+     * interpreted, so compatibility layers can read future format additions (e.g. 26.x fields) without
+     * re-parsing the resource. Null when the model declares none.
+     */
+    public Map<String, JsonElement> raw;
+
+    /**
      * Create a Gson instance configured with custom deserializers for model parsing.
      */
     public static Gson createGson() {
@@ -64,6 +72,36 @@ public class ModelJson {
         }
     }
 
+    /**
+     * 收集所有未识别键（已知键之外的键）为原样快照，保持 JSON 出现顺序。
+     * <p>未识别键只存不解释、不丢弃，供后续兼容层读取未来格式（如 26.x 新增字段）；
+     * 无未知键时返回 null（不分配）。
+     *
+     * @param where     日志定位（model / element / face）
+     * @param obj       源 JSON 对象
+     * @param knownKeys 已解析的键名
+     */
+    private static Map<String, JsonElement> collectUnknown(String where, JsonObject obj, String... knownKeys) {
+        Map<String, JsonElement> raw = null;
+        for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
+            boolean known = false;
+            for (String k : knownKeys) {
+                if (k.equals(e.getKey())) {
+                    known = true;
+                    break;
+                }
+            }
+            if (!known) {
+                if (raw == null) raw = new LinkedHashMap<>();
+                raw.put(e.getKey(), e.getValue());
+            }
+        }
+        if (raw != null) {
+            CatFrame.logger.debug("[ModelJson] {} retains unrecognized keys in raw: {}", where, raw.keySet());
+        }
+        return raw;
+    }
+
     public static class Element {
         public float[] from;
         public float[] to;
@@ -87,6 +125,12 @@ public class ModelJson {
          * 取值非法时告警并忽略（回退为按面实际朝向计算）。
          */
         public String shadeDirectionOverride;
+
+        /**
+         * 未识别键的原样快照（已知键之外的键，不解释、不丢弃），供后续兼容层读取未来格式新增字段；
+         * 无未知键时为 null。与根级 {@link ModelJson#raw} 同一约定。
+         */
+        public Map<String, JsonElement> raw;
     }
 
     public static class Rotation {
@@ -142,6 +186,11 @@ public class ModelJson {
          * Tint index for biome-based coloring (e.g. grass top). -1 means no tint.
          */
         public int tintIndex = -1;
+
+        /**
+         * Raw snapshot of unrecognized keys (same convention as {@link ModelJson.Element#raw}); null when none.
+         */
+        public Map<String, JsonElement> raw;
     }
 
     /**
@@ -210,6 +259,10 @@ public class ModelJson {
                 }
             }
 
+            // 未识别顶层键 → raw 快照（只存不解释）
+            model.raw = collectUnknown("model", obj,
+                    "parent", "textures", "elements", "texture_size", "gui_light", "display");
+
             return model;
         }
     }
@@ -254,15 +307,19 @@ public class ModelJson {
                             + "(duplicate); they are mutually exclusive - 'shade_direction_override' takes precedence "
                             + "and 'shade' is ignored");
                 }
-                String raw = obj.get("shade_direction_override").getAsString();
-                String normalized = raw != null ? raw.toLowerCase() : null;
+                String value = obj.get("shade_direction_override").getAsString();
+                String normalized = value != null ? value.toLowerCase() : null;
                 if (isValidShadeDirection(normalized)) {
                     element.shadeDirectionOverride = normalized;
                 } else {
                     CatFrame.logger.warn("[ModelJson] invalid 'shade_direction_override' value '{}', expected one of "
-                            + "up/down/north/south/east/west; ignoring", raw);
+                            + "up/down/north/south/east/west; ignoring", value);
                 }
             }
+
+            // 未识别元素键 → raw 快照（只存不解释）
+            element.raw = collectUnknown("element", obj,
+                    "from", "to", "rotation", "faces", "ambientocclusion", "shade", "shade_direction_override");
 
             return element;
         }
@@ -348,6 +405,9 @@ public class ModelJson {
             face.rotation = obj.has("rotation") ? obj.get("rotation").getAsString() : null;
             face.cullface = obj.has("cullface") ? obj.get("cullface").getAsString() : null;
             face.tintIndex = obj.has("tintindex") ? obj.get("tintindex").getAsInt() : -1;
+
+            // 未识别面键 → raw 快照（只存不解释）
+            face.raw = collectUnknown("face", obj, "uv", "texture", "rotation", "cullface", "tintindex");
 
             return face;
         }

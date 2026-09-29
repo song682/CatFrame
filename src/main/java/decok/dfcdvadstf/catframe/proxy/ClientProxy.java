@@ -95,7 +95,7 @@ public class ClientProxy extends CommonProxy {
         TintRegistry.register(new LeavesTintProvider());
         TintRegistry.register(new LeavesInHandTintProvider());
         TintRegistry.register(new RedstoneWireTintProvider());
-        ModelRenderRegistry.register(new LeavesGraphicsExtension());
+        ModelRenderRegistry.register(new LeavesGraphicsExtension(), -992);
     }
 
     @Override

@@ -12,10 +12,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 物品附魔列表 - 不可变的附魔集合。
+ * Item enchantment list - an immutable enchantment set.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.world.item.enchantment.ItemEnchantments}。
- * 映射到原版 ItemStack 的 "ench" NBT 标签。
+ * Mirrors 26.1.2 {@code net.minecraft.world.item.enchantment.ItemEnchantments}.
+ * Maps to the vanilla ItemStack "ench" NBT tag.
  */
 public final class ItemEnchantments {
 
@@ -27,7 +27,7 @@ public final class ItemEnchantments {
         this.enchantments = enchantments;
     }
 
-    // ========== 工厂方法 ==========
+    // ========== Factory methods ==========
 
     public static ItemEnchantments empty() {
         return EMPTY;
@@ -41,7 +41,7 @@ public final class ItemEnchantments {
         return new ItemEnchantments(Collections.singletonMap(enchantment, level));
     }
 
-    // ========== 查询 ==========
+    // ========== Queries ==========
 
     public int getLevel(Enchantment enchantment) {
         return enchantments.getOrDefault(enchantment, 0);
@@ -67,7 +67,7 @@ public final class ItemEnchantments {
         return enchantments.keySet();
     }
 
-    // ========== NBT 转换 ==========
+    // ========== NBT conversion ==========
 
     public NBTTagList toNBT() {
         NBTTagList list = new NBTTagList();
@@ -97,7 +97,7 @@ public final class ItemEnchantments {
         return builder.build();
     }
 
-    // ========== 对象约定 ==========
+    // ========== Object contract ==========
 
     @Override
     public boolean equals(Object o) {
@@ -144,7 +144,7 @@ public final class ItemEnchantments {
         }
     }
 
-    // ========== 序列化器 ==========
+    // ========== Serializer ==========
 
     public static final ComponentSerializer<ItemEnchantments> SERIALIZER = new ComponentSerializer<ItemEnchantments>() {
         private static final String KEY = "ench";

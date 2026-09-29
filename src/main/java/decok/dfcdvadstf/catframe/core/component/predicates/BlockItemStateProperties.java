@@ -7,11 +7,11 @@ import net.minecraft.tileentity.TileEntity;
 import javax.annotation.Nullable;
 
 /**
- * 方块物品的方块实体数据。
+ * Block entity data of a block item.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.world.level.block.entity.BlockEntityData}。
- * 用于存储那些在放置时传递给方块实体的 NBT 数据（如刷怪笼、牌子、箱子等）。
- * 映射到原版 ItemStack 的 "BlockEntityTag" NBT 标签。
+ * Mirrors 26.1.2 {@code net.minecraft.world.level.block.entity.BlockEntityData}.
+ * Stores the NBT data handed to the block entity on placement (spawners, signs,
+ * chests, etc.). Maps to the vanilla ItemStack "BlockEntityTag" NBT tag.
  */
 public final class BlockItemStateProperties {
 
@@ -23,7 +23,7 @@ public final class BlockItemStateProperties {
         this.tag = tag;
     }
 
-    // ========== 工厂方法 ==========
+    // ========== Factory methods ==========
 
     public static BlockItemStateProperties of(NBTTagCompound tag) {
         return tag.hasNoTags() ? EMPTY : new BlockItemStateProperties((NBTTagCompound) tag.copy());
@@ -37,7 +37,7 @@ public final class BlockItemStateProperties {
         return EMPTY;
     }
 
-    // ========== 访问 ==========
+    // ========== Accessors ==========
 
     public NBTTagCompound getTag() {
         return tag;
@@ -52,13 +52,13 @@ public final class BlockItemStateProperties {
     }
 
     /**
-     * 应用到 TileEntity。
+     * Applies the data to the given TileEntity.
      */
     public void applyToTileEntity(TileEntity tileEntity) {
         tileEntity.readFromNBT(tag);
     }
 
-    // ========== 对象约定 ==========
+    // ========== Object contract ==========
 
     @Override
     public boolean equals(Object o) {
@@ -77,7 +77,7 @@ public final class BlockItemStateProperties {
         return "BlockEntityData" + tag;
     }
 
-    // ========== 序列化器 ==========
+    // ========== Serializer ==========
 
     public static final ComponentSerializer<BlockItemStateProperties> SERIALIZER = new ComponentSerializer<BlockItemStateProperties>() {
         private static final String KEY = "BlockEntityTag";

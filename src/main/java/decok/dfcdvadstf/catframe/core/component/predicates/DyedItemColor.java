@@ -6,10 +6,10 @@ import net.minecraft.nbt.NBTTagCompound;
 import javax.annotation.Nullable;
 
 /**
- * 染色物品颜色值。
+ * Dyed item color value.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.world.item.component.DyedItemColor}。
- * 映射到原版 ItemStack 的 "display.color" NBT 标签。
+ * Mirrors 26.1.2 {@code net.minecraft.world.item.component.DyedItemColor}.
+ * Maps to the vanilla ItemStack "display.color" NBT tag.
  */
 public final class DyedItemColor {
 
@@ -20,28 +20,28 @@ public final class DyedItemColor {
     }
 
     /**
-     * 获取 RGB 颜色值。
+     * Returns the packed RGB value.
      */
     public int getRgb() {
         return rgb;
     }
 
     /**
-     * 获取红色分量。
+     * Returns the red channel.
      */
     public int getRed() {
         return (rgb >> 16) & 0xFF;
     }
 
     /**
-     * 获取绿色分量。
+     * Returns the green channel.
      */
     public int getGreen() {
         return (rgb >> 8) & 0xFF;
     }
 
     /**
-     * 获取蓝色分量。
+     * Returns the blue channel.
      */
     public int getBlue() {
         return rgb & 0xFF;
@@ -64,7 +64,7 @@ public final class DyedItemColor {
         return String.format("#%06X", rgb);
     }
 
-    // ========== 序列化器 ==========
+    // ========== Serializer ==========
 
     public static final ComponentSerializer<DyedItemColor> SERIALIZER = new ComponentSerializer<DyedItemColor>() {
         @Override

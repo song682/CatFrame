@@ -10,12 +10,12 @@ import net.minecraftforge.client.event.RenderItemInFrameEvent;
 public class RenderItemInFrameHandler {
 
     /**
-     * 物品展示框渲染事件 — 当物品在展示框中渲染时，
-     * 若该物品已注册 CatFrame 模型，则 cancel 原版渲染，
-     * 通过 {@link RenderDispatcher#renderItemInFrame} 走 CatFrame 管线，
-     * 使 {@code display.fixed} transform 生效。
+     * Item-frame render event — when an item is rendered inside an item frame,
+     * if the item has a registered CatFrame model the vanilla render is canceled and
+     * {@link RenderDispatcher#renderItemInFrame} takes over the CatFrame pipeline,
+     * so that the {@code display.fixed} transform takes effect.
      * <p>
-     * 地图物品（filled_map）由原版特殊处理，不走 CatFrame。
+     * Map items (filled_map) are special-cased by vanilla and do not go through CatFrame.
      */
     @SubscribeEvent
     public void onRenderItemInFrame(RenderItemInFrameEvent event) {
@@ -23,10 +23,10 @@ public class RenderItemInFrameHandler {
         ItemStack stack = event.entityItemFrame.getDisplayedItem();
         if (stack == null || stack.getItem() == null) return;
 
-        // 地图由原版 MapRenderer 处理，不接管
+        // Maps are handled by the vanilla MapRenderer, not intercepted
         if (stack.getItem() == Items.filled_map) return;
 
-        // 仅接管已注册 CatFrame 模型的物品
+        // Only intercept items with a registered CatFrame model
         if (!ModelRegistry.hasItemModel(stack.getItem())) return;
 
         event.setCanceled(true);

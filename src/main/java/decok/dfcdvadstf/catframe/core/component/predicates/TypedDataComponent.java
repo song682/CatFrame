@@ -7,11 +7,11 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * 类型化的组件值配对。
+ * A typed component-value pair.
  * <p>
- * 参考 26.1.2 {@code net.minecraft.core.component.TypedDataComponent}。
+ * References 26.1.2 {@code net.minecraft.core.component.TypedDataComponent}.
  *
- * @param <T> 值的类型
+ * @param <T> the type of the value
  */
 public final class TypedDataComponent<T> {
 
@@ -32,16 +32,16 @@ public final class TypedDataComponent<T> {
     }
 
     /**
-     * 将此组件应用到可写容器。
+     * Applies this component to a writable holder.
      */
     public void applyTo(DataComponentHolder holder) {
         holder.set(type, value);
     }
 
-    // ========== 工厂方法 ==========
+    // ========== Factory methods ==========
 
     /**
-     * 从 Map.Entry 创建实例（用于内部迭代）。
+     * Creates an instance from a Map.Entry (used for internal iteration).
      */
     @SuppressWarnings("unchecked")
     public static <T> TypedDataComponent<T> fromEntry(Map.Entry<DataComponentType<?>, Object> entry) {
@@ -56,7 +56,7 @@ public final class TypedDataComponent<T> {
         return new TypedDataComponent<>(type, (T) value);
     }
 
-    // ========== 对象约定 ==========
+    // ========== Object contract ==========
 
     @Override
     public boolean equals(Object o) {

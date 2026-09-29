@@ -6,18 +6,19 @@ import javax.annotation.Nullable;
 import java.util.function.Function;
 
 /**
- * 组件序列化器工厂方法。
+ * Factory methods for component serializers.
  * <p>
- * 提供常用序列化模式的快速构建。
+ * Provides quick construction of the common serialization patterns.
  */
 public final class ComponentSerializers {
 
     private ComponentSerializers() {}
 
-    // ========== 标记组件（仅存储存在/不存在） ==========
+    // ========== Marker components (only presence/absence is stored) ==========
 
     /**
-     * 标记型序列化器：值只表示存在性（值为 true/非 null 时存在），不存储实际数据。
+     * Marker serializer: the value only expresses presence (present when true / non-null); no actual
+     * data is stored.
      */
     public static ComponentSerializer<Boolean> ofUnit(String key) {
         return new ComponentSerializer<Boolean>() {
@@ -36,7 +37,7 @@ public final class ComponentSerializers {
         };
     }
 
-    // ========== 原生类型 ==========
+    // ========== Primitive types ==========
 
     public static ComponentSerializer<Integer> ofInt(String key) {
         return primitive(key, NBTTagCompound::getInteger, NBTTagCompound::setInteger);
@@ -70,14 +71,14 @@ public final class ComponentSerializers {
         return primitive(key, NBTTagCompound::getDouble, NBTTagCompound::setDouble);
     }
 
-    // ========== 子 Compound ==========
+    // ========== Sub-compound ==========
 
     /**
-     * 创建一个序列化器，将值编码为子 Compound 中的特定键。
+     * Creates a serializer that encodes the value under a specific key of a sub-compound.
      *
-     * @param key      子 Compound 的键名
-     * @param decoder  从子 Compound 解码值
-     * @param encoder  将值编码到子 Compound
+     * @param key      key name of the sub-compound
+     * @param decoder  decodes the value from the sub-compound
+     * @param encoder  encodes the value into the sub-compound
      */
     public static <T> ComponentSerializer<T> ofSubCompound(String key,
                                                             Function<NBTTagCompound, T> decoder,
@@ -100,10 +101,10 @@ public final class ComponentSerializers {
     }
 
     /**
-     * 创建一个序列化器，组件值即是一个自包含的 NBTTagCompound。
+     * Creates a serializer whose component value is a self-contained NBTTagCompound.
      *
-     * @param decoder 从 NBTTagCompound 解码值
-     * @param encoder 将值编码为 NBTTagCompound
+     * @param decoder decodes the value from an NBTTagCompound
+     * @param encoder encodes the value into an NBTTagCompound
      */
     public static <T> ComponentSerializer<T> ofCompound(Function<NBTTagCompound, T> decoder,
                                                          WriteConsumer<T> encoder) {
@@ -121,11 +122,11 @@ public final class ComponentSerializers {
         };
     }
 
-    // ========== 委托/代理 ==========
+    // ========== Delegation ==========
 
     /**
-     * 创建一个委托给现有 NBT 字段的序列化器。
-     * 用于复用原版 ItemStack NBT 中的已有字段（如 "ench"、"display"）。
+     * Creates a serializer that delegates to an existing NBT field.
+     * Used to reuse existing fields in the vanilla ItemStack NBT (such as "ench", "display").
      */
     public static <T> ComponentSerializer<T> delegate(String key,
                                                        Function<NBTTagCompound, T> reader,
@@ -154,7 +155,7 @@ public final class ComponentSerializers {
         };
     }
 
-    // ========== 内部模式 ==========
+    // ========== Internal patterns ==========
 
     private static <T> ComponentSerializer<T> primitive(String key,
                                                          NBTSupplier<T> supplier,
@@ -174,7 +175,7 @@ public final class ComponentSerializers {
         };
     }
 
-    // ========== 函数式接口 ==========
+    // ========== Functional interfaces ==========
 
     @FunctionalInterface
     public interface WriteConsumer<T> {

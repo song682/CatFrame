@@ -12,13 +12,14 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 物品属性修饰符集合。
+ * Collection of item attribute modifiers.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.world.item.component.ItemAttributeModifiers}。
- * 映射到原版 ItemStack 的 "AttributeModifiers" NBT 标签。
+ * Mirrors 26.1.2 {@code net.minecraft.world.item.component.ItemAttributeModifiers}.
+ * Maps to the vanilla ItemStack "AttributeModifiers" NBT tag.
  * <p>
- * 在 1.7.10 中，属性修饰符由 {@link net.minecraft.entity.ai.attributes.AttributeModifier} 表示，
- * 并存储在物品 NBT 的 "AttributeModifiers" 列表中。
+ * In 1.7.10, attribute modifiers are represented by
+ * {@link net.minecraft.entity.ai.attributes.AttributeModifier} and stored in the
+ * "AttributeModifiers" list of the item NBT.
  */
 public final class ItemAttributeModifiers {
 
@@ -30,7 +31,7 @@ public final class ItemAttributeModifiers {
         this.entries = entries;
     }
 
-    // ========== 工厂方法 ==========
+    // ========== Factory methods ==========
 
     public static ItemAttributeModifiers empty() {
         return EMPTY;
@@ -40,7 +41,7 @@ public final class ItemAttributeModifiers {
         return new Builder();
     }
 
-    // ========== 查询 ==========
+    // ========== Queries ==========
 
     public List<Entry> getEntries() {
         return entries;
@@ -54,7 +55,7 @@ public final class ItemAttributeModifiers {
         return entries.size();
     }
 
-    // ========== NBT 转换 ==========
+    // ========== NBT conversion ==========
 
     public NBTTagList toNBT() {
         NBTTagList list = new NBTTagList();
@@ -96,7 +97,7 @@ public final class ItemAttributeModifiers {
         return builder.build();
     }
 
-    // ========== 对象约定 ==========
+    // ========== Object contract ==========
 
     @Override
     public boolean equals(Object o) {
@@ -115,7 +116,7 @@ public final class ItemAttributeModifiers {
         return "Attributes" + entries;
     }
 
-    // ========== Entry 类型 ==========
+    // ========== Entry type ==========
 
     public static final class Entry {
         private final String attributeName;
@@ -170,7 +171,7 @@ public final class ItemAttributeModifiers {
         }
     }
 
-    // ========== 序列化器 ==========
+    // ========== Serializer ==========
 
     public static final ComponentSerializer<ItemAttributeModifiers> SERIALIZER = new ComponentSerializer<ItemAttributeModifiers>() {
         private static final String KEY = "AttributeModifiers";

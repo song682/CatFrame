@@ -20,16 +20,6 @@ import net.minecraft.client.gui.GuiScreen;
  * same patch shape Forge 1.8+ applies — so screens overriding {@code handleKeyboardInput}
  * (including CatFrame's own {@code ui.screens.Screen}) are covered as well.
  * </p>
- * <p>
- * 本类将 Forge 1.8+ 的 {@code GuiScreenEvent.KeyboardInputEvent} 家族回填到 1.7.10——
- * 该版本原生 {@code GuiScreenEvent} 仅有 Init/Draw/ActionPerformed 三种子事件，而
- * {@code InputEvent.KeyInputEvent} 在 GUI 打开期间被 {@code Minecraft.runTick()} 的
- * {@code currentScreen == null || allowUserInput} 守卫罩住，完全不触发。
- * 所有事件发布到 {@code MinecraftForge.EVENT_BUS}（非 FML 总线），发射点为
- * {@code MixinGuiScreenEventBridge}：包住 {@code GuiScreen.handleInput()} 中
- * {@code this.handleKeyboardInput()} 的调用点（与 Forge 1.8+ 官方补丁同构），
- * 因此覆写了 {@code handleKeyboardInput} 的屏幕（含 CatFrame 自有 {@code Screen} 基类）同样被覆盖。
- * </p>
  */
 @SideOnly(Side.CLIENT)
 public class CatFrameGuiEvent extends Event {

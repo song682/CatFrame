@@ -8,10 +8,10 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * 工具属性 - 挖掘速度、挖掘等级等。
+ * Tool properties - mining speed, mining level, etc.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.world.item.component.Tool}。
- * 在 1.7.10 中主要用于存储自定义工具的行为规则。
+ * Mirrors 26.1.2 {@code net.minecraft.world.item.component.Tool}.
+ * In 1.7.10 it mainly stores the behavior rules of custom tools.
  */
 public final class Tool {
 
@@ -27,7 +27,7 @@ public final class Tool {
         this.damagePerBlock = damagePerBlock;
     }
 
-    // ========== 工厂方法 ==========
+    // ========== Factory methods ==========
 
     public static Tool empty() {
         return EMPTY;
@@ -37,14 +37,14 @@ public final class Tool {
         return new Builder();
     }
 
-    // ========== 查询 ==========
+    // ========== Queries ==========
 
     public List<Rule> getRules() { return rules; }
     public float getDefaultMiningSpeed() { return defaultMiningSpeed; }
     public int getDamagePerBlock() { return damagePerBlock; }
     public boolean isEmpty() { return rules.isEmpty() && defaultMiningSpeed == 0.0F && damagePerBlock == 0; }
 
-    // ========== 对象约定 ==========
+    // ========== Object contract ==========
 
     @Override
     public boolean equals(Object o) {
@@ -66,7 +66,7 @@ public final class Tool {
         return "Tool{rules=" + rules + ", speed=" + defaultMiningSpeed + "}";
     }
 
-    // ========== Rule 类型 ==========
+    // ========== Rule type ==========
 
     public static final class Rule {
         private final Set<String> blocks;
@@ -130,7 +130,7 @@ public final class Tool {
         }
     }
 
-    // ========== 序列化器 ==========
+    // ========== Serializer ==========
 
     public static final ComponentSerializer<Tool> SERIALIZER = new ComponentSerializer<Tool>() {
         @Override

@@ -6,12 +6,13 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * 可变的组件映射，使用原型 + 补丁差值模式。
+ * Mutable component map using the prototype + patch delta model.
  * <p>
- * 参考 26.1.2 {@code net.minecraft.core.component.PatchedDataComponentMap}。
+ * Mirrors 26.1.2 {@code net.minecraft.core.component.PatchedDataComponentMap}.
  * <p>
- * 原型是所有同类型物品共享的默认组件，补丁是单个实例相对原型的覆写。
- * 当实例值与原型值相同时，不会在补丁中占空间。
+ * The prototype holds the default components shared by all items of the same type; the patch holds
+ * the overrides of a single instance relative to that prototype.
+ * When an instance value equals the prototype value it takes no space in the patch.
  */
 public final class PatchedDataComponentMap implements DataComponentMap, DataComponentHolder {
 
@@ -23,7 +24,7 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
         this.patch = new IdentityHashMap<>();
     }
 
-    // ========== 读操作 ==========
+    // ========== Read operations ==========
 
     @Nullable
     @Override
@@ -37,13 +38,14 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
     }
 
     /**
-     * 检查指定类型的组件是否被补丁覆写（不同于原型）。
+     * Checks whether the component of the given type is overridden by the patch (differs from the
+     * prototype).
      */
     public boolean hasNonDefault(DataComponentType<?> type) {
         return patch.containsKey(type);
     }
 
-    // ========== 写操作 ==========
+    // ========== Write operations ==========
 
     @Nullable
     @Override
@@ -53,18 +55,18 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
         T oldValue = get(type);
 
         if (Objects.equals(value, defaultValue)) {
-            // 值等于默认值，从补丁中移除（恢复默认）
+            // Value equals the default: drop it from the patch (restore the default)
             patch.remove(type);
         } else if (value != null) {
-            // 值不等于默认值，写入补丁
+            // Value differs from the default: write it into the patch
             patch.put(type, Optional.of(value));
         } else {
-            // 显式设为 null
+            // Explicitly set to null
             if (defaultValue != null) {
-                // 原型有值，标记为移除
+                // The prototype has a value: mark it as removed
                 patch.put(type, Optional.empty());
             } else {
-                // 原型也没有，无需记录
+                // The prototype has none either: nothing to record
                 patch.remove(type);
             }
         }
@@ -79,7 +81,7 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
     }
 
     /**
-     * 应用一个补丁。
+     * Applies a patch.
      */
     public void applyPatch(DataComponentPatch patch) {
         for (Map.Entry<DataComponentType<?>, Optional<?>> entry : patch.entrySet()) {
@@ -106,7 +108,7 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
     }
 
     /**
-     * 替换整个补丁。
+     * Replaces the whole patch.
      */
     public void restorePatch(DataComponentPatch patch) {
         this.patch.clear();
@@ -114,14 +116,14 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
     }
 
     /**
-     * 清除所有补丁（恢复为纯原型状态）。
+     * Clears all patches (back to the pure prototype state).
      */
     public void clearPatch() {
         this.patch.clear();
     }
 
     /**
-     * 批量设置所有组件。
+     * Sets all components in bulk.
      */
     @SuppressWarnings("unchecked")
     public void setAll(DataComponentMap components) {
@@ -131,10 +133,10 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
         }
     }
 
-    // ========== 视图转换 ==========
+    // ========== View conversion ==========
 
     /**
-     * 将以当前状态导出为补丁。
+     * Exports the current state as a patch.
      */
     public DataComponentPatch asPatch() {
         if (patch.isEmpty()) {
@@ -144,7 +146,7 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
     }
 
     /**
-     * 克隆此映射。
+     * Clones this map.
      */
     public PatchedDataComponentMap copy() {
         PatchedDataComponentMap result = new PatchedDataComponentMap(prototype);
@@ -153,7 +155,7 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
     }
 
     /**
-     * 转为不可变映射（合并原型和补丁）。
+     * Converts to an immutable map (prototype merged with the patch).
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public DataComponentMap toImmutableMap() {
@@ -168,7 +170,7 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
         return builder.build();
     }
 
-    // ========== 迭代视图 ==========
+    // ========== Iteration view ==========
 
     @Override
     public Set<DataComponentType<?>> keySet() {
@@ -193,13 +195,13 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
             return prototype.iterator();
         }
         List<TypedDataComponent<?>> list = new ArrayList<>(patch.size() + prototype.size());
-        // 先遍历补丁中的显式值
+        // First walk the explicit values in the patch
         for (Map.Entry<DataComponentType<?>, Optional<?>> entry : patch.entrySet()) {
             if (entry.getValue() != null && entry.getValue().isPresent()) {
                 list.add(TypedDataComponent.unchecked(entry.getKey(), entry.getValue().get()));
             }
         }
-        // 再遍历原型中未被补丁覆盖的
+        // Then walk the prototype entries not overridden by the patch
         for (TypedDataComponent<?> component : prototype) {
             if (!patch.containsKey(component.getType())) {
                 list.add(component);
@@ -231,7 +233,7 @@ public final class PatchedDataComponentMap implements DataComponentMap, DataComp
         return get(type) != null;
     }
 
-    // ========== 对象约定 ==========
+    // ========== Object contract ==========
 
     @Override
     public boolean equals(Object o) {

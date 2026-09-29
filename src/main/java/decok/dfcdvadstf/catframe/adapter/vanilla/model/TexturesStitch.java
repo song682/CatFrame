@@ -18,20 +18,20 @@ public class TexturesStitch {
             // Incremental model discovery at the platform sync point: the first block-atlas
             // stitch fires after ALL mods' preInit, the second (refreshResources) after the
             // whole FML lifecycle — late registrations get picked up there.
-            // 在平台同步点做增量模型发现：第一次方块图集缝合在全体 preInit 之后，
-            // 第二次（refreshResources）在整个 FML 生命周期之后 —— 迟到的注册在此补票。
             ModelManagerDataLoader.init();
-            // [渲染三域架构] 原版后端（唯一路径）：把数据驱动收集结果喂入原版 blocks
-            // 图集（registerIcon），由原版缝合器完成布局 + 上传。UI 域素材
-            // （catframe:gui 图集定义）不在此列 —— 走 GuiTextureStitchEvent 独立链。
-            // Vanilla backend: feed the definition-driven collection into the map.
+            // [Render three-domain architecture] Vanilla backend (the only path): feed the
+            // definition-driven collection into the vanilla blocks atlas (registerIcon), and the
+            // vanilla stitcher performs layout + upload. UI-domain assets (the catframe:gui atlas
+            // definition) are not part of this — they go through the independent
+            // GuiTextureStitchEvent chain.
             CatAtlasManager.registerDefinedSprites(event.map);
             // Register vanilla model textures before atlas is stitched
             VanillaTextureTracker.registerTextures(event.map);
             // Register _opaque leaf textures
             LeavesGraphicsExtension.registerTextures(event.map);
         } else if (event.map.getTextureType() == 1) {
-            // [渲染三域架构] 原版后端：把数据驱动收集结果喂入原版 items 图集。
+            // [Render three-domain architecture] Vanilla backend: feed the definition-driven
+            // collection into the vanilla items atlas.
             CatAtlasManager.registerDefinedSprites(event.map);
             // Register item textures on the item atlas
             VanillaTextureTracker.registerItemTextures(event.map);
@@ -47,7 +47,7 @@ public class TexturesStitch {
             // Resolve _opaque leaf IIcons
             LeavesGraphicsExtension.onTextureStitchPost(event.map);
         } else if (event.map.getTextureType() == 1) {
-            // item atlas 缝合完成后更新 item 纹理 IIcon 引用并重新烘焙
+            // After the item atlas is stitched, refresh item texture IIcon references and re-bake
             VanillaTextureTracker.onTextureStitchPostItem(event.map);
         }
     }

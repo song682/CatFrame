@@ -6,16 +6,14 @@ import net.minecraft.nbt.NBTTagCompound;
 import javax.annotation.Nullable;
 
 /**
- * 自定义数据 - 兜底的 NBT 数据容器。
+ * Custom data - the fallback NBT data container.
  * <p>
- * 类似 26.1.2 {@code net.minecraft.world.item.component.CustomData}。
- * 用于存储没有对应组件的任意 NBT 数据，确保与旧版 NBT 兼容。
+ * Mirrors 26.1.2 {@code net.minecraft.world.item.component.CustomData}.
+ * Stores arbitrary NBT data that has no dedicated component, keeping
+ * compatibility with legacy NBT.
  * <p>
  * Scope: covers the ENTIRE vanilla item NBT (the whole stackTagCompound),
  * mirroring the legacy {@code nbt} predicate semantics — not a nested sub-tag.
- * <br>
- * 作用范围：覆盖整个原版物品 NBT（完整的 stackTagCompound），
- * 对齐旧版 {@code nbt} 谓词语义——不再是嵌套子标签。
  */
 public final class CustomData {
 
@@ -30,42 +28,42 @@ public final class CustomData {
     }
 
     /**
-     * 创建包含指定数据的 CustomData。
+     * Creates a CustomData containing the given data.
      */
     public static CustomData of(NBTTagCompound tag) {
         return tag.hasNoTags() ? EMPTY : new CustomData((NBTTagCompound) tag.copy());
     }
 
     /**
-     * 创建包装已有 NBT 的 CustomData（不复制）。
+     * Creates a CustomData wrapping the given NBT (no copy).
      */
     public static CustomData wrap(NBTTagCompound tag) {
         return tag.hasNoTags() ? EMPTY : new CustomData(tag);
     }
 
     /**
-     * 返回空数据实例。
+     * Returns the empty data instance.
      */
     public static CustomData empty() {
         return EMPTY;
     }
 
     /**
-     * 获取内部 NBT 的副本。
+     * Returns a copy of the internal NBT.
      */
     public NBTTagCompound copyTag() {
         return (NBTTagCompound) tag.copy();
     }
 
     /**
-     * 获取内部 NBT（只读）。
+     * Returns the internal NBT (read-only).
      */
     public NBTTagCompound getTag() {
         return tag;
     }
 
     /**
-     * 更新数据。
+     * Updates the data.
      */
     public CustomData update(NBTTagCompound newTag) {
         return newTag.equals(tag) ? this : new CustomData((NBTTagCompound) newTag.copy());
@@ -93,20 +91,16 @@ public final class CustomData {
         return "CustomData" + tag;
     }
 
-    // ========== 序列化器 ==========
+    // ========== Serializer ==========
 
     /**
      * Full-scope serializer: read wraps the whole vanilla tag; write merges
      * the held keys back into the root tag (no nested "CustomData" key).
-     * <br>
-     * 全量作用域序列化器：读取时包装整个原版标签；写入时将持有的键
-     * 合并回根标签（不再使用嵌套的 "CustomData" 键）。
      */
     public static final ComponentSerializer<CustomData> SERIALIZER = new ComponentSerializer<CustomData>() {
         @Override
         public void write(NBTTagCompound nbt, CustomData value) {
             // Same live tag already in place — nothing to merge.
-            // 与根标签为同一实例，数据已就位，无需合并。
             if (value.isEmpty() || value.tag == nbt) return;
             for (Object keyObj : value.tag.func_150296_c()) {
                 String key = (String) keyObj;
@@ -118,7 +112,6 @@ public final class CustomData {
         @Override
         public CustomData read(NBTTagCompound nbt) {
             // Whole vanilla NBT is the component value.
-            // 整个原版 NBT 即为组件值。
             if (nbt.hasNoTags()) return null;
             return wrap(nbt);
         }

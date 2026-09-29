@@ -8,49 +8,50 @@ import javax.annotation.Nullable;
 import java.util.IdentityHashMap;
 
 /**
- * ItemStack 与 DataComponent 系统的 per-instance 桥接器。
+ * Per-instance bridge between ItemStack and the DataComponent system.
  * <p>
- * 设计定位：类似 {@code OreDict2Tag} 在 OreDictionary 和 Tag 之间的角色，
- * 本类在 NBT (stackTagCompound) 和 DataComponent 系统之间架起桥梁：
+ * Design role: like the role {@code OreDict2Tag} plays between OreDictionary and Tags,
+ * this class bridges NBT (stackTagCompound) and the DataComponent system:
  * <ul>
- *   <li>读取时：合并 Item 默认组件 + NBT 实例数据 → 完整组件视图</li>
- *   <li>写入时：将组件变更同步回 NBT</li>
+ *   <li>on read: merges the item defaults with the NBT instance data → full component view</li>
+ *   <li>on write: syncs component changes back to NBT</li>
  * </ul>
  * <p>
- * 使用 {@link IdentityHashMap} 缓存每个 ItemStack 实例的 {@link PatchedDataComponentMap}，
- * 避免重复解析 NBT。缓存使用弱引用语义（通过外部管理），GC 安全。
+ * Uses an {@link IdentityHashMap} to cache the {@link PatchedDataComponentMap} of every ItemStack
+ * instance, avoiding repeated NBT parsing. The cache follows weak-reference semantics (managed
+ * externally) and is GC-safe.
  * <p>
- * <b>无需 Mixin</b>——所有数据存储在外部映射中，不侵入 ItemStack 类。
+ * <b>No Mixin required</b> — all data lives in an external map, without intruding into ItemStack.
  */
 public final class ItemStackComponents {
 
     private ItemStackComponents() {}
 
     /**
-     * ItemStack → PatchedDataComponentMap 缓存。
+     * ItemStack → PatchedDataComponentMap cache.
      * <p>
-     * 每个 ItemStack 实例对应一个 PatchedDataComponentMap：
+     * Every ItemStack instance maps to one PatchedDataComponentMap:
      * <ul>
-     *   <li>prototype = Item 的默认组件（来自 {@link DataComponents#getDefaults}）</li>
-     *   <li>patch = NBT 中解析出的实例级覆写</li>
+     *   <li>prototype = the item's default components (from {@link DataComponents#getDefaults})</li>
+     *   <li>patch = instance-level overrides parsed from NBT</li>
      * </ul>
      */
     private static final IdentityHashMap<ItemStack, PatchedDataComponentMap> CACHE = new IdentityHashMap<>();
 
-    // ==================== 核心 API ====================
+    // ==================== Core API ====================
 
     ///
-    /// 获取 ItemStack 的完整组件映射（懒初始化）。
+    /// Returns the full component map of an ItemStack (lazily initialized).
     /// <p>
-    /// 首次调用时：
-    /// 1. 从 {@link DataComponents#getDefaults} 获取该 Item 的默认组件作为原型
-    /// 2. 从 stackTagCompound 解析实例数据作为补丁
-    /// 3. 缓存到 IdentityHashMap 中
+    /// On the first call:
+    /// 1. take the item's default components from {@link DataComponents#getDefaults} as the prototype
+    /// 2. parse the instance data from stackTagCompound as the patch
+    /// 3. cache it in the IdentityHashMap
     /// <p>
-    /// 后续调用直接返回缓存。
+    /// Later calls return the cache directly.
     ///
-    /// @param stack 目标物品
-    /// @return 完整的组件映射（原型 + NBT 补丁）
+    /// @param stack the target item stack
+    /// @return the full component map (prototype + NBT patch)
     ///
     public static PatchedDataComponentMap get(ItemStack stack) {
         if (stack == null) {
@@ -62,14 +63,14 @@ public final class ItemStackComponents {
             return cached;
         }
 
-        // 懒初始化：原型 + NBT 解析
+        // Lazy init: prototype + NBT parsing
         DataComponentMap defaults = DataComponents.getDefaults(stack.getItem());
         PatchedDataComponentMap map = new PatchedDataComponentMap(defaults);
 
         NBTTagCompound tag = stack.stackTagCompound;
         if (tag != null && !tag.hasNoTags()) {
             DataComponentMap fromNBT = ComponentMigration.readFromNBT(tag);
-            // 将 NBT 中解析出的值作为补丁写入
+            // Write the values parsed from NBT as patch entries
             for (TypedDataComponent<?> entry : fromNBT) {
                 @SuppressWarnings("unchecked")
                 DataComponentType<Object> type = (DataComponentType<Object>) entry.getType();
@@ -82,28 +83,29 @@ public final class ItemStackComponents {
     }
 
     ///
-    /// 将组件数据同步回 ItemStack 的 NBT。
+    /// Syncs the component data back to the ItemStack's NBT.
     /// <p>
-    /// 适用于"组件为唯一真相源"的场景：调用后将组件值写回 stackTagCompound。
+    /// Suits scenarios where "components are the single source of truth": the component values are
+    /// written back to stackTagCompound.
     ///
-    /// @param stack 目标物品
+    /// @param stack the target item stack
     ///
     public static void syncToNBT(ItemStack stack) {
         if (stack == null) return;
 
         PatchedDataComponentMap map = CACHE.get(stack);
-        if (map == null) return; // 没有组件数据，无需同步
+        if (map == null) return; // No component data, nothing to sync
 
         ensureTagCompound(stack);
         ComponentMigration.syncToNBT(stack.stackTagCompound, map);
     }
 
     ///
-    /// 使缓存失效——当 ItemStack 的 NBT 被外部修改时调用。
+    /// Invalidates the cache — call when the ItemStack's NBT is modified externally.
     /// <p>
-    /// 下次 {@link #get} 时会重新从 NBT 解析。
+    /// The next {@link #get} re-parses from NBT.
     ///
-    /// @param stack 目标物品
+    /// @param stack the target item stack
     ///
     public static void invalidate(ItemStack stack) {
         if (stack != null) {
@@ -112,18 +114,18 @@ public final class ItemStackComponents {
     }
 
     ///
-    /// 清除所有缓存。
+    /// Clears the whole cache.
     /// <p>
-    /// 通常在世界加载/卸载时调用，防止内存泄漏。
+    /// Usually called on world load/unload to prevent memory leaks.
     ///
     public static void clearCache() {
         CACHE.clear();
     }
 
     ///
-    /// 获取 ItemStack 的组件映射（若已缓存），否则返回 null。
+    /// Returns the ItemStack's component map if already cached, otherwise null.
     /// <p>
-    /// 非破坏性查询——不会触发 NBT 解析。
+    /// Non-destructive query — does not trigger NBT parsing.
     ///
     @Nullable
     public static PatchedDataComponentMap getCached(ItemStack stack) {
@@ -131,12 +133,12 @@ public final class ItemStackComponents {
     }
 
     ///
-    /// 复制源物品的组件到目标物品。
+    /// Copies the components of the source stack onto the target stack.
     /// <p>
-    /// 用于 ItemStack.copy() / splitStack() 等场景。
+    /// Used by scenarios such as ItemStack.copy() / splitStack().
     ///
-    /// @param source 源物品
-    /// @param target 目标物品
+    /// @param source the source stack
+    /// @param target the target stack
     ///
     public static void copyComponents(ItemStack source, ItemStack target) {
         if (source == null || target == null) return;
@@ -147,7 +149,7 @@ public final class ItemStackComponents {
         }
     }
 
-    // ==================== 内部辅助 ====================
+    // ==================== Internal helpers ====================
 
     private static void ensureTagCompound(ItemStack stack) {
         if (stack.stackTagCompound == null) {

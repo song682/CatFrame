@@ -9,28 +9,28 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * DataComponent 全局注册表——与 OreDictionary 平行的组件类型注册中心。
+ * Global DataComponent registry — a component type registry parallel to OreDictionary.
  * <p>
- * 设计定位：类似 {@code OreDictionary} 对 NBT 的关系，
- * DataComponents 是一个全局的、类型级别的注册表，负责：
+ * Design role: like the relationship {@code OreDictionary} has with NBT,
+ * DataComponents is a global, type-level registry responsible for:
  * <ul>
- *   <li>注册和查询 {@link DataComponentType}（组件类型）</li>
- *   <li>为每种 {@link Item} 注册默认组件值（原型）</li>
- *   <li>提供与 NBT 的双向转换基础（通过 {@link ComponentMigration}）</li>
+ *   <li>registering and looking up {@link DataComponentType}s (component types)</li>
+ *   <li>registering default component values (prototypes) for each {@link Item}</li>
+ *   <li>providing the basis for two-way NBT conversion (via {@link ComponentMigration})</li>
  * </ul>
  * <p>
- * per-ItemStack 实例数据仍存储在 NBT (stackTagCompound) 中，
- * 运行时通过 {@link ItemStackComponents} 合并默认值 + NBT 实例数据。
+ * per-ItemStack instance data is still stored in NBT (stackTagCompound); at runtime the
+ * defaults are merged with the NBT instance data through {@link ItemStackComponents}.
  * <p>
- * 参考 26.1.2 {@code net.minecraft.core.component.DataComponents}。
+ * Mirrors 26.1.2 {@code net.minecraft.core.component.DataComponents}.
  */
 public final class DataComponents {
 
     private DataComponents() {}
 
-    // ========== 内置组件类型（对标 26.1.2 DataComponents 常量） ==========
+    // ========== Built-in component types (mirroring the 26.1.2 DataComponents constants) ==========
 
-    /** 附魔光效覆盖（对标 26.1.2 ENCHANTMENT_GLINT_OVERRIDE） */
+    /** Enchantment glint override (mirrors 26.1.2 ENCHANTMENT_GLINT_OVERRIDE) */
     public static final DataComponentType<Boolean> ENCHANTMENT_GLINT =
             DataComponentType.<Boolean>builder(new ResourceLocation("minecraft", "enchantment_glint"))
                     .persistent(ComponentSerializers.ofBoolean("EnchantmentGlint"))
@@ -38,15 +38,15 @@ public final class DataComponents {
                     .build();
 
     /**
-     * 物品模型映射（对标 26.1.2 {@code minecraft:item_model} / {@code DataComponents.ITEM_MODEL}）。
+     * Item model mapping (mirrors 26.1.2 {@code minecraft:item_model} / {@code DataComponents.ITEM_MODEL}).
      * <p>
-     * 值为命名空间 ID 字符串（如 {@code "catframe:bluey_plushy"}），解析为
-     * {@code assets/<命名空间>/items/<路径>.json} 物品模型映射；对应映射不存在或无法解析时
-     * 使用无效模型（{@code builtin/missing}）。
+     * The value is a namespaced ID string (e.g. {@code "catframe:bluey_plushy"}) resolved to the
+     * {@code assets/<namespace>/items/<path>.json} item model mapping; when that mapping is missing
+     * or cannot be parsed, the invalid model ({@code builtin/missing}) is used.
      * <p>
-     * 缺省语义：未显式设置时按物品注册 ID 取值
-     * （{@code Item.itemRegistry.getNameForObject}），与原版
-     * {@code model = ResourceKey::identifier} 一致。
+     * Default semantics: when not set explicitly the item's registry ID is used
+     * ({@code Item.itemRegistry.getNameForObject}), matching vanilla's
+     * {@code model = ResourceKey::identifier}.
      */
     public static final DataComponentType<String> ITEM_MODEL =
             DataComponentType.<String>builder(new ResourceLocation("minecraft", "item_model"))
@@ -55,11 +55,11 @@ public final class DataComponents {
                     .build();
 
     /**
-     * 工具提示样式（对标 26.1.2 {@code minecraft:tooltip_style} / {@code DataComponents.TOOLTIP_STYLE}）。
+     * Tooltip style (mirrors 26.1.2 {@code minecraft:tooltip_style} / {@code DataComponents.TOOLTIP_STYLE}).
      * <p>
-     * 值为命名空间 ID 字符串（如 {@code "catframe:my_style"}），渲染时解析为
-     * {@code assets/<命名空间>/textures/gui/tooltips/<路径>_background.png} 与
-     * {@code _frame.png} 贴图对；未设置时使用默认样式贴图。
+     * The value is a namespaced ID string (e.g. {@code "catframe:my_style"}); at render time it
+     * resolves to the texture pair {@code assets/<namespace>/textures/gui/tooltips/<path>_background.png}
+     * and {@code _frame.png}; when unset, the default style textures are used.
      */
     public static final DataComponentType<String> TOOLTIP_STYLE =
             DataComponentType.<String>builder(new ResourceLocation("minecraft", "tooltip_style"))
@@ -67,26 +67,26 @@ public final class DataComponents {
                     .networkSynchronized(ComponentSerializers.ofString("TooltipStyle"))
                     .build();
 
-    // ========== 类型注册表 ==========
+    // ========== Type registry ==========
 
     private static final Map<ResourceLocation, DataComponentType<?>> BY_ID = new LinkedHashMap<>();
     private static final List<DataComponentType<?>> BY_NETWORK_ID = new ArrayList<>();
     private static final AtomicInteger NETWORK_ID_GEN = new AtomicInteger(0);
 
-    // ========== 物品默认组件（原型） ==========
+    // ========== Per-item default components (prototypes) ==========
 
-    /** 全局空原型 */
+    /** Global empty prototype */
     private static final DataComponentMap EMPTY_DEFAULTS = DataComponentMap.EMPTY;
 
-    /** Item → 默认组件映射 */
+    /** Item → default component mapping */
     private static final Map<Item, DataComponentMap> DEFAULTS = new IdentityHashMap<>();
 
-    // ========== 类型注册 API ==========
+    // ========== Type registration API ==========
 
     /**
-     * 注册一个组件类型。
+     * Registers a component type.
      *
-     * @throws IllegalArgumentException 如果 ID 已注册
+     * @throws IllegalArgumentException if the ID is already registered
      */
     public static synchronized <T> DataComponentType<T> register(DataComponentType<T> type) {
         ResourceLocation id = type.getId();
@@ -101,16 +101,16 @@ public final class DataComponents {
     }
 
     /**
-     * 构建并注册一个组件类型。
+     * Builds and registers a component type.
      */
     public static <T> DataComponentType<T> register(ResourceLocation id, DataComponentType.Builder<T> builder) {
         return register(builder.build());
     }
 
-    // ========== 类型查询 API ==========
+    // ========== Type lookup API ==========
 
     /**
-     * 通过 ID 查找组件类型。
+     * Looks up a component type by ID.
      */
     @Nullable
     public static DataComponentType<?> get(ResourceLocation id) {
@@ -118,7 +118,7 @@ public final class DataComponents {
     }
 
     /**
-     * 通过网络编码 ID 查找组件类型。
+     * Looks up a component type by network-encoded ID.
      */
     @Nullable
     public static DataComponentType<?> byNetworkId(int networkId) {
@@ -129,21 +129,21 @@ public final class DataComponents {
     }
 
     /**
-     * 返回已注册的组件类型数量。
+     * Returns the number of registered component types.
      */
     public static int getNetworkCount() {
         return BY_NETWORK_ID.size();
     }
 
     /**
-     * 返回所有已注册的组件类型（不可变视图）。
+     * Returns all registered component types (immutable view).
      */
     public static Collection<DataComponentType<?>> getAll() {
         return Collections.unmodifiableCollection(BY_ID.values());
     }
 
     /**
-     * 返回所有持久化（非瞬态）的组件类型。
+     * Returns all persistent (non-transient) component types.
      */
     public static Collection<DataComponentType<?>> getPersistent() {
         List<DataComponentType<?>> result = new ArrayList<>();
@@ -155,17 +155,17 @@ public final class DataComponents {
         return result;
     }
 
-    // ========== 物品默认组件 API ==========
+    // ========== Per-item default component API ==========
 
     /**
-     * 为指定物品注册默认组件。
+     * Registers the default components for the given item.
      */
     public static synchronized void registerDefaults(Item item, DataComponentMap defaults) {
         DEFAULTS.put(item, defaults);
     }
 
     /**
-     * 获取指定物品的默认组件。
+     * Returns the default components of the given item.
      */
     public static DataComponentMap getDefaults(Item item) {
         DataComponentMap map = DEFAULTS.get(item);
@@ -173,7 +173,7 @@ public final class DataComponents {
     }
 
     /**
-     * 获取物品默认组件构建器。
+     * Returns a builder for per-item default components.
      */
     public static DefaultsBuilder defaultsBuilder() {
         return new DefaultsBuilder();
@@ -182,7 +182,7 @@ public final class DataComponents {
     // ========== DefaultsBuilder ==========
 
     /**
-     * 物品默认组件构建器——支持链式为多种物品注册默认组件。
+     * Per-item default component builder — supports chaining defaults for multiple items.
      */
     public static final class DefaultsBuilder {
         private final Map<Item, DataComponentMap.Builder> builders = new IdentityHashMap<>();

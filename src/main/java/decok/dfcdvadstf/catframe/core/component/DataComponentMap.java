@@ -9,15 +9,15 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * 不可变的组件映射。
+ * Immutable component map.
  * <p>
- * 参考 26.1.2 {@code net.minecraft.core.component.DataComponentMap}。
+ * Mirrors 26.1.2 {@code net.minecraft.core.component.DataComponentMap}.
  * <p>
- * 提供 {@link #EMPTY} 空映射、{@link Builder} 构建器、{@link #composite} 组合视图。
+ * Provides the {@link #EMPTY} map, the {@link Builder}, and the {@link #composite} view.
  */
 public interface DataComponentMap extends Iterable<TypedDataComponent<?>>, DataComponentGetter {
 
-    /** 空映射常量 */
+    /** Empty map constant */
     DataComponentMap EMPTY = new DataComponentMap() {
         @Nullable
         @Override
@@ -46,11 +46,11 @@ public interface DataComponentMap extends Iterable<TypedDataComponent<?>>, DataC
         }
     };
 
-    // ========== 静态工厂 ==========
+    // ========== Static factories ==========
 
     /**
-     * 组合两个映射：原型 + 覆写。
-     * 读取时先查 overrides，不存在时回退到 prototype。
+     * Composites two maps: prototype + overrides.
+     * Reads look at overrides first and fall back to the prototype when absent.
      */
     static DataComponentMap composite(DataComponentMap prototype, DataComponentMap overrides) {
         return new DataComponentMap() {
@@ -103,23 +103,23 @@ public interface DataComponentMap extends Iterable<TypedDataComponent<?>>, DataC
         return new Builder();
     }
 
-    // ========== 实例方法 ==========
+    // ========== Instance methods ==========
 
-    /** 返回所有组件类型的集合。 */
+    /** Returns the set of all component types. */
     Set<DataComponentType<?>> keySet();
 
-    /** 返回组件数量。 */
+    /** Returns the number of components. */
     int size();
 
-    /** 是否为空映射。 */
+    /** Whether this is an empty map. */
     boolean isEmpty();
 
-    /** 是否包含指定类型的组件。 */
+    /** Whether a component of the given type is present. */
     default boolean has(DataComponentType<?> type) {
         return get(type) != null;
     }
 
-    /** 返回所有组件的流。 */
+    /** Returns a stream of all components. */
     default Stream<TypedDataComponent<?>> stream() {
         return StreamSupport.stream(
                 Spliterators.spliteratorUnknownSize(iterator(), 0),
@@ -127,7 +127,7 @@ public interface DataComponentMap extends Iterable<TypedDataComponent<?>>, DataC
         );
     }
 
-    /** 过滤组件映射，仅保留满足条件的组件。 */
+    /** Filters the map, keeping only the components matching the predicate. */
     default DataComponentMap filter(Predicate<DataComponentType<?>> predicate) {
         DataComponentMap self = this;
         return new DataComponentMap() {
@@ -201,7 +201,7 @@ public interface DataComponentMap extends Iterable<TypedDataComponent<?>>, DataC
         }
 
         /**
-         * 构建不可变映射。
+         * Builds the immutable map.
          */
         public DataComponentMap build() {
             if (map.isEmpty()) {
@@ -243,10 +243,10 @@ public interface DataComponentMap extends Iterable<TypedDataComponent<?>>, DataC
         }
     }
 
-    // ========== 工具方法 ==========
+    // ========== Utility methods ==========
 
     /**
-     * 将映射转为不可修改的视图。
+     * Wraps the map into an unmodifiable view.
      */
     static DataComponentMap unmodifiable(DataComponentMap map) {
         if (map == EMPTY) return EMPTY;

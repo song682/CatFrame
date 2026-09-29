@@ -65,10 +65,10 @@ public class TagEntry {
     
     /**
      * Parse TagEntry from string
-     * 支持格式：
-     * - "minecraft:wool" -> 直接元素
-     * - "#catframe:wool" -> 标签引用
-     * - "minecraft:wool?" -> 可选元素（? 后缀）
+     * Supported formats:
+     * - "minecraft:wool" -> direct element
+     * - "#catframe:wool" -> tag reference
+     * - "minecraft:wool?" -> optional element (? suffix)
      */
     public static TagEntry parse(String value) {
         boolean optional = value.endsWith("?");
@@ -99,13 +99,13 @@ public class TagEntry {
     /**
      * Build (resolve) the actual object of this entry
      * 
-     * @param lookup 查找器
-     * @param output 输出收集器
-     * @return 是否成功
+     * @param lookup the lookup resolver
+     * @param output the output collector
+     * @return whether the build succeeded
      */
     public <T> boolean build(Lookup<T> lookup, Consumer<T> output) {
         if (this.tag) {
-            // 引用其他标签
+            // Reference to another tag
             Collection<T> result = lookup.tag(this.id);
             if (result == null) {
                 if (this.required) {
@@ -116,7 +116,7 @@ public class TagEntry {
             
             result.forEach(output);
         } else {
-            // 直接元素
+            // Direct element
             T result = lookup.element(this.id, this.required);
             if (result == null) {
                 if (this.required) {
@@ -186,23 +186,23 @@ public class TagEntry {
     }
     
     /**
-     * 查找器接口 - 用于解析 TagEntry 到实际对象
+     * Lookup interface - resolves a TagEntry to concrete objects
      */
     public interface Lookup<T> {
         /**
-         * 查找直接元素
+         * Look up a direct element
          * 
-         * @param key 元素标识符
-         * @param required 是否必须存在
-         * @return 找到的元素，找不到且 required=false 时返回 null
+         * @param key the element identifier
+         * @param required whether the element must exist
+         * @return the resolved element, or null when not found and required=false
          */
         T element(ResourceLocation key, boolean required);
         
         /**
-         * 查找标签内容
+         * Look up the contents of a tag
          * 
-         * @param key 标签标识符
-         * @return 标签中的所有元素，找不到时返回 null
+         * @param key the tag identifier
+         * @return all elements of the tag, or null when the tag is not found
          */
         Collection<T> tag(ResourceLocation key);
     }

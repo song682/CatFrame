@@ -6,25 +6,25 @@ import javax.annotation.Nullable;
 import java.util.Objects;
 
 /**
- * 数据组件类型 - 标识一个特定类型的数据组件。
+ * Data component type - identifies one specific kind of data component.
  * <p>
- * 每个组件类型由唯一的 ResourceLocation 标识，并持有对应的 NBT 序列化器。
- * 参考 26.1.2 {@code net.minecraft.core.component.DataComponentType}。
+ * Every component type is identified by a unique ResourceLocation and holds its NBT serializers.
+ * Mirrors 26.1.2 {@code net.minecraft.core.component.DataComponentType}.
  * <p>
- * 组件类型使用引用标识（reference identity）作为 Map key，
- * 但 equals/hashCode 基于 id 实现以保证逻辑一致性。
+ * Component types use reference identity as their Map key,
+ * while equals/hashCode are based on the id to keep logical consistency.
  *
- * @param <T> 组件值的 Java 类型
+ * @param <T> the Java type of the component value
  */
 public final class DataComponentType<T> {
 
     private final ResourceLocation id;
     @Nullable
-    private final ComponentSerializer<T> serializer;          // NBT 持久化序列化器
+    private final ComponentSerializer<T> serializer;          // NBT persistence serializer
     @Nullable
-    private final ComponentSerializer<T> networkSerializer;   // 网络序列化器（可复用 NBT 格式）
+    private final ComponentSerializer<T> networkSerializer;   // network serializer (may reuse the NBT format)
     private final boolean cacheEncoding;
-    /** 注册时分配的网络 ID（-1 表示未注册） */
+    /** Network ID assigned at registration time (-1 means not registered) */
     int networkId = -1;
 
     private DataComponentType(ResourceLocation id,
@@ -37,27 +37,27 @@ public final class DataComponentType<T> {
         this.cacheEncoding = cacheEncoding;
     }
 
-    // ========== 工厂方法 ==========
+    // ========== Factory methods ==========
 
     public static <T> Builder<T> builder(ResourceLocation id) {
         return new Builder<>(id);
     }
 
-    // ========== 访问器 ==========
+    // ========== Accessors ==========
 
     public ResourceLocation getId() {
         return id;
     }
 
     /**
-     * @return 该组件是否为瞬态（运行时存在，不持久化到 NBT）
+     * @return whether this component is transient (exists at runtime, not persisted to NBT)
      */
     public boolean isTransient() {
         return serializer == null;
     }
 
     /**
-     * @return NBT 序列化器，瞬态组件返回 null
+     * @return the NBT serializer; null for transient components
      */
     @Nullable
     public ComponentSerializer<T> getSerializer() {
@@ -65,7 +65,7 @@ public final class DataComponentType<T> {
     }
 
     /**
-     * @return 网络序列化器，未指定时回退到 NBT 序列化器
+     * @return the network serializer, falling back to the NBT serializer when unspecified
      */
     @Nullable
     public ComponentSerializer<T> getNetworkSerializer() {
@@ -77,7 +77,7 @@ public final class DataComponentType<T> {
     }
 
     /**
-     * @return 注册时分配的网络编码 ID
+     * @return the network encoding ID assigned at registration time
      */
     public int getNetworkId() {
         if (networkId < 0) {
@@ -86,7 +86,7 @@ public final class DataComponentType<T> {
         return networkId;
     }
 
-    // ========== 对象约定 ==========
+    // ========== Object contract ==========
 
     @Override
     public boolean equals(Object o) {
@@ -119,7 +119,7 @@ public final class DataComponentType<T> {
         }
 
         /**
-         * 设置持久化序列化器。调用此方法表示组件会被写入 NBT 存档。
+         * Sets the persistence serializer. Calling this marks the component as saved to NBT.
          */
         public Builder<T> persistent(ComponentSerializer<T> serializer) {
             this.serializer = serializer;
@@ -127,7 +127,7 @@ public final class DataComponentType<T> {
         }
 
         /**
-         * 设置网络序列化器。未设置时回退到 persistent serializer。
+         * Sets the network serializer. Falls back to the persistent serializer when unset.
          */
         public Builder<T> networkSynchronized(ComponentSerializer<T> networkSerializer) {
             this.networkSerializer = networkSerializer;
@@ -135,7 +135,7 @@ public final class DataComponentType<T> {
         }
 
         /**
-         * 启用序列化结果缓存（适用于不可变值类型）。
+         * Enables caching of the serialization result (suited to immutable value types).
          */
         public Builder<T> cacheEncoding() {
             this.cacheEncoding = true;

@@ -14,10 +14,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 物品描述文本（Lore）。
+ * Item lore (description text).
  * <p>
- * 对应 26.1.2 {@code net.minecraft.world.item.component.ItemLore}。
- * 映射到原版 ItemStack 的 "display.Lore" NBT 标签。
+ * Mirrors 26.1.2 {@code net.minecraft.world.item.component.ItemLore}.
+ * Maps to the vanilla ItemStack "display.Lore" NBT tag.
  */
 public final class ItemLore {
 
@@ -29,7 +29,7 @@ public final class ItemLore {
         this.lines = lines;
     }
 
-    // ========== 工厂方法 ==========
+    // ========== Factory methods ==========
 
     public static ItemLore empty() {
         return EMPTY;
@@ -45,7 +45,7 @@ public final class ItemLore {
         return new ItemLore(Collections.unmodifiableList(new ArrayList<>(lines)));
     }
 
-    // ========== 查询 ==========
+    // ========== Queries ==========
 
     public List<String> getLines() {
         return lines;
@@ -59,7 +59,7 @@ public final class ItemLore {
         return lines.size();
     }
 
-    // ========== NBT 转换 ==========
+    // ========== NBT conversion ==========
 
     public NBTTagList toNBT() {
         NBTTagList list = new NBTTagList();
@@ -79,7 +79,7 @@ public final class ItemLore {
     }
 
     /**
-     * 创建带默认样式格式化的 lore。
+     * Returns the lines with the default style formatting applied.
      */
     public List<String> getStyledLines() {
         return lines.stream()
@@ -87,7 +87,7 @@ public final class ItemLore {
                 .collect(Collectors.toList());
     }
 
-    // ========== 对象约定 ==========
+    // ========== Object contract ==========
 
     @Override
     public boolean equals(Object o) {
@@ -107,7 +107,7 @@ public final class ItemLore {
         return "Lore" + lines;
     }
 
-    // ========== 序列化器 ==========
+    // ========== Serializer ==========
 
     public static final ComponentSerializer<ItemLore> SERIALIZER = new ComponentSerializer<ItemLore>() {
         @Override

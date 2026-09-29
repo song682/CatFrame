@@ -6,55 +6,55 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * 组件补丁 - 表示一组组件相对于原型的差值。
+ * Component patch - a set of component deltas relative to the prototype.
  * <p>
- * 参考 26.1.2 {@code net.minecraft.core.component.DataComponentPatch}。
+ * Mirrors 26.1.2 {@code net.minecraft.core.component.DataComponentPatch}.
  * <p>
- * 补丁是一个 {@code Map<DataComponentType<?>, Optional<?>>}，
- * 其中 {@code Optional.of(value)} 表示设置组件，{@code Optional.empty()} 表示移除组件。
+ * A patch is a {@code Map<DataComponentType<?>, Optional<?>>}, where
+ * {@code Optional.of(value)} sets a component and {@code Optional.empty()} removes it.
  */
 public final class DataComponentPatch {
 
-    /** 空补丁常量 */
+    /** Empty patch constant */
     public static final DataComponentPatch EMPTY = new DataComponentPatch(Collections.emptyMap());
 
     private final Map<DataComponentType<?>, Optional<?>> map;
 
     /**
-     * 包级私有构造函数，由 PatchedDataComponentMap 和 Builder 调用。
+     * Constructor used internally, called by PatchedDataComponentMap and Builder.
      */
     public DataComponentPatch(Map<DataComponentType<?>, Optional<?>> map) {
         this.map = map;
     }
 
-    // ========== 工厂方法 ==========
+    // ========== Factory methods ==========
 
     public static Builder builder() {
         return new Builder();
     }
 
-    // ========== 查询 ==========
+    // ========== Queries ==========
 
     /**
-     * 检查补丁是否为空。
+     * Checks whether the patch is empty.
      */
     public boolean isEmpty() {
         return map.isEmpty();
     }
 
     /**
-     * 返回补丁的大小。
+     * Returns the size of the patch.
      */
     public int size() {
         return map.size();
     }
 
     /**
-     * 获取补丁中的值（结合原型回退）。
+     * Gets a value from the patch (with prototype fallback).
      *
-     * @param prototype 原型映射
-     * @param type      组件类型
-     * @return 补丁值（存在），否则从原型获取
+     * @param prototype the prototype map
+     * @param type      the component type
+     * @return the patch value when present, otherwise the prototype value
      */
     @Nullable
     @SuppressWarnings("unchecked")
@@ -67,21 +67,21 @@ public final class DataComponentPatch {
     }
 
     /**
-     * 返回补丁的原始映射（仅供内部使用）。
+     * Returns the patch's raw map (internal use only).
      */
     public Map<DataComponentType<?>, Optional<?>> getRawMap() {
         return map;
     }
 
     /**
-     * 返回所有条目的集合。
+     * Returns the set of all entries.
      */
     public Set<Map.Entry<DataComponentType<?>, Optional<?>>> entrySet() {
         return map.entrySet();
     }
 
     /**
-     * 拆分补丁为 added（新增）和 removed（移除）两部分。
+     * Splits the patch into added and removed parts.
      */
     public SplitResult split() {
         if (isEmpty()) {
@@ -102,7 +102,7 @@ public final class DataComponentPatch {
         return new SplitResult(added.build(), removed);
     }
 
-    // ========== 对象约定 ==========
+    // ========== Object contract ==========
 
     @Override
     public boolean equals(Object o) {
@@ -163,7 +163,7 @@ public final class DataComponentPatch {
         }
     }
 
-    // ========== 拆分结果 ==========
+    // ========== Split result ==========
 
     public static final class SplitResult {
         public static final SplitResult EMPTY = new SplitResult(DataComponentMap.EMPTY, Collections.emptySet());

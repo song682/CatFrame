@@ -27,18 +27,12 @@ import java.util.jar.JarFile;
  * into Forge's {@link LanguageRegistry}, so vanilla {@code I18n} /
  * {@code StatCollector} handle all translation lookups.
  * <p>
- * 语言文件加载器 —— 在 preInit 阶段扫描 CatFrame 自身 jar/目录中的
- * JSON 语言文件（{@code xx_xx.json}，全小写），注入 Forge {@link LanguageRegistry}，
- * 由原版 {@code I18n} / {@code StatCollector} 接管翻译。
- * <p>
  * Currently single-path: only {@code assets/catframe/lang} is searched.
- * 当前为单一路径：仅搜索 {@code assets/catframe/lang}。
  * <p>
  * Compat-layer scans may additionally feed other mods' JSON lang files in
  * via {@link #injectExternal}.
- * 兼容层扫描可经 {@link #injectExternal} 补充注入其它模组的 JSON 语言文件。
  * <p>
- * Usage / 用法:
+ * Usage:
  * <pre>{@code
  *   // In preInit:
  *   LanguageRegister.load();
@@ -51,7 +45,6 @@ public final class LanguageRegister {
 
     /**
      * The single lang base path searched: "assets/catframe/lang"
-     * 唯一被搜索的语言目录：{@code assets/catframe/lang}
      */
     private static final String BASE_PATH = "assets/" + Tags.MODID + "/lang";
 
@@ -82,9 +75,6 @@ public final class LanguageRegister {
      * Scans CatFrame's own jar/directory for {@code xx_xx.json} files
      * (all-lowercase language codes) under {@link #BASE_PATH} and injects
      * them into Forge's {@link LanguageRegistry}.
-     * <p>
-     * 扫描 CatFrame 自身 jar/目录中 {@link #BASE_PATH} 下的 {@code xx_xx.json}
-     * 文件（全小写语言码），注入 Forge {@link LanguageRegistry}。
      */
     public static void load() {
         scanAndInject(Tags.MODID, BASE_PATH);
@@ -95,15 +85,11 @@ public final class LanguageRegister {
      * mod's jar by a compat-layer scan — and remembers it so later
      * resource-manager reloads re-inject it with resource pack overrides
      * on top. The stream is consumed but not closed here.
-     * <p>
-     * 注入外部发现的语言文件——例如兼容层扫描从其它模组 jar 中找到的
-     * 文件——并记录之，使后续资源管理器重载能带着资源包覆盖重新注入。
-     * 本方法消费但不关闭传入的流。
      *
-     * @param resourceDomain resource domain of the file / 文件所属资源域
-     * @param resourceDir    directory under the domain, e.g. "lang" / 域内目录
-     * @param fileName       all-lowercase json name, e.g. "en_us.json" / 全小写文件名
-     * @param in             the file's content stream / 文件内容流
+     * @param resourceDomain resource domain of the file
+     * @param resourceDir    directory under the domain, e.g. "lang"
+     * @param fileName       all-lowercase json name, e.g. "en_us.json"
+     * @param in             the file's content stream
      */
     static void injectExternal(String resourceDomain, String resourceDir, String fileName, InputStream in) {
         String langCode = fileName.substring(0, fileName.length() - ".json".length());
@@ -123,11 +109,8 @@ public final class LanguageRegister {
      * are picked up automatically. Keys are injected into
      * {@link LanguageRegistry} in reverse priority order (mod jar first,
      * then resource pack overrides on top).
-     * <p>
-     * 从 {@link IResourceManager} 重新加载所有已知的 JSON 语言文件。<br>
-     * 会读取所有活跃资源包中的文件（包括 override），按优先级从低到高注入。
      *
-     * @param manager the resource manager (from the reload event) / 资源管理器
+     * @param manager the resource manager (from the reload event)
      */
     public static void reloadFromResourceManager(IResourceManager manager) {
         if (langFiles.isEmpty()) return;
@@ -187,8 +170,8 @@ public final class LanguageRegister {
         //   → resourceDomain = "catframe" (between "assets/" and next "/")
         //   → resourceDir    = "lang" (everything after the domain)
         // basePath = "assets/catframe/lang"
-        //   → resourceDomain = "catframe"（"assets/" 与下一个 "/" 之间）
-        //   → resourceDir    = "lang"（域之后的部分）
+        //   → resourceDomain = "catframe" (between "assets/" and next "/")
+        //   → resourceDir    = "lang" (after the domain)
         int assetsEnd = basePath.indexOf('/') + 1;
         int domainEnd = basePath.indexOf('/', assetsEnd);
         if (domainEnd < 0) {

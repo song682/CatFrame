@@ -60,8 +60,8 @@ public final class CatFrameTags {
     /**
      * Add item to a specified tag
      * 
-     * @param tagName 标签名称（不含命名空间，自动使用 "catframe"）
-     * @param item 物品
+     * @param tagName tag name (without namespace, "catframe" is used automatically)
+     * @param item the item
      */
     public static void add(String tagName, Item item) {
         ITEM_LOADER.getOrCreateTagContents(NAMESPACE, tagName).add(item);
@@ -70,9 +70,9 @@ public final class CatFrameTags {
     /**
      * Add item to a tag with custom namespace
      * 
-     * @param namespace 自定义命名空间
-     * @param tagName 标签名称
-     * @param item 物品
+     * @param namespace custom namespace
+     * @param tagName tag name
+     * @param item the item
      */
     public static void add(String namespace, String tagName, Item item) {
         ITEM_LOADER.getOrCreateTagContents(namespace, tagName).add(item);
@@ -136,8 +136,8 @@ public final class CatFrameTags {
     /**
      * Add block to a specified tag
      * 
-     * @param tagName 标签名称（不含命名空间，自动使用 "catframe"）
-     * @param block 方块
+     * @param tagName tag name (without namespace, "catframe" is used automatically)
+     * @param block the block
      */
     public static void add(String tagName, Block block) {
         BLOCK_LOADER.getOrCreateTagContents(NAMESPACE, tagName).add(block);
@@ -146,9 +146,9 @@ public final class CatFrameTags {
     /**
      * Add block to a tag with custom namespace
      * 
-     * @param namespace 自定义命名空间
-     * @param tagName 标签名称
-     * @param block 方块
+     * @param namespace custom namespace
+     * @param tagName tag name
+     * @param block the block
      */
     public static void add(String namespace, String tagName, Block block) {
         BLOCK_LOADER.getOrCreateTagContents(namespace, tagName).add(block);
@@ -236,7 +236,7 @@ public final class CatFrameTags {
     /**
      * Load JSON tags from directory (using default "catframe" namespace)
      * 
-     * @param tagsDir 标签目录
+     * @param tagsDir the tags directory
      */
     public static void loadFromDirectory(java.io.File tagsDir) {
         ITEM_LOADER.loadFromDirectory(new java.io.File(tagsDir, "items"));
@@ -246,8 +246,8 @@ public final class CatFrameTags {
     /**
      * Load JSON tags from directory with custom namespace
      * 
-     * @param tagsDir 标签目录
-     * @param namespace 自定义命名空间
+     * @param tagsDir the tags directory
+     * @param namespace custom namespace
      */
     public static void loadFromDirectory(java.io.File tagsDir, String namespace) {
         String prevItemNs = ITEM_LOADER.getDefaultNamespace();

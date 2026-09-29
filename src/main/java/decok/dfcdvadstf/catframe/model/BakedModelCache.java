@@ -15,30 +15,30 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 /**
- * 线程安全的烘焙模型缓存，统一管理所有模型烘焙缓存。
+ * Thread-safe baked model cache managing all model baking caches.
  * <p>
- * 基于 Guava {@link LoadingCache} 实现（替代原手写 {@code StampedLock} + {@code LinkedHashMap} LRU）：
+ * Based on Guava {@link LoadingCache} (replacing hand-written {@code StampedLock} + {@code LinkedHashMap} LRU):
  * <ul>
- *   <li>{@code maximumSize} — 段内近似 LRU 驱逐，超过上限自动移除最久未访问条目</li>
- *   <li>per-key 加载锁 — 同一 key 的并发 miss 只烘焙一次，避免竞态重复烘焙</li>
- *   <li>{@code recordStats} — 原生命中/未命中/加载次数统计</li>
- *   <li>Cache miss 时触发懒烘焙（CacheLoader）— 渲染时按需烘焙并缓存</li>
+ *   <li>{@code maximumSize} — per-segment approximate LRU eviction, auto-removes LRU entry when over capacity</li>
+ *   <li>per-key load lock — concurrent miss for same key bakes only once, avoiding race-condition duplicate bakes</li>
+ *   <li>{@code recordStats} — vanilla hit/miss/load count stats</li>
+ *   <li>Cache miss triggers lazy bake (CacheLoader) — bake on-demand during render and cache</li>
  * </ul>
  * <p>
- * 缓存值类型为 {@code Optional<BlockStateModelPart>}：Guava 缓存不允许存 null，
- * 用 {@link Optional} 包裹烘焙结果；烘焙失败（absent）不长期缓存，{@link #get(String)}
- * 中立即 invalidate 以保留"失败可重试"语义。对外 API 与旧实现完全一致。
+ * Cache value type is {@code Optional<BlockStateModelPart>}: Guava cache disallows null,
+ * so wrap result in {@link Optional}; bake failure (absent) not cached long-term, {@link #get(String)}
+ * immediately invalidates to preserve "fail retry" semantics. Public API matches old implementation.
  */
 public class BakedModelCache {
 
-    /** 全局单例（容量覆盖一次 reload 的全部预烘焙结果，含 Z 轴旋转组合，
-     *  留余量避免 LRU 驱逐导致渲染时懒烘焙 —— 见 ItemBlock-ItemRender-UV-Mismatch-Diagnosis.md）。 */
+/** Global singleton (capacity covers one reload's worth of pre-bake results including Z-axis rotation combos,
+ *  headroom prevents LRU eviction causing lazy bakes during render — see ItemBlock-ItemRender-UV-Mismatch-Diagnosis.md). */
     public static final BakedModelCache INSTANCE = new BakedModelCache(4800);
 
     private final int maxSize;
     private final LoadingCache<String, Optional<BlockStateModelPart>> cache;
 
-    /** 当前 stitch 周期的 IIcon 映射（由 clear(iconMap) 设置，懒烘焙时使用） */
+    /** Current stitch cycle's IIcon map (set by clear(iconMap), used by lazy bake) */
     @Nullable
     private volatile Map<String, IIcon> iconMap = null;
 
@@ -60,7 +60,7 @@ public class BakedModelCache {
                         } catch (NumberFormatException e) {
                             return Optional.absent();
                         }
-                        // 调用烘焙纯函数（传递当前 stitch 周期的 iconMap）
+                        // Call bake pure function (passing current stitch cycle's iconMap)
                         BlockStateModelPart result = BakingCore.bake(parts[0], rotX, rotY, rotZ, iconMap);
                         if (result != null) {
                             CatFrame.logger.debug("[BakedModelCache] lazy bake: {} | quads={}",
@@ -72,16 +72,16 @@ public class BakedModelCache {
     }
 
     /**
-     * 获取烘焙结果。命中缓存直接返回，miss 时触发懒烘焙（CacheLoader）。
+     * Get baked result. Cache hit returns directly; miss triggers lazy bake (CacheLoader).
      * <p>
-     * 渲染线程调用路径：
+     * Render thread call path:
      * <pre>
      *   BlockStateModelPart part = BakedModelCache.INSTANCE.get("block/stone@0@0");
      *   if (part != null) UniformRenderPipeline.renderBlockQuads(part, ...);
      * </pre>
      *
-     * @param cacheKey 格式为 "modelPath@rotX@rotY" 或 "modelPath@rotX@rotY@rotZ"
-     * @return 烘焙后的模型部件，模型解析失败返回 null
+     * @param cacheKey format: "modelPath@rotX@rotY" or "modelPath@rotX@rotY@rotZ"
+     * @return baked model part, or null on parse failure
      */
     @Nullable
     public BlockStateModelPart get(String cacheKey) {
@@ -89,7 +89,7 @@ public class BakedModelCache {
         try {
             Optional<BlockStateModelPart> v = cache.getUnchecked(cacheKey);
             if (!v.isPresent()) {
-                // 烘焙失败不长期缓存，下次重试（例如 iconMap 尚未就绪）
+                // Bake failure not cached long-term; retry next time (e.g. iconMap not ready yet)
                 cache.invalidate(cacheKey);
                 return null;
             }
@@ -102,11 +102,11 @@ public class BakedModelCache {
     }
 
     /**
-     * 批量预烘焙。由异步预烘焙管线调用。
+     * Batch pre-bake. Called by async pre-bake pipeline.
      * <p>
-     * 对每个请求触发烘焙并写入缓存，跳过已缓存的 key。
+     * Triggers bake for each request and writes to cache, skipping already-cached keys.
      *
-     * @param requests cacheKey → BakeRequest 映射
+     * @param requests cacheKey → BakeRequest map
      */
     public void bulkBake(Map<String, BakeRequest> requests) {
         int baked = 0;
@@ -125,7 +125,7 @@ public class BakedModelCache {
     }
 
     /**
-     * 直接写入已烘焙的结果。用于异步管线收集完结果后批量灌入。
+     * Directly write pre-baked results. Used by async pipeline after collecting results for bulk insertion.
      */
     public void bulkPut(Map<String, BlockStateModelPart> results) {
         for (Map.Entry<String, BlockStateModelPart> entry : results.entrySet()) {
@@ -136,12 +136,12 @@ public class BakedModelCache {
     }
 
     /**
-     * 清除所有缓存并设置当前 stitch 周期的 IIcon 映射。
+     * Clear all caches and set current stitch cycle's IIcon map.
      * <p>
-     * 每次资源重载时，缓存持有当前周期的 iconMap，懒烘焙时直接使用，
-     * 而非读全局静态字段。
+     * On each resource reload, cache holds current cycle's iconMap for lazy bake,
+     * instead of reading global static field.
      *
-     * @param iconMap 当前 stitch 周期的 IIcon 映射
+     * @param iconMap current stitch cycle's IIcon map
      */
     public void clear(@Nullable Map<String, IIcon> iconMap) {
         cache.invalidateAll();
@@ -151,14 +151,14 @@ public class BakedModelCache {
     }
 
     /**
-     * 清除所有缓存（不更新 iconMap）。
+     * Clear all caches (without updating iconMap).
      */
     public void clear() {
         clear(this.iconMap);
     }
 
     /**
-     * 获取当前存储的 IIcon 映射。
+     * Get currently stored IIcon map.
      */
     @Nullable
     public Map<String, IIcon> getIconMap() {
@@ -166,35 +166,35 @@ public class BakedModelCache {
     }
 
     /**
-     * 获取当前缓存条目数。
+     * Get current cache entry count.
      */
     public int size() {
         return (int) cache.size();
     }
 
     /**
-     * 获取自上次 clear 以来懒烘焙触发的次数（Guava load 次数）。
+     * Get lazy bake trigger count since last clear (Guava load count).
      */
     public int getLazyBakeCount() {
         return (int) cache.stats().loadCount();
     }
 
     /**
-     * 获取缓存命中次数。
+     * Get cache hit count.
      */
     public long getHitCount() {
         return cache.stats().hitCount();
     }
 
     /**
-     * 获取缓存未命中次数。
+     * Get cache miss count.
      */
     public long getMissCount() {
         return cache.stats().missCount();
     }
 
     /**
-     * 打印缓存统计信息。
+     * Dump cache statistics.
      */
     public void dumpStats() {
         CacheStats stats = cache.stats();
@@ -207,29 +207,29 @@ public class BakedModelCache {
     }
 
     /**
-     * 解析 cacheKey 为 [modelPath, rotX, rotY] 或 [modelPath, rotX, rotY, rotZ]。
-     * cacheKey 格式: "modelPath@rotX@rotY" 或 "modelPath@rotX@rotY@rotZ"
-     * 向后兼容旧的 3 段格式。
+     * Parse cacheKey into [modelPath, rotX, rotY] or [modelPath, rotX, rotY, rotZ].
+     * cacheKey format: "modelPath@rotX@rotY" or "modelPath@rotX@rotY@rotZ"
+     * Backward compatible with old 3-segment format.
      */
     @Nullable
     private static String[] parseCacheKey(String cacheKey) {
-        // 从右向左找所有 '@' 分隔符
+        // Find all '@' separators from right to left
         int lastAt = cacheKey.lastIndexOf('@');
         if (lastAt < 0) return null;
         int secondLastAt = cacheKey.lastIndexOf('@', lastAt - 1);
         if (secondLastAt < 0) return null;
 
-        // 检查是否有第三个 '@'（Z 轴旋转）
+        // Check for third '@' (Z rotation)
         int thirdLastAt = cacheKey.lastIndexOf('@', secondLastAt - 1);
         if (thirdLastAt >= 0) {
-            // 4 段格式: modelPath@rotX@rotY@rotZ
+            // 4-segment format: modelPath@rotX@rotY@rotZ
             String modelPath = cacheKey.substring(0, thirdLastAt);
             String rotX = cacheKey.substring(thirdLastAt + 1, secondLastAt);
             String rotY = cacheKey.substring(secondLastAt + 1, lastAt);
             String rotZ = cacheKey.substring(lastAt + 1);
             return new String[]{modelPath, rotX, rotY, rotZ};
         } else {
-            // 3 段格式（向后兼容）: modelPath@rotX@rotY
+            // 3-segment format (backward compat): modelPath@rotX@rotY
             String modelPath = cacheKey.substring(0, secondLastAt);
             String rotX = cacheKey.substring(secondLastAt + 1, lastAt);
             String rotY = cacheKey.substring(lastAt + 1);
@@ -238,22 +238,22 @@ public class BakedModelCache {
     }
 
     /**
-     * 构建 cacheKey（无 Z 轴旋转，向后兼容）。
+     * Build cacheKey (no Z rotation, backward compat).
      */
     public static String buildKey(String modelPath, float rotX, float rotY) {
         return modelPath + "@" + formatRot(rotX) + "@" + formatRot(rotY);
     }
 
     /**
-     * 构建 cacheKey（含 Z 轴旋转）。
-     * float 值格式化：整数角度输出无小数点（如 90），非整数输出小数（如 22.5）。
+     * Build cacheKey (with Z rotation).
+     * float formatting: integer angles output without decimal (e.g. 90), non-integers with decimal (e.g. 22.5).
      */
     public static String buildKey(String modelPath, float rotX, float rotY, float rotZ) {
         return modelPath + "@" + formatRot(rotX) + "@" + formatRot(rotY) + "@" + formatRot(rotZ);
     }
 
     /**
-     * 格式化旋转角度为紧凑字符串：整数无小数点，非整数保留有效小数。
+     * Format rotation angle as compact string: integers without decimal, non-integers with significant digits.
      */
     private static String formatRot(float v) {
         if (v == Math.floor(v) && !Float.isInfinite(v)) {
@@ -263,7 +263,7 @@ public class BakedModelCache {
     }
 
     /**
-     * 烘焙请求数据。
+     * Bake request data.
      */
     public static class BakeRequest {
         public final String modelPath;

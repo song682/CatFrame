@@ -12,27 +12,26 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 目录扫描源（对标 26.1.2 {@code minecraft:directory}）。
+ * Directory scanning source (mirrors 26.1.2 {@code minecraft:directory}).
  * <p>
- * 扫描所有 namespace 的 {@code textures/<source>/} 顶层 png（1.7.10 复数纹理目录），
- * 产出 sprite id = {@code <ns>:<prefix><basename>}。由于 1.7.10 资源管理器无法列目录，
- * 扫描由 {@link ResourcePackEnumerator} 枚举 classpath/resourcepacks 归档实现；
- * 枚举不可用时返回空列表（模型驱动引用兜底）。
+ * Scans top-level PNGs under {@code textures/<source>/} in every namespace
+ * (1.7.10 uses plural texture directories) and emits sprite id =
+ * {@code <ns>:<prefix><basename>}. Since the 1.7.10 resource manager cannot list
+ * directories, the scan is implemented by {@link ResourcePackEnumerator}
+ * enumerating classpath / resourcepacks archives; when enumeration is
+ * unavailable an empty list is returned (model-driven refs serve as fallback).
  * <p>
- * 定义 JSON 示例：
+ * Definition JSON example:
  * <pre>{@code {"type": "minecraft:directory", "source": "items", "prefix": "items/"}}</pre>
- *
- * <p>Scans {@code textures/<source>/} under every namespace and emits one
- * sprite ref per PNG, id = {@code ns:prefix+basename}.
  */
 @SideOnly(Side.CLIENT)
 public final class DirectorySource implements AtlasSource {
 
-    /** 纹理目录名（1.7.10 复数，如 {@code "items"}）。 */
+    /** Texture directory name (plural in 1.7.10, e.g. {@code "items"}). */
     private final String source;
-    /** sprite id 前缀（如 {@code "items/"}，与 1.7.10 模型引用格式一致 —— Wiki 语义：
-     * 前缀直接拼在命名空间 ID 路径最前面，{@code source="items"} + {@code prefix="items/"}
-     * 对 {@code textures/items/apple.png} 产出 {@code minecraft:items/apple}）。 */
+    /** sprite id prefix (e.g. {@code "items/"}), matching the 1.7.10 model reference format —
+     * the prefix is prepended directly to the namespace id path, so {@code source="items"} +
+     * {@code prefix="items/"} yields {@code minecraft:items/apple} for {@code textures/items/apple.png}). */
     private final String prefix;
 
     public DirectorySource(String source, String prefix) {
@@ -58,7 +57,7 @@ public final class DirectorySource implements AtlasSource {
     @Override
     public List<SpriteRef> list(IResourceManager manager) {
         List<SpriteRef> out = new ArrayList<>();
-        // 防重：同一 sprite id 可能出现在多个归档（pack 覆盖），只取首个
+        // De-duplicate: the same sprite id may appear in multiple archives (pack overrides); keep the first
         Set<String> seen = new HashSet<>();
         String expected = "textures/" + source + "/";
         for (String path : ResourcePackEnumerator.listAssets("assets/")) {
@@ -75,7 +74,7 @@ public final class DirectorySource implements AtlasSource {
             }
             String middle = tail.substring(expected.length(), tail.length() - 4);
             if (middle.isEmpty() || middle.indexOf('/') >= 0) {
-                continue; // 非递归：仅顶层 png
+                continue; // Non-recursive: top-level PNGs only
             }
             String spriteId = ns + ":" + prefix + middle;
             if (seen.add(spriteId)) {

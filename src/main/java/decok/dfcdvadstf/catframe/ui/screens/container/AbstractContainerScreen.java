@@ -37,41 +37,35 @@ import java.util.List;
  * This class is <b>only concerned with rendering and input dispatch</b> —
  * all interaction logic lives in {@link AbstractContainerMenu}.
  * </p>
- * <p>
- * 三层容器抽象的界面层。继承原版 {@link GuiContainer}（槽位渲染、拖拽状态机、
- * shift-click 等所需），并通过 {@link ContainerEventHandler} 与
- * {@link CatFrameInputScreen} 接入 CatFrame 的组件/事件体系。<br>
- * 本类<b>只关心渲染与输入派发</b>——所有交互逻辑由 {@link AbstractContainerMenu} 负责。
- * </p>
  *
- * @param <T> the menu type / 菜单类型
+ * @param <T> the menu type
  */
 @SideOnly(Side.CLIENT)
 public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
         extends GuiContainer
         implements GuiEventListener, ContainerEventHandler, CatFrameInputScreen {
 
-    /** The menu this screen displays. / 本界面显示的菜单。 */
+    /** The menu this screen displays. */
     protected final T menu;
 
-    /** Container texture dimensions in pixels. / 容器纹理尺寸（像素）。 */
+    /** Container texture dimensions in pixels. */
     protected int imageWidth = 176;
     protected int imageHeight = 166;
 
-    /** Top-left corner of the container texture on screen. / 容器纹理在屏幕上的左上角坐标。 */
+    /** Top-left corner of the container texture on screen. */
     protected int leftPos;
     protected int topPos;
 
-    /** The slot currently under the mouse, or {@code null}. / 鼠标下方的槽位，或 {@code null}。 */
+    /** The slot currently under the mouse, or {@code null}. */
     @Nullable
     protected Slot hoveredSlot;
 
     // ──── CatFrame widget system ────
 
-    /** All interactive children. / 所有可交互子组件。 */
+    /** All interactive children. */
     private final List<GuiEventListener> children = new ArrayList<GuiEventListener>();
 
-    /** Children that should be rendered each frame. / 每帧应渲染的子组件。 */
+    /** Children that should be rendered each frame. */
     private final List<GuiEventListener> renderables = new ArrayList<GuiEventListener>();
 
     @Nullable
@@ -81,7 +75,7 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
     // ──── Construction ────
 
     /**
-     * @param menu the menu to display / 要显示的菜单
+     * @param menu the menu to display
      */
     protected AbstractContainerScreen(final T menu) {
         super(menu);
@@ -94,7 +88,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     /**
      * Vanilla init hook. Called on open and resize.
-     * <p>原版初始化钩子。打开和调整大小时调用。</p>
      */
     @Override
     public void initGui() {
@@ -111,7 +104,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     /**
      * Subclasses build their CatFrame widget tree here.
-     * <p>子类在此通过 {@link #addRenderableWidget(GuiEventListener)} 等构建组件树。</p>
      */
     protected void init() {
     }
@@ -122,7 +114,7 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
         tick();
     }
 
-    /** Per-tick update hook. / 每 tick 更新钩子。 */
+    /** Per-tick update hook. */
     public void tick() {
     }
 
@@ -132,7 +124,7 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
         super.onGuiClosed();
     }
 
-    /** Called when the screen is closed. / 界面关闭时调用。 */
+    /** Called when the screen is closed. */
     public void removed() {
     }
 
@@ -144,8 +136,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
      * Renders vanilla container content (slots, items, background), then
      * iterates CatFrame renderables via {@link GuiGraphicsExtractor}.
      * </p>
-     * <p>渲染原版容器内容（槽位、物品、背景），然后通过 {@link GuiGraphicsExtractor}
-     * 遍历 CatFrame 可渲染组件。</p>
      */
     @Override
     public void drawScreen(final int mouseX, final int mouseY, final float partialTicks) {
@@ -165,17 +155,15 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
         }
 
         // Deferred hovered-slot tooltip — collected last so it stays topmost
-        // 悬停槽位延迟 tooltip——最后收集，保证绘制在最上层
         extractTooltip(graphics, mouseX, mouseY);
     }
 
     /**
      * Draw the container background texture. Called by vanilla.
-     * <p>绘制容器背景纹理。由原版调用。</p>
      *
-     * @param partialTicks tick 插值
-     * @param mouseX       鼠标 X
-     * @param mouseY       鼠标 Y
+     * @param partialTicks tick intervals
+     * @param mouseX       mouseX
+     * @param mouseY       mouseY
      */
     @Override
     protected abstract void drawGuiContainerBackgroundLayer(float partialTicks, int mouseX, int mouseY);
@@ -197,12 +185,8 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
     // ──── Hovered-slot tooltip ────
 
     /**
-     * Suppress the vanilla immediate tooltip draw.
-     * <p>
-     * 原版 {@link GuiContainer#drawScreen} 在帧尾为悬停槽位直接调用本方法绘制旧工具提示；
-     * CatFrame 改由 {@link #extractTooltip} 走延迟管线统一绘制（对标 26.1.2），
-     * 若保留原版路径会出现双重 tooltip，故在此显式抑制。
-     * </p>
+     * Suppress the vanilla immediate tooltip draw. <br>
+     * Do not use this if you want there are two stacked tooltips
      */
     @Override
     protected void renderToolTip(final ItemStack stack, final int mouseX, final int mouseY) {
@@ -216,12 +200,10 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
      * Shown only when no item is carried, or when the item's tooltip image
      * declares it should stay visible while an item is held.
      * </p>
-     * <p>为悬停槽位收集延迟 tooltip——对标 26.1.2。仅当未持取物品、
-     * 或物品图像组件声明「持物时仍显示」时才显示。</p>
      *
-     * @param graphics the rendering context / 渲染上下文
-     * @param mouseX   mouse X / 鼠标 X
-     * @param mouseY   mouse Y / 鼠标 Y
+     * @param graphics the rendering context
+     * @param mouseX   mouse X
+     * @param mouseY   mouse Y
      */
     protected void extractTooltip(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY) {
         if (this.hoveredSlot == null || !this.hoveredSlot.getHasStack()) {
@@ -246,7 +228,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
      * Whether the hovered item's tooltip stays visible while an item is held on
      * the cursor — corresponds to 26.1.2 same-name method; decided by the client
      * renderer dispatched from the item's tooltip image.
-     * <p>由物品图像组件的客户端分派决定（无图像或未声明时为 {@code false}）。</p>
      */
     private boolean showTooltipWithItemInHand(final ItemStack item) {
         return ItemTooltipImages.get(item)
@@ -259,9 +240,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
      * Collect the tooltip lines for a container item — corresponds to 26.1.2
      * {@code AbstractContainerScreen.getTooltipFromContainerItem(ItemStack)};
      * subclasses may override (e.g. creative-style screens).
-     * <p>收集容器内物品的 tooltip 文本行——对标 26.1.2；子类可覆写。</p>
-     * <p>Legacy hooks ({@code Item#addInformation} / Forge {@code ItemTooltipEvent}) fire inside
-     * the delegated collection — see {@link Screen#getTooltipFromItem}.</p>
      */
     protected List<String> getTooltipFromContainerItem(final ItemStack itemStack) {
         return Screen.getTooltipFromItem(this.mc, itemStack);
@@ -308,9 +286,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
      * {@link #handlesKeyboardDispatchInternally()} returns {@code true} so
      * {@code MixinGuiScreen} skips us.
      * </p>
-     * <p>自行将拆分键盘事件派发进组件树，然后委托给原版。因本基类自派发，
-     * {@link #handlesKeyboardDispatchInternally()} 返回 {@code true}，
-     * 令 {@code MixinGuiScreen} 跳过本屏幕。</p>
      */
     @Override
     public void handleKeyboardInput() {
@@ -341,8 +316,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
      * Returns {@code true}: this base drives its own keyboard dispatch in
      * {@link #handleKeyboardInput()}, so {@code MixinGuiScreen} must not
      * dispatch for it again.
-     * <p>返回 {@code true}：本基类在 {@link #handleKeyboardInput()} 中自行驱动键盘派发，
-     * 故 {@code MixinGuiScreen} 不得再为其重复派发。</p>
      */
     @Override
     public boolean handlesKeyboardDispatchInternally() {
@@ -351,7 +324,7 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     // ──── Close / Esc ────
 
-    /** @return whether Esc closes this screen / Esc 是否关闭本界面 */
+    /** @return whether Esc closes this screen */
     public boolean shouldCloseOnEsc() {
         return true;
     }
@@ -360,7 +333,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     /**
      * Add a component that is both rendered and receives events / focus.
-     * <p>添加一个既参与渲染、又接收事件与焦点的组件。</p>
      */
     protected <E extends GuiEventListener> E addRenderableWidget(final E widget) {
         this.renderables.add(widget);
@@ -370,7 +342,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     /**
      * Add a component that receives events / focus but is rendered elsewhere.
-     * <p>添加一个接收事件/焦点、但在别处渲染的组件。</p>
      */
     protected <E extends GuiEventListener> E addWidget(final E widget) {
         this.children.add(widget);
@@ -379,14 +350,13 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     /**
      * Add a render-only component (no events / focus).
-     * <p>添加一个仅渲染的组件（不接收事件/焦点）。</p>
      */
     protected <E extends GuiEventListener> E addRenderableOnly(final E renderable) {
         this.renderables.add(renderable);
         return renderable;
     }
 
-    /** Remove a previously registered component. / 移除一个已注册的组件。 */
+    /** Remove a previously registered component. */
     protected void removeWidget(final GuiEventListener widget) {
         this.renderables.remove(widget);
         if (this.focusedChild == widget) {
@@ -395,7 +365,7 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
         this.children.remove(widget);
     }
 
-    /** Clear all registered components. / 清空所有已注册组件。 */
+    /** Clear all registered components. */
     protected void clearWidgets() {
         this.renderables.clear();
         this.children.clear();
@@ -438,14 +408,13 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
         this.dragging = dragging;
     }
 
-    /** Clear the current focus. / 清除当前焦点。 */
+    /** Clear the current focus. */
     public void clearFocus() {
         setFocused((GuiEventListener) null);
     }
 
     /**
-     * Called after {@link #init()} to establish initial focus.
-     * <p>{@link #init()} 之后建立初始焦点。默认空实现。</p>
+     * Called after {@link #init()} to establish initial focus. Default is empty.
      */
     protected void setInitialFocus() {
     }
@@ -454,11 +423,10 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     /**
      * Find the slot at the given screen coordinates.
-     * <p>查找给定屏幕坐标处的槽位。</p>
      *
-     * @param mouseX mouse X / 鼠标 X
-     * @param mouseY mouse Y / 鼠标 Y
-     * @return the slot, or {@code null} if none / 槽位，无则 {@code null}
+     * @param mouseX mouse X
+     * @param mouseY mouse Y
+     * @return the slot, or {@code null} if none
      */
     @Nullable
     protected Slot getSlotAtPosition(final int mouseX, final int mouseY) {
@@ -473,7 +441,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     /**
      * Test whether the given rectangular area is being hovered.
-     * <p>测试给定矩形区域是否被鼠标悬停。</p>
      */
     protected boolean isHovering(final int left, final int top, final int width, final int height, int mouseX, int mouseY) {
         mouseX -= this.leftPos;
@@ -485,7 +452,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     /**
      * Container screens do not pause the game by default.
-     * <p>容器界面默认不暂停游戏。</p>
      */
     @Override
     public boolean doesGuiPauseGame() {

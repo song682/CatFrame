@@ -20,9 +20,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  * is resolved from the model's {@code textures.particle} slot; a missing slot
  * maps to missingno (26.1.2 {@code blockMissing} semantics, no substitute
  * guessing). Unmanaged blocks fall through to the vanilla per-side icon untouched.
- * <p>
- * 拦截 EntityDiggingFX 的粒子纹理采样点：CatFrame 接管方块的破坏/hit/blockdust
- * 粒子改由模型 particle 槽决定（槽缺失即 missingno，对标高版本），未接管方块放行原版。
  */
 @Mixin(EntityDiggingFX.class)
 public class MixinEntityDiggingFX {

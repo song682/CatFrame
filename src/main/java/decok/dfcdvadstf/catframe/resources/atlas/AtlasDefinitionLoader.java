@@ -18,22 +18,26 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 图集定义发现器 —— 枚举所有可达归档中的 {@code assets/<namespace>/atlases/<id>.json}
- * 并解码（命名空间驱动注册，设计文档确认决策）。
+ * Atlas definition discoverer — enumerates and decodes
+ * {@code assets/<namespace>/atlases/<id>.json} across all reachable archives
+ * (namespace-driven registration, a design-doc confirmed decision).
  * <p>
- * 目录名与 Wiki 一致为复数 {@code atlases/}（原版定义文件即
- * {@code assets/minecraft/atlases/blocks.json} → 图集 id {@code minecraft:blocks}）。
- * 枚举用 {@link ResourcePackEnumerator}（classpath + resourcepacks），同 id 定义
- * 跨资源包合并语义：内容一律经 {@code getResource} 读取（自动取最高优先级版本），
- * 故同 id 多次 put 的内容一致，天然满足「高优先级包覆盖同定义文件」的 Wiki 语义。
+ * The directory name is plural {@code atlases/} as on the Wiki (the vanilla
+ * definition file is {@code assets/minecraft/atlases/blocks.json} → atlas id
+ * {@code minecraft:blocks}). Enumeration uses {@link ResourcePackEnumerator}
+ * (classpath + resourcepacks); same-id definitions merge across packs because
+ * contents are always read via {@code getResource} (which picks the
+ * highest-priority version), so repeated puts for the same id carry identical
+ * content — naturally satisfying the Wiki semantic that a higher-priority pack
+ * overrides the same definition file.
  * <p>
- * [渲染三域架构] 收集分流：加载全部定义后按 atlas id 归属消费 —— blocks / items 定义
- * 喂原版 TextureMap（{@code CatAtlasManager.registerDefinedSprites}），{@code catframe:gui}
- * 定义喂 CatFrame 自建 GUI 图集（{@code UiTextureAtlasManager}，独立事件链）；
- * 其它 atlas id 的定义由各自消费方处理。
- *
- * <p>Discovers and decodes atlas definition JSONs across all namespaces;
- * same-id definitions merge by pack priority through the resource manager.
+ * [Render three-domain architecture] Collection routing: after loading all
+ * definitions they are consumed by atlas id ownership — blocks / items
+ * definitions feed the vanilla TextureMap
+ * ({@code CatAtlasManager.registerDefinedSprites}), the {@code catframe:gui}
+ * definition feeds the CatFrame-built GUI atlas
+ * ({@code UiTextureAtlasManager}, independent event chain); definitions of other
+ * atlas ids are handled by their respective consumers.
  */
 @SideOnly(Side.CLIENT)
 public final class AtlasDefinitionLoader {
@@ -42,15 +46,15 @@ public final class AtlasDefinitionLoader {
     }
 
     /**
-     * 加载全部图集定义。
+     * Loads all atlas definitions.
      *
-     * @return atlasId（{@code <ns>:<id>}）→ 已解码的 source 列表
+     * @return atlasId ({@code <ns>:<id>}) → decoded source list
      */
     public static Map<String, List<AtlasSource>> loadAll() {
         Map<String, List<AtlasSource>> defs = new LinkedHashMap<>();
         IResourceManager mgr = Minecraft.getMinecraft().getResourceManager();
         for (String path : ResourcePackEnumerator.listAssets("assets/")) {
-            // assets/<ns>/atlases/<id>.json（顶层，不递归子目录）
+            // assets/<ns>/atlases/<id>.json (top level, no recursion into subdirectories)
             if (!path.endsWith(".json")) {
                 continue;
             }
@@ -84,21 +88,19 @@ public final class AtlasDefinitionLoader {
     }
 
     /**
-     * [渲染三域架构] 定义驱动收集（按 atlas id 归属分流）：取指定图集定义的全部 source
-     * 按序产出 sprite ref，id 原样采用（数据驱动键）。
+     * [Render three-domain architecture] Definition-driven collection (routed by
+     * atlas id ownership): all sources of the given atlas definition emit sprite
+     * refs in order, ids are used as-is (data-driven keys).
      * <ol>
-     *   <li>filter 源命中 → 移除（仅作用于定义驱动集合）；</li>
-     *   <li>重复 sprite id → warn + 跳过（先入者胜，同 pack 覆盖语义）；</li>
-     *   <li>SpriteRef 的 atlasId 覆盖字段仅 debug 记录（消费方决定是否接受跨图集引用）。</li>
+     *   <li>filter source hit → removed (only affects the definition-driven set);</li>
+     *   <li>duplicate sprite id → warn + skip (first wins, mirroring pack override semantics);</li>
+     *   <li>the SpriteRef atlasId override field is only debug-logged (the consumer decides whether to accept cross-atlas refs).</li>
      * </ol>
-     * 由 {@code CatAtlasManager.registerDefinedSprites}（原版 blocks/items 输出端）与
-     * {@code UiTextureAtlasManager}（{@code catframe:gui} GUI 图集）共用。
+     * Shared by {@code CatAtlasManager.registerDefinedSprites} (vanilla blocks/items
+     * output end) and {@code UiTextureAtlasManager} (the {@code catframe:gui} GUI atlas).
      *
-     * <p>Definition-driven collection for one atlas id: sources emit sprite refs
-     * in order, filters remove, duplicates warn-and-skip (first wins).
-     *
-     * @param atlasId 图集 id（{@code <ns>:<id>}，如 {@code minecraft:blocks} / {@code catframe:gui}）
-     * @return 去重后的 sprite 引用列表（定义缺失时为空）
+     * @param atlasId atlas id ({@code <ns>:<id>}, e.g. {@code minecraft:blocks} / {@code catframe:gui})
+     * @return deduplicated sprite ref list (empty when the definition is missing)
      */
     public static List<SpriteRef> collectRefs(String atlasId) {
         Map<String, List<AtlasSource>> defs = loadAll();
@@ -137,7 +139,7 @@ public final class AtlasDefinitionLoader {
         return new ArrayList<>(merged.values());
     }
 
-    /** 定义驱动集合中是否被任一 filter 源命中移除。 */
+    /** Whether the definition-driven set has this id removed by any filter source. */
     private static boolean isFiltered(List<AtlasSource> sources, String spriteId) {
         for (AtlasSource source : sources) {
             if (source instanceof FilterSource && source.shouldRemove(spriteId)) {

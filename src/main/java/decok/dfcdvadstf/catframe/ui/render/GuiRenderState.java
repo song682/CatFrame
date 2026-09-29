@@ -9,24 +9,24 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * GUI 渲染状态收集器 — 完整对标 26.1.2 {@code GuiRenderState}。
+ * GUI Render State Collector — fully mirrors 26.1.2 {@code GuiRenderState}.
  *
- * <h3>核心架构</h3>
- * <p>采用 <b>Strata + Node 树</b> 的分层结构管理 GUI 元素的渲染顺序：</p>
+ * <h3>Core Architecture</h3>
+ * <p>Uses a <b>Strata + Node tree</b> layered structure to manage GUI element render order:</p>
  * <ul>
- *   <li><b>Stratum（层）</b>：帧级别的渲染分层，按添加顺序遍历。
- *       通过 {@link #nextStratum()} 创建新层，用于区分背景、内容、前景等。</li>
- *   <li><b>Node（节点）</b>：每个 stratum 内部是一棵 Node 树，
- *       通过 {@code parent → up} 指针形成层级。子节点渲染在父节点之上。</li>
- *   <li><b>自动分层</b>：{@link #findAppropriateNode} 根据元素 bounds 的
- *       相交/包含关系，自动决定新元素应归属到 Node 树的哪一层。
- *       被包含的元素自动进入子节点（渲染在更上层）。</li>
+ *   <li><b>Stratum (layer)</b>: Frame-level render layers, iterated in addition order.
+ *       Create new layer via {@link #nextStratum()} to separate background, content, foreground, etc.</li>
+ *   <li><b>Node</b>: Each stratum contains a Node tree with {@code parent → up} pointers
+ *       forming hierarchy. Child nodes render on top of parent nodes.</li>
+ *   <li><b>Auto-layering</b>: {@link #findAppropriateNode} automatically decides which
+ *       level of the Node tree a new element belongs to based on bounds intersection/
+ *       containment. Contained elements automatically enter child nodes (render on top).</li>
  * </ul>
  *
- * <h3>与 26.1.2 的对应关系</h3>
+ * <h3>Correspondence with 26.1.2</h3>
  * <table>
  *   <tr><th>26.1.2</th><th>CatFrame 1.7.10</th></tr>
- *   <tr><td>{@code GuiRenderState.strata}</td><td>{@code strata} (List&lt;Node&gt;)</td></tr>
+ *   <tr><td>{@code GuiRenderState.strata}</td><td>{@code strata} (List<Node>)</td></tr>
  *   <tr><td>{@code GuiRenderState.current}</td><td>{@code current} (Node)</td></tr>
  *   <tr><td>{@code GuiItemRenderState}</td><td>{@link ItemRenderState}</td></tr>
  *   <tr><td>{@code GuiElementRenderState}</td><td>{@link ElementRenderState}</td></tr>
@@ -36,44 +36,44 @@ import java.util.function.Consumer;
  *   <tr><td>{@code blurBeforeThisStratum()}</td><td>{@link #blurBeforeThisStratum()}</td></tr>
  * </table>
  *
- * <h3>1.7.10 适配</h3>
- * <p>26.1.2 的 GuiRenderState 用于延迟渲染（收集状态 → 统一提交到 GPU）。
- * 1.7.10 使用 GL 即时模式，GuiRenderState 的价值在于：</p>
+ * <h3>1.7.10 Adaptation</h3>
+ * <p>26.1.2's GuiRenderState is for deferred rendering (collect state → unified GPU submit).
+ * 1.7.10 uses GL immediate mode; GuiRenderState provides value through:</p>
  * <ul>
- *   <li><b>z-order 管理</b>：确保 GUI 元素按正确层级渲染</li>
- *   <li><b>状态追踪</b>：记录所有渲染过的物品位置，供 tooltip/点击判定使用</li>
- *   <li><b>帧级生命周期</b>：{@link #reset()} 在帧开始时清理</li>
+ *   <li><b>z-order management</b>: ensures GUI elements render in correct layer order</li>
+ *   <li><b>State tracking</b>: records all rendered item positions for tooltip/click detection</li>
+ *   <li><b>Frame lifecycle</b>: {@link #reset()} clears at frame start</li>
  * </ul>
  */
 public class GuiRenderState {
 
-    /** 所有 stratum 的根节点列表（按添加顺序） */
+    /** All stratum root nodes (in addition order) */
     private final List<Node> strata = new ArrayList<>();
 
-    /** 模糊效果的分界线：此 stratum 之前的内容需要在模糊前渲染 */
+    /** Blur effect divider: content before this stratum renders before blur */
     private int firstStratumAfterBlur = Integer.MAX_VALUE;
 
-    /** 当前写入节点 — 新元素默认添加到此节点 */
+    /** Current write node — new elements added here by default */
     private Node current;
 
-    /** 上一元素的边界 — 用于自动分层判定 */
+    /** Previous element bounds — used for auto-layering decision */
     @Nullable
     private ScreenRectangle lastElementBounds;
 
-    /** 本帧渲染过的物品模型标识集合（去重用） */
+    /** Item model identities rendered this frame (for deduplication) */
     private final Set<Object> itemModelIdentities = new HashSet<>();
 
     public GuiRenderState() {
         nextStratum();
     }
 
-    // ==================== Stratum 管理 ====================
+    // ==================== Stratum management ====================
 
-    /**
-     * 创建新的渲染层。
+/**
+     * Create a new render layer.
      * <p>
-     * 对标 26.1.2 {@code GuiRenderState.nextStratum()}。
-     * 新层在所有已有层之后渲染（更靠前/更上层）。
+     * Mirrors 26.1.2 {@code GuiRenderState.nextStratum()}.
+     * New layer renders after all existing layers (more front/top).
      */
     public void nextStratum() {
         current = new Node(null);
@@ -81,14 +81,14 @@ public class GuiRenderState {
     }
 
     /**
-     * 标记在当前层之前插入模糊效果分界线。
+     * Mark blur effect divider before current layer.
      * <p>
-     * 对标 26.1.2 {@code GuiRenderState.blurBeforeThisStratum()}。
-     * 用于容器界面中背景模糊（毛玻璃效果）的渲染分界：
-     * 分界线之前的内容先渲染，然后执行模糊，再渲染分界线之后的内容。
-     * <p>每帧只能调用一次。</p>
+     * Mirrors 26.1.2 {@code GuiRenderState.blurBeforeThisStratum()}.
+     * Render divider for container background blur (frosted glass):
+     * content before divider renders first, then blur, then content after.
+     * <p>Can only be called once per frame.</p>
      *
-     * @throws IllegalStateException 如果本帧已调用过
+     * @throws IllegalStateException if already called this frame
      */
     public void blurBeforeThisStratum() {
         if (firstStratumAfterBlur != Integer.MAX_VALUE) {
@@ -97,14 +97,14 @@ public class GuiRenderState {
         firstStratumAfterBlur = strata.size() - 1;
     }
 
-    // ==================== Node 导航 ====================
+    // ==================== Node navigation ====================
 
     /**
-     * 向上移动到当前节点的父级。
+     * Move up to current node's parent.
      * <p>
-     * 对标 26.1.2 {@code GuiRenderState.up()}。
-     * 如果当前节点没有父级，自动创建一个。
-     * 效果：后续添加的元素将渲染在更上层。
+     * Mirrors 26.1.2 {@code GuiRenderState.up()}.
+     * If current node has no parent, one is created automatically.
+     * Effect: subsequent elements render on a higher layer.
      */
     public void up() {
         if (current.up == null) {
@@ -113,15 +113,15 @@ public class GuiRenderState {
         current = current.up;
     }
 
-    // ==================== 元素添加 ====================
+    // ==================== Element adding ====================
 
     /**
-     * 添加物品渲染状态。
+     * Add an item render state.
      * <p>
-     * 自动分层：根据 bounds 的相交/包含关系决定归属节点。
-     * 对标 26.1.2 {@code GuiRenderState.addItem(GuiItemRenderState)}。
+     * Auto-layering: decides target node based on bounds intersection/containment.
+     * Mirrors 26.1.2 {@code GuiRenderState.addItem(GuiItemRenderState)}.
      *
-     * @return true 如果成功添加（bounds 非 null）
+     * @return true if successfully added (bounds non-null)
      */
     public boolean addItem(ItemRenderState itemState) {
         if (!findAppropriateNode(itemState)) return false;
@@ -131,10 +131,10 @@ public class GuiRenderState {
     }
 
     /**
-     * 添加 GUI 元素渲染状态（纹理绘制、矩形填充等）。
-     * <p>对标 26.1.2 {@code GuiRenderState.addGuiElement(GuiElementRenderState)}。</p>
+     * Add a GUI element render state (texture blit, rectangle fill, etc.).
+     * <p>Mirrors 26.1.2 {@code GuiRenderState.addGuiElement(GuiElementRenderState)}.</p>
      *
-     * @return true 如果成功添加
+     * @return true if successfully added
      */
     public boolean addElement(ElementRenderState elementState) {
         if (!findAppropriateNode(elementState)) return false;
@@ -143,10 +143,10 @@ public class GuiRenderState {
     }
 
     /**
-     * 添加文本渲染状态。
-     * <p>对标 26.1.2 {@code GuiRenderState.addText(GuiTextRenderState)}。</p>
+     * Add a text render state.
+     * <p>Mirrors 26.1.2 {@code GuiRenderState.addText(GuiTextRenderState)}.</p>
      *
-     * @return true 如果成功添加
+     * @return true if successfully added
      */
     public boolean addText(TextRenderState textState) {
         if (!findAppropriateNode(textState)) return false;
@@ -155,27 +155,27 @@ public class GuiRenderState {
     }
 
     /**
-     * 直接添加元素到当前节点（跳过自动分层）。
-     * <p>对标 26.1.2 {@code GuiRenderState.addBlitToCurrentLayer()}。</p>
+     * Add element directly to current node (skip auto-layering).
+     * <p>Mirrors 26.1.2 {@code GuiRenderState.addBlitToCurrentLayer()}.</p>
      */
     public void addElementToCurrentLayer(ElementRenderState elementState) {
         current.addElement(elementState);
     }
 
-    // ==================== 自动分层 ====================
+    // ==================== Auto-layering ====================
 
     /**
-     * 根据元素的 bounds 找到合适的 Node。
+     * Find appropriate Node based on element bounds.
      * <p>
-     * 对标 26.1.2 {@code GuiRenderState.findAppropriateNode(ScreenArea)}。
-     * 分层逻辑：
+     * Mirrors 26.1.2 {@code GuiRenderState.findAppropriateNode(ScreenArea)}.
+     * Layering logic:
      * <ol>
-     *   <li>如果上一元素的 bounds 完全包含新元素的 bounds → {@link #up()}（进入子层）</li>
-     *   <li>否则从 stratum 根节点向下搜索，找到与新元素 bounds 相交的最高节点，
-     *       然后 {@link #up()} 到其父级（在相交元素之上）</li>
+     *   <li>If previous element bounds fully contains new element bounds → {@link #up()} (enter child layer)</li>
+     *   <li>Otherwise search down from stratum root for highest node intersecting new bounds,
+     *       then {@link #up()} to its parent (above intersecting elements)</li>
      * </ol>
      *
-     * @return true 如果元素有有效 bounds 并找到了节点
+     * @return true if element has valid bounds and node found
      */
     private boolean findAppropriateNode(ScreenArea area) {
         ScreenRectangle bounds = area.bounds();
@@ -194,10 +194,11 @@ public class GuiRenderState {
     }
 
     /**
-     * 从当前 stratum 的最深层节点开始，向上搜索与新 bounds 相交的节点。
+     * Starting from current stratum's deepest node, search up for node intersecting new bounds.
      * <p>
-     * 对标 26.1.2 {@code navigateToAboveHighestElementWithIntersectingBounds()}。
-     * 找到相交节点后，{@link #up()} 到其父级（确保新元素渲染在相交元素之上）。
+     * Mirrors 26.1.2 {@code navigateToAboveHighestElementWithIntersectingBounds()}.
+     * On finding intersecting node, {@link #up()} to its parent (ensures new element
+     * renders above intersecting elements).
      */
     private void navigateToAboveHighestIntersecting(ScreenRectangle bounds) {
         // 从 stratum 的最深层开始
@@ -224,7 +225,7 @@ public class GuiRenderState {
     }
 
     /**
-     * 检查 bounds 列表中是否有任何元素与给定 bounds 相交。
+     * Check if any element in bounds list intersects given bounds.
      */
     private boolean hasIntersection(ScreenRectangle bounds,
                                     @Nullable List<? extends ScreenArea> states) {
@@ -239,11 +240,11 @@ public class GuiRenderState {
         return false;
     }
 
-    // ==================== 遍历 ====================
+    // ==================== Traversal ====================
 
     /**
-     * 按 Node 树顺序遍历所有物品渲染状态。
-     * <p>对标 26.1.2 {@code GuiRenderState.forEachItem()}。</p>
+     * Iterate all item render states in Node tree order.
+     * <p>Mirrors 26.1.2 {@code GuiRenderState.forEachItem()}.</p>
      */
     public void forEachItem(Consumer<ItemRenderState> consumer) {
         Node backup = current;
@@ -259,8 +260,8 @@ public class GuiRenderState {
     }
 
     /**
-     * 按 Node 树顺序遍历所有元素渲染状态。
-     * <p>对标 26.1.2 {@code GuiRenderState.forEachElement()}。</p>
+     * Iterate all element render states in Node tree order.
+     * <p>Mirrors 26.1.2 {@code GuiRenderState.forEachElement()}.</p>
      */
     public void forEachElement(Consumer<ElementRenderState> consumer, TraverseRange range) {
         traverse(node -> {
@@ -273,8 +274,8 @@ public class GuiRenderState {
     }
 
     /**
-     * 按 Node 树顺序遍历所有文本渲染状态。
-     * <p>对标 26.1.2 {@code GuiRenderState.forEachText()}。</p>
+     * Iterate all text render states in Node tree order.
+     * <p>Mirrors 26.1.2 {@code GuiRenderState.forEachText()}.</p>
      */
     public void forEachText(Consumer<TextRenderState> consumer) {
         Node backup = current;
@@ -290,8 +291,8 @@ public class GuiRenderState {
     }
 
     /**
-     * 对元素列表排序。
-     * <p>对标 26.1.2 {@code GuiRenderState.sortElements()}。</p>
+     * Sort element list.
+     * <p>Mirrors 26.1.2 {@code GuiRenderState.sortElements()}.</p>
      */
     public void sortElements(Comparator<ElementRenderState> comparator) {
         traverse(node -> {
@@ -302,8 +303,8 @@ public class GuiRenderState {
     }
 
     /**
-     * 按 stratum 顺序遍历 Node 树。
-     * 每个 stratum 从根节点开始，递归访问子节点。
+     * Traverse Node tree in stratum order.
+     * Each stratum starts at root, recursively visits child nodes.
      */
     private void traverse(Consumer<Node> consumer, TraverseRange range) {
         int start = 0;
@@ -318,7 +319,7 @@ public class GuiRenderState {
         }
     }
 
-    /** 递归遍历 Node 及其子节点。 */
+    /** Recursively traverse Node and its children. */
     private void traverseNode(Node node, Consumer<Node> consumer) {
         consumer.accept(node);
         if (node.up != null) {
@@ -326,23 +327,23 @@ public class GuiRenderState {
         }
     }
 
-    // ==================== 查询 ====================
+    // ==================== Queries ====================
 
-    /** 获取本帧渲染过的所有物品模型标识。 */
+    /** Gets all item model identities rendered this frame. */
     public Set<Object> getItemModelIdentities() {
         return itemModelIdentities;
     }
 
-    /** 获取当前写入节点。 */
+    /** Gets current write node. */
     public Node getCurrentNode() {
         return current;
     }
 
-    // ==================== 帧生命周期 ====================
+    // ==================== Frame lifecycle ====================
 
     /**
-     * 帧开始时重置所有状态。
-     * <p>对标 26.1.2 {@code GuiRenderState.reset()}。</p>
+     * Reset all state at frame start.
+     * <p>Mirrors 26.1.2 {@code GuiRenderState.reset()}.</p>
      */
     public void reset() {
         itemModelIdentities.clear();
@@ -352,31 +353,31 @@ public class GuiRenderState {
         nextStratum();
     }
 
-    // ==================== 遍历范围 ====================
+    // ==================== Traversal range ====================
 
     /**
-     * 遍历范围 — 用于区分模糊效果前后的渲染。
-     * <p>对标 26.1.2 {@code GuiRenderState.TraverseRange}。</p>
+     * Traversal range — distinguishes rendering before/after blur effect.
+     * <p>Mirrors 26.1.2 {@code GuiRenderState.TraverseRange}.</p>
      */
     public enum TraverseRange {
-        /** 遍历所有 stratum */
+        /** Traverse all strata */
         ALL,
-        /** 只遍历模糊分界线之前的 stratum */
+        /** Traverse only strata before blur divider */
         BEFORE_BLUR,
-        /** 只遍历模糊分界线之后的 stratum */
+        /** Traverse only strata after blur divider */
         AFTER_BLUR
     }
 
-    // ==================== Node 树节点 ====================
+    // ==================== Node tree node ====================
 
     /**
-     * Node 树节点 — 每个节点持有多种类型的渲染状态列表。
+     * Node tree node — each node holds multiple render state lists.
      * <p>
-     * 对标 26.1.2 {@code GuiRenderState.Node}。
+     * Mirrors 26.1.2 {@code GuiRenderState.Node}.
      * <ul>
-     *   <li>{@code parent}：父节点（向下指向更底层）</li>
-     *   <li>{@code up}：子节点（向上指向更上层）</li>
-     *   <li>遍历顺序：parent → up（先底层后上层）</li>
+     *   <li>{@code parent}: parent node (points down to lower layer)</li>
+     *   <li>{@code up}: child node (points up to higher layer)</li>
+     *   <li>Traversal order: parent → up (bottom layer first, then top)</li>
      * </ul>
      */
     public static class Node {
@@ -412,13 +413,13 @@ public class GuiRenderState {
         }
     }
 
-    // ==================== 渲染状态数据类 ====================
+    // ==================== Render state data classes ====================
 
-    /**
-     * 物品渲染状态 — 对标 26.1.2 {@code GuiItemRenderState}。
+/**
+     * Item render state — mirrors 26.1.2 {@code GuiItemRenderState}.
      * <p>
-     * 记录一次 GUI 物品渲染的完整信息：物品栈、位置、边界。
-     * 实现 {@link ScreenArea} 以参与自动分层判定。
+     * Records complete info for one GUI item render: item stack, position, bounds.
+     * Implements {@link ScreenArea} for auto-layering decisions.
      */
     public static class ItemRenderState implements ScreenArea {
         private final ItemStack stack;
@@ -426,8 +427,9 @@ public class GuiRenderState {
         private final int y;
         private final ScreenRectangle bounds;
         /**
-         * 收集时的 modelview 矩阵快照 — 对标 26.1.2 {@code GuiItemRenderState} 携带的 pose matrix。
-         * <p>帧末延迟渲染据此 {@code glLoadMatrix} 恢复调用点的 GL 变换；可为 null（无快照则按当前 GL 状态绘制）。</p>
+         * Modelview matrix snapshot at collection time — mirrors 26.1.2 {@code GuiItemRenderState} pose matrix.
+         * <p>End-of-frame deferred rendering uses this to {@code glLoadMatrix} restoring call-site GL transform;
+         * may be null (no snapshot → draw with current GL state).</p>
          */
         @Nullable
         private final float[] poseMatrix;
@@ -453,7 +455,7 @@ public class GuiRenderState {
         @Nullable
         public float[] getPoseMatrix() { return poseMatrix; }
 
-        /** 物品模型标识 — 用于去重和追踪 */
+        /** Item model identity — for deduplication and tracking */
         public Object getIdentity() {
             return stack.getItem();
         }
@@ -464,11 +466,11 @@ public class GuiRenderState {
         }
     }
 
-    /**
-     * GUI 元素渲染状态 — 对标 26.1.2 {@code GuiElementRenderState}。
+/**
+     * GUI element render state — mirrors 26.1.2 {@code GuiElementRenderState}.
      * <p>
-     * 描述一个 2D GUI 绘制操作（纹理 blit、矩形填充等）。
-     * 在 1.7.10 GL 即时模式下，存储绘制参数供回放使用。
+     * Describes a 2D GUI draw operation (texture blit, rectangle fill, etc.).
+     * In 1.7.10 GL immediate mode, stores draw params for replay.
      */
     public static class ElementRenderState implements ScreenArea {
         private final ScreenRectangle bounds;
@@ -496,10 +498,10 @@ public class GuiRenderState {
         }
     }
 
-    /**
-     * 文本渲染状态 — 对标 26.1.2 {@code GuiTextRenderState}。
+/**
+     * Text render state — mirrors 26.1.2 {@code GuiTextRenderState}.
      * <p>
-     * 描述一次文本绘制操作。
+     * Describes a single text draw operation.
      */
     public static class TextRenderState implements ScreenArea {
         private final String text;
@@ -513,8 +515,8 @@ public class GuiRenderState {
             this.x = x;
             this.y = y;
             this.color = color;
-            // 简化边界计算：每个字符约 6px 宽，8px 高
-            // 精确计算需要 Font 对象，此处用近似值
+            // Simplified bounds: ~6px per char width, 8px height
+            // Exact calc needs Font object, approximation used here
             int estimatedWidth = text.length() * 6;
             this.bounds = new ScreenRectangle(x, y, estimatedWidth, 8);
         }

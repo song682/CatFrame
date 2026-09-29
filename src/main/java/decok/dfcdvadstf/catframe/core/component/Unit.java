@@ -1,10 +1,10 @@
 package decok.dfcdvadstf.catframe.core.component;
 
 /**
- * 标记值 - 用于只需要存在/不存在标记的组件。
+ * Marker value — used for components that only need a presence/absence flag.
  * <p>
- * 类似 26.1.2 的 {@code net.minecraft.core.component.DataComponentType.Unit}。
- * 使用布尔值表示存在状态，与 {@link Boolean#TRUE} 等价。
+ * Similar to 26.1.2's {@code net.minecraft.core.component.DataComponentType.Unit}.
+ * Uses a boolean to represent presence, equivalent to {@link Boolean#TRUE}.
  */
 public final class Unit {
 
@@ -18,7 +18,7 @@ public final class Unit {
     }
 
     /**
-     * 解析布尔值到 Unit。
+     * Parse a boolean to Unit.
      */
     public static Unit of(boolean present) {
         return present ? INSTANCE : null;

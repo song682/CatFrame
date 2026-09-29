@@ -10,24 +10,23 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * 正则过滤源（对标 26.1.2 {@code minecraft:filter}）。
+ * Regex filter source (mirrors 26.1.2 {@code minecraft:filter}).
  * <p>
- * 不产出 sprite；收集器对其<b>已收集</b>的 id 按 namespace / path 正则匹配移除
- * （matches 全匹配）。正则缺省 = 匹配全部。仅作用于定义驱动集合，模型驱动引用
- * 不受过滤（模型引用的纹理必须缝合）。
+ * Produces no sprites; instead the collector removes its <b>already-collected</b>
+ * ids matching the namespace / path regexes (full-match via {@code matches()}).
+ * An absent regex matches everything. Only the definition-driven set is affected;
+ * model-driven refs are never filtered (textures referenced by models must be
+ * stitched).
  * <p>
- * 定义 JSON 示例：
+ * Definition JSON example:
  * <pre>{@code {"type": "minecraft:filter", "namespace": "minecraft", "path": "block/.*_debug.*"}}</pre>
- *
- * <p>Regex filter: removes already-collected sprite ids matching namespace/path
- * patterns; never touches model-driven refs.
  */
 @SideOnly(Side.CLIENT)
 public final class FilterSource implements AtlasSource {
 
-    /** namespace 正则（null = 全部）。 */
+    /** Namespace regex (null = match all). */
     private final Pattern namespace;
-    /** path 正则（null = 全部）。 */
+    /** Path regex (null = match all). */
     private final Pattern path;
 
     public FilterSource(String namespaceRegex, String pathRegex) {

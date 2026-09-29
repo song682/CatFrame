@@ -4,38 +4,36 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 /**
- * 像素级变换描述 —— 供 M2 unstitch（网格裁剪）与 M4 paletted_permutations
- * （关键色替换）两类源在 sprite 解码后施加，属 SpriteRef 的可选载荷。
+ * Pixel-level transform descriptor — applied after sprite decode by the two
+ * source kinds M2 unstitch (grid clipping) and M4 paletted_permutations
+ * (key-color replacement); an optional payload of SpriteRef.
  * <p>
- * 变换在 CatSpriteLoader 中于主线程构造（闭包捕获 palette/overlay 像素），
- * 在并行解码线程应用 —— 实现必须无状态、线程安全（只读闭包）。
- *
- * <p>Optional pixel-level transform carried by {@link SpriteRef}; applied by the
- * sprite loader after PNG decode. Implementations must be stateless and
- * thread-safe (captured data only), since the transform runs on the decode pool.
+ * Transforms are constructed on the main thread in CatSpriteLoader (closures
+ * capture palette/overlay pixels) and applied on the parallel decode threads —
+ * implementations must be stateless and thread-safe (read-only closures).
  */
 @SideOnly(Side.CLIENT)
 public interface PixelTransform {
 
     /**
-     * 对源像素施加变换。
+     * Applies the transform to the source pixels.
      *
-     * @param src       源像素（flat ARGB，row-major）
-     * @param srcWidth  源宽度
-     * @param srcHeight 源高度
-     * @return 变换结果（像素 + 输出尺寸）
+     * @param src       source pixels (flat ARGB, row-major)
+     * @param srcWidth  source width
+     * @param srcHeight source height
+     * @return the transform result (pixels + output size)
      */
     Result apply(int[] src, int srcWidth, int srcHeight);
 
     /**
-     * 变换结果：输出像素与输出尺寸（CatSprite 内容尺寸以此为准）。
+     * Transform result: output pixels and output size (CatSprite content size is based on this).
      */
     final class Result {
-        /** 输出像素（flat ARGB，row-major）。 */
+        /** Output pixels (flat ARGB, row-major). */
         public final int[] pixels;
-        /** 输出宽度。 */
+        /** Output width. */
         public final int width;
-        /** 输出高度。 */
+        /** Output height. */
         public final int height;
 
         public Result(int[] pixels, int width, int height) {

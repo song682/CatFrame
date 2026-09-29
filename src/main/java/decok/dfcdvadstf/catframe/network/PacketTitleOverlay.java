@@ -6,17 +6,12 @@ import io.netty.buffer.ByteBuf;
 
 /**
  * <p>
- * 服务端→客户端 Title / ActionBar 覆盖层包。携带一个 action 类型标识、
- * 可选的 JSON 文本内容和可选的计时参数，由客户端处理器触发已有的
- * {@code TitleOverlay} / {@code ActionBarOverlay} 渲染。
- * </p>
- * <p>
  * Server → Client packet for Title / ActionBar overlay. Carries an action type,
  * optional JSON text content and optional timing parameters; the client handler
  * triggers the existing {@code TitleOverlay} / {@code ActionBarOverlay} rendering.
  * </p>
  *
- * <h3>Wire format / 线路格式</h3>
+ * <h3>Wire format</h3>
  * <ol>
  *   <li>{@code byte} — action ordinal (see {@link Action})</li>
  *   <li>{@code UTF8 string} — JSON text (empty string for CLEAR / RESET / TIMES)</li>
@@ -29,7 +24,6 @@ public class PacketTitleOverlay implements IMessage {
 
     /**
      * Action types for the title overlay packet.
-     * <p>标题覆盖层包的动作类型。</p>
      */
     public enum Action {
         TITLE,
@@ -46,7 +40,7 @@ public class PacketTitleOverlay implements IMessage {
     private int stay;
     private int fadeOut;
 
-    /** No-arg constructor required by Forge / Forge 要求的无参构造 */
+    /** No-arg constructor required by Forge */
     public PacketTitleOverlay() {
     }
 
@@ -58,17 +52,17 @@ public class PacketTitleOverlay implements IMessage {
         this.fadeOut = fadeOut;
     }
 
-    /** Convenience: text-only actions / 便捷：纯文本动作 */
+    /** Convenience: text-only actions */
     public static PacketTitleOverlay text(Action action, String textJson) {
         return new PacketTitleOverlay(action, textJson, 0, 0, 0);
     }
 
-    /** Convenience: no-arg actions / 便捷：无参动作 */
+    /** Convenience: no-arg actions */
     public static PacketTitleOverlay simple(Action action) {
         return new PacketTitleOverlay(action, "", 0, 0, 0);
     }
 
-    /** Convenience: times-only action / 便捷：纯计时动作 */
+    /** Convenience: times-only action */
     public static PacketTitleOverlay times(int fadeIn, int stay, int fadeOut) {
         return new PacketTitleOverlay(Action.TIMES, "", fadeIn, stay, fadeOut);
     }

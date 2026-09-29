@@ -4,25 +4,24 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 图集缝合失败异常 —— 携带可读的 sprite 清单与尺寸信息（对标 26.1.2
- * {@code StitcherException}：图集容量不足时列出全部待放置 sprite，便于调试定位）。
+ * Atlas stitch failure — carries a readable sprite list and size info (mirrors
+ * 26.1.2 {@code StitcherException}: when atlas capacity is insufficient, all
+ * sprites awaiting placement are listed for easier debugging).
  * <p>
- * 触发条件：布局扩展时任一轴超过 {@code GL_MAX_TEXTURE_SIZE} 与 16384 的较小者。
- * 调用方（{@code CatAtlasManager}）捕获后降级为原版缝合路径，游戏不崩溃。
- *
- * <p>Thrown when atlas packing overflows the texture size limit; carries the
- * full list of sprites that could not be placed for a debuggable crash.
+ * Trigger condition: during layout growth either axis exceeds the smaller of
+ * {@code GL_MAX_TEXTURE_SIZE} and 16384. The caller ({@code CatAtlasManager})
+ * catches it and falls back to the vanilla stitching path, so the game does not crash.
  */
 public class TextureStitchException extends RuntimeException {
 
-    /** 当前无法放置的 sprite icon 名。 */
+    /** Icon name of the sprite that currently cannot be placed. */
     private final String currentName;
-    /** 全部未放置 sprite 的 icon 名清单（含当前项）。 */
+    /** Icon names of all unplaced sprites (including the current one). */
     private final List<String> unplacedNames;
-    /** 失败时的已用存储尺寸（未 2^n 化的包围盒）。 */
+    /** Used storage size at failure (bounding box, not rounded to 2^n). */
     private final int usedWidth;
     private final int usedHeight;
-    /** 硬件/软性尺寸上限。 */
+    /** Hardware / soft size limit. */
     private final int maxWidth;
     private final int maxHeight;
 
@@ -47,17 +46,17 @@ public class TextureStitchException extends RuntimeException {
                 + "; unplaced sprites (" + unplacedNames.size() + "): " + unplacedNames;
     }
 
-    /** 当前无法放置的 sprite icon 名。 */
+    /** Icon name of the sprite that currently cannot be placed. */
     public String getCurrentName() {
         return currentName;
     }
 
-    /** 全部未放置 sprite 的 icon 名清单。 */
+    /** Icon names of all unplaced sprites. */
     public List<String> getUnplacedNames() {
         return unplacedNames;
     }
 
-    /** 失败时的已用存储尺寸（包围盒）。 */
+    /** Used storage size at failure (bounding box). */
     public int getUsedWidth() {
         return usedWidth;
     }
@@ -66,7 +65,7 @@ public class TextureStitchException extends RuntimeException {
         return usedHeight;
     }
 
-    /** 尺寸上限（min(GL_MAX_TEXTURE_SIZE, 16384)）。 */
+    /** Size limit (min(GL_MAX_TEXTURE_SIZE, 16384)). */
     public int getMaxWidth() {
         return maxWidth;
     }

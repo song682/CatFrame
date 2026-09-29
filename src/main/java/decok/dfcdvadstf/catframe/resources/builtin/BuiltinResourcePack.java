@@ -28,11 +28,6 @@ import java.util.jar.JarFile;
  * The pack is intentionally not {@code Closeable}: the resource manager may
  * close packs it no longer needs, and a classpath pack holds no file handle to
  * release.
- * <p>
- * {@code IResourcePack} 实现：从 classpath 目录 {@code builtin_packs/<id>} 提供单个内置包——
- * 生产环境位于模组 jar 内，开发环境位于 resources 输出目录。本包刻意不实现
- * {@code Closeable}：资源管理器会关闭不再需要的包，而 classpath 包本就没有需要释放的
- * 文件句柄。
  */
 public class BuiltinResourcePack extends AbstractResourcePack {
 
@@ -107,10 +102,6 @@ public class BuiltinResourcePack extends AbstractResourcePack {
      * are tried because classpath layouts differ: jars built by Gradle keep
      * directory entries, but some tooling strips them — in that case a real file
      * entry ({@code pack.mcmeta}) is used to locate the pack root instead.
-     * <p>
-     * 扫描 {@code builtin_packs/<id>/assets} 下的域（domain）。由于 classpath 布局可能不同，
-     * 这里尝试两个锚点：Gradle 构建的 jar 保留目录条目；若目录条目被剥离，则改用真实文件
-     * 条目（{@code pack.mcmeta}）定位包根。
      */
     private void collectDomains(Set<String> domains) {
         for (URL anchor : resources(this.root + "/assets")) {

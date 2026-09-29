@@ -37,16 +37,16 @@ import java.util.concurrent.ConcurrentHashMap;
 @SideOnly(Side.CLIENT)
 public class ModelRegistry {
 
-    // ==================== 注册表 ====================
+    // ==================== Registry ====================
 
-    /** builtin/missing 单例 — 对标高版本 BuiltinMissingModel，任何物品无模型时的最终回退。 */
+    /** builtin/missing singleton — mirrors modern BuiltinMissingModel, fallback for any item with no model. */
     private static final IItemStateProvider MISSING_MODEL = new ItemStateModel("builtin/missing");
 
     public static final Map<Block, BlockStateModel> registeredBlockModels = new ConcurrentHashMap<>();
     public static final Map<Block, Map<Integer, Integer>> registeredBlockRotations = new ConcurrentHashMap<>();
     public static final Map<Item, IItemStateProvider> registeredItemModels = new ConcurrentHashMap<>();
     public static final Set<Item> persistentItemModels = ConcurrentHashMap.newKeySet();
-    /** items with {@code oversized_in_gui=true} — GUI 中允许模型几何溢出槽位（走 PiP 通道，不裁剪不钳制）。 */
+    /** items with {@code oversized_in_gui=true} — GUI models may overflow slot (goes through PiP channel, no clip/clamp). */
     public static final Set<Item> oversizedItems = ConcurrentHashMap.newKeySet();
     static final Set<Block> randomRotationBlocks = ConcurrentHashMap.newKeySet();
     static final Set<Block> autoOverlayBlocks = ConcurrentHashMap.newKeySet();
@@ -55,7 +55,7 @@ public class ModelRegistry {
     /**
      * Public API: bake a model path into a BlockStateModelPart (with cache).
      * Used by StateProviderBlockModel and MultipartBlockModel for on-demand baking.
-     * 通过 {@link BakedModelCache} 懒烘焙，线程安全。
+     * Via {@link BakedModelCache} lazy bake, thread-safe.
      */
     public static BlockStateModelPart bakeModelPart(String modelPath) {
             return bakeModelPart(modelPath, 0);
@@ -68,21 +68,21 @@ public class ModelRegistry {
             return bakeModelPart(modelPath, 0, rotationY);
         }
 
-        /**
-         * Public API: bake a model path into a BlockStateModelPart with X and Y rotation.
-         * [W3] 支持 blockstate 中的 x 旋转字段。
-         * 通过 {@link BakedModelCache} 懒烘焙，线程安全。
-         */
+/**
+     * Public API: bake a model path into a BlockStateModelPart with X and Y rotation.
+     * [W3] Supports x rotation field in blockstate.
+     * Via {@link BakedModelCache} lazy bake, thread-safe.
+     */
         public static BlockStateModelPart bakeModelPart(String modelPath, float rotationX, float rotationY) {
             String cacheKey = BakedModelCache.buildKey(modelPath, rotationX, rotationY);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             return part != null ? part : BlockStateModelPart.empty();
         }
 
-        /**
-         * Public API: bake a model path into a BlockStateModelPart with X, Y and Z rotation.
-         * 通过 {@link BakedModelCache} 懒烘焙，线程安全。
-         */
+/**
+     * Public API: bake a model path into a BlockStateModelPart with X, Y and Z rotation.
+     * Via {@link BakedModelCache} lazy bake, thread-safe.
+     */
         public static BlockStateModelPart bakeModelPart(String modelPath, float rotationX, float rotationY, float rotationZ) {
             String cacheKey = BakedModelCache.buildKey(modelPath, rotationX, rotationY, rotationZ);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
@@ -136,52 +136,52 @@ public class ModelRegistry {
         public static void registerItemModel(Item item, IItemStateProvider model) {
             registeredItemModels.put(item, model);
             persistentItemModels.add(item);
-            // 如果烘焙已完成，立即注册 Forge IItemRenderer
+            // If baking done, immediately register Forge IItemRenderer
             if (ModelManagerDataLoader.initialized) {
                 MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
             }
         }
 
-       /**
-         * Get the item model for rendering — never returns {@code null}.
-         * <p>
-         * Returns the explicitly registered model (from {@code items/{name}.json},
-         * {@code model_mappings.json}, {@code IItemStateProvider} scan, or
-         * {@code ITEM_MODEL} component override). If no model is registered,
-         * returns the {@code builtin/missing} model (purple-black MissingNo).
-         * <p>
-         * 对标高版本设计（{@link decok.dfcdvadstf.catframe.model.core.BuiltinMissingModel}）：
-         * 物品模型系统内部不存在"退回原版渲染"这一路径；物品要么有显式模型，要么显示
-         * 无效模型（missingno）。判断物品是否在 CatFrame 管线内请使用 {@link #hasItemModel}。
-         */
+/**
+     * Get the item model for rendering — never returns {@code null}.
+     * <p>
+     * Returns the explicitly registered model (from {@code items/{name}.json},
+     * {@code model_mappings.json}, {@code IItemStateProvider} scan, or
+     * {@code ITEM_MODEL} component override). If no model is registered,
+     * returns the {@code builtin/missing} model (purple-black MissingNo).
+     * <p>
+     * Mirrors modern design ({@link decok.dfcdvadstf.catframe.model.core.BuiltinMissingModel}):
+     * item model system has no "fall back to vanilla" path; item either has an explicit model
+     * or renders MissingNo. Use {@link #hasItemModel} to check if item is in CatFrame pipeline.
+     */
         public static IItemStateProvider getRegisteredItemModel(Item item) {
             if (item == null) return MISSING_MODEL;
             IItemStateProvider model = registeredItemModels.get(item);
             return model != null ? model : MISSING_MODEL;
         }
 
-        /**
-         * 读取物品的 {@code ITEM_MODEL} 组件覆写值（per-item 默认原型）。
-         * <p>
-         * 对标原版 {@code DataComponents.ITEM_MODEL}：该值是一个模型映射 ID
-         * （{@code "命名空间:路径"}），解析为 {@code assets/<命名空间>/items/<路径>.json}。
-         *
-         * @return 模型映射 ID，未设置组件时返回 {@code null}
-         */
+/**
+     * Read item's {@code ITEM_MODEL} component override value (per-item default prototype).
+     * <p>
+     * Mirrors vanilla {@code DataComponents.ITEM_MODEL}: value is a model mapping ID
+     * ({@code "namespace:path"}), resolves to {@code assets/<namespace>/items/<path>.json}.
+     *
+     * @return model mapping ID, or {@code null} if component not set
+     */
         public static String getItemModelOverride(Item item) {
             if (item == null) return null;
             return DataComponents.getDefaults(item).get(DataComponents.ITEM_MODEL);
         }
 
-        /**
-         * 将物品的 {@code ITEM_MODEL} 组件覆写解析为可渲染的物品模型。
-         * <p>
-         * 查找 {@link ModelManagerDataLoader#loadedItemStates} 中 {@code ns:path} 对应的
-         * ItemState 决策树；值存在但无法解析时返回 {@code builtin/missing}
-         * （对标原版 item_model「无法解析则使用无效模型」的语义）。
-         *
-         * @return 覆写模型；未设置 {@code ITEM_MODEL} 组件时返回 {@code null}
-         */
+/**
+     * Resolve item's {@code ITEM_MODEL} component override into a renderable item model.
+     * <p>
+     * Looks up {@code ns:path} in {@link ModelManagerDataLoader#loadedItemStates} for
+     * the ItemState decision tree; value present but unresolvable returns {@code builtin/missing}
+     * (mirrors vanilla item_model "unresolvable → missing model" semantics).
+     *
+     * @return override model; {@code null} if {@code ITEM_MODEL} component not set
+     */
         public static IItemStateProvider resolveItemModelOverride(Item item) {
             String modelId = getItemModelOverride(item);
             if (modelId == null) return null;
@@ -202,7 +202,7 @@ public class ModelRegistry {
             if (node != null) {
                 return new ItemStateModel(node);
             }
-            // 值存在但无法解析 → 无效模型（builtin/missing）
+            // Value present but unresolvable → missing model (builtin/missing)
             return new ItemStateModel("builtin/missing");
         }
 

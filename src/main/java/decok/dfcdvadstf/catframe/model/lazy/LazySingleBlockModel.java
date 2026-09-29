@@ -8,10 +8,10 @@ import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 /**
- * 懒烘焙单模型。持有单个 modelPath，渲染时从 {@link BakedModelCache} 懒获取。
+ * Lazy-baked single model. Holds a single modelPath, lazily retrieves from {@link BakedModelCache} at render time.
  * <p>
- * 用于 model_mappings 中的 block（无 blockstate，单一 model path）。
- * 持有 modelPath 并在 collectParts 时懒解析 + 懒烘焙。
+ * Used for model_mappings blocks (no blockstate, single model path).
+ * Holds modelPath and lazily parses + bakes during collectParts.
  */
 public class LazySingleBlockModel implements BlockStateModel {
     private final String modelPath;
@@ -32,9 +32,9 @@ public class LazySingleBlockModel implements BlockStateModel {
         return modelPath;
     }
 
-    /**
-     * 粒子纹理解析：单模型缓存获取后返回显式 particle 槽
-     * （缺失为 null，由 ParticleIconResolver 映射 missingno）。
+/**
+     * Particle icon resolution: fetch from single-model cache, return explicit particle slot
+     * (missing is null, mapped to missingno by ParticleIconResolver).
      */
     @Override
     public IIcon particleIcon(int metadata) {

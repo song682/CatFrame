@@ -21,11 +21,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * hook substitutes the registered translation key at render time only; the
  * description needs no hook because it already travels as a
  * {@code ChatComponentTranslation}.
- * <p>
- * 本地化资源包 GUI 中内置包条目的标题。原版标题取自条目的包名，而内置包的包名
- * 必须保持稳定（它既是写入 {@code options.txt} 的持久化键，也参与条目相等性），
- * 因此不能承载展示名。本注入仅在渲染时改用注册表登记的翻译键；描述无需注入，
- * 因为它本就是以 {@code ChatComponentTranslation} 形式流转的。
  */
 @Mixin(ResourcePackListEntryFound.class)
 public abstract class MixinBuiltinResourcePackListEntryFound {

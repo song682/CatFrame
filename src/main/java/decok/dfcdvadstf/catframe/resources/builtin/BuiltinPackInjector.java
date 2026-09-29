@@ -26,14 +26,6 @@ import java.util.Map;
  * is read from the repository instance that is being rebuilt: the rebuild
  * window includes the repository constructor, during which the
  * {@code Minecraft} field holding the repository is not assigned yet.
- * <p>
- * 将 {@link BuiltinPackRegistry} 桥接进原版仓库。由仓库 mixin 在客户端线程、
- * {@code ResourcePackRepository.updateRepositoryEntriesAll()} 重建条目列表时调用——
- * 包括仓库构造器内的首次重建。普通模组注册的包的启动启用状态恢复由
- * {@link BuiltinPackBootstrap} 在 preInit 之后的那次原版资源刷新上完成。
- * 这里需要的一切原版状态（metadata serializer、默认包）均取自正在重建的仓库
- * 实例：重建窗口包含仓库构造器本身，此时 {@code Minecraft} 中持有仓库的字段
- * 尚未赋值。
  */
 public final class BuiltinPackInjector {
 

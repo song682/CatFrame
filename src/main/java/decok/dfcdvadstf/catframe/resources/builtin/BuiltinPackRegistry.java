@@ -25,15 +25,6 @@ import java.util.Map;
  * time the repository rebuilds its entry list (opening the resource pack
  * screen); its enabled state cannot be restored automatically, because such a
  * registration only ever runs after the bootstrap.
- * <p>
- * 内置资源包注册表。刻意不引用任何 Minecraft 类（见 {@link BuiltinPackDescriptor}），
- * 因此任意模组可在任意时点注册，包括最早的加载阶段。
- * 注册以包 id 为键、可重复：同 id 再次注册将替换旧描述。包的启用状态会在两个
- * 时点按名从 {@code options.txt} 恢复：原版仓库构造器（仅覆盖在其运行之前注册
- * 的包）与 preInit 之后那次原版资源刷新上的启动引导（可覆盖直到 postInit 为止
- * 注册的所有包，因此普通模组在 preInit 注册即可获得完整行为）。更晚注册
- * （游戏已在运行）的包会在仓库下次重建条目列表时出现（打开资源包界面），但其
- * 启用状态无法自动恢复——这类注册只会运行于引导之后。
  */
 public final class BuiltinPackRegistry {
 

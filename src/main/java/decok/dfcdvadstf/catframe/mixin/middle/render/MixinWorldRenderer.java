@@ -8,11 +8,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * 在 chunk 编译（{@link WorldRenderer#updateRenderer}）前后管理
- * {@link BlockModelLighter} 的 LRU 缓存生命周期。
+ * Manages the LRU cache lifecycle of {@link BlockModelLighter} around
+ * chunk compilation ({@link WorldRenderer#updateRenderer}).
  * <p>
- * 对齐 26.1.2 {@code SectionCompiler.compile()} 中
- * {@code BlockModelLighter.enableCaching()} / {@code clearCache()} 的调用位置。
+ * Aligned with the {@code BlockModelLighter.enableCaching()} / {@code clearCache()}
+ * call sites in 26.1.2 {@code SectionCompiler.compile()}.
+ * </p>
  */
 @Mixin(WorldRenderer.class)
 public class MixinWorldRenderer {

@@ -15,14 +15,16 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * {@link CatModels} 登记的方块模型规格（数据 holder）。
+ * {@link CatModels} registered block model spec (data holder).
  * <p>
- * 在 preInit 阶段由 {@link CatModels} 链式 API 收集，运行时（{@code registerAllModels}，
- * blockstate JSON 已加载后）由 {@link #buildBlockModel(BlockstateJson)} /
- * {@link #buildItemNode(BlockstateJson)} 物化为 {@link ResidentStateModel} 与物品决策树。
+ * Collected during preInit by {@link CatModels} chainable API, materialized at runtime
+ * ({@code registerAllModels}, after blockstate JSON loaded) via
+ * {@link #buildBlockModel(BlockstateJson)} / {@link #buildItemNode(BlockstateJson)}
+ * into {@link ResidentStateModel} and item decision tree.
  * <p>
- * 这样解决了「preInit 时 blockstate 尚未异步加载」的时序问题：spec 只记录声明式意图，
- * 真正需要 bs 的物化推迟到烘焙注册阶段。
+ * This solves the "blockstate not yet async-loaded during preInit" timing issue:
+ * spec only records declarative intent; actual materialization needing bs is deferred
+ * to bake registration phase.
  */
 @SideOnly(Side.CLIENT)
 public final class CatModelSpec {
@@ -38,20 +40,20 @@ public final class CatModelSpec {
     public ResidentStateModel.DynamicPropertyResolver dynamic;
     public boolean connectionMultipart = false;
     public boolean fullModel = true;
-    /** 是否从 blockstate 的 16 个静态状态导出物品 {@code catframe:meta} 决策树。 */
+    /** Whether to export item {@code catframe:meta} decision tree from blockstate's 16 static states. */
     public boolean itemFromBlockstate = false;
 
     public CatModelSpec(Block block) {
         this.block = block;
     }
 
-    // ==================== 物化 ====================
+    // ==================== Materialization ====================
 
     /**
-     * 用已加载的 blockstate JSON 物化为常驻方块模型。
+     * Materialize into resident block model using loaded blockstate JSON.
      *
-     * @param bs 该方块的 blockstate JSON（redirect 模式下可为 null，运行时按 meta 解析）
-     * @return 常驻方块模型
+     * @param bs block's blockstate JSON (nullable in redirect mode, resolved at runtime by meta)
+     * @return resident block model
      */
     public ResidentStateModel buildBlockModel(@Nullable BlockstateJson bs) {
         ResidentStateModel.Builder b = ResidentStateModel.builder(block);
@@ -68,15 +70,15 @@ public final class CatModelSpec {
     }
 
     /**
-     * 从 blockstate 的静态状态导出物品决策树：{@code catframe:meta} → 模型路径。
+     * Export item decision tree from blockstate's static states: {@code catframe:meta} → model path.
      * <p>
-     * 遍历 meta 0-15，用 {@link #def}（及 {@link #redirect}）解析出该
-     * meta 对应的 blockstate variant 模型路径，构建 {@link ItemStateNode.SelectNode}
-     * （property = CatFrame 扩展属性 {@code "catframe:meta"}，即 1.7.10 metadata）。
-     * 未命中的 meta 走 fallback（{@code builtin/missing}）。
+     * Iterates meta 0-15, uses {@link #def} (and {@link #redirect}) to resolve the
+     * blockstate variant model path for each meta, builds {@link ItemStateNode.SelectNode}
+     * (property = CatFrame extended property {@code "catframe:meta"}, i.e. 1.7.10 metadata).
+     * Unmatched meta falls back to {@code builtin/missing}.
      *
-     * @param bs 该方块的 blockstate JSON
-     * @return 物品决策树根节点；无法导出任何模型时返回 {@code null}
+     * @param bs block's blockstate JSON
+     * @return item decision tree root; null if no models exported
      */
     @Nullable
     public ItemStateNode buildItemNode(@Nullable BlockstateJson bs) {
@@ -94,7 +96,7 @@ public final class CatModelSpec {
         return new ItemStateNode.SelectNode("catframe:meta", cases, fallback);
     }
 
-    // ==================== 内部：静态属性 → variant 模型路径 ====================
+    // ==================== Internal: static props → variant model path ====================
 
     @Nullable
     private String resolveModelPath(int meta, @Nullable BlockstateJson baseBs) {
@@ -135,7 +137,7 @@ public final class CatModelSpec {
         return t;
     }
 
-    /** 仅用静态属性（物品导出，无世界/dynamic）。 */
+    /** Static props only (item export, no world/dynamic). */
     @Nullable
     private Map<String, String> resolveProps(int meta) {
         if (def != null) {
@@ -144,7 +146,7 @@ public final class CatModelSpec {
             Property<?>[] properties = def.getProperties();
             List<String> valueNames = state.getValueNames();
             for (int i = 0; i < properties.length && i < valueNames.size(); i++) {
-                // 动态属性不参与物品匹配（物品用静态默认值即可）
+                // Dynamic properties excluded from item matching (items use static defaults)
                 props.put(properties[i].getName(), valueNames.get(i));
             }
             return props;

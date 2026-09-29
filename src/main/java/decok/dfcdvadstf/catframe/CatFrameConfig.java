@@ -13,7 +13,7 @@ public class CatFrameConfig {
     private static Configuration config;
 
     public boolean enableBlueyPlushy;
-    /** Whether to show the welcome Toast when joining a world / 进入世界时是否显示欢迎 Toast */
+    /** Whether to show the welcome Toast when joining a world */
     public boolean welcomeToast;
     public boolean enableBuiltinExampleResource;
     public static boolean debugLogThingsEnabled = false;

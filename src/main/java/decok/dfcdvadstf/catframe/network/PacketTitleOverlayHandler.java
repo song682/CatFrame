@@ -8,10 +8,6 @@ import decok.dfcdvadstf.catframe.ui.Title;
 
 /**
  * <p>
- * 客户端处理器 —— 接收来自服务端的 {@link PacketTitleOverlay} 并调用已有的
- * {@link Title} API 触发覆盖层渲染。
- * </p>
- * <p>
  * Client-side handler — receives {@link PacketTitleOverlay} from the server and
  * calls the existing {@link Title} API to trigger overlay rendering.
  * </p>

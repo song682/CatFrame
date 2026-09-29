@@ -27,27 +27,24 @@ import java.util.concurrent.ConcurrentHashMap;
 @SideOnly(Side.CLIENT)
 public class VanillaTextureTracker {
 
-    // ==================== 纹理追踪注册表 ====================
+    // ==================== Texture tracking registry ====================
 
     /**
-     * 原版图集注册/查询键：直接做 1.7.10 basePath 键变换（剥离 namespace 与
-     * {@code blocks/} / {@code items/} / 单数前缀）。
+     * Vanilla atlas registration/lookup key: plain 1.7.10 base-path key transform
+     * (strips namespace and {@code blocks/}/{@code items/} singular prefixes).
      * <p>
-     * 仅服务于原版图集（vanilla TextureMap）路径 —— 1.7.10 原版键语义即 basePath
-     * （如 {@code minecraft:blocks/ladder} → {@code ladder}）；CatFrame 数据驱动
-     * 图集键是完整纹理路径，由 {@code CatAtlasManager} 独立管理，与本方法无关。
+     * Only serves vanilla atlas (TextureMap) paths — 1.7.10 vanilla key semantics
+     * is basePath (e.g. {@code minecraft:blocks/ladder} → {@code ladder}); CatFrame
+     * data-driven atlas keys are full texture paths, managed independently by
+     * {@code CatAtlasManager}, unrelated to this method.
      *
-     * <p>Vanilla-atlas registry/query key: the plain 1.7.10 base-path key.
+     * <p>[Hot Update rollback] Key strategy convergence: namespace stripping only for minecraft
+     * (flat keys stay idempotent with {@code block.registerBlockIcons()} and OptiFine CTM
+     * name matching); other namespaces keep {@code modid:name} (via {@code ResourceLocation}
+     * domain parsing, resolves to {@code modid:textures/blocks/<name>.png}), avoiding
+     * cross-mod collisions.
      *
-     * <p>[Hot Update 撤回方案] 键策略收敛：namespace 剥离仅对 minecraft 生效
-     * （扁平键与 {@code block.registerBlockIcons()} 幂等重合，OptiFine CTM 按名字
-     * 匹配分毫不差）；其他命名空间保留为 {@code modid:name}（{@code ResourceLocation}
-     * 解析 domain，落到 {@code modid:textures/blocks/<name>.png}），跨 mod 永不撞键。
-     * Key strategy: the namespace is stripped only for minecraft (flat keys stay
-     * idempotent with vanilla registration and OptiFine CTM name matching);
-     * other namespaces keep {@code modid:name} to avoid cross-mod collisions.
-     *
-     * @param itemAtlas true = items 图集（textures/items/），false = blocks 图集
+     * @param itemAtlas true = items atlas (textures/items/), false = blocks atlas
      */
     public static String toVanillaKey(String texturePath, boolean itemAtlas) {
         if (texturePath == null) return null;
@@ -63,7 +60,7 @@ public class VanillaTextureTracker {
         } else if (pathPart.startsWith("item/")) {
             pathPart = pathPart.substring("item/".length());
         }
-        // minecraft → 扁平键；其余命名空间 → "modid:name"（跨 mod 不撞键）
+        // minecraft → flat key; other namespaces → "modid:name" (cross-mod collision-free)
         // minecraft → flat key; other namespaces → "modid:name" (collision-free)
         return "minecraft".equals(namespace) ? pathPart : namespace + ":" + pathPart;
     }
@@ -71,22 +68,22 @@ public class VanillaTextureTracker {
     static final Set<String> pendingTextures = new LinkedHashSet<>();
     static final Set<String> pendingItemTextures = new LinkedHashSet<>();
     public static final Map<String, IIcon> textureIcons = new ConcurrentHashMap<>();
-    // [Hot Update 撤回方案] 原版后端诊断补偿：本轮 stitch 周期内 CatFrame 注册进原版
-    // TextureMap 的键（模型驱动 + 定义驱动），Post 阶段与上传结果对比逐条 warn，
-    // 找回 CatAtlas 时代的查表可诊断性（原版 missing 是静默的）。
+    // [Hot Update rollback] Vanilla backend diagnostic compensation: keys CatFrame registered
+    // TextureMap keys (model-driven + definition-driven), compared with upload
+    // Diagnostics reclaimed: vanilla stitch silently copyFrom(missingImage) on failure,
     // Registered-key tracking for the vanilla backend: compared against the
     // upload results at Post so missing textures are reported explicitly.
     static final Set<String> registeredBlockKeys = new LinkedHashSet<>();
     static final Set<String> registeredItemKeys = new LinkedHashSet<>();
     /**
-     * 模型驱动的 block 纹理集合（跨包访问入口，供 CatAtlasManager 消费）。
+     * Model-driven block texture set (cross-package access entry for CatAtlasManager).
      */
     public static Set<String> getPendingTextures() {
         return pendingTextures;
     }
 
     /**
-     * 模型驱动的 item 纹理集合（跨包访问入口，供 CatAtlasManager 消费）。
+     * Model-driven item texture set (cross-package access entry for CatAtlasManager).
      */
     public static Set<String> getPendingItemTextures() {
         return pendingItemTextures;
@@ -161,7 +158,7 @@ public class VanillaTextureTracker {
      * Call during TextureStitchEvent.Pre when getTextureType() == 0.
      */
     public static void registerTextures(TextureMap map) {
-        registeredBlockKeys.clear(); // 每轮 stitch 重建诊断键集合
+        registeredBlockKeys.clear(); // Rebuild diagnostic key set each stitch cycle
         for (String texturePath : pendingTextures) {
             String iconName = toVanillaKey(texturePath, false);
             if (iconName != null && !iconName.isEmpty()) {
@@ -176,7 +173,7 @@ public class VanillaTextureTracker {
      * Call during TextureStitchEvent.Pre when getTextureType() == 1.
      */
     public static void registerItemTextures(TextureMap map) {
-        registeredItemKeys.clear(); // 每轮 stitch 重建诊断键集合
+        registeredItemKeys.clear(); // Rebuild diagnostic key set each stitch cycle
         for (String texturePath : pendingItemTextures) {
             String iconName = toVanillaKey(texturePath, true);
             if (iconName != null && !iconName.isEmpty()) {
@@ -187,23 +184,21 @@ public class VanillaTextureTracker {
     }
 
     /**
-     * [Hot Update 撤回方案] 登记一个已注册进原版图集的键（供 Post 诊断补偿对比）。
-     * 由 {@code CatAtlasManager.registerDefinedSprites}（定义驱动输出端）与
-     * {@link #registerTextures}/{@link #registerItemTextures}（模型驱动）共同写入。
+     * [Hot Update rollback] Register a key that was registered to the vanilla atlas
+     * (for Post diagnostic comparison). Written by both {@code CatAtlasManager.registerDefinedSprites}
+     * (definition-driven output) and {@link #registerTextures}/{@link #registerItemTextures}
+     * (model-driven).
      */
     public static void trackRegisteredKey(String key, boolean itemAtlas) {
         if (key == null || key.isEmpty()) return;
         (itemAtlas ? registeredItemKeys : registeredBlockKeys).add(key);
     }
 
-    /**
-     * [Hot Update 撤回方案] 诊断补偿：把本轮注册键集合与图集上传结果对比，
-     * 未成功上传（{@code getAtlasSprite} 回落到 missingImage 实例）逐条 warn。
-     * 原版缝合对加载失败的 sprite 是静默 copyFrom(missingImage)，本方法把
-     * Stage 5 查表语义的可诊断性在原版后端上找回来。
-     * <p>
-     * Diagnostic compensation: registered keys whose sprite fell back to the
-     * missing image are reported one by one (vanilla fails silently).
+/**
+     * [Hot Update rollback] Diagnostic compensation: compare this cycle's registered keys
+     * with atlas upload results; warn on each key that failed to upload (fell back to
+     * missingImage instance). Vanilla stitch silently copyFrom(missingImage) on failure;
+     * this method recovers Stage 5 lookup diagnosability on the vanilla backend.
      */
     static void verifyUploaded(TextureMap map, Set<String> keys, String what) {
         if (keys.isEmpty()) return;
@@ -227,15 +222,15 @@ public class VanillaTextureTracker {
      * Call during TextureStitchEvent.Post when getTextureType() == 0.
      */
     public static void onTextureStitchPost(TextureMap map) {
-        // 不清理 pendingTextures/pendingItemTextures —— 与 LegacyPreview 行为一致。
-        // Forge 1.7.10 启动时会触发两次 type=0 Post（第二次来自 refreshResources）。
-        // 保留数据让两次都能从各自的新图集重新收集 IIcon，避免 stale reference。
+        // Don't clear pendingTextures/pendingItemTextures — matches LegacyPreview behavior.
+        // Forge 1.7.10 fires type=0 Post twice at startup (second from refreshResources).
+        // Retain data so both passes can recollect IIcon from their fresh atlases, avoiding stale references.
         if (pendingTextures.isEmpty() && pendingItemTextures.isEmpty()) {
             CatFrame.logger.info("[VTT-diag] onStitchPost: pending sets empty, skip");
             return;
         }
         textureIcons.clear();
-        AtlasPixelCache.clear(); // 资源重载时清空上一轮回读缓存
+        AtlasPixelCache.clear(); // Clear previous cycle's pixel readback cache on resource reload
 
         int blockCollected = 0, blockMissed = 0;
         java.util.List<IIcon> blockIcons = new java.util.ArrayList<>();
@@ -280,53 +275,51 @@ public class VanillaTextureTracker {
                 blockCollected, blockMissed, itemCollected, itemMissed,
                 textureIcons.size());
 
-        // [Hot Update 撤回方案] 诊断补偿：注册键 vs 上传结果对比（blocks 图集）
+        // [Hot Update rollback] Diagnostic compensation: registered keys vs upload results (blocks atlas)
         verifyUploaded(map, registeredBlockKeys, "blocks");
 
-        // 发布自定义图集 sprite：必须置于原版 icon 收集循环之后（循环会用 vanilla sprite
-        // 覆盖 Pre 阶段产物）、烘焙屏障之前，保证烘焙永远读到 CatSprite UV。
         // Publish CatAtlas sprites AFTER the vanilla collection loops (they would
         // overwrite Pre-stage results) and BEFORE the bake barrier below.
-        // [渲染三域架构] CatAtlas 自研缝合已退役，无自定义 sprite 可发布。
+        // [Render three-domain architecture] CatAtlas custom stitching retired; no custom sprites to publish.
 
-        // GPU 回读：在主线程一次性读取图集像素，供异步烘焙线程纯 CPU 读取
+        // GPU readback: read atlas pixels on main thread once, for async bake threads to use pure CPU
         AtlasPixelCache.readAtlas(map, blockIcons);
         if (itemMap != null && !itemIcons.isEmpty()) {
             AtlasPixelCache.readAtlas(itemMap, itemIcons);
         }
 
-        // 不清理 pendingTextures —— 保留数据供 Forge refreshResources 后的第二次 stitch 重新收集
-        // 对标高版本 MaterialBaker 实例化闭包模式：iconMap 作为参数传入缓存和烘焙管线
+        // Don't clear pendingTextures — retain data for second stitch after Forge refreshResources re-collection
+        // Mirrors modern MaterialBaker closure pattern: iconMap passed as parameter to cache and bake pipeline
         BakedModelCache.INSTANCE.clear(textureIcons);
         ModelResolver.clearCache();
-        // 粒子纹理解析缓存与 iconMap 同周期失效（避免残留上一周期的 IIcon）
+        // Particle texture cache invalidated same cycle as iconMap (avoids stale IIcon from previous cycle)
         ParticleIconResolver.clear();
 
         CatFrame.logger.info("[VTT-diag] BakedModelCache.clear(iconMap) called | textureIcons.size={}",
                 textureIcons.size());
-        // 注册懒模型（不执行同步烘焙，烘焙由 AsyncBakePipeline 屏障式预烘焙承担，懒烘焙仅作安全网）
+        // Register lazy models (no sync bake; bake handled by AsyncBakePipeline barrier; lazy bake as safety net only)
         VanillaModelManager.Baking.registerAllModels();
-        // 异步准备，同步切换：并行预烤所有常用模型并阻塞至完成，返回后缓存即就绪（对标 vanilla reload 屏障）
+        // Async prepare, sync switch: parallel pre-bake all common models and block until done, cache ready on return (mirrors vanilla reload barrier)
         AsyncBakePipeline.triggerBakeBlocking(textureIcons);
     }
 
-    /**
-     * 在 item atlas (type 1) 缝合完成后更新 item 纹理的 IIcon 引用并重新烘焙。
+/**
+     * Update item texture IIcon refs and rebake after item atlas (type 1) stitch completes.
      * <p>
-     * 1.7.10 中 block atlas (type 0) 的 {@link net.minecraftforge.client.event.TextureStitchEvent.Post} 早于
-     * item atlas (type 1) 的 Post。因此 type 0 Post 时 item atlas 可能尚未完全
-     * 缝合，{@link TextureMap#getAtlasSprite(String)} 可能返回缝合前的占位 sprite
-     * 甚至 missingno。
-     * 本方法在 type 1 Post 中被调用，此时 item atlas 已缝合完成，可以获取正确的
-     * sprite UV 坐标。
+     * In 1.7.10, block atlas (type 0) {@link net.minecraftforge.client.event.TextureStitchEvent.Post}
+     * fires before item atlas (type 1) Post. So at type 0 Post, item atlas may not be fully
+     * stitched yet, {@link TextureMap#getAtlasSprite(String)} may return pre-stitch placeholder
+     * sprite or even missingno.
+     * This method is called at type 1 Post, when item atlas is fully stitched and correct
+     * sprite UV coords are available.
      */
     public static void onTextureStitchPostItem(TextureMap itemMap) {
-        // 保留 pendingItemTextures 数据 —— 与 LegacyPreview 一致，支持 refreshResources 后的多次 stitch
+        // Retain pendingItemTextures — matches LegacyPreview behavior, supports multiple stitches after refreshResources
         if (pendingItemTextures.isEmpty()) {
             CatFrame.logger.info("[VTT-diag] onStitchPostItem: pending empty, skip");
             return;
         }
-        // 更新 item 纹理的 IIcon 引用（item atlas 此时已缝合完成）
+        // Update item texture IIcon refs (item atlas is fully stitched at this point)
         java.util.List<IIcon> itemIcons = new java.util.ArrayList<>();
         for (String texturePath : pendingItemTextures) {
             String iconName = toVanillaKey(texturePath, true);
@@ -338,19 +331,19 @@ public class VanillaTextureTracker {
                 }
             }
         }
-        // [Hot Update 撤回方案] 诊断补偿：注册键 vs 上传结果对比（items 图集）
+        // [Hot Update rollback] Diagnostic compensation: registered keys vs upload results (items atlas)
         verifyUploaded(itemMap, registeredItemKeys, "items");
-        // [渲染三域架构] CatAtlas 自研缝合已退役，无自定义 sprite 可重新发布。
-        // GPU 回读 item atlas（此时 UV 是最终态，覆盖 onTextureStitchPost 时的早期数据）
+        // [Render three-domain architecture] CatAtlas custom stitching retired; no custom sprites to republish.
+        // GPU readback of item atlas (UVs are now final, overwriting early data from onTextureStitchPost)
         AtlasPixelCache.readAtlas(itemMap, itemIcons);
-        // 不清理 pendingItemTextures —— 保留数据供多次 stitch 重新收集
-        // item iconMap 更新到缓存（懒烘焙时使用）
+        // Don't clear pendingItemTextures — retain data for multiple stitch re-collection
+        // item iconMap updated to cache (for lazy baking)
         BakedModelCache.INSTANCE.clear(textureIcons);
-        // 粒子纹理解析缓存与 iconMap 同周期失效
+        // Particle texture cache invalidated same cycle as iconMap
         ParticleIconResolver.clear();
-        // [W2 修复] 仅增量更新 item 模型注册（懒模型，无需实际烘焙）
+        // [W2 fix] Incremental item model registration only (lazy models, no actual baking)
         VanillaModelManager.Baking.registerItemModels();
-        // item atlas 就绪后再次并行预烤并阻塞至完成（确保 item 模型也在返回前就绪，零现场烘焙）
+        // After item atlas ready, parallel pre-bake again and block until done (ensures item models ready on return, zero on-demand baking)
         AsyncBakePipeline.triggerBakeBlocking(textureIcons);
     }
 }

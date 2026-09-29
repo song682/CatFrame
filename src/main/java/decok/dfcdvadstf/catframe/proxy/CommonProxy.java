@@ -25,7 +25,6 @@ public class CommonProxy {
         OverlayNetwork.init();
 
         // Scan CatFrame's own jar/directory for JSON lang files and inject them
-        // 扫描 CatFrame 自身 jar/目录中的 JSON 语言文件并注入
         LanguageRegister.load();
         // Register data components
         RegisteredComponents.registerAll();

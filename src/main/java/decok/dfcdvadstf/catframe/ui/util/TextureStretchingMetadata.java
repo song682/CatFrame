@@ -15,12 +15,11 @@ import java.util.Map;
 
 /**
  * <p>
- * 纹理拉伸元数据 —— 从 {@code .mcmeta} JSON 文件中加载拉伸参数。<br>
  * Texture stretching metadata — loads stretching parameters from {@code
  * .mcmeta} JSON files.
  * </p>
  *
- * <h3>mcmeta 格式 / Format</h3>
+ * <h3>mcmeta Format</h3>
  * <pre>{@code
  * {
  * "stretching": {
@@ -30,7 +29,7 @@ import java.util.Map;
  * }
  * }
  *
- * // 或者 three_patch:
+ * // Or three_patch:
  * {
  * "stretching": {
  * "type": "three_patch",
@@ -121,7 +120,7 @@ public final class TextureStretchingMetadata {
     /**
      * Whether the inner (centre) region of a nine-patch should be stretched
      * (single quad covering the entire centre) instead of tiled.
-     * <p>对应 mcmeta 中 {@code "inner": { "will_stretch": true }}。</p>
+     * <p>Corresponds to {@code "inner": { "will_stretch": true }} in mcmeta.</p>
      */
     public boolean isStretchInner() {
         return stretchInner;
@@ -200,7 +199,7 @@ public final class TextureStretchingMetadata {
                             stretchInner = inner.get("will_stretch").getAsBoolean();
                         }
                     }
-                    // Validate edge values / 校验边缘值
+                    // Validate edge values
                     if (eL < 0)
                         throw new WrongMetadataError("left", eL);
                     if (eT < 0)
@@ -225,7 +224,7 @@ public final class TextureStretchingMetadata {
                             eL = eR = v;
                         }
                     }
-                    // Validate edge values / 校验边缘值
+                    // Validate edge values
                     if (eL < 0)
                         throw new WrongMetadataError("left", eL);
                     if (eR < 0)
@@ -240,7 +239,6 @@ public final class TextureStretchingMetadata {
                             TextureStretching.StretchType.TILE,
                             defW, defH, 0, 0, 0, 0, 0);
                 } else if ("static".equals(typeStr)) {
-                    // 整图拉伸 —— 将整张纹理拉伸到目标区域，不做切片。
                     // Whole-texture stretch — draws the whole texture over the target area.
                     metadata = new TextureStretchingMetadata(
                             TextureStretching.StretchType.STATIC,
@@ -251,7 +249,6 @@ public final class TextureStretchingMetadata {
             }
         } catch (WrongMetadataError e) {
             // Validation error — must propagate, not swallowed
-            // 校验错误——必须向上传播，不能被吞掉
             throw e;
         } catch (Exception e) {
             // No mcmeta file or parse error — return null
@@ -263,9 +260,6 @@ public final class TextureStretchingMetadata {
 
     /**
      * Clear the metadata cache.
-     * <p>
-     * 清除缓存。
-     * </p>
      */
     public static void clearCache() {
         CACHE.clear();

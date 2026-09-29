@@ -14,68 +14,68 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * CatFrame 纹理收集管理器 —— 原版输出端与缺失兜底（渲染三域架构定案：物品/方块纹理
- * 缝合归原版 TextureMap 管理，CatAtlas blocks/items 自研缝合链已退役，见
- * 《渲染三域架构-收集分流方案.md》阶段 A）。
+ * CatFrame texture collection manager — vanilla output end and missing-icon
+ * fallback (per the final three-domain rendering decision: item/block texture
+ * stitching is managed by the vanilla TextureMap, and the in-house CatAtlas
+ * blocks/items stitching chain is retired — see
+ * "渲染三域架构-收集分流方案.md" stage A).
  * <p>
- * 职责收敛为两项：
+ * Responsibilities are narrowed to two:
  * <ol>
- *   <li>{@link #registerDefinedSprites(TextureMap)} —— 在 {@code TextureStitchEvent.Pre}
- *       把数据驱动收集（{@code atlases/<id>.json} 的 sources 产物）经键变换后
- *       {@code registerIcon} 进原版 blocks / items 图集，由原版缝合器完成布局 + 上传。
- *       仅可表达<b>素引用</b>（spriteId == resource 且无像素变换）；带 unstitch /
- *       paletted_permutations 等像素变换的定义产物原版无法表达，记日志挂起；</li>
- *   <li>{@link #getMissingIcon(String)} —— 缺失查找最终兜底：
- *       直接返回原版 missingImage（紫黑格，与原版 {@code TextureMap.getAtlasSprite}
- *       缺失语义一致）。</li>
+ *   <li>{@link #registerDefinedSprites(TextureMap)} — during
+ *       {@code TextureStitchEvent.Pre}, key-transform data-driven collections
+ *       (the source output of {@code atlases/<id>.json}) and {@code registerIcon}
+ *       them into the vanilla blocks / items atlas; the vanilla stitcher performs
+ *       layout + upload. Only <b>plain refs</b> are expressible (spriteId == resource
+ *       and no pixel transform); definition output carrying unstitch /
+ *       paletted_permutations pixel transforms cannot be expressed by vanilla
+ *       and is parked with a log entry;</li>
+ *   <li>{@link #getMissingIcon(String)} — the final fallback for missing lookups:
+ *       returns the vanilla missingImage directly (purple-black square, matching
+ *       the missing semantics of vanilla {@code TextureMap.getAtlasSprite}).</li>
  * </ol>
  * <p>
- * UI 域素材（{@code catframe:gui} 图集定义）不经过本类 —— 由
- * {@code GuiTextureStitchEvent}（Pre / On / Post）独立事件链驱动，见
- * {@link decok.dfcdvadstf.catframe.adapter.vanilla.model.GuiTextureStitchHandler}。
- *
- * <p>Texture collection manager: definition-driven output into the vanilla
- * TextureMap plus missing-icon fallback. The CatAtlas self-stitch chain is
- * retired; UI-domain sprites are handled by the independent GuiTextureStitchEvent.
+ * UI-domain assets (the {@code catframe:gui} atlas definition) do not pass through
+ * this class — they are driven by the independent
+ * {@code GuiTextureStitchEvent} (Pre / On / Post) chain, see
+ * {@link decok.dfcdvadstf.catframe.adapter.vanilla.model.GuiTextureStitchHandler}.
  */
 @SideOnly(Side.CLIENT)
 public final class CatAtlasManager {
 
-    /** blocks 图集 id（IAtlas.getAtlasName 语义；对齐 Wiki：原版定义文件
-     * {@code assets/minecraft/atlases/blocks.json} → 图集 id {@code minecraft:blocks}）。 */
+    /** blocks atlas id (IAtlas.getAtlasName semantics; aligned with the Wiki: the vanilla
+     * definition file {@code assets/minecraft/atlases/blocks.json} → atlas id {@code minecraft:blocks}). */
     public static final String BLOCK_ATLAS_ID = "minecraft:blocks";
-    /** items 图集 id（对齐 Wiki：{@code atlases/items.json} → {@code minecraft:items}）。 */
+    /** items atlas id (aligned with the Wiki: {@code atlases/items.json} → {@code minecraft:items}). */
     public static final String ITEM_ATLAS_ID = "minecraft:items";
 
     private CatAtlasManager() {
     }
 
     /**
-     * [渲染三域架构] 原版输出端：把图集定义（{@code atlases/<id>.json} sources）的
-     * 产物 sprite id 经键变换后 {@code registerIcon} 进原版 {@link TextureMap}，
-     * 由原版缝合器完成布局 + 上传。在 {@code TextureStitchEvent.Pre}
-     * （type 0 → blocks 图集定义，type 1 → items 图集定义）调用，早于原版
-     * {@code loadTextureAtlas} 的 sprite 加载循环。
+     * [Render three-domain architecture] Vanilla output end: key-transform the
+     * sprite ids produced by atlas definitions ({@code atlases/<id>.json} sources)
+     * and {@code registerIcon} them into the vanilla {@link TextureMap}; the
+     * vanilla stitcher performs layout + upload. Called during
+     * {@code TextureStitchEvent.Pre} (type 0 → blocks atlas definition, type 1 →
+     * items atlas definition), before the sprite loading loop of the vanilla
+     * {@code loadTextureAtlas}.
      * <p>
-     * 仅可表达<b>素引用</b>（spriteId == resource 且无像素变换）；带 unstitch /
-     * paletted_permutations 等像素变换或多图集目标的定义产物原版无法表达，
-     * 记日志挂起（UI 域素材走 {@code GuiTextureStitchEvent} 独立链，不在此列）。
-     * <p>
-     * Vanilla-backend output: definition-driven sprite ids are key-transformed
-     * and registered into the vanilla TextureMap at stitch Pre; refs carrying
-     * pixel transforms cannot be expressed by vanilla stitching and are parked
-     * with a log entry.
+     * Only <b>plain refs</b> are expressible (spriteId == resource and no pixel
+     * transform); definition output carrying unstitch / paletted_permutations
+     * pixel transforms or multi-atlas targets cannot be expressed by vanilla and
+     * is parked with a log entry (UI-domain assets take the independent
+     * {@code GuiTextureStitchEvent} chain and are not covered here).
      *
-     * @param map 当前缝合中的原版图集（type 0 blocks / type 1 items）
+     * @param map the vanilla atlas currently being stitched (type 0 blocks / type 1 items)
      */
     public static void registerDefinedSprites(TextureMap map) {
         boolean itemAtlas = map.getTextureType() == 1;
         String atlasId = itemAtlas ? ITEM_ATLAS_ID : BLOCK_ATLAS_ID;
-        // [渲染三域架构] 定义驱动收集已提取为共用件（AtlasDefinitionLoader.collectRefs）
+        // [Render three-domain architecture] Definition-driven collection is extracted as a shared component (AtlasDefinitionLoader.collectRefs)
         List<SpriteRef> refs = AtlasDefinitionLoader.collectRefs(atlasId);
         int registered = 0, parked = 0;
         for (SpriteRef ref : refs) {
-            // 像素变换 / 重命名引用原版缝合无法表达 → 记日志挂起
             // Transform/rename refs are parked: vanilla stitching cannot express them
             if (ref.transform() != null || !ref.resource().equals(ref.spriteId())) {
                 parked++;
@@ -96,13 +96,11 @@ public final class CatAtlasManager {
     }
 
     /**
-     * 缺失查找最终兜底：返回原版 missingImage（紫黑格，missingno）—— 与原版
-     * {@code TextureMap.getAtlasSprite} 的缺失语义一致：<b>纹理找不着 → missingno</b>。
+     * Final fallback for unresolved lookups: returns the vanilla missingImage
+     * (purple-black square, missingno) — matching the missing semantics of vanilla
+     * {@code TextureMap.getAtlasSprite}: <b>texture not found → missingno</b>.
      *
-     * <p>Final fallback for unresolved textures: the vanilla missing image
-     * (purple-black square), matching vanilla missing semantics.
-     *
-     * @return missingno icon（原版 missingImage）；极端情况下可为 null
+     * @return the missingno icon (vanilla missingImage); may be null in extreme cases
      */
     @Nullable
     public static IIcon getMissingIcon(String texturePath) {

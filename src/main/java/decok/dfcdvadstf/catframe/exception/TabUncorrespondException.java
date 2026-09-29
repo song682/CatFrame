@@ -8,7 +8,6 @@ import decok.dfcdvadstf.catframe.ui.components.tab.TabRegistry;
  * does not match the tabId baked into the Tab instance's constructor.
  * </p>
  * <p>
- * 例如：<br>
  * Example:
  * <pre>{@code
  *   // Registered with tabId=103

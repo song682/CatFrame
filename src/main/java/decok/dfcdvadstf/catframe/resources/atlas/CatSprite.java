@@ -6,84 +6,89 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.util.IIcon;
 
 /**
- * CatFrame 自研纹理图集 sprite —— 实现原版 {@link IIcon} 契约的轻量 POJO。
+ * CatFrame custom-atlas sprite — a lightweight POJO implementing the vanilla
+ * {@link IIcon} contract.
  * <p>
- * 与 1.7.10 {@code TextureAtlasSprite} 的本质区别：
+ * Key differences from the 1.7.10 {@code TextureAtlasSprite}:
  * <ul>
- *   <li>像素归 CPU 所有（{@code int[] ARGB}），异步烘焙线程直接读取，无需 GPU 回读；</li>
- *   <li>{@link #getIconWidth()} / {@link #getIconHeight()} 返回<b>内容尺寸</b>而非物理存储尺寸
- *       —— 主动避开 1.7.10 各向异性过滤把物理存储扩为 (内容+16)² 的 padding 陷阱；</li>
- *   <li>UV 坐标由布局结果（物理起点 + padding + 图集尺寸）计算，缝合后经
- *       {@link #complete(int, int, int, int, int)} 一次性写入，之后全字段不可变（烘焙线程并发只读安全）。</li>
+ *   <li>pixels are owned by the CPU ({@code int[] ARGB}); async bake threads read
+ *       them directly with no GPU read-back;</li>
+ *   <li>{@link #getIconWidth()} / {@link #getIconHeight()} report the <b>content
+ *       size</b> rather than the physical storage size — actively avoiding the
+ *       1.7.10 anisotropic-filtering trap that pads physical storage to
+ *       (content+16)²;</li>
+ *   <li>UV coordinates are computed from the layout result (physical origin +
+ *       padding + atlas size) and written once via
+ *       {@link #complete(int, int, int, int, int)} after stitching; all fields are
+ *       immutable thereafter (safe for concurrent read-only access from bake threads).</li>
  * </ul>
  * <p>
- * M3 动画里程碑已落地：多帧 sprite 的帧像素存于 {@link #framePixels}（null = 单帧），
- * 帧推进由 {@link #updateAnimationTick()} 按客户端 tick 驱动（游戏暂停时跳过），
- * 帧切换后由 {@link CatAtlas#updateAnimationRegion} 做区域 glTexSubImage2D 重传。
- * 烘焙线程经 {@link #getPixels()} 读取<b>当前帧</b>，与图集区域更新保持同一可见帧。
- *
- * <p>CatFrame custom-atlas sprite implementing the vanilla {@code IIcon} contract.
- * Owns its pixels on the CPU side (flat ARGB int[]), reports the <em>content</em>
- * size (never the padded storage size), and keeps UV data immutable after stitching.
+ * The M3 animation milestone is in place: frame pixels of a multi-frame sprite
+ * live in {@link #framePixels} (null = single frame), frame advancement is driven
+ * per client tick by {@link #updateAnimationTick()} (skipped while the game is
+ * paused), and after a frame switch {@link CatAtlas#updateAnimationRegion}
+ * re-uploads the region via glTexSubImage2D. Bake threads read the <b>current
+ * frame</b> through {@link #getPixels()}, keeping the same visible frame as the
+ * atlas region update.
  */
 @SideOnly(Side.CLIENT)
 public class CatSprite implements IIcon {
 
-    /** 缺失纹理兜底 sprite 的 icon 名称（与原版 missingno 语义一致）。 */
+    /** Icon name of the missing-texture fallback sprite (matching the vanilla missingno semantics). */
     public static final String MISSING_NAME = "missingno";
-    /** 缺失纹理兜底 sprite 的内容尺寸（16×16 紫黑格）。 */
+    /** Content size of the missing-texture fallback sprite (a 16×16 purple-black square). */
     private static final int MISSING_SIZE = 16;
 
-    /** 发布键：完整纹理路径（如 {@code minecraft:block/stone}），即 textureIcons 的键。 */
+    /** Publish key: the full texture path (e.g. {@code minecraft:block/stone}), i.e. the textureIcons key. */
     private final String texturePath;
-    /** icon 名称：发布键本身（合并键已是数据驱动解析结果，如 {@code minecraft:blocks/ladder}）。 */
+    /** Icon name: the publish key itself (the merged key is already the data-driven resolution result, e.g. {@code minecraft:blocks/ladder}). */
     private final String name;
-    /** 内容像素（flat ARGB int[]，row-major，大小 = contentWidth × contentHeight）。 */
+    /** Content pixels (flat ARGB int[], row-major, size = contentWidth × contentHeight). */
     private final int[] pixels;
-    /** 内容区域宽度（像素）。 */
+    /** Content region width (pixels). */
     private final int contentWidth;
-    /** 内容区域高度（像素）。 */
+    /** Content region height (pixels). */
     private final int contentHeight;
-    /** 所属图集 id（如 {@code minecraft:blocks} / {@code minecraft:items}），供 TextureSlots 归类。 */
+    /** Owning atlas id (e.g. {@code minecraft:blocks} / {@code minecraft:items}), used by TextureSlots for classification. */
     private final String atlasId;
 
-    // ===== 缝合后写入（complete 一次性设置，之后不可变） =====
+    // ===== Written after stitching (set once by complete, immutable afterwards) =====
 
-    /** 物理存储起点 X（含 padding 边框在内的图集坐标）。 */
+    /** Physical storage origin X (atlas coordinates including the padding border). */
     private int originX;
-    /** 物理存储起点 Y（含 padding 边框在内的图集坐标）。 */
+    /** Physical storage origin Y (atlas coordinates including the padding border). */
     private int originY;
-    /** 单边 padding 宽度（布局公式 {@code 1<<mip << clamp(anisotropy-1,0,4)}）。 */
+    /** Per-side padding width (layout formula {@code 1<<mip << clamp(anisotropy-1,0,4)}). */
     private int padding;
-    /** 所属图集宽度（最终 2^n 尺寸）。 */
+    /** Owning atlas width (final 2^n size). */
     private int atlasWidth;
-    /** 所属图集高度（最终 2^n 尺寸）。 */
+    /** Owning atlas height (final 2^n size). */
     private int atlasHeight;
 
-    // ===== M3 动画状态（单帧 sprite：framePixels = null，像素直存 pixels） =====
+    // ===== M3 animation state (single-frame sprites: framePixels = null, pixels stored directly) =====
 
-    /** 动画帧像素（null = 单帧；多帧时每帧 flat ARGB，尺寸 = contentWidth × contentHeight）。 */
+    /** Animation frame pixels (null = single frame; for multi-frame each frame is flat ARGB, size = contentWidth × contentHeight). */
     private final int[][] framePixels;
-    /** 动画帧总数（单帧恒为 1）。 */
+    /** Total animation frame count (always 1 for single-frame sprites). */
     private final int frameCount;
-    /** 当前动画帧索引（tick 驱动推进；volatile 供异步烘焙线程读取）。 */
+    /** Current animation frame index (advanced per tick; volatile so async bake threads can read it). */
     private volatile int frameIndex;
-    /** 每帧持续时间（ms），长度 = frameCount（单帧为空数组）。 */
+    /** Per-frame duration (ms), length = frameCount (an empty array for single-frame sprites). */
     private final int[] frameTimeMs;
-    /** 上次动画 tick 的系统时间（ms，{@link Minecraft#getSystemTime}）。 */
+    /** System time of the last animation tick (ms, {@link Minecraft#getSystemTime}). */
     private long lastAnimationTickMs;
-    /** 累积未消费的动画时间（ms），帧推进按它逐级扣减。 */
+    /** Accumulated unconsumed animation time (ms), decremented step by step as frames advance. */
     private long accumulatedAnimationMs;
 
     /**
-     * 构造一个内容 sprite（单帧）。
+     * Constructs a content sprite (single frame).
      *
-     * @param texturePath   完整纹理路径（textureIcons 发布键）
-     * @param name          icon 名称（发布键本身，数据驱动解析结果）
-     * @param pixels        内容像素（flat ARGB，调用方拥有，不再被修改）
-     * @param contentWidth  内容宽度
-     * @param contentHeight 内容高度
-     * @param atlasId       所属图集 id
+     * @param texturePath   full texture path (the textureIcons publish key)
+     * @param name          icon name (the publish key itself, the data-driven resolution result)
+     * @param pixels        content pixels (flat ARGB, owned by the caller, no longer modified)
+     * @param contentWidth  content width
+     * @param contentHeight content height
+     * @param atlasId       owning atlas id
      */
     public CatSprite(String texturePath, String name, int[] pixels,
                      int contentWidth, int contentHeight, String atlasId) {
@@ -92,13 +97,14 @@ public class CatSprite implements IIcon {
     }
 
     /**
-     * 完整构造（多帧动画入口，M3）。
+     * Full constructor (multi-frame animation entry point, M3).
      * <p>
-     * 各帧尺寸必须等于 {@code contentWidth × contentHeight}；调用方（CatSpriteLoader）
-     * 负责把 .mcmeta 帧表展开为与帧一一对应的时长数组。
+     * Every frame must be sized {@code contentWidth × contentHeight}; the caller
+     * (CatSpriteLoader) expands the .mcmeta frame table into a duration array
+     * matching the frames one-to-one.
      *
-     * @param framePixels 动画帧像素（长度 = 帧数，每帧 flat ARGB）；null 视为单帧
-     * @param frameTimeMs 每帧时长（ms），长度 = 帧数
+     * @param framePixels animation frame pixels (length = frame count, each frame flat ARGB); null means single frame
+     * @param frameTimeMs per-frame duration (ms), length = frame count
      */
     CatSprite(String texturePath, String name, int[][] framePixels,
               int contentWidth, int contentHeight, String atlasId, int[] frameTimeMs) {
@@ -108,7 +114,7 @@ public class CatSprite implements IIcon {
                 framePixels != null ? framePixels.length : 1, frameTimeMs);
     }
 
-    /** 私有完整构造：单帧（framePixels=null）与多帧共用。 */
+    /** Private full constructor: shared by single-frame (framePixels=null) and multi-frame. */
     private CatSprite(String texturePath, String name, int[][] framePixels, int[] pixels,
                       int contentWidth, int contentHeight, String atlasId,
                       int frameCount, int[] frameTimeMs) {
@@ -127,17 +133,18 @@ public class CatSprite implements IIcon {
     }
 
     /**
-     * 内置缺失纹理兜底 sprite（16×16 紫黑格，像素行为与原版 builtin/missing 一致）。
-     * 纹理文件缺失/解码失败时调用方用它占位，保证任何查找与烘焙不崩溃。
+     * Built-in missing-texture fallback sprite (16×16 purple-black square; pixel
+     * pattern matches the vanilla builtin/missing). The caller uses it as a
+     * placeholder when a texture file is missing / fails to decode, so that no
+     * lookup or bake ever crashes.
      *
-     * @param atlasId     所属图集 id
-     * @param texturePath 原始纹理路径（保留以维持发布键完整性）
+     * @param atlasId     owning atlas id
+     * @param texturePath original texture path (kept so the publish key stays intact)
      */
     public static CatSprite missing(String atlasId, String texturePath) {
         int[] pixels = new int[MISSING_SIZE * MISSING_SIZE];
         for (int y = 0; y < MISSING_SIZE; y++) {
             for (int x = 0; x < MISSING_SIZE; x++) {
-                // 2×2 格（每格 8×8）：左上/右下紫，右上/左下黑，与原版 missingno 一致
                 // 2x2 cells of 8x8 px: magenta top-left/bottom-right, black otherwise
                 boolean black = ((x >> 3) + (y >> 3)) % 2 != 0;
                 pixels[y * MISSING_SIZE + x] = black ? 0xFF000000 : 0xFFFF00FF;
@@ -148,14 +155,15 @@ public class CatSprite implements IIcon {
     }
 
     /**
-     * 缝合回调：写入物理起点、padding 与图集尺寸，此后 UV 数据可用。
-     * 由 {@link CatAtlas} 在布局完成、最终图集尺寸确定后调用，仅可调用一次。
+     * Stitch callback: writes the physical origin, padding and atlas size; UV data
+     * becomes usable afterwards. Called once by {@link CatAtlas} after layout
+     * completes and the final atlas size is fixed.
      *
-     * @param x          物理存储起点 X（region 起点，内容起点 = x + padding）
-     * @param y          物理存储起点 Y
-     * @param padding    单边 padding 宽度
-     * @param atlasWidth 最终图集宽度（2^n）
-     * @param atlasHeight 最终图集高度（2^n）
+     * @param x           physical storage origin X (region origin; content origin = x + padding)
+     * @param y           physical storage origin Y
+     * @param padding     per-side padding width
+     * @param atlasWidth  final atlas width (2^n)
+     * @param atlasHeight final atlas height (2^n)
      */
     public void complete(int x, int y, int padding, int atlasWidth, int atlasHeight) {
         this.originX = x;
@@ -166,13 +174,16 @@ public class CatSprite implements IIcon {
     }
 
     /**
-     * 动画 tick 推进：按系统时间增量累积帧时长并推进 {@link #frameIndex}。
+     * Animation tick advancement: accumulates frame durations from the system-time
+     * delta and advances {@link #frameIndex}.
      * <p>
-     * 帧切换后返回 true，调用方（CatAtlasManager → CatAtlas.updateAnimationRegion）
-     * 负责该 sprite 区域的 glTexSubImage2D 重传。时钟回拨或长时间卡顿（>1s）时
-     * 重置累积器避免跳帧风暴（此时返回 false，不触发重传）。
+     * Returns true after a frame switch; the caller (CatAtlasManager →
+     * CatAtlas.updateAnimationRegion) is responsible for the glTexSubImage2D
+     * re-upload of that sprite's region. On clock rollback or a long stall (>1s)
+     * the accumulator is reset to avoid a frame-skip storm (returns false and no
+     * re-upload is triggered in that case).
      *
-     * @return 帧索引是否发生切换（需要重传图集区域）
+     * @return whether the frame index switched (the atlas region needs re-upload)
      */
     public boolean updateAnimationTick() {
         if (frameCount <= 1) {
@@ -182,7 +193,7 @@ public class CatSprite implements IIcon {
         long delta = lastAnimationTickMs == 0 ? 0 : now - lastAnimationTickMs;
         lastAnimationTickMs = now;
         if (delta <= 0 || delta > 1000) {
-            // 首次 tick / 时钟回拨 / 长时间卡顿：仅记录基准，不推进帧
+            // First tick / clock rollback / long stall: only record the baseline, do not advance frames
             accumulatedAnimationMs = 0;
             return false;
         }
@@ -195,15 +206,16 @@ public class CatSprite implements IIcon {
         return frameIndex != old;
     }
 
-    /** 是否为多帧动画 sprite。 */
+    /** Whether this is a multi-frame animated sprite. */
     public boolean isAnimated() {
         return framePixels != null;
     }
 
-    // ==================== IIcon 契约 ====================
+    // ==================== IIcon contract ====================
 
     /**
-     * 内容宽度（非物理存储宽度）—— 与 1.7.10 各向异性填充陷阱的关键区别。
+     * Content width (not the physical storage width) — the key distinction from the
+     * 1.7.10 anisotropic padding trap.
      */
     @Override
     public int getIconWidth() {
@@ -211,7 +223,7 @@ public class CatSprite implements IIcon {
     }
 
     /**
-     * 内容高度（非物理存储高度）。
+     * Content height (not the physical storage height).
      */
     @Override
     public int getIconHeight() {
@@ -239,7 +251,8 @@ public class CatSprite implements IIcon {
     }
 
     /**
-     * 0 → minU，16 → maxU，中间值线性插值（quad 顶点 UV 的标准抽象空间）。
+     * 0 → minU, 16 → maxU, linear interpolation in between (the standard abstract
+     * space for quad vertex UVs).
      */
     @Override
     public float getInterpolatedU(double u) {
@@ -247,7 +260,7 @@ public class CatSprite implements IIcon {
     }
 
     /**
-     * 0 → minV，16 → maxV，中间值线性插值。
+     * 0 → minV, 16 → maxV, linear interpolation in between.
      */
     @Override
     public float getInterpolatedV(double v) {
@@ -259,52 +272,53 @@ public class CatSprite implements IIcon {
         return name;
     }
 
-    // ==================== 访问器 ====================
+    // ==================== Accessors ====================
 
-    /** 发布键（完整纹理路径）。 */
+    /** The publish key (full texture path). */
     public String getTexturePath() {
         return texturePath;
     }
 
     /**
-     * 内容像素（flat ARGB int[]，只读约定）。
-     * 多帧 sprite 返回<b>当前帧</b>像素，与图集区域更新保持同一可见帧。
+     * Content pixels (flat ARGB int[], read-only by convention).
+     * For multi-frame sprites returns the <b>current frame</b> pixels, keeping the
+     * same visible frame as the atlas region update.
      */
     public int[] getPixels() {
         return framePixels != null ? framePixels[frameIndex] : pixels;
     }
 
-    /** 所属图集 id（如 {@code minecraft:blocks}）。 */
+    /** Owning atlas id (e.g. {@code minecraft:blocks}). */
     public String getAtlasId() {
         return atlasId;
     }
 
-    /** 是否缺失纹理兜底 sprite。 */
+    /** Whether this is the missing-texture fallback sprite. */
     public boolean isMissing() {
         return MISSING_NAME.equals(name);
     }
 
-    /** 物理存储起点 X。 */
+    /** Physical storage origin X. */
     public int getOriginX() {
         return originX;
     }
 
-    /** 物理存储起点 Y。 */
+    /** Physical storage origin Y. */
     public int getOriginY() {
         return originY;
     }
 
-    /** 单边 padding 宽度。 */
+    /** Per-side padding width. */
     public int getPadding() {
         return padding;
     }
 
-    /** 当前动画帧索引（单帧恒 0）。 */
+    /** Current animation frame index (always 0 for single-frame sprites). */
     public int getFrameIndex() {
         return frameIndex;
     }
 
-    /** 动画帧总数（单帧恒 1）。 */
+    /** Total animation frame count (always 1 for single-frame sprites). */
     public int getFrameCount() {
         return frameCount;
     }

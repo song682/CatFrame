@@ -16,38 +16,40 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 调色板置换源（对标 26.1.2 {@code paletted_permutations}，格式与 Wiki 一致）——
- * M4 动态染色变体。
+ * Palette permutation source (mirrors 26.1.2 {@code paletted_permutations},
+ * matching the Wiki format) — M4 dynamic dyed variants.
  * <p>
- * 语义（与 26.1.2 一致）：对每个 {@code textures} 基础纹理 × 每个 {@code permutations}
- * 变体，产出 sprite id = {@code <base><separator><permName>}（separator 缺省 {@code _}）；
- * 像素处理 = 凡 base 中颜色与 {@code palette_key} 中某<b>非透明</b>像素颜色相同 →
- * 替换为同位置 permutation overlay 的颜色（palette_key 与 overlay 必须同尺寸）。
+ * Semantics (identical to 26.1.2): for every {@code textures} base texture ×
+ * every {@code permutations} variant, emit sprite id =
+ * {@code <base><separator><permName>} (separator defaults to {@code _});
+ * pixel handling = any color in base equal to a <b>non-transparent</b> pixel
+ * color of {@code palette_key} is replaced with the color at the same position
+ * in the permutation overlay (palette_key and overlay must have the same size).
  * <p>
- * 定义 JSON 示例（Wiki 格式：permutations 值直接是命名空间 ID）：
+ * Definition JSON example (Wiki format: permutation values are namespace ids
+ * directly):
  * <pre>{@code {"type": "paletted_permutations",
  * "textures": ["minecraft:item/leather_helmet"],
  * "palette_key": "minecraft:item/leather_helmet_overlay",
  * "permutations": {"red": "minecraft:item/leather_helmet_overlay_red"},
  * "separator": "_"}}</pre>
  * <p>
- * palette_key 与 overlays 在 {@link #list}（主线程）读取并构建颜色映射，像素替换
- * 闭包随后在并行解码线程应用 —— 闭包只读，线程安全。读取时按 1.7.10 复数纹理
- * 目录回退（{@code textures/block/} → {@code textures/blocks/}）。
- *
- * <p>Generates dyed sprite variants by key-colour replacement; the colour map
- * is built on the main thread, the replacement runs on the decode pool.
+ * palette_key and overlays are read on the main thread in {@link #list} and
+ * turned into a color map; the pixel-replacement closure then runs on the
+ * parallel decode threads — the closure is read-only and thread-safe. Reads
+ * fall back across the 1.7.10 plural texture directories
+ * ({@code textures/block/} → {@code textures/blocks/}).
  */
 @SideOnly(Side.CLIENT)
 public final class PalettedPermutationsSource implements AtlasSource {
 
-    /** 基础纹理列表（各 × 每 permutation 产出一个变体）。 */
+    /** Base texture list (each yields one variant per permutation). */
     private final List<ResourceLocation> textures;
-    /** 色板模板（非透明像素颜色 = 关键色）。 */
+    /** Palette template (non-transparent pixel colors = key colors). */
     private final ResourceLocation paletteKey;
-    /** 变体名 → overlay 纹理（Wiki 格式：值 = 命名空间 ID）。 */
+    /** Variant name → overlay texture (Wiki format: value = namespace id). */
     private final Map<String, ResourceLocation> permutations;
-    /** 变体 id 分隔符（缺省 {@code _}，25w04a 起可自定义）。 */
+    /** Variant id separator (defaults to {@code _}; customizable since 25w04a). */
     private final String separator;
 
     public PalettedPermutationsSource(List<ResourceLocation> textures,
@@ -96,11 +98,11 @@ public final class PalettedPermutationsSource implements AtlasSource {
                         perm.getValue(), overlay.length, keyPixels.length);
                 continue;
             }
-            // 构建颜色映射：关键色 → overlay 同位置颜色（后者覆盖重复关键色）
+            // Build the color map: key color → overlay color at the same position (later entries override duplicate keys)
             final Map<Integer, Integer> colorMap = new HashMap<>();
             for (int i = 0; i < keyPixels.length; i++) {
                 int key = keyPixels[i];
-                if ((key >>> 24) != 0) { // 透明像素不作为关键色
+                if ((key >>> 24) != 0) { // Transparent pixels are not used as key colors
                     colorMap.put(key, overlay[i]);
                 }
             }
@@ -124,8 +126,8 @@ public final class PalettedPermutationsSource implements AtlasSource {
         return out;
     }
 
-    /** 读取纹理像素（flat ARGB）；失败返回 null（不崩溃）。
-     * 1.7.10 纹理在复数目录（textures/blocks|items），单数路径自动回退。 */
+    /** Reads texture pixels (flat ARGB); returns null on failure (no crash).
+     * 1.7.10 textures live in plural directories (textures/blocks|items); single-form paths fall back automatically. */
     private static int[] readPixels(IResourceManager manager, ResourceLocation rl) {
         for (ResourceLocation candidate : candidates(rl)) {
             try {
@@ -136,13 +138,13 @@ public final class PalettedPermutationsSource implements AtlasSource {
                 }
                 return image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
             } catch (IOException | RuntimeException e) {
-                // 缺失/解码失败：尝试下一个候选
+                // Missing / decode failure: try the next candidate
             }
         }
         return null;
     }
 
-    /** 候选纹理位置：{@code textures/<path>.png} 优先，block/item 单数前缀回退复数目录。 */
+    /** Candidate texture locations: {@code textures/<path>.png} first; singular block/item prefixes fall back to plural directories. */
     private static List<ResourceLocation> candidates(ResourceLocation rl) {
         List<ResourceLocation> out = new ArrayList<>(2);
         String ns = rl.getResourceDomain();

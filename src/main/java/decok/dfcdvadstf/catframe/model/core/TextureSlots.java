@@ -14,21 +14,23 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * 纹理槽系统。对标 26.1.2 的 {@code TextureSlots}。
+ * Texture slot system. Mirrors 26.1.2 {@code TextureSlots}.
  * <p>
- * 负责将模型的纹理引用（如 {@code "layer0"} → {@code "minecraft:block/stone"}）
- * 解析为具体的 {@link IIcon} 引用，支持：
+ * Resolves model texture references (e.g. {@code "layer0"} → {@code "minecraft:block/stone"})
+ * to concrete {@link IIcon} refs, supporting:
  * <ul>
- *   <li>{@code #xxx} 引用链解析（当前在 {@link ModelResolver#resolveTextureVariables(ModelJson)} 中内联完成）</li>
- *   <li>Parent 模型的纹理覆盖（子模型覆盖父模型的同名 slot）</li>
- *   <li>从已知 {@link IIcon} 映射直接查询</li>
+ *   <li>{@code #xxx} reference chain resolution (handled inline in
+ *       {@link ModelResolver#resolveTextureVariables(ModelJson)})</li>
+ *   <li>Parent model texture overrides (child overrides parent's same-named slot)</li>
+ *   <li>Direct lookup from known {@link IIcon} map</li>
  * </ul>
  *
- * <h3>与 26.1.2 的差异</h3>
+ * <h3>Differences from 26.1.2</h3>
  * <ul>
- *   <li>26.1.2 使用 Material/Material.Reference 做类型安全引用，此处简化为 String → IIcon</li>
- *   <li>未引入 TextureSlots.Data/Resolver 分层，直接提供静态工厂方法</li>
+ *   <li>26.1.2 uses Material/Material.Reference for type-safe refs; here simplified to String → IIcon</li>
+ *   <li>No TextureSlots.Data/Resolver layering; static factory methods provided directly</li>
  * </ul>
+ * </p>
  */
 public class TextureSlots {
 
@@ -38,44 +40,44 @@ public class TextureSlots {
         this.resolvedIcons = resolvedIcons;
     }
 
-    // ==================== 工厂方法 ====================
+    // ==================== Factory methods ====================
 
-    /**
-     * 从 {@link ModelJson} 的 textures map 构建 TextureSlots。
+/**
+     * Build TextureSlots from {@link ModelJson} textures map.
      * <p>
-     * 遍历 model.textures 中的每个条目，跳过 {@code #xxx} 引用（这些引用已在
-     * {@link ModelResolver#resolveTextureVariables(ModelJson)} 中解析为实际路径），
-     * 然后从 globalIconMap 或 MC 的纹理图集中查找对应的 {@link IIcon}。
+     * Iterates model.textures entries, skipping {@code #xxx} refs (resolved in
+     * {@link ModelResolver#resolveTextureVariables(ModelJson)}), then looks up
+     * corresponding {@link IIcon} from globalIconMap or MC texture atlases.
      *
-     * @param model         已解析的模型（textures 中的 # 引用已被 ModelResolver 展开）
-     * @param globalIconMap 全局 IIcon 映射（来自 VMM.textureIcons），可为 null
-     * @param parentOverride 父模型的 TextureSlots，子模型可覆盖其值，可为 null
-     * @return 构建好的 TextureSlots
+     * @param model         parsed model (textures # refs already expanded by ModelResolver)
+     * @param globalIconMap global IIcon map (from VMM.textureIcons), may be null
+     * @param parentOverride parent TextureSlots, child may override its values, may be null
+     * @return built TextureSlots
      */
     public static TextureSlots fromModel(ModelJson model,
                                           @Nullable Map<String, IIcon> globalIconMap,
                                           @Nullable TextureSlots parentOverride) {
         Map<String, IIcon> result = new LinkedHashMap<>();
 
-        // 1. 先继承 parent 的纹理
+        // 1. Inherit parent's textures first
         if (parentOverride != null) {
             result.putAll(parentOverride.resolvedIcons);
         }
 
-        // 2. 子模型的纹理覆盖父模型
+        // 2. Child model's textures override parent's
         if (model.textures != null) {
             for (Map.Entry<String, String> entry : model.textures.entrySet()) {
                 String key = entry.getKey();
                 String value = entry.getValue();
 
-                // 跳过 # 引用（已在 ModelResolver.resolveTextureVariables 中展开）
+                // Skip # refs (expanded in ModelResolver.resolveTextureVariables)
                 if (value.startsWith("#")) {
                     CatFrame.logger.debug("[TextureSlots] skipping unresolved reference: {} -> {}", key, value);
                     continue;
                 }
 
-                // 查找 IIcon：findIcon 对非空引用恒返回有效 icon（缺失时 = missingno），
-                // null 仅可能来自空路径引用（防御性跳过）
+// Lookup IIcon: findIcon returns valid icon for non-null refs (missing → missingno),
+        // null only possible from empty path ref (defensive skip)
                 IIcon icon = findIcon(value, globalIconMap);
                 if (icon != null) {
                     result.put(key, icon);
@@ -89,39 +91,39 @@ public class TextureSlots {
     }
 
     /**
-     * 从预先构建好的 Map 构建 TextureSlots（用于向后兼容）。
+     * Build TextureSlots from pre-built Map (for backward compat).
      */
     public static TextureSlots fromIconMap(Map<String, IIcon> iconMap) {
         return new TextureSlots(new LinkedHashMap<>(iconMap));
     }
 
     /**
-     * 空的 TextureSlots。
+     * Empty TextureSlots.
      */
     public static final TextureSlots EMPTY = new TextureSlots(Collections.emptyMap());
 
-    // ==================== 查询 ====================
+    // ==================== Query ====================
 
     /**
-     * 判定 icon 是否属于 blocks 纹理图集（对标 26.1.2
-     * {@code sprite.atlasLocation().equals(TextureAtlas.LOCATION_BLOCKS)}）。
+     * Determines if icon belongs to blocks texture atlas (mirrors 26.1.2
+     * {@code sprite.atlasLocation().equals(TextureAtlas.LOCATION_BLOCKS)}).
      * <p>
-     * 1.7.10 的 {@link TextureAtlasSprite} 不携带图集信息，判定分三级：
+     * 1.7.10's {@link TextureAtlasSprite} carries no atlas info, so we use three-tier check:
      * <ol>
-     *   <li>blocks 图集实例同一性 → blocks；</li>
-     *   <li>items 图集实例同一性 → items；</li>
-     *   <li>两个原版图集都不含该实例时，按路径前缀归类（前瞻兼容：
-     *       {@code items/} / {@code item/} → items，其余含 {@code blocks/} /
-     *       {@code block/} → blocks），为未来自定义缝合系统预留。</li>
+     *   <li>blocks atlas instance identity → blocks;</li>
+     *   <li>items atlas instance identity → items;</li>
+     *   <li>neither vanilla atlas contains this instance → classify by path prefix
+     *       (forward-compat: {@code items/} / {@code item/} → items, rest with {@code blocks/} /
+     *       {@code block/} → blocks), reserved for future custom stitching.</li>
      * </ol>
-     * icon 为 null 或非 atlas sprite 时兜底返回 true（与世界路径恒绑 blocks 图集一致）。
+     * null icon or non-atlas sprite defaults to true (consistent with world paths always binding blocks atlas).
      *
-     * @param icon 待判定的 icon，可为 null
-     * @return true=blocks 图集（含兜底），false=items 图集
+     * @param icon icon to check, may be null
+     * @return true=blocks atlas (incl. fallback), false=items atlas
      */
     public static boolean isBlockAtlas(@Nullable IIcon icon) {
-        // 0. 自定义图集 sprite：按所属图集 id 归类（设计文档预留的 custom stitching 钩子），
-        //    必须先于 instanceof TextureAtlasSprite 检查 —— 否则 CatSprite 恒被判为 blocks。
+        // 0. Custom-atlas sprites: classify by owning atlas id (design doc's custom stitching hook),
+        //     must check before instanceof TextureAtlasSprite — otherwise CatSprite always classified as blocks.
         // Custom-atlas sprites are classified by their owning atlas id.
         if (icon instanceof CatSprite) {
             return CatAtlasManager.BLOCK_ATLAS_ID.equals(((CatSprite) icon).getAtlasId());
@@ -129,17 +131,17 @@ public class TextureSlots {
         if (!(icon instanceof TextureAtlasSprite)) return true;
         try {
             String name = icon.getIconName();
-            // 1. blocks 图集实例同一性：同名 sprite 是同一个对象 → 来自 blocks 图集
+            // 1. blocks atlas instance identity: same-name sprite is same object → from blocks atlas
             if (Minecraft.getMinecraft().getTextureMapBlocks().getAtlasSprite(name) == icon) {
                 return true;
             }
-            // 2. items 图集实例同一性
+            // 2. items atlas instance identity
             TextureMap itemsMap = (TextureMap) Minecraft.getMinecraft().getTextureManager()
                     .getTexture(TextureMap.locationItemsTexture);
             if (itemsMap != null && itemsMap.getAtlasSprite(name) == icon) {
                 return false;
             }
-            // 3. 都不含该实例（未来自定义缝合的 sprite）：按路径前缀归类
+            // 3. Neither atlas contains this instance (future custom stitching sprite): classify by path prefix
             return !hasItemsPrefix(name);
         } catch (Exception e) {
             return true;
@@ -147,8 +149,8 @@ public class TextureSlots {
     }
 
     /**
-     * 判定纹理名（可含 namespace）是否以 items 图集的文件夹前缀开头
-     * （{@code items/} 与现代单数 {@code item/}）。
+     * Checks if texture name (with optional namespace) starts with items atlas folder prefix
+     * ({@code items/} and legacy singular {@code item/}).
      */
     private static boolean hasItemsPrefix(@Nullable String name) {
         if (name == null) return false;
@@ -158,10 +160,10 @@ public class TextureSlots {
     }
 
     /**
-     * 获取指定 slot 的 {@link IIcon}。
+     * Get {@link IIcon} for the given slot.
      *
-     * @param slot 纹理槽名称（如 {@code "layer0"}、{@code "particle"}）
-     * @return IIcon，未找到时返回 null
+     * @param slot texture slot name (e.g. {@code "layer0"}, {@code "particle"})
+     * @return IIcon, or null if not found
      */
     @Nullable
     public IIcon getIcon(String slot) {
@@ -169,60 +171,62 @@ public class TextureSlots {
     }
 
     /**
-     * 获取所有已解析的纹理路径集合。
+     * Get all resolved texture paths.
      */
     public Set<String> getTexturePaths() {
         return resolvedIcons.keySet();
     }
 
     /**
-     * 获取底层 icon 映射的不可变视图。
+     * Get immutable view of underlying icon map.
      */
     public Map<String, IIcon> getIconMap() {
         return Collections.unmodifiableMap(resolvedIcons);
     }
 
     /**
-     * 转换为 {@link JsonModelBake#bakeElement} 所需的 {@code Map<String, IIcon>} 格式。
-     * 用于向后兼容。
+     * Convert to {@code Map<String, IIcon>} format required by {@link JsonModelBake#bakeElement}.
+     * For backward compat.
      */
     public Map<String, IIcon> toIconMap() {
         return new HashMap<>(resolvedIcons);
     }
 
     /**
-     * 此 TextureSlots 是否为空（无任何纹理）。
+     * Whether this TextureSlots is empty (no textures).
      */
     public boolean isEmpty() {
         return resolvedIcons.isEmpty();
     }
 
-    // ==================== 内部辅助 ====================
+    // ==================== Internal helpers ====================
 
-    /**
-     * 根据纹理路径查找 IIcon。
+/**
+     * Look up IIcon by texture path.
      * <p>
-     * [渲染三域架构] 原版后端语义（唯一路径）：textureIcons 直持 vanilla IIcon，
-     * 全部渲染路径（物品作用域 / 世界 chunk 批次）均绑原版图集，UV 空间全局一致 ——
-     * 查表接受任意非空 icon；<b>查表未命中 → 直接返回 missingno（紫黑格）</b>，
-     * 不返回 null、不透明、不做任何兼容纠正。
+     * [Render three-domain architecture] Vanilla backend semantics (single path): textureIcons
+     * directly holds vanilla IIcons; all render paths (item scope / world chunk batches) bind
+     * vanilla atlases, UV space globally consistent — lookup accepts any non-null icon;
+     * <b>miss → return missingno (purple-black square)</b>, never null, never opaque, no compat fixups.
+     * <p>
      * Vanilla backend: globalIconMap holds vanilla IIcons and every render path
      * binds the vanilla atlases, so any non-null icon is accepted; misses resolve
      * to missingno (purple-black square).
+     * </p>
      */
     @Nullable
     private static IIcon findIcon(String texturePath, @Nullable Map<String, IIcon> globalIconMap) {
         if (texturePath == null || texturePath.isEmpty()) return null;
 
-        // 接受 globalIconMap 中的任意非空 icon（vanilla IIcon，原版图集 UV；
-        // 所有渲染路径同绑原版图集，无错配风险）。
+        // Accept any non-null icon from the map (vanilla IIcon, vanilla atlas UV;
+        // all render paths bind the same vanilla atlas, no mismatch risk).
         // Accept any non-null icon from the map (vanilla atlas UV space).
         IIcon icon = globalIconMap != null ? globalIconMap.get(texturePath) : null;
         if (icon != null) {
             return icon;
         }
 
-        // 最终兜底：missingno（原版空间紫黑格）。
+        // Final fallback: missingno (vanilla-space purple-black square).
         // Final fallback: missingno (vanilla-space purple-black square).
         CatFrame.logger.warn("[TextureSlots] texture error: '{}' not found in texture table, using missingno", texturePath);
         return CatAtlasManager.getMissingIcon(texturePath);

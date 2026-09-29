@@ -11,12 +11,6 @@ import java.util.function.Consumer;
  * this layout calculates the gap automatically so that children are evenly
  * distributed from edge to edge of the content area.
  * </p>
- *
- * <p>
- * EqualSpacingLayout —— 将子元素等间距分布在可用空间内。
- * 与 {@link LinearLayout} 使用固定间距不同，此布局自动计算间距，
- * 使子元素从内容区域的一端均匀分布到另一端。
- * </p>
  */
 public class EqualSpacingLayout extends AbstractLayout {
 
@@ -25,13 +19,13 @@ public class EqualSpacingLayout extends AbstractLayout {
     private final LayoutSettings defaultChildLayoutSettings = LayoutSettings.defaults();
 
     /**
-     * Creates a horizontal EqualSpacingLayout. / 创建水平等间距布局。
+     * Creates a horizontal EqualSpacingLayout.
      */
     public EqualSpacingLayout() {
     }
 
     /**
-     * Creates an EqualSpacingLayout with the given direction. / 创建指定方向的等间距布局。
+     * Creates an EqualSpacingLayout with the given direction.
      */
     public EqualSpacingLayout(Axis axis) {
         this.axis = axis;
@@ -197,7 +191,7 @@ public class EqualSpacingLayout extends AbstractLayout {
     }
 
     /**
-     * The distribution direction. / 分布方向。
+     * The distribution direction.
      */
     public enum Axis {HORIZONTAL, VERTICAL}
 }

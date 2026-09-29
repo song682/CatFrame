@@ -19,7 +19,6 @@ import java.util.*;
  * Tag loader - responsible for loading and managing the tag system
  * 
  * Similar to 26.1's TagLoader<T>, but adapted for 1.7.10 Forge environment
- * 类似 26.1 的 TagLoader<T>，但适配 1.7.10 Forge 环境
  * Support:
  * - Loading tag definitions from JSON files
  * - Tag references (e.g. #namespace:tag_name)
@@ -215,7 +214,7 @@ public class TagLoader<T> {
     
     /**
      * Get or create tag content set (for hard-coded registration)
-     * 如果标签不存在，会自动创建
+     * If the tag does not exist, it will be created automatically
      */
     public Set<T> getOrCreateTagContents(ResourceLocation location) {
         Set<T> contents = tagRegistry.get(location);
@@ -282,11 +281,11 @@ public class TagLoader<T> {
      */
     public interface ElementLookup<T> {
         /**
-         * 查找元素
+         * Lookup an element
          * 
-         * @param id 元素标识符
-         * @param required 是否必须存在
-         * @return 找到的元素，找不到时返回 null
+         * @param id the element identifier
+         * @param required whether the element must exist
+         * @return the found element, or null if not found
          */
         T get(ResourceLocation id, boolean required);
     }

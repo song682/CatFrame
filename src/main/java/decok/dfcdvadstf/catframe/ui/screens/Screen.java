@@ -25,16 +25,6 @@ import java.util.List;
 
 /**
  * <p>
- * CatFrame UI 库的界面基类 —— 继承原版 {@link GuiScreen}，同时把高版本 Minecraft
- * {@code net.minecraft.client.gui.screens.Screen}（extends
- * {@code AbstractContainerEventHandler}）
- * 的「组件容器 + 焦点导航 + 事件分发」能力内联进来。<br>
- * 通过实现 {@link GuiEventListener} 与 {@link ContainerEventHandler}，本屏幕本身即是
- * CatFrame 组件树的根容器；实现 {@link CatFrameInputScreen} 后，
- * {@code MixinGuiScreen} 会把 LWJGL2 拆分键盘事件路由到本屏幕
- * （{@link #getEventRoot()} 返回 {@code this}）。
- * </p>
- * <p>
  * Base screen for the CatFrame UI library — extends vanilla {@link GuiScreen}
  * while inlining the
  * component-container / focus-navigation / event-dispatch behaviour of the
@@ -50,48 +40,42 @@ import java.util.List;
  * {@code this}).
  * </p>
  *
- * <h3>生命周期 / Lifecycle</h3>
+ * <h3>Lifecycle</h3>
  * <ul>
- * <li>{@link #initGui()} — 原版在 {@code setWorldAndResolution} 时调用（含每次 resize）。本类
- * 在此重建组件（{@link #clearWidgets()} → {@link #init()} →
- * {@link #setInitialFocus()}），
- * 契合 1.7.10「在 initGui 中重建控件」的惯例。</li>
- * <li>{@link #init()} — 子类在此通过 {@link #addRenderableWidget(GuiEventListener)}
- * 等添加组件。</li>
- * <li>{@link #updateScreen()} → {@link #tick()}；{@link #onGuiClosed()} →
- * {@link #removed()}。</li>
+ * <li>{@link #initGui()} — vanilla calls this at {@code setWorldAndResolution} (including each resize). This class
+ * rebuilds components ({@link #clearWidgets()} → {@link #init()} →
+ * {@link #setInitialFocus()}),
+ * matching the 1.7.10 convention of "rebuild widgets in initGui".</li>
+ * <li>{@link #init()} — subclasses add components here via {@link #addRenderableWidget(GuiEventListener)}
+ * etc.</li>
+ * <li>{@link #updateScreen()} → {@link #tick()}; {@link #onGuiClosed()} →
+ * {@link #removed()}.</li>
  * </ul>
  *
- * <h3>事件契约 / Event contract</h3>
+ * <h3>Event contract</h3>
  * <p>
- * 拆分键盘事件（{@code keyPressed}/{@code keyReleased}/{@code charTyped}）经
- * {@code ScreenKeyboardInput} 派发（Tab 焦点导航与 {@code keyReleased} 仅由此到达）；
- * 本类的原版 {@link #keyTyped(char, int)} 由 {@code super.handleKeyboardInput()}
- * 驱动，处理 Esc 关闭后经 {@link #dispatchKeyTyped(char, int)} 转发到焦点子组件——
- * 这是只实现了 {@code keyTyped} 的叶子组件（文本框、按钮等）的<strong>唯一</strong>
- * 输入通道（{@code ScreenKeyboardInput} 末尾的 legacy keyTyped 桥接曾与之并存并导致
- * 双重输入，已移除）。<br>
- * Split keyboard events are dispatched via {@code ScreenKeyboardInput} (Tab focus
- * navigation and {@code keyReleased} only reach components through it); this
- * class's vanilla {@link #keyTyped(char, int)} is driven by
+ * Split keyboard events ({@code keyPressed}/{@code keyReleased}/{@code charTyped}) are dispatched via
+ * {@code ScreenKeyboardInput} (Tab focus navigation and {@code keyReleased} only reach components through it);
+ * this class's vanilla {@link #keyTyped(char, int)} is driven by
  * {@code super.handleKeyboardInput()}, handles Esc-to-close and then forwards to
  * the focused child via {@link #dispatchKeyTyped(char, int)} — the
  * <strong>only</strong> input channel for leaf components that implement just
  * {@code keyTyped} (the legacy keyTyped bridge inside {@code ScreenKeyboardInput}
  * that used to coexist with it was removed after causing double input).
  * </p>
+ * </p>
  */
 public abstract class Screen extends GuiScreen implements GuiEventListener, ContainerEventHandler, CatFrameInputScreen {
 
-    /** Screen title / 界面标题 */
+    /** Screen title */
     protected final Text title;
 
     /**
-     * All interactive children (focusable / event targets) / 所有可交互子组件（可聚焦 / 事件目标）
+     * All interactive children (focusable / event targets)
      */
     private final List<GuiEventListener> children = new ArrayList<>();
 
-    /** Children that should be rendered each frame / 每帧应渲染的子组件 */
+    /** Children that should be rendered each frame */
     private final List<GuiEventListener> renderables = new ArrayList<>();
 
     @Nullable
@@ -104,17 +88,17 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
         this.title = title;
     }
 
-    /** @return this screen's title / 本界面的标题 */
+    /** @return this screen's title */
     public Text getTitle() {
         return this.title;
     }
 
-    /** @return the Minecraft client / Minecraft 客户端实例 */
+    /** @return the Minecraft client */
     public Minecraft getMinecraft() {
         return this.mc;
     }
 
-    /** @return the font renderer / 字体渲染器 */
+    /** @return the font renderer */
     public FontRenderer getFont() {
         return this.fontRendererObj;
     }
@@ -122,8 +106,9 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
     // ──── Vanilla lifecycle → CatFrame lifecycle ────
 
     /**
-     * 原版初始化钩子。{@code setWorldAndResolution} 会在初次显示与每次 resize 时调用它
-     * （此时 {@link #width}/{@link #height} 已被原版填好）。本类据此重建组件树。
+     * Vanilla init hook. {@code setWorldAndResolution} calls this on first show and each resize
+     * (at which point {@link #width}/{@link #height} are already populated by vanilla). This class
+     * rebuilds the component tree accordingly.
      */
     @Override
     public void initGui() {
@@ -134,11 +119,11 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
     }
 
     /**
-     * 子类在此构建界面：通过 {@link #addRenderableWidget(GuiEventListener)} /
-     * {@link #addWidget(GuiEventListener)} /
-     * {@link #addRenderableOnly(GuiEventListener)} 注册组件。
-     * <p>
      * Subclasses build the UI here.
+     * <p>
+     * Subclasses build the UI here via {@link #addRenderableWidget(GuiEventListener)} /
+     * {@link #addWidget(GuiEventListener)} /
+     * {@link #addRenderableOnly(GuiEventListener)} to register components.
      * </p>
      */
     protected void init() {
@@ -149,7 +134,7 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
         tick();
     }
 
-    /** Per-tick update hook. / 每 tick 更新钩子。 */
+    /** Per-tick update hook. */
     public void tick() {
     }
 
@@ -158,7 +143,7 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
         removed();
     }
 
-    /** Called when the screen is removed. / 界面被移除时调用。 */
+    /** Called when the screen is removed. */
     public void removed() {
     }
 
@@ -166,9 +151,6 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
 
     /**
      * Add a component that is both rendered and receives events / focus.
-     * <p>
-     * 添加一个既参与渲染、又接收事件与焦点的组件。
-     * </p>
      */
     protected <T extends GuiEventListener> T addRenderableWidget(final T widget) {
         this.renderables.add(widget);
@@ -178,9 +160,6 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
 
     /**
      * Add a component that receives events / focus but is rendered elsewhere.
-     * <p>
-     * 添加一个接收事件/焦点、但在别处渲染的组件。
-     * </p>
      */
     protected <T extends GuiEventListener> T addWidget(final T widget) {
         this.children.add(widget);
@@ -189,16 +168,13 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
 
     /**
      * Add a render-only component (no events / focus).
-     * <p>
-     * 添加一个仅渲染的组件（不接收事件/焦点）。
-     * </p>
      */
     protected <T extends GuiEventListener> T addRenderableOnly(final T renderable) {
         this.renderables.add(renderable);
         return renderable;
     }
 
-    /** Remove a previously registered component. / 移除一个已注册的组件。 */
+    /** Remove a previously registered component. */
     protected void removeWidget(final GuiEventListener widget) {
         this.renderables.remove(widget);
         if (this.focusedChild == widget) {
@@ -207,24 +183,24 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
         this.children.remove(widget);
     }
 
-    /** Clear all registered components. / 清空所有已注册组件。 */
+    /** Clear all registered components. */
     protected void clearWidgets() {
         this.renderables.clear();
         this.children.clear();
     }
 
     /**
-     * 收集物品的 tooltip 文本行——对标 26.1.2 {@code Screen.getTooltipFromItem(Minecraft, ItemStack)}。
+     * Collect item tooltip text lines — mirrors 26.1.2 {@code Screen.getTooltipFromItem(Minecraft, ItemStack)}.
      * <p>
-     * 1.7.10 适配：行文本委托原版 {@link ItemStack#getTooltip}；着色沿用原版
-     * {@code GuiScreen.renderToolTip} 的规则（首行稀有度颜色、其余行 {@code GRAY}），
-     * 保证物品 tooltip 切换到 CatFrame 管线后视觉表现与原版一致。
+     * 1.7.10 adaptation: line text delegates to vanilla {@link ItemStack#getTooltip}; coloring follows
+     * vanilla {@code GuiScreen.renderToolTip} rules (first line rarity color, rest {@code GRAY}),
+     * ensuring item tooltip visual parity after switching to CatFrame pipeline.
      * </p>
      * <p>
-     * 兼容点：{@link ItemStack#getTooltip} 内部调用物品侧 {@code Item#addInformation}
-     * （Item.java 736-741）并经 {@code ForgeEventFactory#onItemTooltip} 派发 Forge
-     * {@code ItemTooltipEvent}——1.7.10 的两条旧扩展钩子均由本委托保证生效，
-     * 收集行文本时应继续走该路径。
+     * Compatibility: {@link ItemStack#getTooltip} internally calls item-side {@code Item#addInformation}
+     * (Item.java 736-741) and fires Forge {@code ItemTooltipEvent} via {@code ForgeEventFactory#onItemTooltip} —
+     * both 1.7.10 legacy hooks remain effective through this delegation,
+     * line text collection should continue through that path.
      * </p>
      */
     @SuppressWarnings("unchecked")
@@ -260,9 +236,6 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
 
     /**
      * Draw the screen background. Defaults to the vanilla dimmed/dirt background.
-     * <p>
-     * 绘制界面背景，默认使用原版变暗/泥土背景。子类可覆盖。
-     * </p>
      */
     protected void renderBackground(final int mouseX, final int mouseY, final float partialTicks) {
         drawDefaultBackground();
@@ -301,9 +274,6 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * Vanilla {@code handleMouseInput} does not surface the scroll wheel, so we
      * read it here
      * and dispatch a normalised scroll delta to the child under the cursor.
-     * <p>
-     * 原版 {@code handleMouseInput} 不暴露滚轮，这里读取并向鼠标下子组件派发归一化滚动量。
-     * </p>
      */
     @Override
     public void handleMouseInput() {
@@ -340,15 +310,6 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * the mixin stays as the retrofit path for screens that cannot extend this
      * base.
      * </p>
-     * <p>
-     * 本基类自行把拆分键盘事件派发进组件树，随后委托原版；原版路径驱动
-     * {@code keyTyped} → {@link #dispatchKeyTyped(char, int)}，是只覆写了
-     * {@code keyTyped} 的叶子组件的唯一输入通道。
-     * 此处（在 {@code while(Keyboard.next())}
-     * 循环内、原版 {@code keyTyped} 之前）读取 LWJGL2 当前事件，与 {@code MixinGuiScreen} 为外部宿主
-     * 所做的完全一致。因本基类自派发，{@link #handlesKeyboardDispatchInternally()} 返回 {@code true}，
-     * 令 {@code MixinGuiScreen} 跳过本屏幕，从而不会重复派发。
-     * </p>
      */
     @Override
     public void handleKeyboardInput() {
@@ -370,13 +331,6 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * legacy {@code keyTyped} bridge inside
      * {@code ScreenKeyboardInput.handleCurrentEvent} was removed because it
      * delivered every keystroke twice (here and via the vanilla path).
-     * </p>
-     * <p>
-     * 由 {@code super.handleKeyboardInput()} 驱动（原版仅在按下时触发）。
-     * 叶子组件（文本框、按钮等）只覆写了 {@code keyTyped}，未实现拆分方法等价体，
-     * 故此处的 {@link #dispatchKeyTyped(char, int)} 转发是它们<strong>唯一</strong>
-     * 的键盘输入通道；{@code ScreenKeyboardInput.handleCurrentEvent} 中的 legacy
-     * {@code keyTyped} 桥接已移除（它曾与本原版路径并存，导致每个按键被投递两次）。
      * </p>
      */
     @Override
@@ -414,10 +368,6 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * Returns {@code true}: this base drives its own keyboard dispatch in
      * {@link #handleKeyboardInput()}, so {@code MixinGuiScreen} must not dispatch
      * for it again.
-     * <p>
-     * 返回 {@code true}：本基类在 {@link #handleKeyboardInput()} 中自行驱动键盘派发，
-     * 故 {@code MixinGuiScreen} 不得再为其重复派发。
-     * </p>
      */
     @Override
     public boolean handlesKeyboardDispatchInternally() {
@@ -426,17 +376,17 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
 
     // ──── Close / Esc ────
 
-    /** @return whether Esc closes this screen / Esc 是否关闭本界面 */
+    /** @return whether Esc closes this screen */
     public boolean shouldCloseOnEsc() {
         return true;
     }
 
-    /** Close this screen. / 关闭本界面。 */
+    /** Close this screen. */
     public void onClose() {
         this.mc.displayGuiScreen(null);
     }
 
-    /** @return whether this screen pauses a single-player world / 本界面是否暂停单人世界 */
+    /** @return whether this screen pauses a single-player world */
     public boolean isPauseScreen() {
         return true;
     }
@@ -445,10 +395,6 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * Whether this screen pauses the game when opened. Defaults to
      * {@link #isPauseScreen()} or
      * {@link OverlayManager#isPausingGame()}.
-     * <p>
-     * 本界面是否暂停游戏。默认为 {@link #isPauseScreen()} 或
-     * {@link OverlayManager#isPausingGame()}。
-     * </p>
      */
     @Override
     public boolean doesGuiPauseGame() {
@@ -461,14 +407,11 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * Called after {@link #init()} to establish initial focus. No-op by default;
      * subclasses may
      * override to focus a specific widget.
-     * <p>
-     * {@link #init()} 之后建立初始焦点，默认空实现。
-     * </p>
      */
     protected void setInitialFocus() {
     }
 
-    /** Move focus to the given target's resolved path. / 将焦点移动到给定目标解析出的路径。 */
+    /** Move focus to the given target's resolved path. */
     protected void setInitialFocus(final GuiEventListener target) {
         final ComponentPath path = target.nextFocusPath(new FocusNavigationEvent.TabNavigation(true));
         if (path != null) {
@@ -477,7 +420,7 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
         }
     }
 
-    /** Clear the current focus. / 清除当前焦点。 */
+    /** Clear the current focus. */
     public void clearFocus() {
         setFocused((GuiEventListener) null);
     }

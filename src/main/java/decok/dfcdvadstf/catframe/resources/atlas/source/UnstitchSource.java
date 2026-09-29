@@ -10,41 +10,43 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 精灵表拆分源（对标 26.1.2 {@code minecraft:unstitch}，格式与 Wiki 一致）。
+ * Spritesheet splitting source (mirrors 26.1.2 {@code minecraft:unstitch}, matching
+ * the Wiki format).
  * <p>
- * 把一张大图按 {@code divisor_x × divisor_y} 网格切块，从 {@code regions} 列表
- * 逐个截取区域作为 sprite：区域坐标 x/y/width/height 为<b>块坐标</b>，
- * 像素坐标按 Wiki 公式换算 —— {@code px = ⌊x·srcW/divisor_x⌋}、
- * {@code pw = ⌊width·srcW/divisor_x⌋}（y/height 同理）。sprite id 由每个 region
- * 的 {@code sprite} 字段显式指定（不再用 base_row/base_column/count 旧格式）。
+ * Slices a large image into a {@code divisor_x × divisor_y} grid and crops one
+ * region per entry of the {@code regions} list as a sprite: the region
+ * x/y/width/height are <b>tile coordinates</b>, converted to pixel coordinates by
+ * the Wiki formula — {@code px = ⌊x·srcW/divisor_x⌋},
+ * {@code pw = ⌊width·srcW/divisor_x⌋} (likewise for y/height). The sprite id is
+ * explicitly given by each region's {@code sprite} field (the legacy
+ * base_row/base_column/count format is no longer used).
  * <p>
- * 定义 JSON 示例（把 64×64 精灵表切成 16 个 16×16，取前两个）：
+ * Definition JSON example (slice a 64×64 spritesheet into 16 tiles of 16×16,
+ * taking the first two):
  * <pre>{@code {"type": "minecraft:unstitch", "resource": "minecraft:item/sheet",
  * "divisor_x": 4, "divisor_y": 4,
  * "regions": [
  *   {"sprite": "minecraft:item/sheet_0", "x": 0, "y": 0, "width": 1, "height": 1},
  *   {"sprite": "minecraft:item/sheet_1", "x": 1, "y": 0, "width": 1, "height": 1}
  * ]}}</pre>
- * 越界区域（起点超出源图）输出透明占位，不崩溃；像素裁剪经 {@link PixelTransform}
- * 在解码期施加。
- *
- * <p>Splits a spritesheet into grid regions declared by the definition;
- * each region is cropped at decode time via a pixel transform.
+ * Out-of-range regions (origin beyond the source image) yield transparent
+ * placeholders instead of crashing; pixel cropping is applied at decode time via
+ * a {@link PixelTransform}.
  */
 @SideOnly(Side.CLIENT)
 public final class UnstitchSource implements AtlasSource {
 
-    /** 单个截取区域（块坐标，Wiki 语义：像素 = ⌊块坐标×源尺寸/divisor⌋）。 */
+    /** One crop region (tile coordinates; Wiki semantics: pixels = ⌊tile×srcSize/divisor⌋). */
     public static final class Region {
-        /** 此区域生成的精灵图命名空间 ID。 */
+        /** Namespace id of the sprite generated from this region. */
         public final ResourceLocation sprite;
-        /** 左上角 X（块坐标）。 */
+        /** Top-left X (tile coordinates). */
         public final int x;
-        /** 左上角 Y（块坐标）。 */
+        /** Top-left Y (tile coordinates). */
         public final int y;
-        /** 区域宽度（块坐标）。 */
+        /** Region width (tile coordinates). */
         public final int width;
-        /** 区域高度（块坐标）。 */
+        /** Region height (tile coordinates). */
         public final int height;
 
         public Region(ResourceLocation sprite, int x, int y, int width, int height) {
@@ -90,16 +92,16 @@ public final class UnstitchSource implements AtlasSource {
             out.add(SpriteRef.of(r.sprite, resource, null, new PixelTransform() {
                 @Override
                 public Result apply(int[] src, int srcWidth, int srcHeight) {
-                    // Wiki 公式：像素坐标 = floor(块坐标 × 源尺寸 / divisor)（Java 正数除法即 floor）
+                    // Wiki formula: pixel coord = floor(tile coord × srcSize / divisor) (integer division is floor for positives in Java)
                     int px = r.x * srcWidth / divisorX;
                     int py = r.y * srcHeight / divisorY;
                     int pw = Math.max(1, r.width * srcWidth / divisorX);
                     int ph = Math.max(1, r.height * srcHeight / divisorY);
-                    // 越界区域：输出透明占位（不崩溃，与 26.1.2 语义一致）
+                    // Out-of-range region: emit a transparent placeholder (no crash, matching 26.1.2 semantics)
                     if (px >= srcWidth || py >= srcHeight) {
                         return new Result(new int[pw * ph], pw, ph);
                     }
-                    // 边缘区域：宽度/高度收窄到源图边界内
+                    // Edge region: narrow width/height to the source image bounds
                     pw = Math.min(pw, srcWidth - px);
                     ph = Math.min(ph, srcHeight - py);
                     int[] outPx = new int[pw * ph];

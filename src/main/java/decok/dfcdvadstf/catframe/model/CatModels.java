@@ -17,30 +17,30 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 统一方块/物品模型登记 facade（链式 API）。
+ * Unified block/item model registration facade (chainable API).
  * <p>
- * 把「typed 状态定义 → 常驻方块模型 + 物品决策树」的登记收口到一处，替代散落各处的
- * {@code registerBlockstateRedirect} / 手写 model 类实例化。
+ * Centralizes the registration of "typed state definitions → resident block models + item decision trees",
+ * replacing scattered {@code registerBlockstateRedirect} calls and manual model class instantiation.
  *
- * <h3>用法</h3>
+ * <h3>Usage</h3>
  * 
  * <pre>{@code
  * CatModels.register(Blocks.wool)
- *     .states(StateDefinitions colorDef)   // typed 常驻表
- *     .itemFromBlockstate()                // 从 16 个静态状态导出物品 damage 决策树
+ *     .states(StateDefinitions colorDef)   // typed resident table
+ *     .itemFromBlockstate()                // export item damage decision tree from 16 static states
  *     .register();
  *
  * CatModels.register(stairsBlock)
  *     .states(stairsDef)                   // facing/half + dynamic shape
- *     .dynamic(stairsShapeResolver)        // 运行时转角 shape
+ *     .dynamic(stairsShapeResolver)        // runtime corner shape
  *     .register();
  * }</pre>
  *
- * <h3>时序</h3>
- * {@link #register()} 只登记声明式 {@link CatModelSpec}；真正需要 blockstate JSON 的物化
- * 推迟到 {@link #materialize()}（由
+ * <h3>Timing</h3>
+ * {@link #register()} only registers declarative {@link CatModelSpec}s; actual blockstate JSON
+ * materialization is deferred to {@link #materialize()} (invoked by
  * {@code VanillaModelManager.Baking.registerAllModels}
- * 在 blockstate 加载完成后调用）。
+ * after blockstate loading completes).
  */
 @SideOnly(Side.CLIENT)
 public final class CatModels {
@@ -48,34 +48,34 @@ public final class CatModels {
     private CatModels() {
     }
 
-    /** preInit 登记的所有 spec（保序，供物化遍历）。 */
+    /** preInit-registered specs (ordered for materialization traversal). */
     public static final Map<Block, CatModelSpec> SPECS = new LinkedHashMap<>();
 
     /**
-     * 开始登记一个方块的模型。
+     * Start registering a block's model.
      *
-     * @param block 目标方块
-     * @return 链式配置器
+     * @param block target block
+     * @return chainable configurator
      */
     public static Spec register(Block block) {
         return new Spec(block);
     }
 
     /**
-     * 开始登记一个方块基类的状态定义片段（自动 BlockState 继承）。
+     * Start registering a block base class state definition fragment (automatic BlockState inheritance).
      * <p>
-     * 登记后，任何继承该基类的方块在 {@link Spec#register()} 时自动合并基类属性 /
-     * MetaCodec / 动态属性等，无需手动重复声明。内置原版基类表见
-     * {@code VanillaStateDefinitions.registerVanillaBaseClasses()}。
+     * After registration, any block inheriting this base class automatically merges base properties /
+     * MetaCodec / dynamic attributes at {@link Spec#register()}, no manual duplication needed.
+     * Built-in vanilla base class table see {@code VanillaStateDefinitions.registerVanillaBaseClasses()}.
      *
-     * @param clazz 基类类型（如 {@code BlockRotatedPillar.class}）
-     * @return 链式配置器
+     * @param clazz base class type (e.g. {@code BlockRotatedPillar.class})
+     * @return chainable configurator
      */
     public static CatStateInheritance.BaseSpec registerBase(Class<? extends Block> clazz) {
         return CatStateInheritance.registerBase(clazz);
     }
 
-    // ==================== 链式配置器 ====================
+    // ==================== Chainable configurator ====================
 
     public static final class Spec {
         private final CatModelSpec spec;
@@ -84,61 +84,58 @@ public final class CatModels {
             this.spec = new CatModelSpec(block);
         }
 
-        /** 设置 typed 常驻状态表（属性驱动 variant 匹配）。 */
+        /** Set the typed resident state table (property-driven variant matching). */
         public Spec states(CatStateDefinition<?> def) {
             spec.def = def;
             return this;
         }
 
-        /** 设置 per-meta blockstate 重定向（如按颜色拆分的多文件块）。 */
+        /** Set per-meta blockstate redirect (e.g. multi-file blocks split by color). */
         public Spec redirect(IMetadataBlockstateRedirect redirect, String namespace) {
             spec.redirect = redirect;
             spec.redirectNamespace = namespace;
             return this;
         }
 
-        /** 设置运行时动态属性解析器（stairs shape / pane 连接等）。 */
+        /** Set runtime dynamic property resolver (stairs shape / pane connections etc.). */
         public Spec dynamic(ResidentStateModel.DynamicPropertyResolver dynamic) {
             spec.dynamic = dynamic;
             return this;
         }
 
-        /** 启用 pane 连接 multipart 模式（per-face 合并烘焙，isFullModel=false）。 */
+        /** Enable pane connection multipart mode (per-face merged baking, isFullModel=false). */
         public Spec connectionMultipart() {
             spec.connectionMultipart = true;
             spec.fullModel = false;
             return this;
         }
 
-        /** 覆盖 isFullModel（默认 true；multipart 装饰件可设为 false）。 */
+        /** Override isFullModel (default true; multipart decorative pieces can set to false). */
         public Spec fullModel(boolean fullModel) {
             spec.fullModel = fullModel;
             return this;
         }
 
-        /** 为指定 meta 登记固定 Y 旋转（度）。 */
+        /** Register a fixed Y rotation (degrees) for a given meta. */
         public Spec rotation(int meta, int degrees) {
             ModelRegistry.registerBlockRotation(spec.block, meta, degrees);
             return this;
         }
 
-        /** 标记该方块使用基于位置的随机 Y 旋转。 */
+        /** Mark this block as using position-based random Y rotation. */
         public Spec randomRotation() {
             ModelRegistry.markRandomRotation(spec.block);
             return this;
         }
 
-        /** 从 blockstate 的 16 个静态状态导出物品 {@code damage} 决策树。 */
+        /** Export item {@code damage} decision tree from 16 static blockstate states. */
         public Spec itemFromBlockstate() {
             spec.itemFromBlockstate = true;
             return this;
         }
 
-        /** 完成登记：存入 {@link #SPECS} 并注册 typed 状态定义。 */
+        /** Complete registration: store in {@link #SPECS} and register typed state definition. */
         public void register() {
-            // 自动 BlockState 继承：未显式配置 typed def 时，沿继承链合并基类片段；
-            // 基类片段可能晚于本调用注册（如模组 preInit 先于 CatFrame 内置表），
-            // 故 {@link #materialize()} 中还有一轮兜底解析。
             // Auto inheritance: when no explicit typed def is set, merge base fragments
             // from the class hierarchy; materialize() retries for late-registered bases.
             if (spec.def == null) {
@@ -151,10 +148,6 @@ public final class CatModels {
             if (spec.def != null) {
                 ModelRegistry.registerStateDefinition(spec.block, spec.def);
             }
-            // 同步登记 redirect：ModelManagerDataLoader.init() 的预载循环只遍历
-            // blockstateRedirects —— 不登记则 redirect 目标 blockstate（如 16 色
-            // 染色玻璃板）在 stitch 前不加载、纹理不收集，渲染时懒加载已太晚
-            // （atlas 已缝合）。
             // Register the redirect here as well: init()'s preload loop only walks
             // blockstateRedirects — without this, redirect targets (e.g. the 16
             // per-color stained glass panes) are never preloaded before the atlas
@@ -165,13 +158,14 @@ public final class CatModels {
         }
     }
 
-    // ==================== 物化 ====================
+    // ==================== Materialization ====================
 
-    /**
-     * 把继承解析结果应用到 spec（仅填充未显式配置的字段，显式配置保持优先）。
+/**
+     * Apply inheritance resolution to spec (only fill unset fields; explicit config takes priority).
      * <p>
-     * 继承片段中的 connectionMultipart 与 fullModel 无法区分「显式设置」与「默认值」，
-     * 采用保守合并：基类开启 multipart / 关闭 fullModel 时覆盖默认值，反向不覆盖。
+     * Inherited connectionMultipart and fullModel cannot distinguish "explicitly set" from "default",
+     * so use conservative merge: base class enabling multipart / disabling fullModel overrides defaults,
+     * reverse direction does not override.
      */
     private static void applyInherited(CatModelSpec spec, CatStateInheritance.Inherited inherited) {
         spec.def = inherited.def;
@@ -191,19 +185,20 @@ public final class CatModels {
     }
 
     /**
-     * 把所有已登记的 spec 物化为常驻方块模型与物品决策树。
+     * Materialize all registered specs into resident block models and item decision trees.
      * <p>
-     * 在 blockstate JSON 加载完成后（{@code registerAllModels}）调用。已注册模型的方块
-     * 会被覆盖为常驻模型；启用 {@code itemFromBlockstate} 的方块导出物品决策树并标记 persistent，
-     * 优先于 {@code items/{name}.json} 约定匹配。
+     * Called after blockstate JSON loading completes ({@code registerAllModels}).
+     * Registered model blocks are overridden with resident models; blocks with
+     * {@code itemFromBlockstate} export item decision trees and are marked persistent,
+     * taking priority over {@code items/{name}.json} convention matching.
      *
-     * @return 成功物化的方块模型数量
+     * @return number of successfully materialized block models
      */
     public static int materialize() {
         int count = 0;
         for (CatModelSpec spec : SPECS.values()) {
-            // 兜底继承解析：基类片段可能在 Spec.register() 之后才登记
-            // （如模组 preInit 早于 CatFrame 的内置基类表注册），此时补票。
+            // Fallback inheritance resolution: base fragments may be registered after Spec.register()
+            // (e.g. mod preInit earlier than CatFrame's internal base class table), catch up here.
             if (spec.def == null) {
                 CatStateInheritance.Inherited inherited = CatStateInheritance.resolve(spec.block);
                 if (inherited != null) {
@@ -231,12 +226,12 @@ public final class CatModels {
             if (nsMap != null && name != null)
                 bs = nsMap.get(name);
 
-            // 常驻方块模型（redirect 模式允许 bs 为 null）
+            // Resident block model (redirect mode allows bs to be null)
             ResidentStateModel model = spec.buildBlockModel(bs);
             ModelRegistry.registerBlockModel(block, model);
             count++;
 
-            // 物品决策树（可选）
+            // Item decision tree (optional)
             if (spec.itemFromBlockstate) {
                 ItemStateNode node = spec.buildItemNode(bs);
                 Item item = Item.getItemFromBlock(block);

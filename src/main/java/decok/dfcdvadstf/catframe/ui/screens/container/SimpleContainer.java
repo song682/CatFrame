@@ -10,22 +10,17 @@ import net.minecraft.item.ItemStack;
  * (fields, constructors).<br>
  * Counterpart of the high-version Minecraft {@code SimpleContainer} class.
  * </p>
- * <p>
- * 基于数组的简单 {@link Container} 实现。提供 {@link Container} 接口无法
- * 承载的具体存储逻辑（字段、构造器）。<br>
- * 对标高版本 Minecraft 的 {@code SimpleContainer} 类。
- * </p>
  */
 public class SimpleContainer implements Container {
 
-    /** Backing storage. / 底层存储。 */
+    /** Backing storage. */
     private final ItemStack[] items;
 
-    /** Custom display name, or {@code null} for none. / 自定义显示名，或 {@code null}。 */
+    /** Custom display name, or {@code null} for none. */
     private String customName;
 
     /**
-     * @param size the number of slots / 槽位数量
+     * @param size the number of slots
      */
     public SimpleContainer(final int size) {
         this.items = new ItemStack[size];
@@ -124,7 +119,6 @@ public class SimpleContainer implements Container {
 
     /**
      * Set a custom display name for this container.
-     * <p>设置本容器的自定义显示名。</p>
      */
     public void setCustomName(final String name) {
         this.customName = name;

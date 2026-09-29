@@ -20,30 +20,14 @@ import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 
 /**
  * <p>
- * Overlay HUD 驱动器（纯 Forge 实现）<br>
- * 将 {@link OverlayManager} 接入游戏内 HUD 渲染与客户端 tick 循环，使 HUD 上下文的
- * Overlay 无需打开界面即可显示。
- * </p>
- * <p>
  * Overlay HUD driver (pure Forge). Bridges {@link OverlayManager} into the in-game HUD render
  * pass and the client tick loop, so HUD-context overlays render without any open screen.
- * </p>
- * <p>
- * 屏幕上下文（{@code SCREEN} / {@code BOTH}）的 Overlay 由 Forge 的
- * {@link DrawScreenEvent.Post} 驱动 {@link OverlayManager#renderAll}。该事件由
- * {@code ForgeHooksClient.drawScreen} 包裹在 {@code currentScreen.drawScreen} 之后触发，
- * 对<b>所有</b> {@code GuiScreen}（含原版主菜单 {@code GuiMainMenu} 与
- * {@code GuiContainer} 子类）生效，因此无需世界或玩家实体即可在任意界面上绘制。
  * </p>
  * <p>
  * Screen-context ({@code SCREEN} / {@code BOTH}) overlays are driven via Forge's
  * {@link DrawScreenEvent.Post} → {@link OverlayManager#renderAll}. The event fires for
  * <b>every</b> {@code GuiScreen} (including the vanilla main menu and {@code GuiContainer}
  * subclasses), so no world or player entity is required.
- * </p>
- * <p>
- * 本类同时承接了原 {@code ClientToastHandler}（已删除）的欢迎 Toast 触发——Toast 已并入
- * Overlay 体系（{@link ToastOverlay}），相关的 Forge 事件触发统一收敛到这座事件桥上。
  * </p>
  * <p>
  * This class also absorbed the welcome-toast trigger from the removed
@@ -54,16 +38,13 @@ import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 @SideOnly(Side.CLIENT)
 public class ClientOverlayHandler {
 
-    /** Whether the welcome toast has been shown this session / 本次会话是否已显示欢迎 Toast */
+    /** Whether the welcome toast has been shown this session */
     private static boolean welcomeShown = false;
 
     /**
      * Triggered when any entity joins a world. We filter for the local player only and
      * show the one-shot welcome Toast (migrated from the removed {@code ClientToastHandler}).
      * Gated by the {@code welcomeToast} config option — skipped entirely when disabled.
-     * <p>任意实体加入世界时触发，仅在本地玩家加入时显示一次性欢迎 Toast
-     * （自已删除的 {@code ClientToastHandler} 迁入）。
-     * 受 {@code welcomeToast} 配置项控制，禁用时完全跳过。</p>
      */
     @SubscribeEvent
     public void onEntityJoinWorld(EntityJoinWorldEvent event) {
@@ -80,7 +61,6 @@ public class ClientOverlayHandler {
 
     /**
      * Advance every registered overlay once per client tick while the game is not paused.
-     * <p>游戏未暂停时，每客户端 tick 推进一次所有已注册 Overlay。</p>
      */
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
@@ -92,13 +72,12 @@ public class ClientOverlayHandler {
             return;
         }
         OverlayManager.INSTANCE.updateAll();
-        // [渲染三域架构] UI 图集动画 tick（CatAtlas 区域重传；素材静态时零开销）
+        // [Render three-domain architecture] UI atlas animation tick (CatAtlas region re-upload; zero overhead when assets are static)
         UiTextureAtlasManager.tickAnimations();
     }
 
     /**
      * Render HUD-context overlays after the vanilla HUD is drawn.
-     * <p>在原版 HUD 绘制完成后渲染 HUD 上下文的 Overlay。</p>
      */
     @SubscribeEvent
     public void onRenderGameOverlay(RenderGameOverlayEvent.Post event) {
@@ -117,10 +96,6 @@ public class ClientOverlayHandler {
      * Fires for all {@code GuiScreen}s — vanilla main menu included — and never touches
      * {@code thePlayer}, so it is NPE-safe outside a world. Runs at {@code LOWEST} priority
      * so overlays land on top of everything else drawn by {@code DrawScreenEvent} listeners.
-     * <p>在任意界面绘制完成后渲染屏幕上下文（{@code SCREEN} / {@code BOTH}）的 Overlay。
-     * 对所有 {@code GuiScreen}（含原版主菜单）生效，且完全不接触 {@code thePlayer}，
-     * 无世界环境下不会 NPE。以 {@code LOWEST} 优先级运行，确保 Overlay 绘制在其他
-     * {@code DrawScreenEvent} 监听者之上。</p>
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onDrawScreenPost(DrawScreenEvent.Post event) {

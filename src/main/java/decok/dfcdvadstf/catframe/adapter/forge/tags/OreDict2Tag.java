@@ -16,57 +16,57 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-///
-/// OreDict ↔ Tag 双向转换器<br>
-/// 实现 Forge OreDictionary 和 CatFrame Tag 系统之间的互通：
-/// - OreDict → Tag：将 OreDict 条目转换为 Tag
-/// - Tag → OreDict：将 Tag 注册到 OreDict
-///
-/// 命名空间统一使用 "forge"。<br>
-/// 使用场景：
-/// 1. 兼容旧版使用 OreDict 的 Mod
-/// 2. 逐步迁移到新的 Tag 系统
-/// 3. 同时支持两种系统
-/// 使用示例：
-/// <pre>
-/// // OreDict → Tag
-/// OreDict2Tag.convertOreDictToTags();
-///
-/// // Tag → OreDict
-/// OreDict2Tag.convertTagToOreDict("catframe:wool", "wool");
-/// </pre>
-///
+/**
+ * OreDict ↔ Tag bidirectional converter
+ * Implements interoperability between Forge OreDictionary and CatFrame Tag systems:
+ * - OreDict → Tag: converts OreDict entries to Tags
+ * - Tag → OreDict: registers Tags to OreDict
+ *
+ * Unified namespace uses "forge".
+ * Use cases:
+ * 1. Compatibility with legacy mods using OreDict
+ * 2. Gradual migration to the new Tag system
+ * 3. Support both systems simultaneously
+ * Usage examples:
+ * <pre>
+ * // OreDict → Tag
+ * OreDict2Tag.convertOreDictToTags();
+ *
+ * // Tag → OreDict
+ * OreDict2Tag.convertTagToOreDict("catframe:wool", "wool");
+ * </pre>
+ */
 public final class OreDict2Tag {
     
     private static final Logger LOGGER = LogManager.getLogger(OreDict2Tag.class);
     
-    /** Forge 命名空间 */
+    /** Forge namespace */
     public static final String FORGE_NAMESPACE = "forge";
     
     private OreDict2Tag() {
-        // 工具类，禁止实例化
+        // Utility class, no instantiation
     }
     
-    // ==================== 命名转换 ====================
-    
-    /// 智能转换 OreDict 名称为 Tag 名称
-    /// 转换规则（驼峰拆分 + 斜杠）：
-    /// - oreIron → ore/iron
-    /// - ingotIron → ingot/iron
-    /// - logWood → log（忽略通用修饰词 Wood）
-    /// - dustRedstone → dust/redstone
-    /// - gemDiamond → gem/diamond
-    /// - blockGold → block/gold
-    /// - treeSapling → tree/sapling
-    ///
-    /// @param oreName OreDict 名称
-    /// @return Tag 名称（不含命名空间）
+// ==================== Name conversion ====================
+
+/// Smart OreDict name to Tag name conversion
+/// Conversion rules (camelCase split + slash):
+/// - oreIron → ore/iron
+/// - ingotIron → ingot/iron
+/// - logWood → log (ignores generic suffix Wood)
+/// - dustRedstone → dust/redstone
+/// - gemDiamond → gem/diamond
+/// - blockGold → block/gold
+/// - treeSapling → tree/sapling
+///
+/// @param oreName OreDict name
+/// @return Tag name (without namespace)
     public static String convertOreDictNameToTagName(String oreName) {
         if (oreName == null || oreName.isEmpty()) {
             return oreName;
         }
         
-        // 特殊处理：某些常见的后缀可以直接去掉
+        // Special handling: some common suffixes can be dropped
         String[] genericSuffixes = {"Wood", "Stone"};
         for (String suffix : genericSuffixes) {
             if (oreName.endsWith(suffix) && oreName.length() > suffix.length()) {
@@ -75,7 +75,7 @@ public final class OreDict2Tag {
             }
         }
         
-        // 驼峰拆分：找到第一个大写字母的位置
+        // CamelCase split: find first uppercase letter
         int firstUpperCase = -1;
         for (int i = 1; i < oreName.length(); i++) {
             if (Character.isUpperCase(oreName.charAt(i))) {
@@ -84,26 +84,26 @@ public final class OreDict2Tag {
             }
         }
         
-        // 如果没有大写字母，直接转小写
+        // If no uppercase letter, just lowercase
         if (firstUpperCase == -1) {
             return oreName.toLowerCase();
         }
         
-        // 拆分：类型 + 材料
+        // Split: type + material
         String type = oreName.substring(0, firstUpperCase).toLowerCase();
         String material = oreName.substring(firstUpperCase).toLowerCase();
         
-        // 如果材料部分是通用词（Wood、Stone），则只保留类型
+        // If material part is generic (Wood, Stone), keep only type
         if (isGenericMaterial(material)) {
             return type;
         }
         
-        // 否则用斜杠分隔：type/material
+        // Otherwise use slash separator: type/material
         return type + "/" + material;
     }
     
     /**
-     * 判断是否是通用材料词（可以忽略）
+     * Check if material is a generic word (can be ignored)
      */
     private static boolean isGenericMaterial(String material) {
         return material.equals("wood") || 
@@ -113,12 +113,12 @@ public final class OreDict2Tag {
     
     // ==================== OreDict → Tag ====================
     
-    /// 将所有 OreDict 条目转换为 Tag<br>
-    /// 转换规则（驼峰拆分 + 斜杠）：
+    /// Convert all OreDict entries to Tags
+    /// Conversion rules (camelCase split + slash):
     /// - OreDict "logWood" → Tag "forge:log"
     /// - OreDict "oreIron" → Tag "forge:ore/iron"
     /// - OreDict "ingotGold" → Tag "forge:ingot/gold"
-    /// - 所有注册的 ItemStack 自动添加到对应 Tag
+    /// - All registered ItemStacks automatically added to corresponding Tags
     public static void convertAllOreDictToTags() {
         LOGGER.info("Converting all OreDictionary entries to Tags...");
         
@@ -135,17 +135,17 @@ public final class OreDict2Tag {
     }
     
     /**
-     * 将单个 OreDict 条目转换为 Tag
+     * Convert a single OreDict entry to Tag
      * 
-     * 转换规则（驼峰拆分 + 斜杠）：
+     * Conversion rules (camelCase split + slash):
      * - oreIron → forge:ore/iron
      * - ingotIron → forge:ingot/iron
      * - logWood → forge:log
      * - dustRedstone → forge:dust/redstone
      * - gemDiamond → forge:gem/diamond
      * 
-     * @param oreName OreDict 名称（如 "logWood"）
-     * @return 是否成功转换
+     * @param oreName OreDict name (e.g. "logWood")
+     * @return whether conversion succeeded
      */
     public static boolean convertOreDictToTag(String oreName) {
         ArrayList<ItemStack> ores = OreDictionary.getOres(oreName);
@@ -154,18 +154,18 @@ public final class OreDict2Tag {
             return false;
         }
         
-        // 智能转换 OreDict 名称为 Tag 名称
+        // Smart OreDict name to Tag name conversion
         String tagName = convertOreDictNameToTagName(oreName);
         TagLoader<Item> itemLoader = CatFrameTags.itemLoader();
         TagLoader<Block> blockLoader = CatFrameTags.blockLoader();
         
         ResourceLocation tagLocation = new ResourceLocation(FORGE_NAMESPACE, tagName);
         
-        // 获取或创建 Tag 内容集合（可修改）
+        // Get or create Tag content set (modifiable)
         Set<Item> items = itemLoader.getOrCreateTagContents(tagLocation);
         Set<Block> blocks = blockLoader.getOrCreateTagContents(tagLocation);
         
-        // 将所有 ItemStack 转换为 Item/Block 并添加到 Tag
+        // Convert all ItemStacks to Item/Block and add to Tag
         for (ItemStack stack : ores) {
             if (stack == null || stack.getItem() == null) {
                 continue;
@@ -173,17 +173,17 @@ public final class OreDict2Tag {
             
             Item item = stack.getItem();
             
-            // 尝试作为 Block 添加
+            // Try to add as Block
             try {
                 Block block = Block.getBlockFromItem(item);
                 if (block != null && block != Blocks.air) {
                     blocks.add(block);
                 }
             } catch (Exception e) {
-                // 不是方块，正常
+                // Not a block, normal
             }
             
-            // 作为 Item 添加
+            // Add as Item
             items.add(item);
         }
         
@@ -194,9 +194,9 @@ public final class OreDict2Tag {
     }
     
     /**
-     * 批量转换指定的 OreDict 条目
+     * Batch convert specified OreDict entries
      * 
-     * @param oreNames OreDict 名称列表
+     * @param oreNames list of OreDict names
      */
     public static void convertOreDictToTags(String... oreNames) {
         LOGGER.info("Converting {} OreDict entries to Tags...", oreNames.length);
@@ -214,14 +214,14 @@ public final class OreDict2Tag {
     // ==================== Tag → OreDict ====================
     
     /**
-     * 将 Tag 转换为 OreDict 条目
+     * Convert Tag to OreDict entry
      * 
-     * 转换规则：
+     * Conversion rules:
      * - Tag "catframe:wool" → OreDict "wool"
-     * - 自动将 Tag 中的所有 Item/Block 注册到 OreDict
+     * - Automatically registers all Items/Blocks in Tag to OreDict
      * 
-     * @param tagFullName Tag 完整名称（如 "catframe:wool"）
-     * @param oreName OreDict 名称（如 "wool"）
+     * @param tagFullName full Tag name (e.g. "catframe:wool")
+     * @param oreName OreDict name (e.g. "wool")
      */
     public static void convertTagToOreDict(String tagFullName, String oreName) {
         ResourceLocation tagLocation;
@@ -237,13 +237,13 @@ public final class OreDict2Tag {
         TagLoader<Item> itemLoader = CatFrameTags.itemLoader();
         TagLoader<Block> blockLoader = CatFrameTags.blockLoader();
         
-        // 获取 Tag 内容
+        // Get Tag contents
         Set<Item> items = itemLoader.getTagContents(tagLocation);
         Set<Block> blocks = blockLoader.getTagContents(tagLocation);
         
         int registered = 0;
         
-        // 注册所有 Item
+        // Register all Items
         for (Item item : items) {
             try {
                 OreDictionary.registerOre(oreName, item);
@@ -253,7 +253,7 @@ public final class OreDict2Tag {
             }
         }
         
-        // 注册所有 Block
+        // Register all Blocks
         for (Block block : blocks) {
             try {
                 OreDictionary.registerOre(oreName, block);
@@ -268,9 +268,9 @@ public final class OreDict2Tag {
     }
     
     /**
-     * 批量转换 Tag 到 OreDict
+     * Batch convert Tags to OreDicts
      * 
-     * @param tagToOreMap Tag 名称 → OreDict 名称的映射
+     * @param tagToOreMap Tag name → OreDict name mapping
      */
     public static void convertTagsToOreDicts(Map<String, String> tagToOreMap) {
         LOGGER.info("Converting {} Tags to OreDict entries...", tagToOreMap.size());
@@ -281,9 +281,9 @@ public final class OreDict2Tag {
     }
     
     /**
-     * 自动将 forge 命名空间的所有 Tag 转换为 OreDict
+     * Automatically convert all forge namespace Tags to OreDict
      * 
-     * 规则：Tag "forge:xxx" → OreDict "xxx"
+     * Rule: Tag "forge:xxx" → OreDict "xxx"
      */
     public static void convertAllForgeTagsToOreDict() {
         LOGGER.info("Converting all forge: Tags to OreDictionary...");
@@ -296,7 +296,7 @@ public final class OreDict2Tag {
         
         int converted = 0;
         
-        // 转换物品标签
+        // Convert item tags
         for (ResourceLocation tagLocation : itemTags) {
             if (FORGE_NAMESPACE.equals(tagLocation.getResourceDomain())) {
                 String oreName = tagLocation.getResourcePath();
@@ -313,7 +313,7 @@ public final class OreDict2Tag {
             }
         }
         
-        // 转换方块标签
+        // Convert block tags
         for (ResourceLocation tagLocation : blockTags) {
             if (FORGE_NAMESPACE.equals(tagLocation.getResourceDomain())) {
                 String oreName = tagLocation.getResourcePath();
@@ -333,14 +333,14 @@ public final class OreDict2Tag {
         LOGGER.info("Converted {} items/blocks from forge: Tags to OreDict", converted);
     }
     
-    // ==================== 双向同步 ====================
+    // ==================== Bidirectional sync ====================
     
     /**
-     * 检查 OreDict 和 Tag 是否同步
+     * Check if OreDict and Tag are in sync
      * 
-     * @param oreName OreDict 名称
-     * @param tagName Tag 名称
-     * @return 是否同步
+     * @param oreName OreDict name
+     * @param tagName Tag name
+     * @return whether in sync
      */
     public static boolean isSynced(String oreName, String tagName) {
         ArrayList<ItemStack> oreStacks = OreDictionary.getOres(oreName);
@@ -355,15 +355,15 @@ public final class OreDict2Tag {
         TagLoader<Item> itemLoader = CatFrameTags.itemLoader();
         Set<Item> tagItems = itemLoader.getTagContents(tagLocation);
         
-        // 简单检查：数量是否一致
+        // Simple check: are counts equal?
         return oreStacks.size() == tagItems.size();
     }
     
     /**
-     * 同步 OreDict 和 Tag（双向）
+     * Sync OreDict and Tag (bidirectional)
      * 
-     * @param oreName OreDict 名称
-     * @param tagName Tag 名称
+     * @param oreName OreDict name
+     * @param tagName Tag name
      */
     public static void syncOreDictAndTag(String oreName, String tagName) {
         LOGGER.info("Syncing OreDict '{}' with Tag '{}'", oreName, tagName);
@@ -375,14 +375,14 @@ public final class OreDict2Tag {
         convertTagToOreDict(tagName, oreName);
     }
     
-    // ==================== 便捷方法 ====================
+    // ==================== Convenience methods ====================
     
     /**
-     * 通过 OreDict 名称检查物品是否属于某个分类
+     * Check if item belongs to an OreDict category
      * 
-     * @param item 物品
-     * @param oreName OreDict 名称
-     * @return 是否属于
+     * @param item item
+     * @param oreName OreDict name
+     * @return whether it belongs
      */
     public static boolean isItemInOreDict(Item item, String oreName) {
         ArrayList<ItemStack> ores = OreDictionary.getOres(oreName);
@@ -397,21 +397,21 @@ public final class OreDict2Tag {
     }
     
     /**
-     * 通过 Tag 名称检查物品是否属于某个分类
+     * Check if item belongs to a Tag category
      * 
-     * @param item 物品
-     * @param tagName Tag 名称
-     * @return 是否属于
+     * @param item item
+     * @param tagName Tag name
+     * @return whether it belongs
      */
     public static boolean isItemInTag(Item item, String tagName) {
         return CatFrameTags.is(item, tagName);
     }
     
     /**
-     * 获取 OreDict 中的所有物品（转换为 Item 集合）
+     * Get all items in OreDict (as Item set)
      * 
-     * @param oreName OreDict 名称
-     * @return 物品集合
+     * @param oreName OreDict name
+     * @return item set
      */
     public static Set<Item> getOreDictItems(String oreName) {
         Set<Item> items = new HashSet<>();

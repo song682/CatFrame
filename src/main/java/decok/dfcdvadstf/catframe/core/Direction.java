@@ -5,11 +5,13 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
- * 六面方向枚举 —— 对齐高版本 {@code net.minecraft.core.Direction}，
- * 脱离 Forge {@code EnumFacing} 的依赖。更多的是将其改造为适应这个类现代的模型加载即以向量驱动的模型加载。
+ * Six-face direction enum — aligned with modern {@code net.minecraft.core.Direction},
+ * removing dependency on Forge {@code EnumFacing}. Primarily adapted for modern model
+ * loading driven by vectors.
  *
- * <p>每个枚举值预计算了法向量（int step + {@link Vector3d}），
- * 并提供取反、顺时针旋转、按名称查找、最近方向等核心方法。
+ * <p>Each enum value precomputes its normal vector (int step + {@link Vector3d})
+ * and provides core methods for opposite, clockwise rotation, lookup by name,
+ * nearest direction, etc.
  */
 public enum Direction {
     DOWN(0, 1, -1, "down",  AxisDirection.NEGATIVE, Axis.Y,  0, -1,  0),
@@ -19,7 +21,7 @@ public enum Direction {
     WEST (4, 5, 1, "west",  AxisDirection.NEGATIVE, Axis.X, -1,  0,  0),
     EAST (5, 4, 3, "east",  AxisDirection.POSITIVE, Axis.X,  1,  0,  0);
 
-    // ==================== 静态查找表 ====================
+    // ==================== Static lookup tables ====================
 
     private static final Direction[] VALUES = values();
     private static final Direction[] BY_3D_DATA = new Direction[6];
@@ -36,7 +38,7 @@ public enum Direction {
         }
     }
 
-    // ==================== 实例字段 ====================
+    // ==================== Instance fields ====================
 
     private final int data3d;
     private final int oppositeIndex;
@@ -47,7 +49,7 @@ public enum Direction {
     private final int normalX;
     private final int normalY;
     private final int normalZ;
-    /** 预计算的 double 精度法向量（VecMath）。 */
+    /** Precomputed double-precision normal vector (VecMath). */
     private final Vector3d normalVec3d;
 
     Direction(int data3d, int oppositeIndex, int data2d, String name,
@@ -65,7 +67,7 @@ public enum Direction {
         this.normalVec3d = new Vector3d(nx, ny, nz);
     }
 
-    // ==================== 基本访问器 ====================
+    // ==================== Basic accessors ====================
 
     public int get3DDataValue() { return data3d; }
     public int get2DDataValue() { return data2d; }
@@ -77,23 +79,23 @@ public enum Direction {
     public int getStepY() { return normalY; }
     public int getStepZ() { return normalZ; }
 
-    /** 返回法向量的不可变 Vector3d 副本。 */
+    /** Returns an immutable Vector3d copy of the normal vector. */
     public Vector3d getNormalVec3d() { return new Vector3d(normalVec3d); }
 
-    /** 返回预计算法向量的引用（调用方不得修改）。 */
+    /** Returns a reference to the precomputed normal vector (caller must not modify). */
     public Vector3d getNormalVec3dRef() { return normalVec3d; }
 
     @Override
     public String toString() { return name; }
 
-    // ==================== 方向运算 ====================
+    // ==================== Direction operations ====================
 
-    /** 取反方向（O(1)）。 */
+    /** Opposite direction (O(1)). */
     public Direction getOpposite() {
         return BY_3D_DATA[oppositeIndex];
     }
 
-    /** 绕 Y 轴顺时针旋转 90°（仅水平方向有效）。 */
+    /** Rotate 90° clockwise around Y axis (horizontal directions only). */
     public Direction getClockWise() {
         switch (this) {
             case NORTH: return EAST;
@@ -104,7 +106,7 @@ public enum Direction {
         }
     }
 
-    /** 绕 Y 轴逆时针旋转 90°（仅水平方向有效）。 */
+    /** Rotate 90° counter-clockwise around Y axis (horizontal directions only). */
     public Direction getCounterClockWise() {
         switch (this) {
             case NORTH: return WEST;
@@ -115,7 +117,7 @@ public enum Direction {
         }
     }
 
-    /** 绕给定轴顺时针旋转 90°。 */
+    /** Rotate 90° clockwise around given axis. */
     public Direction getClockWise(Axis axis) {
         switch (axis) {
             case X: return this != WEST && this != EAST ? this.getClockWiseX() : this;
@@ -125,7 +127,7 @@ public enum Direction {
         }
     }
 
-    /** 绕给定轴逆时针旋转 90°。 */
+    /** Rotate 90° counter-clockwise around given axis. */
     public Direction getCounterClockWise(Axis axis) {
         switch (axis) {
             case X: return this != WEST && this != EAST ? this.getCounterClockWiseX() : this;
@@ -175,9 +177,9 @@ public enum Direction {
         }
     }
 
-    // ==================== 静态工厂方法 ====================
+    // ==================== Static factory methods ====================
 
-    /** 按名称查找（如 "north"、"up"），找不到返回 null。 */
+    /** Lookup by name (e.g. "north", "up"), returns null if not found. */
     public static Direction byName(String name) {
         if (name == null || name.isEmpty()) return null;
         for (Direction d : VALUES) {
@@ -186,17 +188,17 @@ public enum Direction {
         return null;
     }
 
-    /** 按 3D 数据值查找。 */
+    /** Lookup by 3D data value. */
     public static Direction from3DDataValue(int data) {
         return BY_3D_DATA[Math.abs(data % BY_3D_DATA.length)];
     }
 
-    /** 按 2D 数据值查找（仅水平方向）。 */
+    /** Lookup by 2D data value (horizontal directions only). */
     public static Direction from2DDataValue(int data) {
         return BY_2D_DATA[Math.abs(data % BY_2D_DATA.length)];
     }
 
-    /** 由轴 + 轴方向组合获取方向。 */
+    /** Gets direction from axis + axis direction combination. */
     public static Direction fromAxisAndDirection(Axis axis, AxisDirection axisDirection) {
         for (Direction d : VALUES) {
             if (d.axis == axis && d.axisDirection == axisDirection) return d;
@@ -204,7 +206,7 @@ public enum Direction {
         throw new IllegalArgumentException("No such direction: " + axisDirection + " " + axis);
     }
 
-    /** 根据法向量分量确定最近的方向（点积比较）。 */
+    /** Determines nearest direction from normal vector components (dot product comparison). */
     public static Direction getApproximateNearest(double dx, double dy, double dz) {
         Direction result = NORTH;
         double highestDot = -Double.MAX_VALUE;
@@ -218,12 +220,12 @@ public enum Direction {
         return result;
     }
 
-    /** 根据法向量分量确定最近的方向（float 重载）。 */
+    /** Determines nearest direction from normal vector components (float overload). */
     public static Direction getApproximateNearest(float dx, float dy, float dz) {
         return getApproximateNearest((double) dx, dy, dz);
     }
 
-    /** 根据整数分量确定最精确的方向（取绝对值最大分量）。 */
+    /** Determines nearest direction from integer components (largest absolute component wins). */
     public static Direction getNearest(int x, int y, int z) {
         int absX = Math.abs(x), absY = Math.abs(y), absZ = Math.abs(z);
         if (absX > absZ && absX > absY) return x < 0 ? WEST : EAST;
@@ -232,9 +234,9 @@ public enum Direction {
         return NORTH;
     }
 
-    // ==================== 内部枚举：Axis ====================
+    // ==================== Inner enum: Axis ====================
 
-    /** 三轴枚举。 */
+    /** Three-axis enum. */
     public enum Axis {
         X("x") {
             @Override public int choose(int x, int y, int z) { return x; }
@@ -276,9 +278,9 @@ public enum Direction {
         public String toString() { return name; }
     }
 
-    // ==================== 内部枚举：AxisDirection ====================
+    // ==================== Inner enum: AxisDirection ====================
 
-    /** 轴正负方向。 */
+    /** Axis positive/negative direction. */
     public enum AxisDirection {
         POSITIVE(1, "Towards positive"),
         NEGATIVE(-1, "Towards negative");
@@ -302,9 +304,9 @@ public enum Direction {
         public String toString() { return name; }
     }
 
-    // ==================== 内部枚举：Plane ====================
+    // ==================== Inner enum: Plane ====================
 
-    /** 水平/垂直面分组。 */
+    /** Horizontal/vertical plane grouping. */
     public enum Plane implements Iterable<Direction> {
         HORIZONTAL(new Direction[]{ NORTH, EAST, SOUTH, WEST }, new Axis[]{ Axis.X, Axis.Z }),
         VERTICAL  (new Direction[]{ UP, DOWN },                new Axis[]{ Axis.Y });

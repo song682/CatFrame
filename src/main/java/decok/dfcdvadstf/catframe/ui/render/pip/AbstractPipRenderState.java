@@ -5,7 +5,8 @@ import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import javax.annotation.Nullable;
 
 /**
- * PiP 渲染状态抽象基类 — 持有采集点矩阵快照、边界与可选裁剪区域，供内置/扩展状态复用。
+ * PiP render state abstract base — holds capture-point matrix snapshot, bounds,
+ * and optional scissor area for reuse by built-in/extended states.
  */
 public abstract class AbstractPipRenderState implements PictureInPictureRenderState {
 

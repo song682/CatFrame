@@ -82,8 +82,8 @@ public class ModernItem extends Item implements IItemStateProvider {
     protected String handModelPath;
 
     /**
-     * ItemState 决策树根节点。
-     * 由 {@link #setModels(String, String)} 根据单模型或双模型配置构建。
+     * ItemState decision tree root node.
+     * Built by {@link #setModels(String, String)} from single or dual model config.
      */
     protected ItemStateNode itemStateRoot;
 
@@ -108,9 +108,9 @@ public class ModernItem extends Item implements IItemStateProvider {
         // dropped-item
         // phases never read it, so removing this looks safe but silently mis-positions
         // mob-held items.
-        // 保留 isFull3D = true：RenderJsonItemModel.computePreTransform() 的 RenderBiped 分支
-        // （第三人称、非玩家实体、非 ItemBlock）依赖它选择 full3D 反抵消矩阵或 2D 回退矩阵。
-        // 玩家手持 / 展示架 / 掉落物阶段都不读它——删除看似安全，实则非玩家实体手持时会静默错位。
+        // Keep isFull3D = true: RenderJsonItemModel.computePreTransform() consumes it in
+        // (third person, non-player entity, non-ItemBlock) depends on it to choose
+        // Player-held / item-frame / dropped-item phases never read it — removing looks safe but silently mis-positions mob-held items.
         this.setFull3D();
     }
 
@@ -219,7 +219,7 @@ public class ModernItem extends Item implements IItemStateProvider {
      *             <ul>
      *             <li>GUI / looting stage（display_context = ITEM_GUI /
      *             DROPPED_ITEM_GROUND）→ 2D inventory model</li>
-     *             <li>手持阶段（display_context = ITEM_HAND_FIRST_PERSON /
+     *             <li>Handheld phase (display_context = ITEM_HAND_FIRST_PERSON /
      *             ITEM_HAND_THIRD_PERSON）→ 3D handheld model</li>
      *             </ul>
      *             If only a model is input, regressed to the single
@@ -244,7 +244,7 @@ public class ModernItem extends Item implements IItemStateProvider {
     }
 
     /**
-     * 根据当前 {@link #inventoryModelPath} / {@link #handModelPath} 重建 ItemState 决策树。
+     * Rebuild ItemState decision tree from current {@link #inventoryModelPath} / {@link #handModelPath}.
      */
     private void rebuildItemStateRoot() {
         if (inventoryModelPath == null && handModelPath == null) {
@@ -257,14 +257,14 @@ public class ModernItem extends Item implements IItemStateProvider {
             ItemStateNode handLeaf = new ItemStateNode.ModelLeaf(handModelPath);
 
             List<ItemStateNode.SelectCase> cases = new ArrayList<>();
-            // 手持/展示架等 3D 阶段 → hand 模型
+            // Handheld / item-frame 3D phases -> hand model
             // Handheld / item-frame 3D phases -> hand model
             cases.add(new ItemStateNode.SelectCase(new LinkedHashSet<>(Arrays.asList(
                     RenderPhase.ITEM_HAND_FIRST_PERSON.name(),
                     RenderPhase.ITEM_HAND_THIRD_PERSON.name(),
                     RenderPhase.ITEM_FIXED.name())), handLeaf));
-            // GUI/掉落物等 2D 阶段 → inventory 模型
-            // 方块物品掉落物也使用 2D inventory 模型（ModernItem 本身不是 ItemBlock，但为兼容保留）
+            // GUI / dropped-item 2D phases -> inventory model
+            // Dropped block items also use 2D inventory model (ModernItem itself is not an ItemBlock, but kept for compat)
             // GUI / dropped-item 2D phases -> inventory model
             cases.add(new ItemStateNode.SelectCase(new LinkedHashSet<>(Arrays.asList(
                     RenderPhase.ITEM_GUI.name(),
@@ -337,41 +337,42 @@ public class ModernItem extends Item implements IItemStateProvider {
     }
 
     /**
-     * IItemState: 返回 inventory（2D GUI）模型路径。
+     * IItemState: returns inventory (2D GUI) model path.
      * <p>
-     * DataLoading.init() 扫描时自动收集此路径的纹理。
-     * 如果是双模型（{@link #hasDualModels()}），hand 模型路径也会被额外收集。
+     * DataLoading.init() automatically collects this path's textures during scanning.
+     * If dual-model ({@link #hasDualModels()}), hand model path is also collected.
      *
-     * @return inventory 模型路径，如果未设置则返回 null
+     * @return inventory model path, or null if not set
      */
     public String getModelPath() {
         return inventoryModelPath;
     }
 
     /**
-     * 3D handheld 模型路径的公开访问器。
+     * Public accessor for 3D handheld model path.
      * <p>
-     * 供 {@link ModelManagerDataLoader#init()} 扫描时
-     * 额外收集双模型物品的 hand 模型纹理。
+     * Used by {@link ModelManagerDataLoader#init()} during scanning to
+     * additionally collect hand model textures for dual-model items.
      *
-     * @return hand 模型路径，如果未设置则返回 null
+     * @return hand model path, or null if not set
      */
     public String getHandModelPath() {
         return handModelPath;
     }
 
     /**
-     * IItemState: 接口驱动声明本物品需要纹理收集的模型路径
-     * （{@link IItemStateProvider#getDeclaredModelPaths()}）。
+     * IItemState: interface-driven declaration of model paths this item needs for texture
+     * collection ({@link IItemStateProvider#getDeclaredModelPaths()}).
      * <p>
-     * 实现即接入：发现阶段不再 instanceof 特判 ModernItem，统一经本方法收集；
-     * 每轮纹理缝合无条件重跑（集合幂等），迟到的
-     * {@link #setModels(String, String)} 声明在下一轮自动补票。
+     * Implementation-as-declaration: discovery phase no longer instanceof-checks ModernItem,
+     * unified collection via this method; every texture stitch reruns this method
+     * (sets are idempotent), late {@link #setModels(String, String)} declarations
+     * auto-pickup on next pass.
      * <p>
-     * 语义与历史特判完全一致：inventory 未设置时不收集任何路径；
-     * 双模型返回 {@code [inventory, hand]}；单模型仅返回 {@code [inventory]}。
+     * Semantics identical to legacy special-case: if inventory unset, no paths collected;
+     * dual-model returns {@code [inventory, hand]}; single-model returns {@code [inventory]}.
      *
-     * @return 声明的模型路径（可能为空）
+     * @return declared model paths (may be empty)
      */
     @Override
     public List<String> getDeclaredModelPaths() {

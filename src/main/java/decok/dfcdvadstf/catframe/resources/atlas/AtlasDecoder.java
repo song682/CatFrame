@@ -23,24 +23,25 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 图集定义解析器 —— 解析 {@code assets/<namespace>/atlases/<id>.json}（Wiki 兼容格式，
- * 复数 {@code atlases/} 目录，对标 26.1.2 {@code SpriteSourceList} 的 JSON 形态）。
+ * Atlas definition decoder — parses {@code assets/<namespace>/atlases/<id>.json} (Wiki-compatible format,
+ * plural {@code atlases/} directories, mirrors 26.1.2 {@code SpriteSourceList} JSON shape).
  * <p>
- * 根元素 {@code sources} 为数组；每个 source 以 {@code type} 键区分
- * （带 namespace 的 type id，如 {@code "minecraft:directory"}），其余字段为参数：
+ * Root element {@code sources} is an array; each source is distinguished by a {@code type} key
+ * (namespaced type id, e.g. {@code "minecraft:directory"}), with remaining fields as parameters:
  * <ul>
- *   <li>{@code minecraft:directory} —— {@code source} 目录名、{@code prefix} sprite id 前缀；</li>
- *   <li>{@code minecraft:filter} —— {@code namespace} / {@code path} 正则（缺省匹配全部）；</li>
- *   <li>{@code minecraft:single} —— {@code resource} 源纹理、{@code sprite} 发布 id（可缺省）；</li>
- *   <li>{@code minecraft:unstitch} —— {@code resource} + {@code divisor_x/divisor_y} +
- *       {@code regions}（每区域 {@code sprite/x/y/width/height}，块坐标，Wiki 格式）；</li>
- *   <li>{@code paletted_permutations} —— {@code textures} + {@code palette_key} +
- *       {@code permutations}（值 = 命名空间 ID）+ {@code separator}（缺省 {@code _}）。</li>
+ *   <li>{@code minecraft:directory} — {@code source} directory name, {@code prefix} sprite id prefix;</li>
+ *   <li>{@code minecraft:filter} — {@code namespace} / {@code path} regex (defaults to match all);</li>
+ *   <li>{@code minecraft:single} — {@code resource} source texture, {@code sprite} publish id (optional);</li>
+ *   <li>{@code minecraft:unstitch} — {@code resource} + {@code divisor_x/divisor_y} +
+ *       {@code regions} (each region {@code sprite/x/y/width/height}, block coords, Wiki format);</li>
+ *   <li>{@code paletted_permutations} — {@code textures} + {@code palette_key} +
+ *       {@code permutations} (values = namespace IDs) + {@code separator} (default {@code _}).</li>
  * </ul>
- * 未知 type 或字段缺失 → warn + 跳过该源（不崩溃，定义文件整体仍可用）。
+ * Unknown type or missing fields → warn + skip that source (no crash, whole definition still usable).
  *
  * <p>Parses atlas definition JSONs into a source list; unknown types and
  * malformed entries degrade with a warning instead of crashing.
+ * </p>
  */
 @SideOnly(Side.CLIENT)
 public final class AtlasDecoder {
@@ -51,11 +52,11 @@ public final class AtlasDecoder {
     }
 
     /**
-     * 解码定义文件。
+     * Decode a definition file.
      *
-     * @param in 定义 JSON 输入流（调用方负责关闭）
-     * @return source 列表（空 = 定义无有效源）
-     * @throws IOException JSON 不可解析时抛出（调用方降级处理）
+     * @param in definition JSON input stream (caller responsible for closing)
+     * @return source list (empty = no valid sources in definition)
+     * @throws IOException thrown on JSON parse failure (caller handles fallback)
      */
     public static List<AtlasSource> decode(InputStream in) throws IOException {
         List<AtlasSource> out = new ArrayList<>();
@@ -91,7 +92,7 @@ public final class AtlasDecoder {
         return out;
     }
 
-    /** 按 type 后缀构建源；未知类型 warn + 返回 null（跳过）。 */
+    /** Build source by type suffix; unknown type warns + returns null (skip). */
     private static AtlasSource parse(JsonObject o, String type) {
         String suffix = type.indexOf(':') >= 0 ? type.substring(type.indexOf(':') + 1) : type;
         try {
@@ -118,8 +119,8 @@ public final class AtlasDecoder {
     }
 
     /**
-     * 解析 unstitch（Wiki 格式）：divisor_x/divisor_y 缺省 1；regions 至少一个元素，
-     * 每区域 sprite 必填（缺失跳过该区域），x/y/width/height 缺省 0/0/1/1。
+     * Parse unstitch (Wiki format): divisor_x/divisor_y default 1; at least one region,
+     * each region requires sprite (missing skips region), x/y/width/height default 0/0/1/1.
      */
     private static UnstitchSource parseUnstitch(JsonObject o) {
         ResourceLocation resource = new ResourceLocation(require(o, "resource"));
@@ -157,7 +158,7 @@ public final class AtlasDecoder {
             }
         }
         ResourceLocation key = new ResourceLocation(require(o, "palette_key"));
-        // Wiki 格式：permutations 的值直接是命名空间 ID（置换调色板纹理位置）
+        // Wiki format: permutations values are namespace IDs directly (palette texture position swaps)
         Map<String, ResourceLocation> perms = new LinkedHashMap<>();
         JsonElement permsEl = o.get("permutations");
         if (permsEl != null && permsEl.isJsonObject()) {
@@ -188,7 +189,7 @@ public final class AtlasDecoder {
         return s != null ? new ResourceLocation(s) : null;
     }
 
-    /** 必填字符串字段；缺失抛异常（由 parse 的 catch 降级）。 */
+    /** Required string field; throws on missing (caught by parse's fallback). */
     private static String require(JsonObject o, String key) {
         String s = str(o, key);
         if (s == null || s.isEmpty()) {

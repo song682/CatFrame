@@ -19,75 +19,88 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * CatFrame 纹理图集实现 —— CPU 组装 + OpenGL 上传 + sprite 查找。
+ * CatFrame texture atlas implementation — CPU assembly + OpenGL upload + sprite
+ * lookup.
  * <p>
- * 职责（对标 26.1.2 {@code TextureAtlas}，适配 1.7.10 无 GPU blit 管线）：
+ * Responsibilities (mirrors 26.1.2 {@code TextureAtlas}, adapted to the 1.7.10
+ * world without a GPU blit pipeline):
  * <ul>
- *   <li>用 {@link TextureStitcher} 布局 sprite（排序 → 区域分割 → 2^n 扩展）；</li>
- *   <li>主线程一次性组装 ARGB int[] 图集缓冲区（padding 区域清为透明）并转 RGBA
- *       ByteBuffer，单次 {@code glTexImage2D} 上传 level-0；</li>
- *   <li>上传成功后回调 {@link CatSprite#complete} 写入 UV 数据；</li>
- *   <li>同时实现 {@link ITextureObject}，可经 TextureManager 以
- *       {@code catframe:atlas/<id>} 注册，渲染层绑定零结构改动。</li>
+ *   <li>lay out sprites with {@link TextureStitcher} (sort → region split → 2^n
+ *       expansion);</li>
+ *   <li>assemble the ARGB int[] atlas buffer in one pass on the main thread
+ *       (padding areas cleared to transparent), convert to an RGBA ByteBuffer and
+ *       upload level-0 with a single {@code glTexImage2D};</li>
+ *   <li>after a successful upload, call {@link CatSprite#complete} to write the UV
+ *       data;</li>
+ *   <li>also implements {@link ITextureObject} so it can be registered with the
+ *       TextureManager as {@code catframe:atlas/<id>}, letting render layers bind
+ *       it with zero structural changes.</li>
  * </ul>
  * <p>
- * [渲染三域架构] 本类现为<b>纯 UI 图集工具</b>（CatAtlas blocks/items 自研缝合链已退役）：
- * 由 {@code UiTextureAtlasManager} 驱动缝合 {@code catframe:gui} 图集。构造参数
- * {@code mipmapEnabled} 控制是否生成 mip 链：UI 域红线 = <b>无 mipmap</b>（GUI 素材
- * 1:1 正交绘制，mip 无收益且引入渗色风险），传 {@code false}；旧 blocks/items 时代
- * 的 mip 路径保留为通用能力（mipLevel 0 时全链路自动短路）。
+ * [Render three-domain architecture] This class is now a <b>pure UI atlas tool</b>
+ * (the in-house CatAtlas blocks/items stitching chain is retired): it is driven by
+ * {@code UiTextureAtlasManager} to stitch the {@code catframe:gui} atlas. The
+ * constructor parameter {@code mipmapEnabled} controls mip-chain generation: the
+ * UI-domain red line is <b>no mipmap</b> (GUI assets are drawn 1:1 orthogonally;
+ * mips bring no benefit and add bleed risk), so pass {@code false}; the mip path
+ * from the old blocks/items era is kept as a generic capability (at mipLevel 0 the
+ * whole chain short-circuits automatically).
  * <p>
- * <b>通道转换</b>：本地像素为 Java int ARGB（bits 24-31=A, 16-23=R, 8-15=G, 0-7=B），
- * GL 期望 R,G,B,A 字节序 —— 上传时显式重排（与 {@code AtlasPixelCache} 回读的
- * RGBA→ARGB 方向相反，见其类注释）。
+ * <b>Channel conversion</b>: local pixels are Java int ARGB (bits 24-31=A, 16-23=R,
+ * 8-15=G, 0-7=B) while GL expects R,G,B,A byte order — the upload reorders
+ * explicitly (the reverse direction of the RGBA→ARGB read-back in
+ * {@code AtlasPixelCache}, see its class comment).
  * <p>
- * <b>采样策略</b>（消除放大双线性模糊 + 缩小混叠）：
+ * <b>Sampling strategy</b> (eliminates magnification bilinear blur + minification
+ * aliasing):
  * <ul>
- *   <li>level-0 全量上传，随后按全局 mip 级别逐级上传 CPU box-filter 生成的 mip
- *       （padding 已按 mip 预留，无渗色）；</li>
- *   <li>MIN_FILTER = GL_NEAREST_MIPMAP_LINEAR（有 mip 时），缩小场景清晰；</li>
- *   <li>MAG_FILTER = GL_NEAREST —— 16×16 内容在 GUI/手持等放大场景下像素锐利，
- *       不再被 GL_LINEAR 双线性插值抹平细节。</li>
+ *   <li>level-0 is uploaded in full, then each CPU box-filtered mip is uploaded per
+ *       the global mip level (padding is pre-reserved per mip, so no bleeding);</li>
+ *   <li>MIN_FILTER = GL_NEAREST_MIPMAP_LINEAR (when mips exist): crisp when
+ *       minified;</li>
+ *   <li>MAG_FILTER = GL_NEAREST — 16×16 content stays pixel-sharp in magnified
+ *       scenarios such as GUI/hand-held, no longer flattened by GL_LINEAR
+ *       bilinear interpolation.</li>
  * </ul>
  * <p>
- * <b>M3 动画区域重传</b>：level-0 像素保留于 {@link #atlasPixels}（CPU 侧），
- * 动画 sprite 帧切换后由 {@link #updateAnimationRegion} 更新该区域并
- * glTexSubImage2D 重传 level-0 区域，随后从 level-0 全量重建 mip 链 ——
- * 相比原版整图重传，只动发生变化的区域（原生 CPU 像素优势）。
- *
- * <p>CPU-assembled, GL-uploaded atlas; also serves as the registered
- * {@code ITextureObject} so render layers bind it via {@code catframe:atlas/<id>}.
+ * <b>M3 animated region re-upload</b>: level-0 pixels are retained in
+ * {@link #atlasPixels} (CPU side); after an animated sprite switches frames,
+ * {@link #updateAnimationRegion} updates that region and re-uploads the level-0
+ * region via glTexSubImage2D, then rebuilds the whole mip chain from level-0 —
+ * compared to the vanilla full-image re-upload, only the changed region is
+ * touched (an advantage of native CPU pixels).
  */
 @SideOnly(Side.CLIENT)
 public class CatAtlas implements IAtlas, ITextureObject {
 
-    /** 图集 id（如 {@code minecraft:blocks} / {@code catframe:gui}）。 */
+    /** Atlas id (e.g. {@code minecraft:blocks} / {@code catframe:gui}). */
     private final String atlasId;
-    /** 是否生成 mip 链（UI 域恒 false：无 mipmap 红线；false 时 mip 相关链路全部短路）。 */
+    /** Whether to generate the mip chain (always false for the UI domain: the no-mipmap red line; when false every mip-related path short-circuits). */
     private final boolean mipmapEnabled;
-    /** 图集内 sprite 查找表：texturePath（发布键）→ CatSprite。
-     *  键用发布键而非 iconName —— missing sprite 的 iconName 恒为 "missingno"，
-     *  用 iconName 会让多个缺失 sprite 互相覆盖；发布键唯一。 */
+    /** Sprite lookup table: texturePath (publish key) → CatSprite.
+     *  The key is the publish key rather than iconName — a missing sprite's iconName is
+     *  always "missingno", so using iconName would make multiple missing sprites
+     *  overwrite each other; the publish key is unique. */
     private final Map<String, CatSprite> sprites = new LinkedHashMap<>();
-    /** 本图集的 built-in missing sprite（紫黑格；stitch 时记录，图集恒含一个，供缺失查找兜底）。 */
+    /** This atlas' built-in missing sprite (purple-black square; recorded at stitch time, always exactly one per atlas, used as fallback for missing lookups). */
     private CatSprite missingSprite;
-    /** GL 纹理对象 id（-1 = 未分配）。 */
+    /** GL texture object id (-1 = not allocated). */
     private int glTextureId = -1;
-    /** 最终图集尺寸（2^n）。 */
+    /** Final atlas size (2^n). */
     private int atlasWidth;
     private int atlasHeight;
-    /** 上传缓冲区（grow-only 复用，避免每次 stitch 重新分配 direct buffer）。 */
+    /** Upload buffer (grow-only reuse, avoiding a fresh direct-buffer allocation per stitch). */
     private ByteBuffer uploadBuffer;
-    /** 动画区域重传缓冲区（与 uploadBuffer 独立，避免 tick 期间互扰）。 */
+    /** Animation region re-upload buffer (separate from uploadBuffer to avoid interference during ticks). */
     private ByteBuffer regionBuffer;
-    /** level-0 图集像素（CPU 侧保留；M3 动画区域更新 + mip 重建的源）。 */
+    /** level-0 atlas pixels (retained CPU-side; the source for M3 animated region updates + mip rebuild). */
     private int[] atlasPixels;
-    /** 全局 mip 级别（upload 时记录，动画区域更新后按它重建 mip 链）。 */
+    /** Global mip level (recorded at upload time; the mip chain is rebuilt from it after animated region updates). */
     private int mipLevel;
 
     /**
-     * @param atlasId       图集 id（{@code IAtlas#getAtlasName()} 即此值）
-     * @param mipmapEnabled 是否生成 mip 链；UI 图集（{@code catframe:gui}）传 false（无 mipmap 红线）
+     * @param atlasId       atlas id (this value is what {@code IAtlas#getAtlasName()} returns)
+     * @param mipmapEnabled whether to generate the mip chain; pass false for the UI atlas ({@code catframe:gui}, the no-mipmap red line)
      */
     public CatAtlas(String atlasId, boolean mipmapEnabled) {
         this.atlasId = atlasId;
@@ -95,17 +108,19 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * 执行布局与上传（主线程、GL 上下文存活时调用）。
+     * Performs layout and upload (called on the main thread while the GL context is
+     * alive).
      * <p>
-     * 流程：计算全局 mip（最小 sprite 拖累全局，降级时警告）→ CatStitcher 布局 →
-     * 2^n 最终尺寸 → 一次性 CPU 组装 → glTexImage2D level-0 → 回调 sprite.complete。
+     * Flow: compute the global mip (the smallest sprite drags the global level down,
+     * warned when degraded) → CatStitcher layout → 2^n final size → one-pass CPU
+     * assembly → glTexImage2D level-0 → callback sprite.complete.
      *
-     * @param sprites        待缝合 sprite 列表（内容像素已就绪）
-     * @param maxTextureSize 尺寸上限（min(GL_MAX_TEXTURE_SIZE, 16384)，调用方传入）
+     * @param sprites        sprites awaiting stitching (content pixels already prepared)
+     * @param maxTextureSize size limit (min(GL_MAX_TEXTURE_SIZE, 16384), supplied by the caller)
      */
     public void stitch(List<CatSprite> sprites, int maxTextureSize) {
         if (sprites.isEmpty()) {
-            // 空图集：仍分配 16×16 占位，保证渲染层绑定有效
+            // Empty atlas: still allocate a 16×16 placeholder so render-layer bindings stay valid
             CatFrame.logger.warn("[CatAtlas] '{}' has no sprites, uploading 16x16 placeholder", atlasId);
             uploadPlaceholder();
             return;
@@ -122,19 +137,19 @@ public class CatAtlas implements IAtlas, ITextureObject {
         }
         stitcher.stitch();
 
-        // 最终尺寸：存储包围盒向上取 2^n（GL2.1 下 NPOT + mipmap 不兼容，恒 2^n）
+        // Final size: the storage bounding box rounds up to 2^n (NPOT + mipmap are incompatible under GL2.1, so always 2^n)
         this.atlasWidth = smallestEncompassingPowerOfTwo(stitcher.getWidth());
         this.atlasHeight = smallestEncompassingPowerOfTwo(stitcher.getHeight());
         if (atlasWidth <= 0) this.atlasWidth = 16;
         if (atlasHeight <= 0) this.atlasHeight = 16;
 
-        // ===== CPU 组装：一次性分配 ARGB 图集缓冲区（fill(0) = 透明 padding） =====
+        // ===== CPU assembly: allocate the ARGB atlas buffer in one pass (fill(0) = transparent padding) =====
         int[] atlasARGB = new int[atlasWidth * atlasHeight];
         Arrays.fill(atlasARGB, 0);
         final int padding = stitcher.getPadding();
         final int w = atlasWidth;
         final int h = atlasHeight;
-        // 单次遍历：写入 UV 数据（complete）并逐行拷贝内容像素到图集缓冲区
+        // Single pass: write UV data (complete) and copy content pixels row by row into the atlas buffer
         stitcher.gatherSprites((sprite, x, y, pad) -> {
             sprite.complete(x, y, pad, w, h);
             int[] pixels = sprite.getPixels();
@@ -165,8 +180,10 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * 计算全局 mip 级别：min(游戏 mipmap 设置, 全部 sprite 的最小个人 mip)。
-     * 个人 mip = floor(log2(min(min(w,h), lowestOneBit))) —— 小尺寸纹理拖累全局时警告。
+     * Computes the global mip level: min(game mipmap setting, the smallest
+     * per-sprite mip across all sprites). Per-sprite mip =
+     * floor(log2(min(min(w,h), lowestOneBit))) — warned when a small texture drags
+     * the global level down.
      */
     private int computeGlobalMipLevel(List<CatSprite> sprites) {
         int gameMip = Math.max(0, Minecraft.getMinecraft().gameSettings.mipmapLevels);
@@ -199,14 +216,17 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * 上传 level-0 与 box-filter mip 层级（ARGB int[] → RGBA ByteBuffer → glTexImage2D）。
+     * Uploads level-0 and the box-filtered mip levels (ARGB int[] → RGBA ByteBuffer
+     * → glTexImage2D).
      * <p>
-     * 采样策略见类 JavaDoc：MIN 用 mipmap 线性（缩小清晰），MAG 用 NEAREST
-     * （放大像素锐利，消除 16×16 内容放大时的双线性插值模糊）。
-     * 上传前后保存/恢复 glBindTexture，避免污染 Pre 阶段 vanilla GL 状态。
+     * See the class JavaDoc for the sampling strategy: MIN uses mipmap-linear
+     * (crisp when minified), MAG uses NEAREST (pixel-sharp when magnified,
+     * eliminating bilinear blur for enlarged 16×16 content).
+     * glBindTexture is saved/restored around the upload to avoid polluting vanilla
+     * GL state during the Pre stage.
      *
-     * @param atlasARGB level-0 图集像素（flat ARGB，row-major）
-     * @param mipLevel  全局 mip 级别（CatStitcher 布局用的同一值，padding 已预留）
+     * @param atlasARGB level-0 atlas pixels (flat ARGB, row-major)
+     * @param mipLevel  global mip level (the same value used for CatStitcher layout; padding is pre-reserved)
      */
     private void upload(int[] atlasARGB, int mipLevel) {
         this.mipLevel = mipLevel;
@@ -222,25 +242,25 @@ public class CatAtlas implements IAtlas, ITextureObject {
             uploadLevel(0, atlasARGB, atlasWidth, atlasHeight);
             uploadMips(atlasARGB, mipLevel);
 
-            // MAG=NEAREST：放大场景（GUI/手持/掉落/展示框）像素锐利，
-            // 消除 GL_LINEAR 在 16×16 内容放大时的双线性插值模糊。
             // Magnification stays NEAREST so enlarged 16×16 sprites keep hard
             // pixel edges instead of bilinear smearing.
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
         } finally {
-            // 恢复调用方 GL 状态（绑定纹理与像素行对齐），避免污染 Pre 阶段后续原版缝合的 GL 状态
+            // Restore the caller's GL state (bound texture and pixel row alignment) to avoid polluting vanilla stitching later in the Pre stage
             GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, prevUnpackAlignment);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevBound);
         }
     }
 
     /**
-     * 在已绑定纹理、已上传 level-0 的前提下生成并上传 box-filter mip 链与采样参数。
+     * Generates and uploads the box-filtered mip chain and sampling parameters,
+     * assuming the texture is bound and level-0 is uploaded.
      * <p>
-     * 逐级下采样（2×2 分离通道平均），上传 mip 1..mips；层级数不超过
-     * min(mipLevel, log2(图集尺寸))，尺寸按 GL 规范 floor/2。
+     * Downsamples level by level (2×2 separate-channel average) and uploads mips
+     * 1..mips; the level count never exceeds min(mipLevel, log2(atlas size)), and
+     * sizes follow the GL spec floor/2.
      */
     private void uploadMips(int[] level0, int mipLevel) {
         int mips = Math.min(mipLevel, Integer.numberOfTrailingZeros(Math.max(atlasWidth, atlasHeight)));
@@ -262,13 +282,16 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * M3 动画区域更新：把 sprite 当前帧像素写入图集区域并重传 level-0 区域，
-     * 然后从 {@link #atlasPixels} 全量重建 mip 链（mip 依赖 level-0 内容，无法局部更新）。
+     * M3 animated region update: writes the sprite's current-frame pixels into the
+     * atlas region and re-uploads the level-0 region, then rebuilds the whole mip
+     * chain from {@link #atlasPixels} (mips depend on level-0 content and cannot be
+     * partially updated).
      * <p>
-     * 由 CatAtlasManager.tickAnimations 在动画帧切换后调用（主线程）。
-     * 上传前后保存/恢复 GL 状态，不污染渲染循环。
+     * Called by CatAtlasManager.tickAnimations after an animation frame switch (main
+     * thread). GL state is saved/restored around the upload so the render loop is
+     * not polluted.
      *
-     * @param sprite 帧已推进的动画 sprite（图集内成员）
+     * @param sprite the animated sprite whose frame advanced (a member of this atlas)
      */
     public void updateAnimationRegion(CatSprite sprite) {
         if (atlasPixels == null || glTextureId == -1) {
@@ -290,7 +313,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
         try {
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, glTextureId);
             GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
-            // CPU 侧同步：区域行拷贝入 level-0 像素（mip 重建的源）
+            // CPU-side sync: copy the region rows into the level-0 pixels (the source for mip rebuild)
             for (int row = 0; row < h; row++) {
                 System.arraycopy(frame, row * w, atlasPixels, (y + row) * atlasWidth + x, w);
             }
@@ -303,8 +326,9 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * glTexSubImage2D 重传 level-0 的单个区域（ARGB int[] → RGBA ByteBuffer）。
-     * 帧数据行宽 = 区域宽 w，GL 默认 UNPACK_ROW_LENGTH 即区域宽，无需额外设置。
+     * Re-uploads a single level-0 region via glTexSubImage2D (ARGB int[] → RGBA
+     * ByteBuffer). The frame row width equals the region width w, which matches the
+     * default GL UNPACK_ROW_LENGTH, so no extra setup is needed.
      */
     private void uploadRegion(int x, int y, int w, int h, int[] pixels) {
         int byteCount = w * h * 4;
@@ -325,8 +349,9 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * 从 {@link #atlasPixels}（level-0，已含最新帧）全量重建 mip 1..mips 并重传。
-     * 仅在存在 mip 链（mipLevel > 0）时执行；无 mip 的图集动画无需该步。
+     * Rebuilds and re-uploads mips 1..mips entirely from {@link #atlasPixels}
+     * (level-0, already containing the latest frame). Only executed when a mip
+     * chain exists (mipLevel > 0); animation of mip-less atlases skips this step.
      */
     private void rebuildMipsFromLevel0() {
         if (mipLevel <= 0) {
@@ -345,8 +370,8 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * 上传单个 mip 层级：ARGB int[] → RGBA ByteBuffer → glTexImage2D。
-     * 复用 grow-only 上传缓冲区。
+     * Uploads one mip level: ARGB int[] → RGBA ByteBuffer → glTexImage2D.
+     * Reuses the grow-only upload buffer.
      */
     private void uploadLevel(int level, int[] pixels, int w, int h) {
         int byteCount = w * h * 4;
@@ -367,16 +392,17 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * 2×2 box filter 下采样（ARGB 各通道分离平均）。
-     * 目标尺寸按 GL mipmap 规范 floor/2；奇数边缘的不完整 2×2 块取左上像素直通
-     * （图集边缘为 padding 透明区，对视觉无影响）。
+     * 2×2 box-filter downsampling (separate-channel average of ARGB).
+     * Target sizes follow the GL mipmap spec floor/2; incomplete 2×2 blocks at odd
+     * edges pass through the top-left pixel (atlas edges are transparent padding, so
+     * this has no visual impact).
      *
-     * @param src  源像素（尺寸 w×h）
-     * @param w    源宽度
-     * @param h    源高度
-     * @param nw   目标宽度（= max(1, w/2)）
-     * @param nh   目标高度（= max(1, h/2)）
-     * @return 目标像素（flat ARGB）
+     * @param src source pixels (size w×h)
+     * @param w   source width
+     * @param h   source height
+     * @param nw  target width (= max(1, w/2))
+     * @param nh  target height (= max(1, h/2))
+     * @return target pixels (flat ARGB)
      */
     private static int[] boxFilter(int[] src, int w, int h, int nw, int nh) {
         int[] dst = new int[nw * nh];
@@ -384,7 +410,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
             for (int x = 0; x < nw; x++) {
                 int sx = x * 2, sy = y * 2;
                 int a = src[sy * w + sx];
-                // 右/下边缘不足 2×2 时用像素自身填充（1×2 / 2×1 平均）
+                // At right/bottom edges lacking a full 2×2, fill with the pixel itself (1×2 / 2×1 average)
                 int b = (sx + 1 < w) ? src[sy * w + sx + 1] : a;
                 int c = (sy + 1 < h) ? src[(sy + 1) * w + sx] : a;
                 int d = (sx + 1 < w && sy + 1 < h) ? src[(sy + 1) * w + sx + 1] : a;
@@ -399,7 +425,8 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * 空图集兜底：上传 16×16 透明占位纹理，保证渲染层绑定到的 GL 对象有效。
+     * Empty-atlas fallback: uploads a 16×16 transparent placeholder texture so the
+     * GL object bound by render layers stays valid.
      */
     private void uploadPlaceholder() {
         int[] pixels = new int[16 * 16];
@@ -408,16 +435,17 @@ public class CatAtlas implements IAtlas, ITextureObject {
         upload(pixels, 0);
     }
 
-    // ==================== IAtlas / ITextureObject 契约 ====================
+    // ==================== IAtlas / ITextureObject contract ====================
 
-    /** 图集 id（如 {@code minecraft:blocks}），即 {@code IAtlas#getAtlasName()}。 */
+    /** Atlas id (e.g. {@code minecraft:blocks}), i.e. {@code IAtlas#getAtlasName()}. */
     @Override
     public String getAtlasName() {
         return atlasId;
     }
 
     /**
-     * GL 纹理对象 id（首次访问时惰性分配）。实现 ITextureObject 契约。
+     * GL texture object id (lazily allocated on first access). Implements the
+     * ITextureObject contract.
      */
     @Override
     public int getGlTextureId() {
@@ -428,7 +456,8 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * 删除 GL 纹理对象（资源重载/图集重建时由 CatAtlasManager 调用，防 GL 泄漏）。
+     * Deletes the GL texture object (called by CatAtlasManager on resource reload /
+     * atlas rebuild to prevent GL leaks).
      */
     public void deleteGlTexture() {
         if (glTextureId != -1) {
@@ -438,42 +467,43 @@ public class CatAtlas implements IAtlas, ITextureObject {
     }
 
     /**
-     * 空实现：纹理内容由 {@link #stitch} 在 stitch 编排中上传，
-     * TextureManager 仅作注册与绑定用途（loadTexture 契约）。
+     * No-op: the texture content is uploaded by {@link #stitch} as part of the
+     * stitch orchestration; the TextureManager only provides registration and
+     * binding (the loadTexture contract).
      */
     @Override
     public void loadTexture(IResourceManager resourceManager) {
-        // 上传由 CatAtlasManager 在 stitch 编排中显式完成
+        // Upload is performed explicitly by CatAtlasManager in the stitch orchestration
     }
 
-    // ==================== 查找 ====================
+    // ==================== Lookup ====================
 
-    /** 按发布键（texturePath）查找 sprite。 */
+    /** Looks up a sprite by publish key (texturePath). */
     public CatSprite getSprite(String texturePath) {
         return sprites.get(texturePath);
     }
 
-    /** 本图集的 built-in missing sprite（缺失查找最终兜底；stitch 后恒非 null）。 */
+    /** This atlas' built-in missing sprite (the final fallback for missing lookups; always non-null after stitching). */
     public CatSprite getMissingSprite() {
         return missingSprite;
     }
 
-    /** 图集内全部 sprite（texturePath → CatSprite，只读约定）。 */
+    /** All sprites in the atlas (texturePath → CatSprite, read-only by convention). */
     public Map<String, CatSprite> getSprites() {
         return Collections.unmodifiableMap(sprites);
     }
 
-    /** 最终图集宽度（2^n）。 */
+    /** Final atlas width (2^n). */
     public int getAtlasWidth() {
         return atlasWidth;
     }
 
-    /** 最终图集高度（2^n）。 */
+    /** Final atlas height (2^n). */
     public int getAtlasHeight() {
         return atlasHeight;
     }
 
-    /** 不小于 value 的最小 2^n。 */
+    /** Smallest power of two ≥ value. */
     private static int smallestEncompassingPowerOfTwo(int value) {
         int i = Integer.highestOneBit(Math.max(1, value));
         return i >= value ? i : i << 1;

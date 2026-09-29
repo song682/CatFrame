@@ -19,51 +19,54 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 /**
- * 图集 sprite 解码器（对标 26.1.2 {@code SpriteResourceLoader}，适配 1.7.10）。
+ * Atlas sprite decoder (mirrors 26.1.2 {@code SpriteResourceLoader}, adapted to
+ * 1.7.10).
  * <p>
- * 职责：
+ * Responsibilities:
  * <ul>
- *   <li>按 {@link ResourceLocation} 直读 PNG（路径 = 数据驱动定义产出的 sprite id
- *       投影，即 {@code textures/<path>.png}，不做任何单复数目录回退；ImageIO 解码，
- *       与 1.7.10 原版 TextureMap 一致）；</li>
- *   <li>读取同名 {@code .png.mcmeta} 解析 mojang 格式动画（{@code animation.frametime} 单位 =
- *       tick × 50ms；{@code frames} 支持 int 索引与 {@code {index, time}} 对象；缺省 = 逐行帧），
- *       帧数 = height / width（mojang 约定帧为正方形）；</li>
- *   <li>像素经 {@link PixelTransform} 逐帧应用（unstitch 裁剪 / paletted 关键色替换）；
- *       transform 后各帧尺寸不一致时降级为单帧（transform 第 1 帧结果）；</li>
- *   <li>产出 {@link CatSprite}（单帧或动画多帧）；任何失败返回 null，调用方用 missing 兜底
- *       （找不到纹理 → missingno，与原版缺失语义一致）。</li>
+ *   <li>read the PNG directly by {@link ResourceLocation} (path = the projection of
+ *       the data-driven sprite id, i.e. {@code textures/<path>.png}, with no singular
+ *       / plural directory fallback; decoded via ImageIO, matching the 1.7.10 vanilla
+ *       TextureMap);</li>
+ *   <li>read the same-named {@code .png.mcmeta} to parse mojang-format animation
+ *       ({@code animation.frametime} unit = tick × 50ms; {@code frames} accepts int
+ *       indices and {@code {index, time}} objects; defaults to line-by-line frames),
+ *       with frame count = height / width (mojang assumes square frames);</li>
+ *   <li>apply the {@link PixelTransform} to every frame (unstitch clipping /
+ *       paletted key-color replacement); if transformed frames end up with
+ *       different sizes, degrade to a single frame (the transform result of frame 1);</li>
+ *   <li>produce a {@link CatSprite} (single frame or animation frames); any failure
+ *       returns null and the caller falls back to missing (texture not found →
+ *       missingno, matching the vanilla missing semantics).</li>
  * </ul>
- * 运行于 {@link RenderExecutors} 并行池；失败语义按 Wiki：纹理缺失/解码失败 → 调用方记录为
- * 错误 sprite（missing），不崩溃。
- *
- * <p>Decodes atlas sprites: PNG + mojang-format animation metadata, applying the
- * per-sprite pixel transform on every frame. Returns {@code null} on failure.
+ * Runs on the {@link RenderExecutors} parallel pool; failure semantics follow the
+ * Wiki: a missing texture / decode failure is recorded by the caller as an error
+ * sprite (missing) without crashing.
  */
 @SideOnly(Side.CLIENT)
 public final class CatSpriteLoader {
 
     private static final Gson GSON = new Gson();
-    /** 每 tick 时长（ms）；mojang frametime 单位 = tick。 */
+    /** Duration per tick (ms); the mojang frametime unit = tick. */
     private static final int TICK_MS = 50;
 
     private CatSpriteLoader() {
     }
 
     /**
-     * 解码一个 sprite。
+     * Decodes one sprite.
      *
-     * @param resource  源纹理位置（数据驱动定义产出的 sprite id，如 {@code minecraft:blocks/ladder}；
-     *                  纹理文件恒在 {@code textures/<path>.png}，不做目录回退）
-     * @param spriteId  发布键（完整纹理路径格式 {@code ns:path}，如
-     *                  {@code minecraft:blocks/ladder} 或 unstitch 产物 {@code ..._3}）
-     * @param atlasId   所属图集 id（透传给 CatSprite）
-     * @param transform 像素变换（可为 null）
-     * @return CatSprite（单帧或多帧）；失败返回 null
+     * @param resource  source texture location (the data-driven sprite id, e.g.
+     *                  {@code minecraft:blocks/ladder}; the texture file is always at
+     *                  {@code textures/<path>.png}, no directory fallback)
+     * @param spriteId  the publish key (full texture path form {@code ns:path}, e.g.
+     *                  {@code minecraft:blocks/ladder} or an unstitch product {@code ..._3})
+     * @param atlasId   the owning atlas id (passed through to CatSprite)
+     * @param transform pixel transform (may be null)
+     * @return the CatSprite (single frame or multiple frames); null on failure
      */
     public static CatSprite load(ResourceLocation resource, String spriteId, String atlasId,
                                  PixelTransform transform) {
-        // icon 名称 = 发布键本身（数据驱动键，如 "minecraft:blocks/ladder"），无前缀改写。
         // The icon name is the publish key itself; the data-driven key is used
         // verbatim, with no prefix rewriting or directory fallback.
         String iconName = spriteId;
@@ -74,38 +77,40 @@ public final class CatSpriteLoader {
             IResource res = mgr.getResource(rl);
             BufferedImage image = ImageIO.read(res.getInputStream());
             if (image == null) {
-                // 资源存在但 ImageIO 无法解码（如非 PNG/JPG 内容）→ 缺失语义，调用方用 missing 兜底
+                // Resource exists but ImageIO cannot decode it (e.g. non-PNG/JPG content) → missing semantics, caller falls back to missing
                 CatFrame.logger.warn("[SpriteLoader] '{}' exists but ImageIO cannot decode it", rl);
                 return null;
             }
             int w = image.getWidth();
             int h = image.getHeight();
             int[] pixels = image.getRGB(0, 0, w, h, null, 0, w);
-            // 动画元数据：与 PNG 同目录同名 .png.mcmeta（mojang 格式）
+            // Animation metadata: a same-named .png.mcmeta next to the PNG (mojang format)
             int[] frameTimes = readAnimation(mgr, metaLocation(rl), w, h);
             return buildSprite(spriteId, iconName, pixels, w, h, atlasId, frameTimes, transform);
         } catch (IOException | RuntimeException ex) {
-            // 纹理不存在/解码失败 → 纹理错误，调用方用 missing（missingno）兜底
+            // Texture missing / decode failure → texture error, caller falls back to missing (missingno)
             CatFrame.logger.warn("[SpriteLoader] texture error: '{}' not found / failed to decode ({}: {})",
                     spriteId, ex.getClass().getSimpleName(), ex.getMessage());
         }
         return null;
     }
 
-    /** PNG 位置 → 同名 .mcmeta 位置（同命名空间同目录）。 */
+    /** PNG location → same-named .mcmeta location (same namespace, same directory). */
     private static ResourceLocation metaLocation(ResourceLocation png) {
         return new ResourceLocation(png.getResourceDomain(), png.getResourcePath() + ".mcmeta");
     }
 
     /**
-     * 读取 mojang 格式动画元数据；无 animation 键或文件缺失 → 返回 null（单帧）。
+     * Reads mojang-format animation metadata; null when there is no animation key
+     * or the file is missing (a static sprite).
      * <p>
-     * 帧数 = height / width（mojang 约定帧为正方形，多余行忽略）；
-     * frametime 缺省 1 tick；frames 缺省 = 逐行递增索引；
-     * frames 元素支持 int（时长 = frametime）与对象 {@code {index, time}}。
-     * {@code interpolate}（补间）不支持，忽略并记 debug。
+     * Frame count = height / width (mojang assumes square frames; extra lines are
+     * ignored); frametime defaults to 1 tick; frames defaults to incrementing
+     * line indices; frames elements accept an int (duration = frametime) or an
+     * object {@code {index, time}}. {@code interpolate} is not supported and is
+     * ignored with a debug log.
      *
-     * @return 每帧时长（ms，长度 = 帧数）；无动画返回 null
+     * @return per-frame durations (ms, length = frame count); null when static
      */
     private static int[] readAnimation(IResourceManager mgr, ResourceLocation metaRl,
                                        int width, int height) {
@@ -113,7 +118,7 @@ public final class CatSpriteLoader {
         try {
             meta = mgr.getResource(metaRl);
         } catch (IOException e) {
-            return null; // 无 .mcmeta = 单帧
+            return null; // No .mcmeta = static single frame
         }
         JsonObject root;
         try {
@@ -168,8 +173,9 @@ public final class CatSpriteLoader {
     }
 
     /**
-     * 组装 CatSprite：无动画 → 单帧；有动画 → 逐帧切分 + 逐帧 transform。
-     * transform 后各帧尺寸不一致（异常裁剪）→ 降级单帧（transform 第 1 帧结果）。
+     * Assembles the CatSprite: no animation → single frame; animation → split per
+     * frame + per-frame transform. If transformed frame sizes disagree (abnormal
+     * clipping) → degrade to a single frame (the transform result of frame 1).
      */
     private static CatSprite buildSprite(String spriteId, String iconName, int[] pixels,
                                          int w, int h, String atlasId,
@@ -181,7 +187,7 @@ public final class CatSpriteLoader {
             PixelTransform.Result r = transform.apply(pixels, w, h);
             return new CatSprite(spriteId, iconName, r.pixels, r.width, r.height, atlasId);
         }
-        // 多帧：帧高 = 总高 / 帧数（mojang 约定），逐帧切分
+        // Multi-frame: frame height = total height / frame count (mojang convention), split frame by frame
         int frameCount = frameTimes.length;
         int frameH = h / frameCount;
         int[][] frames = new int[frameCount][];
@@ -193,7 +199,7 @@ public final class CatSpriteLoader {
             frames[f] = src;
         }
         if (transform != null) {
-            // 逐帧应用变换；首帧结果定义目标尺寸，后续帧尺寸不一致则整体降级单帧
+            // Apply the transform per frame; the first frame defines the target size, and if a later frame disagrees the whole sprite degrades to a single frame
             int tw = -1, th = -1;
             for (int f = 0; f < frameCount; f++) {
                 PixelTransform.Result r = transform.apply(frames[f], w, frameH);

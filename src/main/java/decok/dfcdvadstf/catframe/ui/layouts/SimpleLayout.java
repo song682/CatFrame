@@ -11,12 +11,6 @@ package decok.dfcdvadstf.catframe.ui.layouts;
  * Use this when you just want to group elements without any automatic
  * arrangement — you set each child's position yourself.
  * </p>
- *
- * <p>
- * SimpleLayout —— 通用容器布局。
- * 子元素保留各自的位置，布局只计算所有子元素的包围盒加上内边距。
- * 适合你手动定位每个子元素、不需要自动排布的场景。
- * </p>
  */
 public class SimpleLayout extends AbstractLayout {
 

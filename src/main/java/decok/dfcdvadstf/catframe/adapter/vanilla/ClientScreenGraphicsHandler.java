@@ -9,33 +9,28 @@ import net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent;
 
 /**
  * <p>
- * {@link GuiGraphicsExtractor} 的帧生命周期驱动器（纯 Forge 实现）。<br>
- * 通过 Forge 的 {@link DrawScreenEvent} 在每一帧屏幕绘制的前/后驱动延迟渲染管线的
- * <b>重置</b>与<b>flush</b>，取代原先挂在 {@code GuiScreen.drawScreen} HEAD/RETURN 的 mixin 注入。
- * </p>
- * <p>
- * <b>为什么改用 Forge 事件：</b>{@code GuiContainer}（背包、箱子、熔炉、创造模式等）
- * <b>重写了 {@code drawScreen} 且不调用 {@code super}</b>，
- * 导致注入到 {@code GuiScreen.drawScreen} HEAD/RETURN 的 reset/flush 在容器界面中永不触发；
- * 延迟管线里登记的元素（物品模型 / PiP / 组件 tooltip）会因缺少帧末 flush 而丢失。
- * Forge 的 {@link DrawScreenEvent.Pre}/{@link DrawScreenEvent.Post} 由
- * {@code ForgeHooksClient.drawScreen} 包裹在 {@code currentScreen.drawScreen} 调用两侧触发，
- * 对<b>所有</b>屏幕（含 {@code GuiContainer} 子类）生效，因此能可靠地驱动帧生命周期。
- * </p>
- * <p>
  * The frame-lifecycle driver for {@link GuiGraphicsExtractor} (pure Forge). Uses Forge's
  * {@link DrawScreenEvent} to reset and flush the deferred render pipeline around each screen
  * draw, replacing the previous mixin injections on {@code GuiScreen.drawScreen} HEAD/RETURN
  * (which never fired for {@code GuiContainer} subclasses that override {@code drawScreen}).
+ * </p>
+ * <p>
+ * <b>Why switch to Forge events:</b> {@code GuiContainer} (inventory, chests, furnaces, creative, etc.)
+ * <b>overrides {@code drawScreen} without calling {@code super}</b>,
+ * so mixin injections on {@code GuiScreen.drawScreen} HEAD/RETURN never fired in container screens;
+ * deferred pipeline elements (item models / PiP / component tooltips) would be lost without the
+ * end-of-frame flush. Forge's {@link DrawScreenEvent.Pre}/{@link DrawScreenEvent.Post} wrap
+ * {@code currentScreen.drawScreen} and fire for <b>all</b> screens (including {@code GuiContainer}
+ * subclasses), enabling reliable frame lifecycle driving.
  * </p>
  */
 @SideOnly(Side.CLIENT)
 public class ClientScreenGraphicsHandler {
 
     /**
-     * 帧开始：屏幕绘制前重置延迟渲染状态（PiP / tooltip）。
-     * <p>物品模型已改为即时渲染（在 {@code item()} 调用点直接绘制），不再需要帧末 flush。</p>
-     * <p>对标原 {@code MixinGuiScreen} 的 {@code drawScreen} HEAD 注入。</p>
+     * Frame start: reset deferred render state before screen draw (PiP / tooltip).
+     * <p>Item models now render immediately (at {@code item()} call site), no end-of-frame flush needed.</p>
+     * <p>Mirrors the original {@code MixinGuiScreen} {@code drawScreen} HEAD injection.</p>
      */
     @SubscribeEvent(priority = EventPriority.HIGH)
     public void onDrawScreenPre(DrawScreenEvent.Pre event) {
@@ -43,10 +38,10 @@ public class ClientScreenGraphicsHandler {
     }
 
     /**
-     * 帧末：屏幕绘制后统一 flush 延迟元素（PiP 实体 / tooltip），
-     * 确保 tooltip 始终渲染在最上层。
-     * <p>物品模型已改为即时渲染，此处不再 flush 物品。</p>
-     * <p>对标原 {@code MixinGuiScreen} 的 {@code drawScreen} RETURN 注入。</p>
+     * Frame end: flush deferred elements (PiP entities / tooltip) after screen draw,
+     * ensuring tooltip always renders on top.
+     * <p>Item models now render immediately, no item flush here.</p>
+     * <p>Mirrors the original {@code MixinGuiScreen} {@code drawScreen} RETURN injection.</p>
      */
     @SubscribeEvent(priority = EventPriority.LOW)
     public void onDrawScreenPost(DrawScreenEvent.Post event) {

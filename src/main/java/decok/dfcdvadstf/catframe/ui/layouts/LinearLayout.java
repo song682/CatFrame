@@ -11,12 +11,6 @@ import java.util.function.Consumer;
  * {@link Axis#VERTICAL} (top to bottom). Use {@link Alignment} to control
  * how children are positioned on the perpendicular axis.
  * </p>
- *
- * <p>
- * LinearLayout —— 将子元素沿单行或单列排列。
- * 支持 {@link Axis#HORIZONTAL}（从左到右）和 {@link Axis#VERTICAL}（从上到下）。
- * 用 {@link Alignment} 控制子元素在垂直于排列方向上的对齐方式。
- * </p>
  */
 public class LinearLayout extends AbstractLayout {
 
@@ -26,20 +20,20 @@ public class LinearLayout extends AbstractLayout {
     private final LayoutSettings defaultChildLayoutSettings = LayoutSettings.defaults();
 
     /**
-     * Creates a vertical LinearLayout. / 创建一个垂直方向的 LinearLayout。
+     * Creates a vertical LinearLayout.
      */
     public LinearLayout() {
     }
 
     /**
-     * Creates a LinearLayout with the given direction. / 创建指定方向的 LinearLayout。
+     * Creates a LinearLayout with the given direction.
      */
     public LinearLayout(Axis axis) {
         this.axis = axis;
     }
 
     /**
-     * Creates a LinearLayout with direction and alignment. / 创建指定方向和对其方式的 LinearLayout。
+     * Creates a LinearLayout with direction and alignment.
      */
     public LinearLayout(Axis axis, Alignment alignment) {
         this.axis = axis;
@@ -78,7 +72,6 @@ public class LinearLayout extends AbstractLayout {
 
     /**
      * Add a child with default layout settings.
-     * <p>使用默认布局设置添加子元素。</p>
      */
     public <T extends ILayout> T addChild(T child) {
         return addChild(child, newChildLayoutSettings());
@@ -86,7 +79,6 @@ public class LinearLayout extends AbstractLayout {
 
     /**
      * Add a child with the given layout settings.
-     * <p>使用指定布局设置添加子元素。</p>
      */
     public <T extends ILayout> T addChild(T child, LayoutSettings settings) {
         this.containers.add(new ChildContainer(child, settings));
@@ -96,7 +88,6 @@ public class LinearLayout extends AbstractLayout {
 
     /**
      * Add a child using a lambda to configure its layout settings.
-     * <p>使用 lambda 配置布局设置后添加子元素。</p>
      */
     public <T extends ILayout> T addChild(T child, Consumer<LayoutSettings> configurator) {
         LayoutSettings settings = newChildLayoutSettings();
@@ -233,13 +224,12 @@ public class LinearLayout extends AbstractLayout {
     // ──── Enums ────
 
     /**
-     * The primary arrangement direction. / 主排列方向。
+     * The primary arrangement direction.
      */
     public enum Axis {HORIZONTAL, VERTICAL}
 
     /**
      * How children align on the axis perpendicular to the layout direction.
-     * <p>子元素在垂直于排列方向上的对齐方式。</p>
      */
     public enum Alignment {
         START,

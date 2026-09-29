@@ -15,42 +15,44 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 物品模型侧面生成器 —— 对标 26.1.2 {@code ItemModelGenerator.bakeSideFaces}。
+ * Item model side face generator — mirrors 26.1.2 {@code ItemModelGenerator.bakeSideFaces}.
  * <p>
- * 逐像素扫描纹理，在“不透明→透明”的交界处生成 1px 宽的侧面 quad，
- * 让 2D 物品的挤出厚度侧面拥有与边缘像素一致的颜色。
+ * Scans texture pixel-by-pixel, generates 1px-wide side quads at opaque→transparent
+ * boundaries, giving 2D items extruded thickness sides matching edge pixel colors.
  * <p>
- * 与 ModelResolver 中 builtin/generated 的 from/to (7.5→8.5) 一致：
- * 侧面 quad 的 Z 范围为 {@code MIN_Z/16 ~ MAX_Z/16}（block 空间）。
+ * Aligned with ModelResolver's builtin/generated from/to (7.5→8.5):
+ * side face Z range is {@code MIN_Z/16 ~ MAX_Z/16} (block space).
+ * </p>
  */
 public class ItemModelGenerator {
 
-    /** Z 轴挤出范围（像素空间），与 ModelResolver 中 builtin/generated 的 from/to 一致 */
+    /** Z extrusion range (pixel space), matches ModelResolver's builtin/generated from/to */
     static final float MIN_Z = 7.5F;
     static final float MAX_Z = 8.5F;
 
     /**
-     * UV 内缩量（像素空间），对标 26.1.2 ItemModelGenerator.UV_SHRINK。
-     * 侧面 quad 的 UV 从像素边界各缩进 0.1 像素，避免图集接缝处的相邻像素闪烁。
+     * UV inset amount (pixel space), mirrors 26.1.2 ItemModelGenerator.UV_SHRINK.
+     * Side face UVs inset 0.1px from pixel boundaries to avoid atlas seam shimmer.
      */
     private static final float UV_SHRINK = 0.1F;
 
     /**
-     * 为一个图层纹理生成侧面 quad。
+     * Generate side faces for a single layer texture.
      * <p>
-     * 扫描网格与坐标比例以 AtlasPixelCache 的内容切片（UV 区域）为准，
-     * 不信任 {@code getIconWidth()}：各向异性过滤时 1.7.10 原版会把物理存储
-     * 扩为 (内容+16)x(内容+16) 并让 getIconWidth() 返回该填充尺寸。
+     * Grid/scale are driven by the UV-region content slice (AtlasPixelCache), not
+     * {@code getIconWidth()}: under anisotropic filtering, 1.7.10 vanilla expands
+     * physical storage to (content+16)x(content+16) and reports that padded size.
      *
-     * @param icon      图层纹理 sprite
-     * @param tintIndex 染色索引（多层模型时对应 layerN），-1 表示无染色
-     * @return 侧面 BakedQuad 列表
+     * @param icon      layer texture sprite
+     * @param tintIndex tint index (for layered models), -1 for none
+     * @return list of side BakedQuads
      */
     public static List<JsonModelBake.BakedQuad> bakeSideFaces(IIcon icon, int tintIndex) {
         List<JsonModelBake.BakedQuad> quads = new ArrayList<>();
 
-        // 像素源双分支：自定义图集 sprite（CatSprite）直接读 CPU 自有像素；
-        // 原版 sprite 走 AtlasPixelCache 的 UV 区域内容切片。两者均为内容尺寸网格。
+        // Pixel source: CatSprite reads its CPU-owned pixels directly; vanilla
+        // sprites use the AtlasPixelCache UV-region content slice. Both grids
+        // are content-sized.
         // Pixel source: CatSprite reads its CPU-owned pixels directly; vanilla
         // sprites use the AtlasPixelCache UV-region content slice. Both grids
         // are content-sized.
@@ -64,9 +66,9 @@ public class ItemModelGenerator {
         } else if (icon instanceof TextureAtlasSprite) {
             TextureAtlasSprite sprite = (TextureAtlasSprite) icon;
 
-            // 扫描网格以内容切片为准（AtlasPixelCache 按 sprite 的 UV 区域裁剪）：
-            // 开启各向异性过滤时 1.7.10 原版把物理存储扩为 (内容+16)x(内容+16)，
-            // getIconWidth() 返回物理存储尺寸（含填充边框），不能作为内容网格。
+            // Grid/scale are driven by the UV-region content slice, not by
+        // getIconWidth(), which reports the padded storage size under
+        // anisotropic filtering.
             // Grid/scale are driven by the UV-region content slice, not by
             // getIconWidth(), which reports the padded storage size under
             // anisotropic filtering.
@@ -85,7 +87,7 @@ public class ItemModelGenerator {
         float xScale = 16.0F / width;
         float yScale = 16.0F / height;
 
-        // 使用 Set 去重：同一像素的同一方向只生成一次（多帧扫描时重复）
+        // Use Set to dedup: same pixel + same direction only emitted once (multi-pass scan dedup)
         Set<String> emitted = new HashSet<>();
 
         for (int y = 0; y < height; y++) {
@@ -94,31 +96,31 @@ public class ItemModelGenerator {
                     continue;
                 }
 
-                // 读取当前不透明像素的 ARGB 颜色，用于侧面纯色填充
+                // Read current opaque pixel's ARGB color for side solid fill
                 int pixelARGB = flatPixels[y * width + x];
 
-                // 上边：上方像素透明 → 生成 UP 面 quad
+                // Top edge: pixel above transparent → emit UP face quad
                 if (isTransparent(flatPixels, x, y - 1, width)) {
                     String key = "U" + x + "," + y;
                     if (emitted.add(key)) {
                         bakeHorizontalEdge(quads, icon, x, y, true, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
-                // 下边：下方像素透明 → 生成 DOWN 面 quad
+                // Bottom edge: pixel below transparent → emit DOWN face quad
                 if (isTransparent(flatPixels, x, y + 1, width)) {
                     String key = "D" + x + "," + y;
                     if (emitted.add(key)) {
                         bakeHorizontalEdge(quads, icon, x, y, false, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
-                // 左边：左侧像素透明 → 生成 WEST 面 quad（朝外绕序，见 bakeVerticalEdge 说明）
+                // Left edge: pixel to left transparent → emit WEST face quad (outward winding, see bakeVerticalEdge notes)
                 if (isTransparent(flatPixels, x - 1, y, width)) {
                     String key = "L" + x + "," + y;
                     if (emitted.add(key)) {
                         bakeVerticalEdge(quads, icon, x, y, true, xScale, yScale, tintIndex, pixelARGB);
                     }
                 }
-                // 右边：右侧像素透明 → 生成 EAST 面 quad（朝外绕序，见 bakeVerticalEdge 说明）
+                // Right edge: pixel to right transparent → emit EAST face quad (outward winding, see bakeVerticalEdge notes)
                 if (isTransparent(flatPixels, x + 1, y, width)) {
                     String key = "R" + x + "," + y;
                     if (emitted.add(key)) {
@@ -136,11 +138,11 @@ public class ItemModelGenerator {
         return quads;
     }
 
-    /**
-     * 生成水平边缘（上/下）的侧面 quad —— 对标 BlockJsonModelBake.emitFaceFromCorners 的绕序规范。
+/**
+     * Generate horizontal edge (top/bottom) side quads — mirrors BlockJsonModelBake.emitFaceFromCorners winding spec.
      * <p>
-     * quad 是 XZ 平面上的平片：宽 = 1px，深 = 1px（Z: 7.5→8.5）。
-     * UP 和 DOWN 使用不同的顶点绕序以产生正确的法线方向。
+     * Quad is a flat slice on XZ plane: width = 1px, depth = 1px (Z: 7.5→8.5).
+     * UP and DOWN use different vertex winding for correct normal direction.
      */
     private static void bakeHorizontalEdge(
             List<JsonModelBake.BakedQuad> quads,
@@ -148,33 +150,33 @@ public class ItemModelGenerator {
             int x, int y, boolean isTop,
             float xScale, float yScale, int tintIndex, int pixelARGB) {
 
-        // 世界坐标（block 空间 0-1）
+        // World coords (block space 0-1)
         float worldX0 = (x * xScale) / 16.0F;
         float worldX1 = ((x + 1.0F) * xScale) / 16.0F;
 
-        // Y: 逐像素定位
-        // 纹理 y=0 是顶部 → 世界 Y=1；y=height 是底部 → 世界 Y=0
+        // Y: per-pixel placement
+        // Texture y=0 is top → world Y=1; y=height is bottom → world Y=0
         float worldY;
         if (isTop) {
-            // UP = 像素上边缘
+            // UP = pixel top edge
             worldY = (16.0F - y * yScale) / 16.0F;
         } else {
-            // DOWN = 像素下边缘
+            // DOWN = pixel bottom edge
             worldY = (16.0F - (y + 1.0F) * yScale) / 16.0F;
         }
 
-        // UV（像素空间）—— 对标 26.1.2：u0/u1 为像素左右边界 + UV_SHRINK，
-        // v0/v1 因方向不同：水平面(UP/DOWN) V 轴反转（v0=bottom, v1=top），
-        // 垂直面(EAST/WEST) V 轴正常（v0=top, v1=bottom）。
+        // UV (pixel space) — mirrors 26.1.2: u0/u1 = pixel left/right edges + UV_SHRINK,
+        // v0/v1 differ by face: horizontal (UP/DOWN) V axis flipped (v0=bottom, v1=top),
+        // vertical (EAST/WEST) V axis normal (v0=top, v1=bottom).
         float u0 = (x + UV_SHRINK) * xScale;
         float u1 = (x + 1.0F - UV_SHRINK) * xScale;
         float v0, v1;
         if (isTop) {
-            // UP: V 反转 —— v0 对应像素底部（worldY 侧），v1 对应像素顶部
+            // UP: V flip — v0 maps to pixel bottom (worldY side), v1 to pixel top
             v0 = (y + 1.0F - UV_SHRINK) * yScale;
             v1 = (y + UV_SHRINK) * yScale;
         } else {
-            // DOWN: V 正常 —— v0=像素顶部, v1=像素底部
+            // DOWN: V normal — v0=pixel top, v1=pixel bottom
             v0 = (y + UV_SHRINK) * yScale;
             v1 = (y + 1.0F - UV_SHRINK) * yScale;
         }

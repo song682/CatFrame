@@ -4,11 +4,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
- * 内建 {@code builtin/missing} 模型：MissingNo 纹理的完整包围盒模型。
- *
- * <p>当游戏找不到指定模型或模型加载出错时，自动 fallback 到此模型。
- * 该模型显示为紫黑相间的 missingno 纹理，且每个轴向面（north/south/east/west/up/down）
- * 均有定义，确保从任意方向观察都能看到错误纹理。
+ * Builtin {@code builtin/missing} model: full bounding-box model with MissingNo texture.
+ * <p>
+ * When the game can't find a specified model or model loading fails, it automatically
+ * falls back to this model. The model displays the purple-black checkerboard missingno
+ * texture, with all six axial faces (north/south/east/west/up/down) defined so the
+ * error texture is visible from any angle.
  */
 public final class BuiltinMissingModel {
 
@@ -16,9 +17,9 @@ public final class BuiltinMissingModel {
     }
 
     /**
-     * 创建 {@code builtin/missing} 模型的 {@link ModelJson} 实例。
+     * Create a {@code builtin/missing} model {@link ModelJson} instance.
      *
-     * @return 新的 ModelJson 实例（每次调用返回独立副本）
+     * @return new ModelJson instance (fresh copy each call)
      */
     public static ModelJson create() {
         ModelJson model = new ModelJson();

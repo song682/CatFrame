@@ -28,18 +28,6 @@ import java.util.List;
  * repository constructor performs for packs that already existed when it ran.
  * Because the refresh itself reads the enabled entries afterwards, a pack
  * restored here is live for that very launch.
- * <p>
- * 内置资源包的启动引导（一次性），由原版 {@code Minecraft.refreshResources()}
- * 的 HEAD 调用。FML 在启动期间恰好刷新两次资源：一次在
- * {@code beginMinecraftLoading} 的 finally 块中（loadMods 之后、仍处于
- * {@code PREINITIALIZATION}），一次在 {@code finishMinecraftLoading} 中
- * {@code initializeMods} 返回之后。第二次是加载器达到
- * {@code INITIALIZATION} 之后的首次调用——此时所有 preInit/postInit 处理器
- * 都已执行完毕——因此它是普通模组注册完成的第一个稳定时点。本引导就落在这里：
- * 重建仓库（重新注入已注册的内置条目）并按名从
- * {@code GameSettings.resourcePacks} 恢复启用状态——与包在仓库首次构建前
- * 就已存在时原版构造器所做的恢复相同。由于原版刷新随后读取的正是"已启用条目"，
- * 在此恢复的包当次启动即生效。
  */
 public final class BuiltinPackBootstrap {
 

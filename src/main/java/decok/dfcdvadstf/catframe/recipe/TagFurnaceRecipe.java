@@ -12,17 +12,17 @@ import org.apache.logging.log4j.Logger;
 import java.util.Set;
 
 /**
- * 熔炼 Tag 配方工具类
+ * Smelting Tag Recipe Utility
  * 
- * 为 Tag 中的所有物品批量添加熔炼配方
- * 不是真正的 IRecipe，而是用于简化熔炼配方注册的工具
+ * Batch adds smelting recipes for all items in a Tag
+ * Not a real IRecipe, just a utility to simplify smelting recipe registration
  * 
- * 使用示例：
+ * Usage examples:
  * <pre>
- * // 为 Tag 中的所有矿石添加熔炼配方
+ * // Add smelting recipes for all ores in a Tag
  * TagFurnaceRecipe.addSmeltingForTag("forge:ores_iron", new ItemStack(Items.iron_ingot), 0.7F);
  * 
- * // 为单个物品添加熔炼配方
+ * // Add smelting recipe for a single item
  * TagFurnaceRecipe.addSmelting(Items.iron_ore, new ItemStack(Items.iron_ingot), 0.7F);
  * </pre>
  */
@@ -31,15 +31,15 @@ public final class TagFurnaceRecipe {
     private static final Logger LOGGER = LogManager.getLogger(TagFurnaceRecipe.class);
     
     private TagFurnaceRecipe() {
-        // 工具类，禁止实例化
+        // Utility class, no instantiation
     }
     
     /**
-     * 为 Tag 中的所有物品添加熔炼配方
+     * Add smelting recipes for all items in a Tag
      * 
-     * @param tagName Tag 名称（如 "forge:ores" 或 "catframe:my_ores"）
-     * @param result 熔炼结果
-     * @param xp 经验值
+     * @param tagName Tag name (e.g. "forge:ores" or "catframe:my_ores")
+     * @param result smelting result
+     * @param xp experience value
      */
     public static void addSmeltingForTag(String tagName, ItemStack result, float xp) {
         ResourceLocation tagLocation;
@@ -71,11 +71,11 @@ public final class TagFurnaceRecipe {
     }
     
     /**
-     * 为 Tag 中的所有方块添加熔炼配方
+     * Add smelting recipes for all blocks in a Tag
      * 
-     * @param tagName Tag 名称
-     * @param result 熔炼结果
-     * @param xp 经验值
+     * @param tagName Tag name
+     * @param result smelting result
+     * @param xp experience value
      */
     public static void addSmeltingBlocksForTag(String tagName, ItemStack result, float xp) {
         ResourceLocation tagLocation;
@@ -107,44 +107,44 @@ public final class TagFurnaceRecipe {
     }
     
     /**
-     * 为单个物品添加熔炼配方
+     * Add smelting recipe for a single item
      * 
-     * @param input 输入物品
-     * @param result 熔炼结果
-     * @param xp 经验值
+     * @param input input item
+     * @param result smelting result
+     * @param xp experience value
      */
     public static void addSmelting(Item input, ItemStack result, float xp) {
         FurnaceRecipes.smelting().func_151396_a(input, result, xp);
     }
     
     /**
-     * 为单个方块添加熔炼配方
+     * Add smelting recipe for a single block
      * 
-     * @param input 输入方块
-     * @param result 熔炼结果
-     * @param xp 经验值
+     * @param input input block
+     * @param result smelting result
+     * @param xp experience value
      */
     public static void addSmelting(Block input, ItemStack result, float xp) {
         FurnaceRecipes.smelting().func_151393_a(input, result, xp);
     }
     
     /**
-     * 为单个 ItemStack 添加熔炼配方
+     * Add smelting recipe for a single ItemStack
      * 
-     * @param input 输入 ItemStack
-     * @param result 熔炼结果
-     * @param xp 经验值
+     * @param input input ItemStack
+     * @param result smelting result
+     * @param xp experience value
      */
     public static void addSmelting(ItemStack input, ItemStack result, float xp) {
         FurnaceRecipes.smelting().func_151394_a(input, result, xp);
     }
     
     /**
-     * 批量添加熔炼配方
+     * Batch add smelting recipes
      * 
-     * @param inputs 输入物品数组
-     * @param result 熔炼结果
-     * @param xp 经验值
+     * @param inputs input items array
+     * @param result smelting result
+     * @param xp experience value
      */
     public static void addSmeltingAll(Item[] inputs, ItemStack result, float xp) {
         for (Item input : inputs) {
@@ -153,11 +153,11 @@ public final class TagFurnaceRecipe {
     }
     
     /**
-     * 批量添加熔炼配方（方块）
+     * Batch add smelting recipes (blocks)
      * 
-     * @param inputs 输入方块数组
-     * @param result 熔炼结果
-     * @param xp 经验值
+     * @param inputs input blocks array
+     * @param result smelting result
+     * @param xp experience value
      */
     public static void addSmeltingAll(Block[] inputs, ItemStack result, float xp) {
         for (Block input : inputs) {

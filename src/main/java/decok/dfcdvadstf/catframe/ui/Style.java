@@ -7,17 +7,13 @@ import java.util.Objects;
 
 /**
  * <p>
- * 文本样式 —— 控制文本的颜色、格式化、交互事件等。<br>
- * 对标高版本 Minecraft 的 {@code net.minecraft.network.chat.Style}。
- * </p>
- * <p>
  * Text style — controls text colour, formatting, interaction events, etc.<br>
  * Counterpart of the high-version {@code net.minecraft.network.chat.Style}.
  * </p>
  */
 public final class Style {
 
-    /** Empty / default style. / 空/默认样式。 */
+    /** Empty / default style. */
     public static final Style EMPTY = new Style(null, null, null, null, null, null, null, null, null, null, null);
 
     // 16 legacy colour index -> actual RGB
@@ -83,7 +79,6 @@ public final class Style {
 
     /**
      * Factory: returns EMPTY if all fields are null, otherwise a new Style.
-     * <p>工厂方法：如果所有字段为 null 则返回 EMPTY，否则返回新 Style。</p>
      */
     private static Style create(
         @Nullable TextColor color,
@@ -164,9 +159,6 @@ public final class Style {
      * (explicitly set) or {@code null} (inherited / unset). The boolean {@code isXxx()}
      * getters cannot express an explicit {@code false}; the vanilla bridge needs it
      * to faithfully map a component's {@code bold:false} etc.
-     * <p>返回样式标记的原始三态值 —— {@code TRUE} / {@code FALSE}（已显式设置）或
-     * {@code null}（继承/未设置）。布尔型 {@code isXxx()} getter 无法表达显式的
-     * {@code false}；原版桥接需要它来忠实映射组件的 {@code bold:false} 等字段。</p>
      */
     @Nullable
     public Boolean getRawFlag(TextFormat format) {
@@ -310,7 +302,6 @@ public final class Style {
 
     /**
      * Apply a single formatting code (colour or style flag).
-     * <p>应用单个格式化代码（颜色或样式标记）。</p>
      */
     public Style applyFormat(TextFormat format) {
         TextColor color = this.color;
@@ -340,7 +331,6 @@ public final class Style {
 
     /**
      * Apply a legacy formatting code (reset style flags for colour changes).
-     * <p>应用旧版格式化代码（颜色变更时重置样式标记）。</p>
      */
     public Style applyLegacyFormat(TextFormat format) {
         TextColor color = this.color;
@@ -375,7 +365,6 @@ public final class Style {
 
     /**
      * Apply multiple formatting codes.
-     * <p>应用多个格式化代码。</p>
      */
     public Style applyFormats(TextFormat... formats) {
         TextColor color = this.color;
@@ -408,7 +397,6 @@ public final class Style {
     /**
      * Merge this style onto another — non-null fields in this override corresponding
      * fields in the other style.
-     * <p>将此样式合并到另一个样式上 —— 此样式的非 null 字段覆盖另一样式对应字段。</p>
      */
     public Style applyTo(Style other) {
         if (this == EMPTY) return other;
@@ -492,7 +480,6 @@ public final class Style {
 
     /**
      * Text colour — holds an ARGB integer and optional legacy format mapping.
-     * <p>文本颜色 —— 持有 ARGB 整数和可选的旧版格式映射。</p>
      */
     public static final class TextColor {
         private final int rgb;
@@ -520,9 +507,6 @@ public final class Style {
          * Parse a colour string — either a named legacy colour (e.g. {@code "red"},
          * {@code "dark_purple"}) or a hex value (e.g. {@code "#FF00FF"}), matching the
          * raw JSON text format's {@code color} field. Returns {@code null} if unparseable.
-         * <p>解析颜色字符串 —— 支持旧版颜色名（如 {@code "red"}、{@code "dark_purple"}）
-         * 或十六进制（如 {@code "#FF00FF"}），对应原始 JSON 文本格式的 {@code color} 字段。
-         * 无法解析时返回 {@code null}。</p>
          */
         @Nullable
         public static TextColor parseColor(@Nullable String value) {
@@ -542,7 +526,7 @@ public final class Style {
                     return fromLegacyFormat(format);
                 }
             } catch (IllegalArgumentException ignored) {
-                // Unknown colour name — fall through to null. / 未知颜色名——返回 null。
+                // Unknown colour name — fall through to null.
             }
             return null;
         }
@@ -551,12 +535,10 @@ public final class Style {
          * Nearest legacy colour index (0-15) for this colour — exact match preferred,
          * otherwise the smallest squared RGB distance wins. Used to degrade arbitrary
          * RGB colours to {@code §}-code colours the 1.7.10 FontRenderer understands.
-         * <p>此颜色最接近的旧版颜色索引（0-15）—— 优先精确匹配，否则取 RGB 平方距离最小者。
-         * 用于把任意 RGB 颜色降级为 1.7.10 FontRenderer 能识别的 {@code §} 颜色码。</p>
          */
         public int toLegacyIndex() {
             int target = rgb & 0xFFFFFF;
-            int best = 15; // default white / 默认白色
+            int best = 15; // default white
             long bestDist = Long.MAX_VALUE;
             for (int i = 0; i < LEGACY_COLORS.length; i++) {
                 int c = LEGACY_COLORS[i];
@@ -605,7 +587,6 @@ public final class Style {
 
     /**
      * Click event — action to perform when text is clicked.
-     * <p>点击事件 —— 点击文本时执行的操作。</p>
      */
     public static final class ClickEvent {
         private final Action action;
@@ -654,7 +635,6 @@ public final class Style {
 
     /**
      * Hover event — tooltip or entity/item preview when hovering text.
-     * <p>悬停事件 —— 悬停文本时的提示或实体/物品预览。</p>
      */
     public static final class HoverEvent {
         private final Action action;
@@ -703,7 +683,6 @@ public final class Style {
 
     /**
      * Provides Codec-like serialization for this Style.
-     * <p>为该样式提供类似 Codec 的序列化支持。</p>
      */
     public static final class Serializer {
 
@@ -712,7 +691,6 @@ public final class Style {
 
         /**
          * Serialize this style to a simple string representation.
-         * <p>将此样式序列化为简单的字符串表示。</p>
          */
         public static String serialize(Style style) {
             return style != null ? style.toString() : "{}";
@@ -720,7 +698,6 @@ public final class Style {
 
         /**
          * Parse a string representation back to a Style.
-         * <p>将字符串表示解析为 Style。</p>
          */
         public static Style deserialize(String str) {
             return Style.EMPTY;
@@ -731,7 +708,6 @@ public final class Style {
 
     /**
      * Legacy colour/formatting codes.
-     * <p>旧版颜色/格式化代码。</p>
      */
     public enum TextFormat {
         BLACK(0),

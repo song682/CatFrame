@@ -14,31 +14,31 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * CatFrame 配方管理器
+ * CatFrame Recipe Manager
  * 
- * 提供统一的 API 来添加和管理 Tag 兼容的合成配方
- * 支持：有序合成、无序合成、熔炼
- * 同时提供配方删除功能（原版没有的功能）
+ * Provides a unified API for adding and managing Tag-compatible recipes
+ * Supports: shaped, shapeless, smelting
+ * Also provides recipe removal (not available in vanilla)
  * 
- * 使用示例：
+ * Usage examples:
  * <pre>
- * // 添加有序配方（使用 Tag）
+ * // Add shaped recipe (using Tag)
  * CatFrameRecipeManager.addShaped(
  *     new ItemStack(Blocks.chest),
  *     "###", "# #", "###",
  *     '#', "catframe:planks"
  * );
  * 
- * // 添加无序配方
+ * // Add shapeless recipe
  * CatFrameRecipeManager.addShapeless(
  *     new ItemStack(Items.iron_ingot, 9),
  *     "catframe:blockIron"
  * );
  * 
- * // 添加熔炼配方
+ * // Add smelting recipe
  * CatFrameRecipeManager.addSmelting(Items.iron_ore, new ItemStack(Items.iron_ingot), 0.7F);
  * 
- * // 删除配方
+ * // Remove recipes
  * CatFrameRecipeManager.removeRecipesByOutput(Blocks.crafting_table);
  * </pre>
  */
@@ -47,25 +47,25 @@ public final class CatFrameRecipeManager {
     private static final Logger LOGGER = LogManager.getLogger(CatFrameRecipeManager.class);
     
     private CatFrameRecipeManager() {
-        // 工具类，禁止实例化
+        // Utility class, no instantiation
     }
     
     /**
-     * 获取原版合成配方列表（包装为泛型列表以消除 unchecked 警告）。
+     * Get vanilla crafting recipe list (wrapped as generic list to eliminate unchecked warning).
      */
     @SuppressWarnings("unchecked")
     private static List<IRecipe> getCraftingRecipeList() {
         return CraftingManager.getInstance().getRecipeList();
     }
     
-    // ==================== 添加有序配方 ====================
+    // ==================== Add Shaped Recipes ====================
     
     /**
-     * 添加有序合成配方
+     * Add a shaped recipe
      * 
-     * @param result 输出物品
-     * @param recipe 配方定义（形状 + 材料映射）
-     * @return 创建的配方对象
+     * @param result output item
+     * @param recipe recipe definition (shape + ingredient mapping)
+     * @return created recipe object
      */
     public static IRecipe addShaped(ItemStack result, Object... recipe) {
         ShapedTagRecipe shapedRecipe = new ShapedTagRecipe(result, recipe);
@@ -75,27 +75,27 @@ public final class CatFrameRecipeManager {
     }
     
     /**
-     * 添加有序合成配方（使用 Item 作为输出）
+     * Add a shaped recipe (using Item as output)
      */
     public static IRecipe addShaped(Item result, Object... recipe) {
         return addShaped(new ItemStack(result), recipe);
     }
     
     /**
-     * 添加有序合成配方（使用 Block 作为输出）
+     * Add a shaped recipe (using Block as output)
      */
     public static IRecipe addShaped(Block result, Object... recipe) {
         return addShaped(new ItemStack(result), recipe);
     }
     
-    // ==================== 添加无序配方 ====================
+    // ==================== Add Shapeless Recipes ====================
     
     /**
-     * 添加无序合成配方
+     * Add a shapeless recipe
      * 
-     * @param result 输出物品
-     * @param recipe 配方材料（不需要形状）
-     * @return 创建的配方对象
+     * @param result output item
+     * @param recipe recipe ingredients (no shape required)
+     * @return created recipe object
      */
     public static IRecipe addShapeless(ItemStack result, Object... recipe) {
         ShapelessTagRecipe shapelessRecipe = new ShapelessTagRecipe(result, recipe);
@@ -105,27 +105,27 @@ public final class CatFrameRecipeManager {
     }
     
     /**
-     * 添加无序合成配方（使用 Item 作为输出）
+     * Add a shapeless recipe (using Item as output)
      */
     public static IRecipe addShapeless(Item result, Object... recipe) {
         return addShapeless(new ItemStack(result), recipe);
     }
     
     /**
-     * 添加无序合成配方（使用 Block 作为输出）
+     * Add a shapeless recipe (using Block as output)
      */
     public static IRecipe addShapeless(Block result, Object... recipe) {
         return addShapeless(new ItemStack(result), recipe);
     }
     
-    // ==================== 添加熔炼配方 ====================
+    // ==================== Add Smelting Recipes ====================
     
     /**
-     * 添加熔炼配方
+     * Add a smelting recipe
      * 
-     * @param input 输入物品
-     * @param result 熔炼结果
-     * @param xp 经验值
+     * @param input input item
+     * @param result smelting result
+     * @param xp experience value
      */
     public static void addSmelting(Item input, ItemStack result, float xp) {
         TagFurnaceRecipe.addSmelting(input, result, xp);
@@ -133,7 +133,7 @@ public final class CatFrameRecipeManager {
     }
     
     /**
-     * 添加熔炼配方（方块输入）
+     * Add a smelting recipe (block input)
      */
     public static void addSmelting(Block input, ItemStack result, float xp) {
         TagFurnaceRecipe.addSmelting(input, result, xp);
@@ -141,7 +141,7 @@ public final class CatFrameRecipeManager {
     }
     
     /**
-     * 添加熔炼配方（ItemStack 输入）
+     * Add a smelting recipe (ItemStack input)
      */
     public static void addSmelting(ItemStack input, ItemStack result, float xp) {
         TagFurnaceRecipe.addSmelting(input, result, xp);
@@ -149,30 +149,30 @@ public final class CatFrameRecipeManager {
     }
     
     /**
-     * 为 Tag 中的所有物品添加熔炼配方
+     * Add smelting recipes for all items in a Tag
      * 
-     * @param tagName Tag 名称（如 "forge:ores"）
-     * @param result 熔炼结果
-     * @param xp 经验值
+     * @param tagName Tag name (e.g. "forge:ores")
+     * @param result smelting result
+     * @param xp experience value
      */
     public static void addSmeltingForTag(String tagName, ItemStack result, float xp) {
         TagFurnaceRecipe.addSmeltingForTag(tagName, result, xp);
     }
     
     /**
-     * 为 Tag 中的所有方块添加熔炼配方
+     * Add smelting recipes for all blocks in a Tag
      */
     public static void addSmeltingBlocksForTag(String tagName, ItemStack result, float xp) {
         TagFurnaceRecipe.addSmeltingBlocksForTag(tagName, result, xp);
     }
     
-    // ==================== 删除合成配方 ====================
+    // ==================== Remove Crafting Recipes ====================
     
     /**
-     * 删除指定输出物品的所有合成配方
+     * Remove all crafting recipes with the given output item
      * 
-     * @param outputItem 输出物品
-     * @return 删除的配方数量
+     * @param outputItem output item
+     * @return number of recipes removed
      */
     public static int removeRecipesByOutput(Item outputItem) {
         return removeRecipes(recipe -> {
@@ -182,10 +182,10 @@ public final class CatFrameRecipeManager {
     }
     
     /**
-     * 删除指定输出物品的所有合成配方（包括 metadata 匹配）
+     * Remove all crafting recipes with the given output item (including metadata matching)
      * 
-     * @param outputStack 输出物品（包含 metadata）
-     * @return 删除的配方数量
+     * @param outputStack output item (with metadata)
+     * @return number of recipes removed
      */
     public static int removeRecipesByOutput(ItemStack outputStack) {
         return removeRecipes(recipe -> {
@@ -193,7 +193,7 @@ public final class CatFrameRecipeManager {
             if (output == null) return false;
             if (output.getItem() != outputStack.getItem()) return false;
             
-            // 如果 outputStack 的 damage 是 32767（通配符），匹配所有
+            // If outputStack's damage is 32767 (wildcard), match all
             if (outputStack.getItemDamage() == 32767) return true;
             
             return output.getItemDamage() == outputStack.getItemDamage();
@@ -201,10 +201,10 @@ public final class CatFrameRecipeManager {
     }
     
     /**
-     * 删除匹配特定条件的合成配方
+     * Remove crafting recipes matching a specific condition
      * 
-     * @param condition 条件谓词
-     * @return 删除的配方数量
+     * @param condition condition predicate
+     * @return number of recipes removed
      */
     public static int removeRecipes(RecipePredicate condition) {
         List<IRecipe> recipes = getCraftingRecipeList();
@@ -227,9 +227,9 @@ public final class CatFrameRecipeManager {
     }
     
     /**
-     * 删除所有合成配方
+     * Remove all crafting recipes
      * 
-     * @return 删除的配方数量
+     * @return number of recipes removed
      */
     public static int removeAllRecipes() {
         List<IRecipe> recipes = getCraftingRecipeList();
@@ -239,33 +239,33 @@ public final class CatFrameRecipeManager {
         return count;
     }
     
-    // ==================== 删除熔炼配方 ====================
+    // ==================== Remove Smelting Recipes ====================
     
     /**
-     * 删除指定输入物品的熔炼配方
+     * Remove smelting recipe for the given input item
      * 
-     * @param input 输入物品
-     * @return 删除的配方数量
+     * @param input input item
+     * @return number of recipes removed
      */
     public static int removeSmelting(Item input) {
         return removeSmelting(new ItemStack(input, 1, 32767));
     }
     
     /**
-     * 删除指定输入方块的熔炼配方
+     * Remove smelting recipe for the given input block
      * 
-     * @param input 输入方块
-     * @return 删除的配方数量
+     * @param input input block
+     * @return number of recipes removed
      */
     public static int removeSmelting(Block input) {
         return removeSmelting(new ItemStack(input, 1, 32767));
     }
     
     /**
-     * 删除指定输入 ItemStack 的熔炼配方
+     * Remove smelting recipe for the given input ItemStack
      * 
-     * @param inputStack 输入 ItemStack
-     * @return 删除的配方数量
+     * @param inputStack input ItemStack
+     * @return number of recipes removed
      */
     @SuppressWarnings("unchecked")
     public static int removeSmelting(ItemStack inputStack) {
@@ -277,9 +277,9 @@ public final class CatFrameRecipeManager {
             Map.Entry<ItemStack, ItemStack> entry = iterator.next();
             ItemStack key = entry.getKey();
             
-            // 检查是否匹配
+            // Check if matches
             if (key.getItem() == inputStack.getItem()) {
-                // 如果是通配符或者 damage 匹配
+                // If wildcard or damage matches
                 if (inputStack.getItemDamage() == 32767 || 
                     key.getItemDamage() == inputStack.getItemDamage() ||
                     key.getItemDamage() == 32767) {
@@ -297,9 +297,9 @@ public final class CatFrameRecipeManager {
     }
     
     /**
-     * 删除所有熔炼配方
+     * Remove all smelting recipes
      * 
-     * @return 删除的配方数量
+     * @return number of recipes removed
      */
     @SuppressWarnings("unchecked")
     public static int removeAllSmelting() {
@@ -310,35 +310,35 @@ public final class CatFrameRecipeManager {
         return count;
     }
     
-    // ==================== 查询配方 ====================
+    // ==================== Query Recipes ====================
     
     /**
-     * 获取所有合成配方列表
+     * Get all crafting recipes
      */
     public static List<IRecipe> getAllRecipes() {
         return getCraftingRecipeList();
     }
     
     /**
-     * 统计合成配方数量
+     * Count crafting recipes
      */
     public static int getRecipeCount() {
         return getCraftingRecipeList().size();
     }
     
     /**
-     * 统计熔炼配方数量
+     * Count smelting recipes
      */
     @SuppressWarnings("unchecked")
     public static int getSmeltingCount() {
         return FurnaceRecipes.smelting().getSmeltingList().size();
     }
     
-    // ==================== 内部接口 ====================
+    // ==================== Internal Interfaces ====================
     
     /**
-     * 配方条件谓词接口
-     * 用于过滤要删除的配方
+     * Recipe condition predicate interface
+     * Used to filter recipes for removal
      */
     public interface RecipePredicate {
         boolean test(IRecipe recipe);

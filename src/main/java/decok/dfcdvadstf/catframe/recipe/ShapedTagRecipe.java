@@ -171,7 +171,7 @@ public class ShapedTagRecipe implements IRecipe {
                 return ores;
             }
             
-            // 如果 OreDict 也没有，再尝试作为 Tag（不含命名空间）
+            // If OreDict doesn't have it, try as Tag (without namespace)
             try {
                 ResourceLocation tagLocation = new ResourceLocation("catframe", str);
                 Set<Item> tagItems = CatFrameTags.itemLoader().getTagContents(tagLocation);
@@ -179,7 +179,7 @@ public class ShapedTagRecipe implements IRecipe {
                     return new ArrayList<Item>(tagItems);
                 }
             } catch (Exception e) {
-                // 忽略
+                // Ignore
             }
         }
         
@@ -237,23 +237,23 @@ public class ShapedTagRecipe implements IRecipe {
                 ItemStack slot = inv.getStackInRowAndColumn(x, y);
                 
                 if (target instanceof ItemStack) {
-                    // 普通 ItemStack 匹配
+                    // Normal ItemStack match
                     if (!itemMatches((ItemStack) target, slot, false)) {
                         return false;
                     }
                 } else if (target instanceof List) {
-                    // Tag 或 OreDict 列表匹配
+                    // Tag or OreDict list match
                     boolean matched = false;
                     
                     if (((List<?>) target).isEmpty()) {
                         return false;
                     }
                     
-                    // 检查第一个元素类型
+                    // Check first element type
                     Object first = ((List<?>) target).get(0);
                     
                     if (first instanceof Item) {
-                        // Tag 内容（Item 列表）
+                        // Tag contents (Item list)
                         Iterator<Item> itr = ((List<Item>) target).iterator();
                         while (itr.hasNext() && !matched) {
                             Item tagItem = itr.next();
@@ -262,7 +262,7 @@ public class ShapedTagRecipe implements IRecipe {
                             }
                         }
                     } else if (first instanceof ItemStack) {
-                        // OreDict 内容（ItemStack 列表）
+                        // OreDict contents (ItemStack list)
                         Iterator<ItemStack> itr = ((List<ItemStack>) target).iterator();
                         while (itr.hasNext() && !matched) {
                             ItemStack oreStack = itr.next();
@@ -276,7 +276,7 @@ public class ShapedTagRecipe implements IRecipe {
                         return false;
                     }
                 } else if (target == null && slot != null) {
-                    // 配方要求空位，但实际有物品
+                    // Recipe requires empty slot but slot has item
                     return false;
                 }
             }
@@ -286,7 +286,7 @@ public class ShapedTagRecipe implements IRecipe {
     }
     
     /**
-     * 检查两个 ItemStack 是否匹配
+     * Check if two ItemStacks match
      */
     private boolean itemMatches(ItemStack target, ItemStack input, boolean strict) {
         if (input == null && target != null || input != null && target == null) {
@@ -303,8 +303,8 @@ public class ShapedTagRecipe implements IRecipe {
     }
     
     /**
-     * 获取配方的输入材料
-     * 警告：不要修改返回的数组，这会影响配方本身
+     * Get recipe input ingredients
+     * Warning: do not modify the returned array, it affects the recipe itself
      */
     public Object[] getInput() {
         return this.input;

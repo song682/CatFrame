@@ -32,11 +32,6 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
      * {@code applyIf} conditions) and returns only the classes valid for this
      * run, which replaces the former static {@code "client"} list of the JSON
      * configuration.
-     * <p>
-     * 在配置加载时从 {@link Mixins} 选择普通 mixin：GTNHMixins 的
-     * builder 依据加载时的状态（物理侧别、{@code applyIf} 条件）只返回本次
-     * 运行有效的类，取代原先 JSON 配置中的静态 {@code "client"} 列表。
-     * </p>
      */
     @Override
     public List<String> getMixins() {

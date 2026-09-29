@@ -5,10 +5,6 @@ import org.lwjgl.opengl.GL11;
 
 /**
  * <p>
- * GUI 绘制工具类 —— 提供公共的矩形绘制等方法。<br>
- * 统一管理 GL 状态和 Tessellator 使用模式。
- * </p>
- * <p>
  * GUI drawing utility — provides common rectangle drawing methods.<br>
  * Centralises GL state management and Tessellator usage patterns.
  * </p>
@@ -17,13 +13,12 @@ public final class GuiDrawing {
 
     /**
      * Draw a filled rectangle with a solid colour.
-     * <p>使用纯色绘制填充矩形。</p>
      *
-     * @param left   left X coordinate / 左 X 坐标
-     * @param top    top Y coordinate / 上 Y 坐标
-     * @param right  right X coordinate / 右 X 坐标
-     * @param bottom bottom Y coordinate / 下 Y 坐标
-     * @param color  ARGB colour / ARGB 颜色
+     * @param left   left X coordinate
+     * @param top    top Y coordinate
+     * @param right  right X coordinate
+     * @param bottom bottom Y coordinate
+     * @param color  ARGB colour
      */
     public static void drawRect(int left, int top, int right, int bottom, int color) {
         if (left > right) { int tmp = left; left = right; right = tmp; }

@@ -18,25 +18,28 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 /**
- * 资源包内容枚举器 —— M2 定义驱动源的基础设施。
+ * Resource-pack content enumerator — infrastructure for M2 definition-driven
+ * sources.
  * <p>
- * 1.7.10 的 {@code IResourceManager} 无法列出目录内容（设计文档约束表），
- * 故 DirectorySource / 定义文件发现通过直接枚举可达归档实现：
+ * The 1.7.10 {@code IResourceManager} cannot list directory contents (design-doc
+ * constraint table), so DirectorySource / definition-file discovery is
+ * implemented by directly enumerating reachable archives:
  * <ol>
- *   <li>{@code java.class.path} 全部条目（gradle runClient / IDE 场景，含 CatFrame
- *       自身 jar、原版 minecraft.jar、各依赖 jar、资源输出目录）；</li>
- *   <li>{@code Minecraft.class} 的 CodeSource（launcher 动态 classloader 场景，
- *       兜底定位原版 jar）；</li>
- *   <li>{@code .minecraft/resourcepacks/} 目录（zip 资源包与带 pack.mcmeta 的
- *       文件夹资源包，含启用/未启用全部，优先级由 getResource 统一裁决）。</li>
+ *   <li>all {@code java.class.path} entries (gradle runClient / IDE scenarios,
+ *       including the CatFrame jar itself, the vanilla minecraft.jar, dependency
+ *       jars and resource output directories);</li>
+ *   <li>the CodeSource of {@code Minecraft.class} (launcher dynamic-classloader
+ *       scenario, a fallback for locating the vanilla jar);</li>
+ *   <li>the {@code .minecraft/resourcepacks/} directory (zip resource packs and
+ *       folder packs with pack.mcmeta, enabled or not; priority is decided solely
+ *       by getResource).</li>
  * </ol>
- * 全部不可达时返回空列表 —— 定义驱动源自然降级，模型驱动引用兜底（设计文档
- * "fall back to model-driven refs when pack traversal is unavailable"）。
+ * When nothing is reachable an empty list is returned — definition-driven
+ * sources degrade naturally and model-driven refs serve as fallback (design doc:
+ * "fall back to model-driven refs when pack traversal is unavailable").
  * <p>
- * 纯公共 API + JDK 文件枚举实现，无反射、无 Forge 内部 API 依赖。
- *
- * <p>Enumerates reachable archives/classpath entries to list resource paths —
- * the 1.7.10 substitute for the modern {@code ResourceManager.listResources}.
+ * Implemented with plain public APIs + JDK file enumeration; no reflection and
+ * no Forge-internal API dependency.
  */
 @SideOnly(Side.CLIENT)
 public final class ResourcePackEnumerator {
@@ -45,10 +48,11 @@ public final class ResourcePackEnumerator {
     }
 
     /**
-     * 枚举所有可达归档中的资源路径（去重、稳定顺序）。
+     * Enumerates resource paths across all reachable archives (deduplicated,
+     * stable order).
      *
-     * @param prefix 路径前缀（形如 {@code "assets/"} 或 {@code "assets/minecraft/textures/items/"}）
-     * @return 匹配前缀的完整相对路径列表（如 {@code "assets/minecraft/textures/items/apple.png"}）
+     * @param prefix path prefix (e.g. {@code "assets/"} or {@code "assets/minecraft/textures/items/"})
+     * @return full relative paths matching the prefix (e.g. {@code "assets/minecraft/textures/items/apple.png"})
      */
     public static List<String> listAssets(String prefix) {
         Set<String> paths = new LinkedHashSet<>();
@@ -62,10 +66,10 @@ public final class ResourcePackEnumerator {
         return new ArrayList<>(paths);
     }
 
-    /** 收集候选归档：classpath 条目 + Minecraft.class CodeSource + resourcepacks 目录。 */
+    /** Collects candidate archives: classpath entries + Minecraft.class CodeSource + the resourcepacks directory. */
     static List<File> archives() {
         Set<File> files = new LinkedHashSet<>();
-        // 1. java.class.path（gradle runClient 的 classpath 全量；目录条目直接遍历）
+        // 1. java.class.path (the full gradle runClient classpath; directory entries are walked directly)
         String cp = System.getProperty("java.class.path");
         if (cp != null) {
             for (String p : cp.split(Pattern.quote(File.pathSeparator))) {
@@ -77,9 +81,9 @@ public final class ResourcePackEnumerator {
                 }
             }
         }
-        // 2. Minecraft.class CodeSource（launcher 场景 java.class.path 不含游戏 jar）
+        // 2. Minecraft.class CodeSource (in the launcher scenario java.class.path does not contain the game jar)
         addCodeSource(net.minecraft.client.Minecraft.class, files);
-        // 3. resourcepacks 目录（zip 与文件夹资源包；未启用包也枚举，优先级由 getResource 裁决）
+        // 3. resourcepacks directory (zip and folder packs; disabled packs are enumerated too, getResource decides priority)
         try {
             Minecraft mc = Minecraft.getMinecraft();
             if (mc != null && mc.mcDataDir != null) {
@@ -98,7 +102,7 @@ public final class ResourcePackEnumerator {
                 }
             }
         } catch (RuntimeException ignored) {
-            // resourcepacks 目录不可用 → 静默降级（classpath 扫描已覆盖大部分场景）
+            // resourcepacks directory unavailable → degrade silently (the classpath scan already covers most scenarios)
         }
         return new ArrayList<>(files);
     }
@@ -113,11 +117,11 @@ public final class ResourcePackEnumerator {
                 }
             }
         } catch (URISyntaxException | RuntimeException ignored) {
-            // CodeSource 不可解析 → 跳过（不致命）
+            // CodeSource unresolvable → skip (non-fatal)
         }
     }
 
-    /** jar/zip 条目枚举（前缀匹配、非目录、去重）。 */
+    /** jar/zip entry enumeration (prefix match, non-directories only, deduplicated). */
     private static void listJar(File jar, String prefix, Set<String> out) {
         try (ZipFile zip = new ZipFile(jar)) {
             Enumeration<? extends ZipEntry> entries = zip.entries();
@@ -128,11 +132,11 @@ public final class ResourcePackEnumerator {
                 }
             }
         } catch (IOException ignored) {
-            // 非 zip 文件（如 .pom/.txt 混入 classpath）→ 跳过
+            // Non-zip file (e.g. .pom/.txt mixed into the classpath) → skip
         }
     }
 
-    /** 目录递归枚举（相对路径 = prefix + 文件相对 root 的路径）。 */
+    /** Recursive directory enumeration (relative path = prefix + file path relative to root). */
     private static void walk(File root, String prefix, Set<String> out) {
         File[] list = root.listFiles();
         if (list == null) {

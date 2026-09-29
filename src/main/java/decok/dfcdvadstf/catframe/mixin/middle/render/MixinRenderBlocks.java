@@ -51,7 +51,7 @@ public class MixinRenderBlocks {
         }
     }
 
-    /**
+/**
      * Inject at the head of renderBlockUsingTexture (vanilla destroy overlay path).
      * <p>
      * The vanilla 1.7.10 destroy pipeline passes the destroy-stage IIcon through
@@ -61,9 +61,6 @@ public class MixinRenderBlocks {
      * during breaking. Route them through {@link RenderDispatcher#renderBlockDestroy}
      * instead, which reuses the block's own model geometry as the decal projection.
      * Blocks without a CatFrame model fall through to the vanilla path untouched.
-     * <p>
-     * 拦截原版破坏贴图渲染入口：CatFrame 接管方块（VMM renderType-0 方块与
-     * RenderJsonBlockModel ISBRH 方块）改走 renderBlockDestroy；未接管方块放行原版。
      */
     @Inject(method = "renderBlockUsingTexture", at = @At("HEAD"), cancellable = true)
     private void catframe$onRenderBlockUsingTexture(Block block, int x, int y, int z,

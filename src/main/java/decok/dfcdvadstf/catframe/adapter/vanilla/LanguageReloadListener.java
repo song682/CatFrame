@@ -16,13 +16,8 @@ import net.minecraftforge.common.MinecraftForge;
  * pack changes). Reads JSON lang files via {@link IResourceManager} so
  * resource pack overrides are picked up automatically.
  * <p>
- * 当 Minecraft 资源管理器重载时（启动、切换语言、资源包变更），
- * 重新加载 CatFrame 的 JSON 翻译文件。
- * 通过 {@link IResourceManager} 读取，资源包 override 自动生效。
- * <p>
  * Registration is deferred via a one-shot client tick because the
  * resource manager is not available during mod init.
- * 注册通过一次性 ClientTick 延迟执行，因为 init 阶段资源管理器不可用。
  */
 public class LanguageReloadListener implements IResourceManagerReloadListener {
 
@@ -32,13 +27,10 @@ public class LanguageReloadListener implements IResourceManagerReloadListener {
         LanguageRegister.reloadFromResourceManager(manager);
     }
 
-    /**
+/**
      * Registers this listener with Minecraft's resource manager.
      * Safe to call from mod init — if the resource manager isn't ready yet,
      * registration is deferred via a one-shot client tick event.
-     * <p>
-     * 注册监听器到 Minecraft 资源管理器。
-     * 可在 mod init 安全调用 —— 若资源管理器未就绪，通过一次性 Tick 延迟注册。
      */
     public static void register() {
         Minecraft mc = Minecraft.getMinecraft();

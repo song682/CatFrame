@@ -9,10 +9,7 @@ package decok.dfcdvadstf.catframe.resources.builtin;
  * This class deliberately touches no Minecraft class, so descriptors can be
  * built and registered at any point, including stages where the game classes
  * are not loadable yet.
- * <p>
- * 内置资源包的不可变描述：包标识，以及资源包 GUI 与合成 metadata 使用的翻译键。
- * 本类刻意不引用任何 Minecraft 类，因此描述符可在任意时点构建与注册，包括
- * 游戏类尚不可加载的阶段。
+ * </p>
  */
 public final class BuiltinPackDescriptor {
 
@@ -59,15 +56,11 @@ public final class BuiltinPackDescriptor {
         return this.descriptionKey;
     }
 
-    /**
+/**
      * Stable repository name of the pack. It is the persistence key written to
      * {@code options.txt} and it participates in repository entry equality
      * ({@code Entry.equals()} compares {@code toString()} which embeds the file
      * name), so it must <em>never</em> be localized.
-     * <p>
-     * 包的稳定仓库名。它既作为持久化键写入 {@code options.txt}，也参与仓库条目相等性
-     * （{@code Entry.equals()} 比较 {@code toString()}，其中包含文件名），
-     * 因此<em>绝不能</em>本地化。
      */
     public String getPackName() {
         return PACK_NAME_PREFIX + this.id;

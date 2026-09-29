@@ -5,22 +5,22 @@ import decok.dfcdvadstf.catframe.core.component.predicates.TypedDataComponent;
 import javax.annotation.Nullable;
 
 /**
- * 只读的组件容器接口。
+ * Read-only component container interface.
  * <p>
- * 参考 26.1.2 {@code net.minecraft.core.component.DataComponentGetter}。
+ * Reference: 26.1.2 {@code net.minecraft.core.component.DataComponentGetter}.
  */
 public interface DataComponentGetter {
 
     /**
-     * 获取指定类型的组件值。
+     * Gets the component value of the specified type.
      *
-     * @return 组件值，若不存在返回 null
+     * @return component value, or null if not present
      */
     @Nullable
     <T> T get(DataComponentType<? extends T> type);
 
     /**
-     * 获取指定类型的组件值，不存在时返回默认值。
+     * Gets the component value of the specified type, returning default value if not present.
      */
     default <T> T getOrDefault(DataComponentType<? extends T> type, T defaultValue) {
         T value = this.get(type);
@@ -28,7 +28,7 @@ public interface DataComponentGetter {
     }
 
     /**
-     * 获取携带类型信息的组件值。
+     * Gets the typed component value carrying type information.
      */
     @Nullable
     default <T> TypedDataComponent<T> getTyped(DataComponentType<T> type) {

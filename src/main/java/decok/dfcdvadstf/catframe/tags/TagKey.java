@@ -5,33 +5,33 @@ import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
 
 /**
- * Tag 键 - 标识一个特定的标签
+ * Tag key - identifies a specific tag
  * 
- * 类似 26.1 的 TagKey<T>，用于唯一标识一个标签
- * 使用 Interner 模式确保相同标识的 TagKey 是同一个实例
+ * Similar to 26.1's TagKey<T>, used to uniquely identify a tag
+ * Uses Interner pattern to ensure same identifier returns same instance
  * 
- * 使用方式：
+ * Usage:
  * <pre>
- * // 创建 TagKey
+ * // Create TagKey
  * TagKey<Item> woolTag = TagKey.createItem("my_mod:wool");
  * 
- * // 检查物品是否属于该标签
+ * // Check if item belongs to tag
  * if (itemStack.getItem().is(woolTag)) {
- *     // 执行逻辑
+ *     // execute logic
  * }
  * </pre>
  * 
- * @param <T> 标签类型（Item 或 Block）
+ * @param <T> Tag type (Item or Block)
  */
 public final class TagKey<T> {
     
-    /** 对象池，确保相同标识的 TagKey 只有一份实例 */
+    /** Object pool, ensures only one instance per identifier */
     private static final java.util.Map<String, TagKey<?>> VALUES = new java.util.WeakHashMap<>();
     
-    /** 注册表类型（"item" 或 "block"） */
+    /** Registry type ("item" or "block") */
     private final String registry;
     
-    /** 标签位置标识符 */
+    /** Tag location identifier */
     private final ResourceLocation location;
     
     private TagKey(String registry, ResourceLocation location) {
@@ -40,7 +40,7 @@ public final class TagKey<T> {
     }
     
     /**
-     * 创建或获取一个物品 TagKey
+     * Creates or gets an item TagKey
      */
     @SuppressWarnings("unchecked")
     public static TagKey<Item> createItem(String namespace, String name) {
@@ -48,7 +48,7 @@ public final class TagKey<T> {
     }
     
     /**
-     * 创建或获取一个物品 TagKey
+     * Creates or gets an item TagKey
      */
     @SuppressWarnings("unchecked")
     public static TagKey<Item> createItem(ResourceLocation location) {
@@ -64,7 +64,7 @@ public final class TagKey<T> {
     }
     
     /**
-     * 创建或获取一个方块 TagKey
+     * Creates or gets a block TagKey
      */
     @SuppressWarnings("unchecked")
     public static TagKey<Block> createBlock(String namespace, String name) {
@@ -72,7 +72,7 @@ public final class TagKey<T> {
     }
     
     /**
-     * 创建或获取一个方块 TagKey
+     * Creates or gets a block TagKey
      */
     @SuppressWarnings("unchecked")
     public static TagKey<Block> createBlock(ResourceLocation location) {
@@ -88,28 +88,28 @@ public final class TagKey<T> {
     }
     
     /**
-     * 检查此 TagKey 是否属于指定的注册表类型
+     * Checks if this TagKey belongs to the specified registry type
      */
     public boolean isFor(String registry) {
         return this.registry.equals(registry);
     }
     
     /**
-     * 获取注册表类型
+     * Gets the registry type
      */
     public String getRegistry() {
         return registry;
     }
     
     /**
-     * 获取标签位置
+     * Gets the tag location
      */
     public ResourceLocation getLocation() {
         return location;
     }
     
     /**
-     * 获取完整的标签标识符（命名空间:名称）
+     * Gets the full tag identifier (namespace:name)
      */
     public String getFullIdentifier() {
         return location.toString();

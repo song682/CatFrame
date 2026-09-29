@@ -15,19 +15,19 @@ import net.minecraftforge.oredict.OreDictionary;
 import java.util.*;
 
 /**
- * 无序 Tag 配方
+ * Shapeless Tag Recipe
  * 
- * 类似 Forge 的 ShapelessOreRecipe，但使用 CatFrame Tag 系统
- * 支持 Tag 名称作为配方材料，不要求材料在特定位置
+ * Similar to Forge's ShapelessOreRecipe, but uses CatFrame Tag system
+ * Supports Tag names as recipe ingredients, no specific position required
  * 
- * 使用示例：
+ * Usage examples:
  * <pre>
- * // 使用 Tag 名称
+ * // Using Tag name
  * new ShapelessTagRecipe(new ItemStack(Items.iron_ingot, 9),
  *     "catframe:blockIron"
  * );
  * 
- * // 混合使用
+ * // Mixed usage
  * new ShapelessTagRecipe(new ItemStack(Items.dye, 2, 1),
  *     Items.red_mushroom, Items.brown_mushroom, "catframe:flowers"
  * );
@@ -39,21 +39,21 @@ public class ShapelessTagRecipe implements IRecipe {
     private ArrayList<Object> input = new ArrayList<Object>();
     
     /**
-     * 使用 Block 作为输出
+     * Using Block as output
      */
     public ShapelessTagRecipe(Block result, Object... recipe) {
         this(new ItemStack(result), recipe);
     }
     
     /**
-     * 使用 Item 作为输出
+     * Using Item as output
      */
     public ShapelessTagRecipe(Item result, Object... recipe) {
         this(new ItemStack(result), recipe);
     }
     
     /**
-     * 使用 ItemStack 作为输出
+     * Using ItemStack as output
      */
     public ShapelessTagRecipe(ItemStack result, Object... recipe) {
         output = result.copy();
@@ -64,7 +64,7 @@ public class ShapelessTagRecipe implements IRecipe {
     }
     
     /**
-     * 从原版 ShapelessRecipes 转换，并应用替换
+     * Convert from vanilla ShapelessRecipes and apply replacements
      */
     @SuppressWarnings("unchecked")
     ShapelessTagRecipe(ShapelessRecipes recipe, Map<ItemStack, String> replacements) {
@@ -83,8 +83,8 @@ public class ShapelessTagRecipe implements IRecipe {
     }
     
     /**
-     * 解析材料参数
-     * 支持：ItemStack、Item、Block、String（Tag/OreDict）、TagKey
+     * Parse ingredient argument
+     * Supports: ItemStack, Item, Block, String (Tag/OreDict), TagKey
      */
     private Object parseIngredient(Object ingredient) {
         if (ingredient instanceof ItemStack) {
@@ -109,7 +109,7 @@ public class ShapelessTagRecipe implements IRecipe {
         if (ingredient instanceof String) {
             String str = (String) ingredient;
             
-            // 判断是否是 Tag 名称
+            // Check if it's a Tag name
             if (str.contains(":")) {
                 try {
                     ResourceLocation tagLocation = new ResourceLocation(str);
@@ -118,17 +118,17 @@ public class ShapelessTagRecipe implements IRecipe {
                         return new ArrayList<Item>(tagItems);
                     }
                 } catch (Exception e) {
-                    // 不是有效的 ResourceLocation，尝试作为 OreDict
+                    // Not a valid ResourceLocation, try as OreDict
                 }
             }
             
-            // 作为 OreDict 名称（向后兼容）
+            // As OreDict name (backwards compatible)
             ArrayList<ItemStack> ores = OreDictionary.getOres(str);
             if (!ores.isEmpty()) {
                 return ores;
             }
             
-            // 如果 OreDict 也没有，再尝试作为 Tag
+            // If OreDict doesn't have it, try as Tag
             try {
                 ResourceLocation tagLocation = new ResourceLocation("catframe", str);
                 Set<Item> tagItems = CatFrameTags.itemLoader().getTagContents(tagLocation);
@@ -136,7 +136,7 @@ public class ShapelessTagRecipe implements IRecipe {
                     return new ArrayList<Item>(tagItems);
                 }
             } catch (Exception e) {
-                // 忽略
+                // Ignore
             }
         }
         
@@ -175,21 +175,21 @@ public class ShapelessTagRecipe implements IRecipe {
                     Object next = req.next();
                     
                     if (next instanceof ItemStack) {
-                        // 普通 ItemStack 匹配
+                        // Normal ItemStack match
                         match = itemMatches((ItemStack) next, slot, false);
                     } else if (next instanceof List) {
-                        // Tag 或 OreDict 列表匹配
+                        // Tag or OreDict list match
                         Iterator<?> itr = ((List<?>) next).iterator();
                         while (itr.hasNext() && !match) {
                             Object listItem = itr.next();
                             
                             if (listItem instanceof Item) {
-                                // Tag 内容（Item 列表）
+                                // Tag contents (Item list)
                                 if (slot.getItem() == listItem) {
                                     match = true;
                                 }
                             } else if (listItem instanceof ItemStack) {
-                                // OreDict 内容（ItemStack 列表）
+                                // OreDict contents (ItemStack list)
                                 if (itemMatches((ItemStack) listItem, slot, false)) {
                                     match = true;
                                 }
@@ -214,7 +214,7 @@ public class ShapelessTagRecipe implements IRecipe {
     }
     
     /**
-     * 检查两个 ItemStack 是否匹配
+     * Check if two ItemStacks match
      */
     private boolean itemMatches(ItemStack target, ItemStack input, boolean strict) {
         if (input == null && target != null || input != null && target == null) {
@@ -226,8 +226,8 @@ public class ShapelessTagRecipe implements IRecipe {
     }
     
     /**
-     * 获取配方的输入材料
-     * 警告：不要修改返回的列表，这会影响配方本身
+     * Get recipe input ingredients
+     * Warning: do not modify the returned list, it affects the recipe itself
      */
     public ArrayList<Object> getInput() {
         return this.input;

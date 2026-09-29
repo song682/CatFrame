@@ -114,14 +114,14 @@ public class GuiGraphicsExtractor {
         this.mc = Minecraft.getMinecraft();
         this.renderState = new GuiRenderState();
 
-        // 注册 PiP 渲染器分派表（构造期常量，帧间不清）
+        // Register PiP renderer dispatch table (construction-time constants, not cleared between frames)
         registerPip(new OversizedItemPipRenderer(itemDrawer));
         registerPip(new EntityPipRenderer());
         UiTextureAtlasManager textureAtlasManager = new UiTextureAtlasManager();
 
     }
 
-    /** 注册一个 PiP 渲染器，以其处理的状态类型为分派 key。 */
+    /** Register a PiP renderer using its handled state class as the dispatch key. */
     private void registerPip(PictureInPictureRenderer<?> renderer) {
         pipDispatchTable.put(renderer.getStateClass(), renderer);
     }
@@ -133,7 +133,7 @@ public class GuiGraphicsExtractor {
         return INSTANCE;
     }
 
-    // ==================== 物品渲染 ====================
+    // ==================== Item rendering ====================
 
     /**
      * Render items in the GUI (without seed offset).
@@ -205,7 +205,7 @@ public class GuiGraphicsExtractor {
             }
 
             // No pre-transform cancellation needed in GUI context
-            // (Forge INVENTORY path has no Forge前置 transform)
+            // (Forge INVENTORY path has no Forge pre-transform)
             // Enchantment glint is driven by FeatureRenderDispatcher → renderEnchantmentGlint
             model.render(stack, RenderPhase.ITEM_GUI, null);
         } finally {
@@ -227,7 +227,8 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 快照当前 modelview 矩阵 — 供帧末延迟渲染恢复调用点的 GL 变换。
+     * Capture current modelview matrix — for end-of-frame deferred rendering to restore
+     * the GL transform at the call site.
      */
     private static float[] captureModelViewMatrix() {
         MATRIX_BUFFER.clear();
@@ -237,17 +238,17 @@ public class GuiGraphicsExtractor {
         return m;
     }
 
-    // ==================== PiP 提交（GUI 实体） ====================
+    // ==================== PiP submission (GUI entities) ====================
 
     /**
-     * 在 GUI 中渲染实体（<b>延迟到帧末</b>，走独立 PiP 通道）。
+     * Render an entity in GUI (<b>deferred to end of frame</b>, via dedicated PiP channel).
      *
-     * @param entity 待渲染实体
-     * @param scale  缩放
-     * @param lookX  实体朝向的水平偏移（对标 {@code GuiInventory.drawEntityOnScreen} 的 mouseX）
-     * @param lookY  实体朝向的垂直偏移
-     * @param x      GUI 槽位 X 坐标（像素）
-     * @param y      GUI 槽位 Y 坐标（像素）
+     * @param entity entity to render
+     * @param scale  scale factor
+     * @param lookX  entity look horizontal offset (mirrors {@code GuiInventory.drawEntityOnScreen} mouseX)
+     * @param lookY  entity look vertical offset
+     * @param x      GUI slot X coordinate (pixels)
+     * @param y      GUI slot Y coordinate (pixels)
      */
     public void entity(EntityLivingBase entity, int scale, float lookX, float lookY, int x, int y) {
         if (entity == null) return;
@@ -256,16 +257,16 @@ public class GuiGraphicsExtractor {
                 entity, scale, lookX, lookY, pose, new ScreenRectangle(x, y, 16, 16), null));
     }
 
-    // ==================== GL 状态管理 ====================
+    // ==================== GL state management ====================
 
     /**
-     * 设置物品渲染所需的 GL 状态。
+     * Set up GL state required for item rendering.
      * <p>
-     * 对标 26.1.2 {@code RenderPipelines.GUI_ITEM} 的隐式 GL 状态管理。
-     * 深度测试保持启用，确保模型写入深度缓冲供
-     * {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)} 的
-     * {@code GL_EQUAL} 深度测试精确叠加光效。
-     * 因为外层使用 {@code glPushAttrib/glPopAttrib}，此处无需手动记录原始状态。
+     * Mirrors 26.1.2 {@code RenderPipelines.GUI_ITEM} implicit GL state management.
+     * Depth test stays enabled so model writes to depth buffer for
+     * {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)}'s
+     * {@code GL_EQUAL} depth test to precisely overlay glint.
+     * Outer {@code glPushAttrib/glPopAttrib} means no need to manually save original state here.
      */
     private void setupItemRenderState() {
         GL11.glEnable(GL11.GL_DEPTH_TEST);
@@ -276,7 +277,7 @@ public class GuiGraphicsExtractor {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
-    // ==================== 附魔光效（统一 pass，由管线逐提交项驱动） ====================
+    // ==================== Enchantment glint (single pass, driven per submit by pipeline) ====================
 
     /** Enchantment glint texture — consistent with the original {@code RenderItem.RES_ITEM_GLINT} */
     private static final ResourceLocation ENCHANTMENT_GLINT =
@@ -362,8 +363,8 @@ public class GuiGraphicsExtractor {
      * @param t Shared Tessellator instance
      */
     public static void renderEnchantmentGlint(RenderSubmit s, Tessellator t) {
-        // ENABLE_BIT: depth/blend/lighting/alpha test 开关位；DEPTH_BUFFER_BIT: depthFunc + depthMask；
-        // COLOR_BUFFER_BIT: blendFunc + alphaFunc；TEXTURE_BIT: 纹理绑定；CURRENT_BIT: 当前颜色
+// ENABLE_BIT: depth/blend/lighting/alpha test bits; DEPTH_BUFFER_BIT: depthFunc + depthMask;
+            // COLOR_BUFFER_BIT: blendFunc + alphaFunc; TEXTURE_BIT: texture binding; CURRENT_BIT: current color
         GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT
                 | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_TEXTURE_BIT | GL11.GL_CURRENT_BIT);
         try {
@@ -371,16 +372,16 @@ public class GuiGraphicsExtractor {
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
 
-            // GL_EQUAL：只在正常 pass 已写入的模型片段上叠加，光效精确贴合模型轮廓
+            // GL_EQUAL: only overlay on model fragments written in normal pass, glint precisely fits model contour
             GL11.glDepthFunc(GL11.GL_EQUAL);
             GL11.glDepthMask(false);
             GL11.glDisable(GL11.GL_LIGHTING);
             GL11.glEnable(GL11.GL_BLEND);
-            // 加色混合 — 与原版 ItemRenderer 手持光效一致（OpenGlHelper.glBlendFunc(768, 1, ...)）
+            // Additive blend — matches original ItemRenderer held glint (OpenGlHelper.glBlendFunc(768, 1, ...))
             GL11.glBlendFunc(GL11.GL_SRC_COLOR, GL11.GL_ONE);
 
-            // 两层滚动动画 — 周期 / 旋转对齐 1.7.10 ItemRenderer 手持光效；
-            // 滚动幅度见 GLINT_SCROLL_AMPLITUDE（每周期有效滚动 1 纹理单位，与原版流速一致）
+            // Two-layer scroll animation — periods / rotation aligned with 1.7.10 ItemRenderer held glint;
+            // Scroll amplitude see GLINT_SCROLL_AMPLITUDE (1 texture unit per cycle, matches vanilla flow speed)
             GL11.glMatrixMode(GL11.GL_TEXTURE);
             for (int pass = 0; pass < 2; pass++) {
                 GL11.glPushMatrix();
@@ -415,19 +416,19 @@ public class GuiGraphicsExtractor {
                 && phase != RenderPhase.BLOCK_WORLD;
     }
 
-    // ==================== 状态访问 ====================
+    // ==================== State access ====================
 
     /**
-     * 获取分层状态收集器。
+     * Gets the layered state collector.
      */
     public GuiRenderState getRenderState() {
         return renderState;
     }
 
-    // ==================== 延迟 Tooltip（对标 26.1.2 GuiGraphics.setTooltipForNextFrame） ====================
+    // ==================== Deferred Tooltip (mirrors 26.1.2 GuiGraphics.setTooltipForNextFrame) ====================
 
     /**
-     * 设置简单文本 tooltip。
+     * Set a simple text tooltip.
      */
     public void setTooltipForNextFrame(String text, int x, int y) {
         List<String> lines = new ArrayList<>();
@@ -436,14 +437,14 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 设置多行文本 tooltip（使用默认定位器）。
+     * Set a multi-line text tooltip (using default positioner).
      */
     public void setTooltipForNextFrame(List<String> lines, int x, int y) {
         setTooltipForNextFrame(mc.fontRenderer, lines, DefaultTooltipPositioner.INSTANCE, x, y, false);
     }
 
     /**
-     * 设置多行文本 tooltip（指定定位器）。
+     * Set a multi-line text tooltip (specifying positioner).
      */
     public void setTooltipForNextFrame(FontRenderer font, List<String> lines,
                                        ClientTooltipPositioner positioner,
@@ -452,8 +453,8 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 完整参数版 tooltip 设置。
-     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, ClientTooltipPositioner, int, int, boolean, Identifier)}。</p>
+     * Full-parameter tooltip setup.
+     * <p>Mirrors 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, ClientTooltipPositioner, int, int, boolean, Identifier)}.</p>
      */
     public void setTooltipForNextFrame(
             FontRenderer font,
@@ -468,14 +469,14 @@ public class GuiGraphicsExtractor {
         for (String line : lines) {
             components.add(ClientTooltipComponent.create(line));
         }
-        // 结构化组件插入到第 2 行位置（无文本行时为第 1 行）— 对标 26.1.2
+        // Structured component inserted at line 2 position (line 1 if no text lines) — mirrors 26.1.2
         component.ifPresent(image -> components.add(components.isEmpty() ? 0 : 1, ClientTooltipComponent.create(image)));
         setTooltipForNextFrameInternal(font, components, xo, yo, positioner, style, replaceExisting);
     }
 
     /**
-     * 设置多行文本 tooltip（带结构化组件，使用默认定位器）。
-     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, int, int)}。</p>
+     * Set a multi-line text tooltip (with structured component, using default positioner).
+     * <p>Mirrors 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, int, int)}.</p>
      */
     public void setTooltipForNextFrame(FontRenderer font, List<String> lines,
                                        Optional<TooltipComponent> component,
@@ -484,8 +485,8 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 设置多行文本 tooltip（带结构化组件与样式，使用默认定位器）。
-     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, int, int, Identifier)}。</p>
+     * Set a multi-line text tooltip (with structured component and style, using default positioner).
+     * <p>Mirrors 26.1.2 {@code setTooltipForNextFrame(Font, List, Optional, int, int, Identifier)}.</p>
      */
     public void setTooltipForNextFrame(FontRenderer font, List<String> lines,
                                        Optional<TooltipComponent> component,
@@ -494,16 +495,16 @@ public class GuiGraphicsExtractor {
         for (String line : lines) {
             components.add(ClientTooltipComponent.create(line));
         }
-        // 结构化组件插入到第 2 行位置（无文本行时为第 1 行）— 对标 26.1.2
+        // Structured component inserted at line 2 position (line 1 if no text lines) — mirrors 26.1.2
         component.ifPresent(image -> components.add(components.isEmpty() ? 0 : 1, ClientTooltipComponent.create(image)));
         setTooltipForNextFrameInternal(font, components, xo, yo, DefaultTooltipPositioner.INSTANCE, style, false);
     }
 
     /**
-     * 设置物品 tooltip（使用默认定位器）。
-     * <p>对标 26.1.2 {@code setTooltipForNextFrame(Font, ItemStack, int, int)}：
-     * 文本行为 {@link Screen#getTooltipFromItem} 收集结果，图像组件来自
-     * {@link ItemTooltipImages}，样式取自 {@link DataComponents#TOOLTIP_STYLE}。</p>
+     * Set an item tooltip (using default positioner).
+     * <p>Mirrors 26.1.2 {@code setTooltipForNextFrame(Font, ItemStack, int, int)}:
+     * Text from {@link Screen#getTooltipFromItem}, image components from
+     * {@link ItemTooltipImages}, style from {@link DataComponents#TOOLTIP_STYLE}.</p>
      */
     public void setTooltipForNextFrame(FontRenderer font, ItemStack stack, int xo, int yo) {
         String styleId = ItemStackComponents.get(stack).get(DataComponents.TOOLTIP_STYLE);
@@ -512,7 +513,7 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 内部统一入口 — 对标 26.1.2 {@code setTooltipForNextFrameInternal()}。
+     * Internal unified entry — mirrors 26.1.2 {@code setTooltipForNextFrameInternal()}.
      */
     private void setTooltipForNextFrameInternal(
             FontRenderer font,
@@ -530,9 +531,9 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 实际渲染 tooltip — 对标 26.1.2 {@code GuiGraphics.tooltip()}。
+     * Actually render tooltip — mirrors 26.1.2 {@code GuiGraphics.tooltip()}.
      * <p>
-     * 计算尺寸 → 定位 → 渲染背景 → 渲染文字 → 渲染图像。
+     * Calculate size → position → render background → render text → render images.
      */
     public void tooltip(
             FontRenderer font,
@@ -543,7 +544,7 @@ public class GuiGraphicsExtractor {
     ) {
         if (lines.isEmpty()) return;
 
-        // 计算 tooltip 尺寸（对标 26.1.2 同算法）
+        // Calculate tooltip size (same algorithm as 26.1.2)
         int textWidth = 0;
         int tempHeight = lines.size() == 1 ? -2 : 0;
         for (ClientTooltipComponent line : lines) {
@@ -555,7 +556,7 @@ public class GuiGraphicsExtractor {
         int w = textWidth;
         int h = tempHeight;
 
-        // 获取屏幕尺寸
+        // Get screen dimensions
         int screenWidth, screenHeight;
         if (mc.currentScreen != null) {
             screenWidth = mc.currentScreen.width;
@@ -566,22 +567,22 @@ public class GuiGraphicsExtractor {
             screenHeight = res.getScaledHeight();
         }
 
-        // 定位
+        // Position
         int[] pos = positioner.positionTooltip(screenWidth, screenHeight, xo, yo, w, h);
         int x = pos[0];
         int y = pos[1];
 
-        // 保存 OpenGL 状态并渲染
+        // Save OpenGL state and render
         GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_CURRENT_BIT);
         GL11.glDisable(GL11.GL_LIGHTING);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        // 渲染背景（带 style 支持）
+        // Render background (with style support)
         TooltipRenderUtil.renderTooltipBackground(x, y, textWidth, tempHeight, style);
 
-        // 渲染文字行
+        // Render text lines
         int localY = y;
         for (int i = 0; i < lines.size(); i++) {
             ClientTooltipComponent line = lines.get(i);
@@ -589,7 +590,7 @@ public class GuiGraphicsExtractor {
             localY += line.getHeight(font) + (i == 0 ? 2 : 0);
         }
 
-        // 渲染图像组件
+        // Render image components
         localY = y;
         for (int i = 0; i < lines.size(); i++) {
             ClientTooltipComponent line = lines.get(i);
@@ -600,7 +601,7 @@ public class GuiGraphicsExtractor {
         GL11.glPopAttrib();
     }
 
-    // ==================== 延迟元素 Flush ====================
+    // ==================== Deferred elements flush ====================
 
     /**
      * Flush deferred elements at end of frame — corresponds to 26.1.2
@@ -629,7 +630,7 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 按 PiP 状态的运行时类型查分派表并绘制。
+     * Dispatch to PiP renderer based on runtime type of state.
      */
     @SuppressWarnings("unchecked")
     private void dispatchPip(PictureInPictureRenderState state) {
@@ -641,7 +642,7 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * 帧开始时重置状态。
+     * Reset state at frame start.
      */
     public void resetForNewFrame() {
         this.renderState.reset();

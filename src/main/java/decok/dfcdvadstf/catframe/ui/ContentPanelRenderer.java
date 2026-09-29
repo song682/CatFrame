@@ -66,7 +66,6 @@ public final class ContentPanelRenderer {
 
     /**
      * Draw only the header separator line (2px tall, tiled horizontally).
-     * <p>仅绘制顶部分隔线（2px 高，横向平铺）。</p>
      */
     public static void drawHeaderSeparator(int x, int y, int width) {
         drawSeparator(x, y, width, HEADER_SEPARATOR);
@@ -74,7 +73,6 @@ public final class ContentPanelRenderer {
 
     /**
      * Draw only the footer separator line (2px tall, tiled horizontally).
-     * <p>仅绘制底部分隔线（2px 高，横向平铺）。</p>
      */
     public static void drawFooterSeparator(int x, int y, int width) {
         drawSeparator(x, y, width, FOOTER_SEPARATOR);
@@ -82,7 +80,6 @@ public final class ContentPanelRenderer {
 
     /**
      * Draw a separator line with a custom 32x2 texture — handy if you want a styled variant.
-     * <p>用自定义 32x2 纹理绘制分隔线 —— 想换个花样？传进来就行。</p>
      */
     public static void drawSeparator(int x, int y, int width, ResourceLocation texture) {
         if (width <= 0 || texture == null) return;
@@ -91,7 +88,6 @@ public final class ContentPanelRenderer {
 
     /**
      * Draw only the panel background — tiles the 16x16 panel texture over the given region.
-     * <p>仅绘制面板背景 —— 把 16x16 的面板纹理平铺到指定区域。</p>
      */
     public static void drawPanelBackground(int x, int y, int width, int height) {
         if (width <= 0 || height <= 0) return;
@@ -100,7 +96,6 @@ public final class ContentPanelRenderer {
 
     /**
      * <p>Tile the given texture across the specified region.<br>Delegates to {@link TextureStretching#drawTiled}.</p>
-     * <p>在指定区域内平铺指定纹理。委托给 {@link TextureStretching#drawTiled}。</p>
      */
     private static void drawTiledTexture(ResourceLocation texture, int x, int y, int width, int height, int tileWidth, int tileHeight) {
         GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);

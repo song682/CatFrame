@@ -22,12 +22,6 @@ import java.awt.image.BufferedImage;
  * A built-in entry's backing {@code File} is a fake path that is never opened,
  * so {@code updateResourcePack()} (which would try to open it as a folder or
  * zip pack and replace the injected fields) is cancelled for such entries.
- * <p>
- * 使 {@code ResourcePackRepository.Entry} 成为 {@link BuiltinPackEntry}：加入
- * {@code catframe$builtinPackId} 标记，并打通注入器所需的三个私有字段——条目
- * 的字段无法经其私有构造器填充。内置条目背后的 {@code File} 是永不打开的空路径，
- * 因此对这类条目取消 {@code updateResourcePack()}（它会尝试把该路径当作文件夹
- * 或 zip 包打开并覆盖已注入的字段）。
  */
 @Mixin(ResourcePackRepository.Entry.class)
 public abstract class MixinBuiltinResourcePackRepositoryEntry implements BuiltinPackEntry {

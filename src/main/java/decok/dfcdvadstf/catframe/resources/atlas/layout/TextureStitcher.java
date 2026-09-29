@@ -9,39 +9,42 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * 纹理图集 bin packing 布局器 —— 26.1.2 {@code Stitcher} 的 1.7.10 直移植。
+ * Texture atlas bin-packing layout engine — a direct 1.7.10 port of the 26.1.2
+ * {@code Stitcher}.
  * <p>
- * 算法语义（与高版本完全一致）：
+ * Algorithm semantics (identical to the higher versions):
  * <ul>
- *   <li>排序：高度降序 → 宽度降序 → 名称（List.sort 稳定，同名等尺寸按插入序）；</li>
- *   <li>区域分割：Region 递归四叉分裂树 —— 精确匹配直接占用，否则先放 exact-size 子区，
- *       再按 {@code max(height, spareWidth) >= max(width, spareHeight)} 决定
- *       "右列+下条"或"下条+右列"两分；</li>
- *   <li>扩展：增量计算存储包围盒，任一轴扩到下一个 2^n；两轴都能扩时优先扩较短边；</li>
- *   <li>padding：{@code 1 << mipLevel << clamp(anisotropyBit - 1, 0, 4)} 每 sprite 单边，
- *       防止 mipmap 采样在相邻 sprite 间渗色。</li>
+ *   <li>sort: height desc → width desc → name (List.sort is stable, so equal
+ *       names/sizes keep insertion order);</li>
+ *   <li>region split: a recursive quadtree of Regions — exact fits are occupied
+ *       directly; otherwise the exact-size sub-region is placed first, then
+ *       {@code max(height, spareWidth) >= max(width, spareHeight)} decides whether
+ *       to split into "right column + bottom strip" or "bottom strip + right column";</li>
+ *   <li>expansion: the storage bounding box grows incrementally, each axis rounding
+ *       up to the next power of two; when both axes can grow, the shorter edge grows
+ *       first;</li>
+ *   <li>padding: {@code 1 << mipLevel << clamp(anisotropyBit - 1, 0, 4)} per side of
+ *       each sprite, preventing mipmap sampling from bleeding between neighbouring
+ *       sprites.</li>
  * </ul>
- * 纯 CPU 布局，不触碰 GL。容量不足时抛 {@link TextureStitchException}（携带全部未放置 sprite 清单）。
- *
- * <p>Direct port of the 26.1.2 {@code Stitcher}: height-desc → width-desc → name
- * sort, recursive region splitting, short-edge-first power-of-two expansion.
- * Pure CPU layout with no GL access.
+ * Pure CPU layout that never touches GL. Throws {@link TextureStitchException}
+ * (carrying the full list of unplaced sprites) when capacity is insufficient.
  */
 @SideOnly(Side.CLIENT)
 public class TextureStitcher {
 
-    /** 排序比较器：高度降序 → 宽度降序 → 名称（与 26.1.2 HOLDER_COMPARATOR 一致）。 */
+    /** Sort comparator: height desc → width desc → name (matches the 26.1.2 HOLDER_COMPARATOR). */
     private static final Comparator<Holder> HOLDER_COMPARATOR = Comparator
             .comparingInt((Holder h) -> -h.height)
             .thenComparingInt(h -> -h.width)
             .thenComparing(h -> h.sprite.getIconName());
 
     private final int mipLevel;
-    /** 待缝合 sprite 列表（注册序）。 */
+    /** Sprites awaiting stitching (registration order). */
     private final List<Holder> texturesToBeStitched = new ArrayList<>();
-    /** 已扩展的存储区域列表（每块区域是一个 expand 出的条带）。 */
+    /** Expanded storage regions (each region is a strip produced by expand). */
     private final List<Region> storage = new ArrayList<>();
-    /** 已用存储包围盒（未 2^n 化）。 */
+    /** Used storage bounding box (not rounded to 2^n). */
     private int storageX;
     private int storageY;
     private final int maxWidth;
@@ -49,10 +52,10 @@ public class TextureStitcher {
     private final int padding;
 
     /**
-     * @param maxWidth      最大图集宽（min(GL_MAX_TEXTURE_SIZE, 16384)，由调用方在主线程读取）
-     * @param maxHeight     最大图集高
-     * @param mipLevel      全局 mip 级别（决定 padding 与最小纹素对齐）
-     * @param anisotropyBit 各向异性过滤级别（1 = 关闭）
+     * @param maxWidth      maximum atlas width (min(GL_MAX_TEXTURE_SIZE, 16384), read by the caller on the main thread)
+     * @param maxHeight     maximum atlas height
+     * @param mipLevel      global mip level (decides padding and minimum texel alignment)
+     * @param anisotropyBit anisotropic filtering level (1 = disabled)
      */
     public TextureStitcher(int maxWidth, int maxHeight, int mipLevel, int anisotropyBit) {
         this.maxWidth = maxWidth;
@@ -61,23 +64,24 @@ public class TextureStitcher {
         this.padding = 1 << mipLevel << clamp(anisotropyBit - 1, 0, 4);
     }
 
-    /** 当前已用存储宽度（包围盒，未 2^n 化）。 */
+    /** Currently used storage width (bounding box, not rounded to 2^n). */
     public int getWidth() {
         return this.storageX;
     }
 
-    /** 当前已用存储高度（包围盒，未 2^n 化）。 */
+    /** Currently used storage height (bounding box, not rounded to 2^n). */
     public int getHeight() {
         return this.storageY;
     }
 
-    /** 每 sprite 单边 padding（布局公式 {@code 1<<mip << clamp(anisotropy-1,0,4)}）。 */
+    /** Per-side padding of each sprite (layout formula {@code 1<<mip << clamp(anisotropy-1,0,4)}). */
     public int getPadding() {
         return padding;
     }
 
     /**
-     * 注册一个待缝合 sprite（内容尺寸 + 双边 padding 后按 mip 对齐为 holder 尺寸）。
+     * Registers a sprite awaiting stitching (content size + both-side padding,
+     * mip-aligned to the holder size).
      */
     public void registerSprite(CatSprite sprite) {
         Holder holder = new Holder(
@@ -88,8 +92,9 @@ public class TextureStitcher {
     }
 
     /**
-     * 执行布局。任一个 holder 无法放入（任一轴将超过上限）时抛 {@link TextureStitchException}，
-     * 异常携带全部未放置 sprite 清单。
+     * Performs the layout. Throws {@link TextureStitchException} when any holder
+     * cannot be placed (an axis would exceed its limit); the exception carries the
+     * full list of unplaced sprites.
      */
     public void stitch() {
         List<Holder> holders = new ArrayList<>(this.texturesToBeStitched);
@@ -108,10 +113,11 @@ public class TextureStitcher {
     }
 
     /**
-     * 深度优先遍历已放置区域，回调每个 sprite 的物理起点与 padding。
-     * 必须在 {@link #stitch()} 成功后调用。
+     * Walks the placed regions depth-first, invoking the callback with each
+     * sprite's physical origin and padding. Must be called after a successful
+     * {@link #stitch()}.
      *
-     * @param loader 放置回调（x/y 为物理起点，内容起点 = x + padding）
+     * @param loader placement callback (x/y are the physical origin; the content origin = x + padding)
      */
     public void gatherSprites(SpriteLoader loader) {
         for (Region topRegion : this.storage) {
@@ -120,14 +126,14 @@ public class TextureStitcher {
     }
 
     /**
-     * 将输入向上对齐到 2^mip 的倍数（26.1.2 smallestFittingMinTexel）。
+     * Rounds the input up to a multiple of 2^mip (26.1.2 smallestFittingMinTexel).
      */
     private static int smallestFittingMinTexel(int input, int maxMipLevel) {
         return ((input >> maxMipLevel) + ((input & (1 << maxMipLevel) - 1) == 0 ? 0 : 1)) << maxMipLevel;
     }
 
     /**
-     * 尝试放入已有区域，全部失败则扩展存储。
+     * Tries the existing regions first, and expands the storage when all fail.
      */
     private boolean addToStorage(Holder holder) {
         for (Region region : this.storage) {
@@ -139,8 +145,9 @@ public class TextureStitcher {
     }
 
     /**
-     * 增量扩展：计算各轴下一个 2^n 尺寸，两轴都能扩时优先扩当前较短边
-     * （26.1.2 expand 语义）。
+     * Incremental expansion: computes the next power-of-two size per axis; when
+     * both axes can grow, the currently shorter edge grows first (26.1.2 expand
+     * semantics).
      */
     private boolean expand(Holder holder) {
         int xCurrentSize = smallestEncompassingPowerOfTwo(this.storageX);
@@ -177,23 +184,23 @@ public class TextureStitcher {
         return true;
     }
 
-    /** 不小于 value 的最小 2^n（Mth.smallestEncompassingPowerOfTwo）。 */
+    /** Smallest power of two ≥ value (Mth.smallestEncompassingPowerOfTwo). */
     private static int smallestEncompassingPowerOfTwo(int value) {
         int i = Integer.highestOneBit(value);
         return i >= value ? i : i << 1;
     }
 
-    /** 区间钳制（Mth.clamp）。 */
+    /** Interval clamp (Mth.clamp). */
     private static int clamp(int value, int min, int max) {
         return value < min ? min : Math.min(value, max);
     }
 
-    /** 放置回调：sprite + 物理起点 + 单边 padding。 */
+    /** Placement callback: sprite + physical origin + per-side padding. */
     public interface SpriteLoader {
         void load(CatSprite sprite, int x, int y, int padding);
     }
 
-    /** 待放置项：sprite + 已含双边 padding 并按 mip 对齐的物理尺寸。 */
+    /** Pending placement: sprite + physical size already including both-side padding and mip-aligned. */
     private static final class Holder {
         final CatSprite sprite;
         final int width;
@@ -207,8 +214,9 @@ public class TextureStitcher {
     }
 
     /**
-     * 存储区域 —— 递归四叉分裂树节点（26.1.2 Region 直移植）。
-     * 已放置 holder 的区域不可再放；未满区域分裂为 exact 子区 + 一个或两个余量条带。
+     * Storage region — a node of the recursive quadtree (a direct port of the
+     * 26.1.2 Region). A region holding a holder accepts no more; an unoccupied
+     * region splits into the exact sub-region + one or two remainder strips.
      */
     private static final class Region {
         private final int originX;
@@ -234,9 +242,11 @@ public class TextureStitcher {
         }
 
         /**
-         * 尝试放入 holder：精确匹配直接占用；否则先占 exact 子区，余量按
-         * {@code max(height, spareWidth) >= max(width, spareHeight)} 分成
-         * "右列+下条"或"下条+右列"，再递归尝试。
+         * Tries to place the holder: an exact fit occupies directly; otherwise the
+         * exact sub-region is occupied first and the remainder is split by
+         * {@code max(height, spareWidth) >= max(width, spareHeight)} into
+         * "right column + bottom strip" or "bottom strip + right column", then tried
+         * recursively.
          */
         boolean add(Holder holder) {
             if (this.holder != null) {
@@ -280,7 +290,7 @@ public class TextureStitcher {
             return false;
         }
 
-        /** 深度优先回吐已放置 sprite 的物理起点与 padding。 */
+        /** Depth-first emission of placed sprites' physical origins and padding. */
         void walk(SpriteLoader output, int padding) {
             if (this.holder != null) {
                 output.load(this.holder.sprite, this.getX(), this.getY(), padding);

@@ -9,9 +9,6 @@ import java.awt.image.BufferedImage;
  * Duck interface added to {@code ResourcePackRepository.Entry} by the repository
  * entry mixin, marking an entry as backed by a built-in (classpath-provided)
  * resource pack and exposing the internals the injector must fill.
- * <p>
- * 由仓库条目 mixin 混入 {@code ResourcePackRepository.Entry} 的鸭子接口，用于标记
- * “该条目由内置（随 jar 提供的）资源包支撑”，并暴露注入器需要填充的内部字段。
  */
 public interface BuiltinPackEntry {
 

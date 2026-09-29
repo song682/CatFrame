@@ -17,10 +17,9 @@ public class WrongMetadataError extends IllegalArgumentException {
 
     /**
      * Invalid default width/height.
-     * <p>无效的默认宽高。</p>
      *
-     * @param defW default width / 默认宽度
-     * @param defH default height / 默认高度
+     * @param defW default width
+     * @param defH default height
      */
     public WrongMetadataError(int defW, int defH) {
         super("Invalid mcmeta default size: width=" + defW + ", height=" + defH
@@ -29,10 +28,9 @@ public class WrongMetadataError extends IllegalArgumentException {
 
     /**
      * Invalid edge value(s).
-     * <p>无效的边缘值。</p>
      *
-     * @param edgeName  edge name (e.g. "left", "top") / 边缘名称
-     * @param edgeValue the invalid value / 无效值
+     * @param edgeName  edge name (e.g. "left", "top")
+     * @param edgeValue the invalid value
      */
     public WrongMetadataError(String edgeName, int edgeValue) {
         super("Invalid mcmeta edge \"" + edgeName + "\": " + edgeValue
@@ -41,9 +39,8 @@ public class WrongMetadataError extends IllegalArgumentException {
 
     /**
      * Unknown stretching type.
-     * <p>未知的拉伸类型。</p>
      *
-     * @param typeStr the unrecognised type string / 无法识别的类型字符串
+     * @param typeStr the unrecognised type string
      */
     public WrongMetadataError(String typeStr) {
         super("Unknown mcmeta stretching type: \"" + typeStr

@@ -45,20 +45,20 @@ public class RenderDispatcher {
     }
 
     /**
-     * 解析方块的世界渲染模型（{@link #renderBlock} 与 {@link #renderBlockDestroy} 共用）。
+     * Resolve block's world-rendering model (shared by {@link #renderBlock} and {@link #renderBlockDestroy}).
      * <p>
-     * 精确保留改造前 renderBlock 三条路径的语义与顺序：
+     * Preserves exact three-path semantics and order from pre-refactor renderBlock:
      * <ol>
-     *   <li>CatStateDefinition 路径：命中即定 —— 解析失败直接返回 null，
-     *       不再尝试后续路径（对应改造前 {@code return renderStateWithCatBlockState(...)}
-     *       的直接 return 语义）；</li>
-     *   <li>registeredBlockModels 路径：collectParts 非空 → part + 旋转；</li>
-     *   <li>IBlockStateProvider 动态路径：variant / multipart 解析。</li>
+     *   <li>CatStateDefinition path: hit is final — parse failure returns null directly,
+     *       no further path attempts (matches pre-refactor {@code return renderStateWithCatBlockState(...)}
+     *       direct return semantics);</li>
+     *   <li>registeredBlockModels path: collectParts non-empty → part + rotation;</li>
+     *   <li>IBlockStateProvider dynamic path: variant / multipart resolution.</li>
      * </ol>
      * Resolves the block's world-rendering model, shared by renderBlock and
      * renderBlockDestroy; keeps the exact three-path semantics of the old renderBlock.
      *
-     * @return 解析结果（part + Y 轴旋转），无模型返回 null
+     * @return resolution result (part + Y-axis rotation), null if no model
      */
     private static ResolvedModel resolveBlockModel(IBlockAccess world, int x, int y, int z,
                                                    Block block, int metadata) {
@@ -107,36 +107,36 @@ public class RenderDispatcher {
     }
 
     /**
-     * 渲染方块的破坏贴花（destroy overlay）。
+     * Renders the block's destroy decal overlay.
      * <p>
-     * 复用与 {@link #renderBlock} 完全相同的模型解析，但以
-     * {@link RenderPhase#BLOCK_DESTROY} 阶段提交：直接
-     * {@link FeatureRenderDispatcher#flushInline}（与 BLOCK_WORLD 内联语义一致，
-     * 只写顶点），绝不走 {@link RenderCommandBuffers#submit} —— 该路径对非
-     * BLOCK_WORLD 会进入 flushGroup（startDrawingQuads/draw/绑纹理），破坏原版
-     * {@code RenderGlobal.drawBlockDamageTexture} 已建立的 startDrawingQuads 批次上下文。
+     * Reuses the exact model resolution of {@link #renderBlock}, but submits under
+     * {@link RenderPhase#BLOCK_DESTROY} phase: directly calls
+     * {@link FeatureRenderDispatcher#flushInline} (same inline semantics as BLOCK_WORLD,
+     * writes vertices only), never goes through {@link RenderCommandBuffers#submit} —
+     * that path for non-BLOCK_WORLD enters flushGroup (startDrawingQuads/draw/bindTexture),
+     * corrupting the vanilla {@code RenderGlobal.drawBlockDamageTexture}'s established
+     * startDrawingQuads batch context.
      * <p>
-     * 破坏图标（destroy_stage_0~9）以 IIcon 形式注入
-     * {@link BlockDestroyExtension#setCurrentIcon}，由扩展链在 BLOCK_DESTROY 阶段
-     * 覆写到每个 quad；GL 状态（乘法混合 774/768、polygon offset、alpha test）
-     * 全部由原版 drawBlockDamageTexture 管理，本方法只写顶点。
-     * Renders the block's destroy decal overlay, reusing the exact model
-     * resolution of renderBlock but submitting under the BLOCK_DESTROY phase.
+     * Destroy icon (destroy_stage_0~9) injected as IIcon into
+     * {@link BlockDestroyExtension#setCurrentIcon}, overwritten to each quad by extension
+     * chain during BLOCK_DESTROY phase; GL state (multiplicative blend 774/768, polygon
+     * offset, alpha test) all managed by vanilla drawBlockDamageTexture, this method
+     * only writes vertices.
      *
-     * @param world       世界
-     * @param x           方块 X 坐标
-     * @param y           方块 Y 坐标
-     * @param z           方块 Z 坐标
-     * @param block       方块实例
-     * @param destroyIcon 当前破坏阶段的 IIcon（destroy_stage_0~9）
+     * @param world       world
+     * @param x           block X coordinate
+     * @param y           block Y coordinate
+     * @param z           block Z coordinate
+     * @param block       block instance
+     * @param destroyIcon current destroy phase IIcon (destroy_stage_0~9)
      */
     public static void renderBlockDestroy(IBlockAccess world, int x, int y, int z,
                                           Block block, IIcon destroyIcon) {
         int metadata = world.getBlockMetadata(x, y, z);
         ResolvedModel rm = resolveBlockModel(world, x, y, z, block, metadata);
         if (rm == null) return;
-        // 破坏贴花亮度由 BlockDestroyExtension 全权（恒全亮 15728880，暗处裂缝仍清晰）；
-        // 提交端不传亮度（-1 语义见 RenderSubmit）。
+        // Destroy decal brightness handled entirely by BlockDestroyExtension (always full-bright 15728880, cracks visible in dark);
+        // submit side passes no brightness (-1 semantics see RenderSubmit).
         RenderSubmit s = new RenderSubmit(RenderPhase.BLOCK_DESTROY, rm.part,
                 RenderTypeRegistry.BLOCK_ATLAS_DESTROY, x, y, z, rm.rot,
                 block, null, world, metadata, null, null, false, false,
@@ -152,11 +152,11 @@ public class RenderDispatcher {
     /**
      * Resolve a block part using CatBlockState's variant key for blockstate matching (v0.3.0).
      * <p>
-     * 改造自 renderStateWithCatBlockState：仅解析模型部件，不执行渲染
-     * （渲染由调用方按阶段提交）。Only resolves the model part; rendering is
+     * Refactored from renderStateWithCatBlockState: only resolves model part, no rendering
+     * (rendering submitted by caller per phase). Only resolves the model part; rendering is
      * left to the caller (renderBlock / renderBlockDestroy).
      *
-     * @return 解析结果（部件 + 状态属性）；无可渲染模型返回 null
+     * @return resolution result (part + state properties); null if no renderable model
      */
     private static ResolvedModel renderStateWithCatBlockState(IBlockAccess world, int x, int y, int z,
                                                               Block block, CatBlockState catState,
@@ -165,7 +165,7 @@ public class RenderDispatcher {
 
         // One-shot variant key validation (identity-deduped inside): invalid
         // property=value keys fall back to builtin/missing (MissingNo).
-        // 一次性校验 variant 键（内部按引用去重）：无效的 属性=属性值 键回退 builtin/missing（MissingNo）。
+        // One-shot variant key validation (identity-deduped inside): invalid property=value keys fall back to builtin/missing (MissingNo).
         BlockstateKeyValidator.validate(bs, catState.getDefinition(),
                 "blockstate of " + Block.blockRegistry.getNameForObject(block));
 
@@ -179,13 +179,13 @@ public class RenderDispatcher {
             BlockstateJson.Variant variant = entry.getVariant(seed);
             if (variant == null || variant.model == null) return null;
 
-            // [C1+W3] 旋转已在 bakeModel 中烘焙，运行时传 0
-            // 走 BakedModelCache 缓存（线程安全 + 懒烘焙）
+            // [C1+W3] Rotation already baked in bakeModel, pass 0 at runtime
+            // Go through BakedModelCache (thread-safe + lazy bake)
             String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) return null;
 
-            // 提取 typed 属性（与 toVariantKey 序列化语义一致）随提交携带
+            // Extract typed properties (consistent with toVariantKey serialization semantics) carried with submission
             Map<String, String> propMap = propsFromCatState(catState);
             return new ResolvedModel(part, 0,
                     propMap.isEmpty() ? null : Collections.unmodifiableMap(propMap));
@@ -202,7 +202,7 @@ public class RenderDispatcher {
                 if (applies && mpc.apply != null) {
                     BlockstateJson.Variant v = mpc.apply.getVariant(seed);
                     if (v != null && v.model != null) {
-                        // [C1] 走 BakedModelCache 缓存
+                        // [C1] Go through BakedModelCache
                         String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z);
                         BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
                         if (bakedPart != null && !bakedPart.isEmpty()) {
@@ -221,8 +221,8 @@ public class RenderDispatcher {
     }
 
     /**
-     * 将 CatBlockState 的全部 typed 属性提取为 name→value 字符串映射
-     * （与 {@link CatBlockState#toVariantKey()} 的序列化语义一致）。
+     * Extract all typed properties from CatBlockState as name→value string map
+     * (consistent with {@link CatBlockState#toVariantKey()} serialization semantics).
      */
     private static Map<String, String> propsFromCatState(CatBlockState catState) {
         Map<String, String> propMap = new java.util.HashMap<>();
@@ -239,11 +239,11 @@ public class RenderDispatcher {
      * Resolve a block part using IBlockStateProvider's dynamic variant resolution.
      * Matches current block properties to blockstate variants or multipart conditions.
      * <p>
-     * 改造自 renderStateProviderBlock：仅解析模型部件，不执行渲染
-     * （渲染由调用方按阶段提交）。Only resolves the model part; rendering is
+     * Refactored from renderStateProviderBlock: only resolves model part, no rendering
+     * (rendering submitted by caller per phase). Only resolves the model part; rendering is
      * left to the caller (renderBlock / renderBlockDestroy).
      *
-     * @return 解析结果（部件 + 状态属性）；无可渲染模型返回 null
+     * @return resolution result (part + state properties); null if no renderable model
      */
     private static ResolvedModel renderStateProviderBlock(IBlockAccess world, int x, int y, int z, Block block, int metadata) {
         IBlockStateProvider provider = (IBlockStateProvider) block;
@@ -252,7 +252,7 @@ public class RenderDispatcher {
 
         Map<String, String> properties = provider.getStateProperties(world, x, y, z, metadata);
         if (properties == null) properties = Collections.emptyMap();
-        // 匹配完成后包裹只读视图随提交携带（防扩展篡改）；属性为空时保持 null
+        // After match, wrap read-only view carried with submission (prevent extension tampering); keep null when props empty
         Map<String, String> exposed = properties.isEmpty()
                 ? null : Collections.unmodifiableMap(properties);
 
@@ -270,7 +270,7 @@ public class RenderDispatcher {
             BlockstateJson.Variant variant = entry.getVariant(seed);
             if (variant == null || variant.model == null) return null;
 
-            // [C1+W3] 走 BakedModelCache 缓存（线程安全 + 懒烘焙）
+            // [C1+W3] Go through BakedModelCache (thread-safe + lazy bake)
             String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) return null;
@@ -287,7 +287,7 @@ public class RenderDispatcher {
                 if (applies && mpc.apply != null) {
                     BlockstateJson.Variant v = mpc.apply.getVariant(seed);
                     if (v != null && v.model != null) {
-                        // [C1] 走 BakedModelCache 缓存
+                        // [C1] Go through BakedModelCache
                         String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z);
                         BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
                         if (bakedPart != null && !bakedPart.isEmpty()) {
@@ -305,14 +305,13 @@ public class RenderDispatcher {
     }
 
     /**
-     * 模型解析结果：渲染部件 + Y 轴旋转角度 + 匹配期构造的方块状态属性（可为 null）。
-     * Model resolution result: the render part plus its Y-axis rotation and the
-     * per-position blockstate properties computed during matching (nullable).
+     * Model resolution result: render part + Y-axis rotation + per-position blockstate
+     * properties computed during matching (nullable).
      */
     private static final class ResolvedModel {
         final BlockStateModelPart part;
         final float rot;
-        /** 匹配期构造的方块状态属性（不可修改视图），无属性时为 null。 */
+        /** Blockstate properties constructed during matching (immutable view), null when no properties. */
         final Map<String, String> blockstateProps;
 
         ResolvedModel(BlockStateModelPart part, float rot, Map<String, String> blockstateProps) {
@@ -346,11 +345,11 @@ public class RenderDispatcher {
         Item item = stack.getItem();
         if (item == null) return;
 
-        // --- 查询已注册 IItemState 模型（方块物品若缺 items/{name}.json 则回退 builtin/missing）---
+        // --- Query registered IItemState model (block items without items/{name}.json fall back to builtin/missing) ---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
-            // 开渲染作用域：物品的多个子模型（双模型/composite/多层）在作用域内累积，
-            // endScope 时按注册表分组排序批量 flush（solid→translucent、单次纹理绑定）。
+            // Open render scope: item's multiple sub-models (dual-model/composite/multi-layer) accumulate in scope,
+            // batch flush at endScope sorted by registry key (solid→translucent, single texture bind).
             RenderCommandBuffers.beginScope();
             try {
                 itemModel.render(stack, RenderPhase.ITEM_GUI);
@@ -361,7 +360,7 @@ public class RenderDispatcher {
     }
 
     /**
-     * 旧接口兼容薄包装：无 NBT 上下文，扩展仅能看到 item+damage。
+     * Legacy interface compat thin wrapper: no NBT context, extensions only see item+damage.
      */
     public static void renderItem(Item item, int damage) {
         if (item == null) return;
@@ -375,8 +374,8 @@ public class RenderDispatcher {
      * proper 3D centering — the caller ({@code ItemRenderer#renderItem})
      * has already set up the hand position / rotation transforms.
      *
-     * @param stack        物品栈
-     * @param isFirstPerson true=第一人称, false=第三人称
+     * @param stack        item stack
+     * @param isFirstPerson true=first person, false=third person
      */
     public static void renderItemInHand(ItemStack stack, boolean isFirstPerson) {
         if (stack == null) return;
@@ -387,7 +386,7 @@ public class RenderDispatcher {
                 ? RenderPhase.ITEM_HAND_FIRST_PERSON
                 : RenderPhase.ITEM_HAND_THIRD_PERSON;
 
-        // --- 查询已注册 IItemState 模型（方块物品若缺 items/{name}.json 则回退 builtin/missing）---
+        // --- Query registered IItemState model (block items without items/{name}.json fall back to builtin/missing) ---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             RenderCommandBuffers.beginScope();
@@ -400,14 +399,14 @@ public class RenderDispatcher {
     }
 
     /**
-     * 旧接口兼容 — 默认第一人称。
+     * Legacy interface compat — defaults to first person.
      */
     public static void renderItemInHand(ItemStack stack) {
         renderItemInHand(stack, true);
     }
 
     /**
-     * 旧接口兼容薄包装。
+     * Legacy interface compat thin wrapper.
      */
     public static void renderItemInHand(Item item, int damage) {
         if (item == null) return;
@@ -415,11 +414,11 @@ public class RenderDispatcher {
     }
 
     /**
-     * 渲染掉落物（地面上的 ItemStack）。
-     * 调用方（如 Forge IItemRenderer ENTITY 路径或自定义 EntityItem 渲染器）
-     * 应已设置好 GL 矩阵（entity 位置、bob 浮动等），本方法仅执行模型绘制。
+     * Render dropped item (ItemStack on ground).
+     * Caller (e.g. Forge IItemRenderer ENTITY path or custom EntityItem renderer)
+     * should have set up GL matrices (entity position, bob, etc.), this method only draws the model.
      *
-     * @param stack 物品栈
+     * @param stack item stack
      */
     public static void renderDroppedItem(ItemStack stack) {
         if (stack == null) return;
@@ -443,14 +442,14 @@ public class RenderDispatcher {
     }
 
     /**
-     * 渲染落地方块（带世界上下文，用于生物群系染色等需要位置的场景）。
+     * Render dropped block (with world context, for biome tinting etc. needing position).
      *
-     * @param stack 物品栈
-     * @param world 世界
-     * @param x     方块 X 坐标
-     * @param y     方块 Y 坐标
-     * @param z     方块 Z 坐标
-     * @param block 方块实例
+     * @param stack item stack
+     * @param world world
+     * @param x     block X coordinate
+     * @param y     block Y coordinate
+     * @param z     block Z coordinate
+     * @param block block instance
      */
     public static void renderDroppedBlock(ItemStack stack,
                                           IBlockAccess world, int x, int y, int z,
@@ -474,48 +473,48 @@ public class RenderDispatcher {
     }
 
     /**
-     * 在物品展示框（Item Frame）中渲染物品。
+     * Render item in Item Frame.
      * <p>
-     * 由 {@code RenderItemInFrameEvent} handler 调用，
-     * 使用 {@link RenderPhase#ITEM_FIXED} 阶段，
-     * 对应 JSON model 的 {@code display.fixed} transform。
+     * Called by {@code RenderItemInFrameEvent} handler,
+     * uses {@link RenderPhase#ITEM_FIXED} phase,
+     * corresponds to JSON model's {@code display.fixed} transform.
      * <p>
-     * GL 上下文中已由 {@code RenderItemFrame.func_82402_b} 设置好
-     * 展示框朝向旋转和物品旋转，本方法仅负责模型绘制。
+     * GL context already set up by {@code RenderItemFrame.func_82402_b}
+     * with frame facing rotation and item rotation, this method only draws the model.
      * <p>
-     * 对齐高版本 {@code ItemFrameRenderer.submit()}：
-     * 渲染器侧额外 {@code scale(0.5)}，与 display.fixed 的 scale(0.5) 叠加后
-     * 净缩放 0.25，与原版 1.7.10 RenderItem.renderInFrame 路径的
-     * scale(1.25)×scale(0.25)=0.3125 接近。
+     * Aligned with modern {@code ItemFrameRenderer.submit()}:
+     * renderer-side extra {@code scale(0.5)}, combined with display.fixed's scale(0.5)
+     * gives net scale 0.25, close to vanilla 1.7.10 RenderItem.renderInFrame path's
+     * scale(1.25)×scale(0.25)=0.3125.
      *
-     * @param stack 展示框内的物品栈
+     * @param stack item stack in frame
      */
     public static void renderItemInFrame(ItemStack stack) {
         if (stack == null) return;
         Item item = stack.getItem();
         if (item == null) return;
 
-        // --- 渲染器侧预变换，对齐高版本 ItemFrameRenderer.submit() + 1.7.10 RenderItem.doRender renderInFrame 偏移 ---
-        // 原版 RenderItem.doRender 在 renderInFrame=true 时:
+        // --- Renderer-side pre-transform, aligned with modern ItemFrameRenderer.submit() + 1.7.10 RenderItem.doRender renderInFrame offset ---
+        // Vanilla RenderItem.doRender when renderInFrame=true:
         //   T(0, 0.05, 0) × RY(-90) × S(1.25) × S(0.25) × T(-0.5)
         // CatFrame display.fixed: S(0.5) × T(-0.5)
-        // 差值: T(0, 0.05, 0) × S(0.5) [忽略 RY(-90)，func_82402_b 已处理朝向]
+        // Delta: T(0, 0.05, 0) × S(0.5) [ignore RY(-90), func_82402_b handles facing]
         Matrix4d framePreTransform = new Matrix4d();
         framePreTransform.setIdentity();
 
-        // ① T(0, 0.05, 0) — 原版 renderInFrame 的 Y 轴偏移
+        // (1) T(0, 0.05, 0) — vanilla renderInFrame Y-axis offset
         Matrix4d t = new Matrix4d();
         t.setIdentity();
         t.setTranslation(new Vector3d(0, 0.15, 0));
         framePreTransform.mul(t);
 
-        // ② S(0.5) — 渲染器侧缩放
+        // (2) S(0.5) — renderer-side scale
         Matrix4d s = new Matrix4d();
         s.setIdentity();
         s.m00 = 0.5; s.m11 = 0.5; s.m22 = 0.5;
         framePreTransform.mul(s);
 
-        // --- 查询已注册 IItemState 模型（方块物品若缺 items/{name}.json 则回退 builtin/missing）---
+        // --- Query registered IItemState model (block items without items/{name}.json fall back to builtin/missing) ---
         IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             RenderCommandBuffers.beginScope();

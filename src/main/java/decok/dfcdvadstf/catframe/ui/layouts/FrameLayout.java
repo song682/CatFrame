@@ -11,12 +11,6 @@ import java.util.function.Consumer;
  * within the frame according to its {@link LayoutSettings}. The frame size is the
  * maximum of its minimum dimensions and the largest child (including padding).
  * </p>
- *
- * <p>
- * FrameLayout —— 将子元素在框架中对齐排列。
- * 所有子元素以层叠方式放置，每个子元素根据其 {@link LayoutSettings} 在框架内对齐。
- * 框架尺寸取最小值与最大子元素（含内边距）中的较大值。
- * </p>
  */
 public class FrameLayout extends AbstractLayout {
 
@@ -135,7 +129,6 @@ public class FrameLayout extends AbstractLayout {
 
     /**
      * Centre a widget within the given rectangle.
-     * <p>将控件在给定矩形内居中。</p>
      */
     public static void centerInRectangle(ILayout widget, int x, int y, int width, int height) {
         alignInRectangle(widget, x, y, width, height, 0.5F, 0.5F);
@@ -143,7 +136,6 @@ public class FrameLayout extends AbstractLayout {
 
     /**
      * Align a widget within the given rectangle using the specified alignment factors.
-     * <p>使用指定的对齐因子将控件在给定矩形内对齐。</p>
      */
     public static void alignInRectangle(
             ILayout widget, int x, int y, int width, int height, float alignX, float alignY
@@ -154,7 +146,6 @@ public class FrameLayout extends AbstractLayout {
 
     /**
      * Align a single dimension of a widget.
-     * <p>对齐控件的单个维度。</p>
      */
     public static void alignInDimension(
             int pos, int length, int widgetLength, Consumer<Integer> setPos, float align

@@ -59,11 +59,11 @@ public class ClientProxy extends CommonProxy {
         // Flush CatFrame world blocks after the vanilla world pass, bound to the
         // CatAtlas (the single texture source): table misses already resolved to the
         // CatAtlas missing square during baking.
-        // [渲染三域架构] WorldRenderHandler 已退役：原版后端下 BLOCK_WORLD 在 chunk
-        // 编译时内联写入原版批次，Post 路径无消费者。
+        // [Render three-domain architecture] WorldRenderHandler retired: under vanilla backend BLOCK_WORLD
+        // is inlined into vanilla batches during chunk compilation, Post path has no consumers.
         MinecraftForge.EVENT_BUS.register(new GuiTextureStitchHandler());
-        // [渲染三域架构] UI 图集本体：订阅 GuiTextureStitchEvent 三阶段（Pre 收集/
-        // On 缝合上传/Post 发布查表），驱动 catframe:gui 自建 GUI 图集。
+        // [Render three-domain architecture] UI atlas core: subscribes to GuiTextureStitchEvent three phases
+        // (Pre collect / On stitch upload / Post publish lookup), drives the catframe:gui custom GUI atlas.
         MinecraftForge.EVENT_BUS.register(new UiTextureAtlasManager());
 
         OverlayManager.INSTANCE.register(ActionBarOverlay.INSTANCE);
@@ -75,9 +75,6 @@ public class ClientProxy extends CommonProxy {
         // incrementally at
         // TextureStitchEvent.Pre (first stitch fires after ALL mods' preInit), see
         // ModelManagerDataLoader.init() invoked from TexturesStitch.
-        // 纯引用型命名空间登记 —— 发现流程本身已移至 TextureStitchEvent.Pre 增量执行
-        // （第一次缝合在全体 mod preInit 之后），见 TexturesStitch 调用的
-        // ModelManagerDataLoader.init()。
         ModelManagerDataLoader.registerNamespace(Tags.MODID);
 
         /// Note: There is no need to manually register blueyPlushy models here.
@@ -108,7 +105,6 @@ public class ClientProxy extends CommonProxy {
 
         // Client-side /title command — in singleplayer it executes locally;
         // on multiplayer it auto-forwards to the server (see CommandTitle docs).
-        // 客户端 /title 命令 —— 单人模式本地执行；多人联机时自动转发到服务端。
         ClientCommandHandler.instance.registerCommand(new CommandTitle());
     }
 }

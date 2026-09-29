@@ -29,7 +29,7 @@ public class SuffixArray<T> {
 		int n = suffixElements.size();
 		if (n <= 1) return;
 
-		// 用 Integer[] 索引 + Arrays.sort 进行后缀排序
+		// Suffix sort using Integer[] index + Arrays.sort
 		Integer[] order = new Integer[n];
 		for (int i = 0; i < n; i++) order[i] = i;
 
@@ -52,7 +52,7 @@ public class SuffixArray<T> {
 			return Integer.compare(textA.length() - offA, textB.length() - offB);
 		});
 
-		// 按排序结果重建 suffix 数组
+		// Rebuild suffix arrays according to sort order
 		TIntArrayList newElements = new TIntArrayList(n);
 		TIntArrayList newOffsets = new TIntArrayList(n);
 		for (int i = 0; i < n; i++) {
@@ -100,7 +100,7 @@ public class SuffixArray<T> {
 			return Collections.emptyList();
 		}
 
-		// boolean[] visited 线性去重
+		// boolean[] visited linear deduplication
 		boolean[] visited = new boolean[elements.size()];
 		List<T> result = Lists.newArrayList();
 

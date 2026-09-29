@@ -3,27 +3,27 @@ package decok.dfcdvadstf.catframe.core.component;
 import javax.annotation.Nullable;
 
 /**
- * 可写的组件容器接口。
+ * Writable component container interface.
  * <p>
- * 参考 26.1.2 {@code net.minecraft.core.component.DataComponentHolder}。
+ * Reference 26.1.2 {@code net.minecraft.core.component.DataComponentHolder}.
  */
 public interface DataComponentHolder extends DataComponentGetter {
 
     /**
-     * 设置指定类型的组件值。
+     * Set the component value of the specified type.
      *
-     * @param <T>   值的类型
-     * @param type  组件类型
-     * @param value 值（null 表示移除组件）
-     * @return 之前的值，若之前不存在返回 null
+     * @param <T>   value type
+     * @param type  component type
+     * @param value value (null to remove component)
+     * @return previous value, or null if not present
      */
     @Nullable
     <T> T set(DataComponentType<T> type, @Nullable T value);
 
     /**
-     * 移除指定类型的组件。
+     * Remove the component of the specified type.
      *
-     * @return 之前的值，若之前不存在返回 null
+     * @return previous value, or null if not present
      */
     @Nullable
     @SuppressWarnings("unchecked")
@@ -32,7 +32,7 @@ public interface DataComponentHolder extends DataComponentGetter {
     }
 
     /**
-     * 检查是否包含指定类型的组件。
+     * Check if a component of the specified type is present.
      */
     default boolean has(DataComponentType<?> type) {
         return this.get(type) != null;

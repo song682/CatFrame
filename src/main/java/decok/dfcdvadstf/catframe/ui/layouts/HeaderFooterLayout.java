@@ -15,11 +15,6 @@ import java.util.function.Consumer;
  * giving you the tiled background + top/bottom separators out of the box.
  * Call {@link #setDrawPanel(boolean) setDrawPanel(false)} to skip drawing.
  * </p>
- *
- * <p>
- * HeaderFooterLayout —— 三区域布局：顶部 header、中间 content、底部 footer。
- * 内部使用三个 {@link FrameLayout} 实例。
- * </p>
  */
 public class HeaderFooterLayout extends AbstractLayout {
 
@@ -34,7 +29,7 @@ public class HeaderFooterLayout extends AbstractLayout {
     private int footerHeight = 0;
 
     /**
-     * Creates a HeaderFooterLayout that draws the panel background. / 创建绘制面板背景的 HeaderFooterLayout。
+     * Creates a HeaderFooterLayout that draws the panel background.
      */
     public HeaderFooterLayout() {
         this(0, 0);
@@ -42,7 +37,6 @@ public class HeaderFooterLayout extends AbstractLayout {
 
     /**
      * Creates a HeaderFooterLayout with custom header/footer height.
-     * <p>创建自定义 header/footer 高度的 HeaderFooterLayout。</p>
      */
     public HeaderFooterLayout(int headerHeight, int footerHeight) {
         this.headerHeight = headerHeight;
@@ -52,7 +46,7 @@ public class HeaderFooterLayout extends AbstractLayout {
     }
 
     /**
-     * Creates a HeaderFooterLayout with optional panel drawing. / 创建可选择是否绘制面板背景的 HeaderFooterLayout。
+     * Creates a HeaderFooterLayout with optional panel drawing.
      */
     public HeaderFooterLayout(boolean drawPanel) {
         this.drawPanel = drawPanel;
@@ -89,7 +83,7 @@ public class HeaderFooterLayout extends AbstractLayout {
     // ──── Zone setters / getters ────
 
     /**
-     * Sets the header child. / 设置顶栏子元素。
+     * Sets the header child.
      */
     public <T extends ILayout> T setHeader(T header) {
         this.headerFrame.clear();
@@ -100,7 +94,7 @@ public class HeaderFooterLayout extends AbstractLayout {
     }
 
     /**
-     * Sets the content child. / 设置内容子元素。
+     * Sets the content child.
      */
     public <T extends ILayout> T setContent(T content) {
         this.contentsFrame.clear();
@@ -111,7 +105,7 @@ public class HeaderFooterLayout extends AbstractLayout {
     }
 
     /**
-     * Sets the footer child. / 设置底栏子元素。
+     * Sets the footer child.
      */
     public <T extends ILayout> T setFooter(T footer) {
         this.footerFrame.clear();
@@ -122,21 +116,21 @@ public class HeaderFooterLayout extends AbstractLayout {
     }
 
     /**
-     * Returns the header child, or {@code null}. / 返回顶栏子元素，没有则返回 null。
+     * Returns the header child, or {@code null}.
      */
     public ILayout getHeader() {
         return headerFrame.getChildren().isEmpty() ? null : headerFrame.getChildren().get(0);
     }
 
     /**
-     * Returns the content child, or {@code null}. / 返回内容子元素，没有则返回 null。
+     * Returns the content child, or {@code null}.
      */
     public ILayout getContent() {
         return contentsFrame.getChildren().isEmpty() ? null : contentsFrame.getChildren().get(0);
     }
 
     /**
-     * Returns the footer child, or {@code null}. / 返回底栏子元素，没有则返回 null。
+     * Returns the footer child, or {@code null}.
      */
     public ILayout getFooter() {
         return footerFrame.getChildren().isEmpty() ? null : footerFrame.getChildren().get(0);
@@ -215,7 +209,6 @@ public class HeaderFooterLayout extends AbstractLayout {
 
     /**
      * Recalculate using the current width and height.
-     * <p>使用当前 width / height 重新计算。</p>
      */
     @Override
     public void recalculate() {
@@ -225,7 +218,6 @@ public class HeaderFooterLayout extends AbstractLayout {
     /**
      * Recalculate with an explicit size — useful when the parent container
      * knows the available space.
-     * <p>使用显式尺寸重新计算 —— 当父容器知道可用空间时很有用。</p>
      */
     public void recalculate(int availableWidth, int availableHeight) {
         LOG.debug("[HeaderFooterLayout] recalculate({}, {}): headerH={}, footerH={}",
@@ -265,8 +257,8 @@ public class HeaderFooterLayout extends AbstractLayout {
     public void draw(int mouseX, int mouseY, float partialTicks) {
         // HeaderFooterLayout is a pure layout container — no built-in rendering.
         // Background / panel rendering should be handled externally (e.g. by a dedicated List component).
-        // HeaderFooterLayout 是纯布局容器，不内置渲染逻辑。
-        // 背景/面板渲染应由外部组件处理（例如专用的 List 组件）。
+        // HeaderFooterLayout is a pure layout container — no built-in rendering.
+        // Background / panel rendering should be handled externally (e.g. by a dedicated List component).
     }
 
     // ──── Internal ────

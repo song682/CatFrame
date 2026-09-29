@@ -9,23 +9,22 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 单纹理源（对标 26.1.2 {@code minecraft:single}）。
+ * Single texture source (mirrors 26.1.2 {@code minecraft:single}).
  * <p>
- * 把单个纹理以（可选）重命名后的 sprite id 收入图集 —— 适合未建模引用的散落纹理，
- * 或为 unstitch / paletted_permutations 提供显式入口。
+ * Collects one texture into the atlas under an optionally renamed sprite id —
+ * suited to stray textures not referenced by any model, or as an explicit entry
+ * point for unstitch / paletted_permutations.
  * <p>
- * 定义 JSON 示例：
+ * Definition JSON example:
  * <pre>{@code {"type": "minecraft:single", "resource": "minecraft:item/foo", "sprite": "minecraft:item/bar"}}</pre>
- * {@code sprite} 缺省时 sprite id = resource。
- *
- * <p>Adds one texture, optionally under a renamed sprite id.
+ * When {@code sprite} is absent the sprite id equals the resource.
  */
 @SideOnly(Side.CLIENT)
 public final class SingleSource implements AtlasSource {
 
-    /** 源纹理路径。 */
+    /** Source texture path. */
     private final ResourceLocation resource;
-    /** 发布 id（可 null → = resource）。 */
+    /** Published id (may be null → equals resource). */
     private final ResourceLocation sprite;
 
     public SingleSource(ResourceLocation resource, ResourceLocation sprite) {

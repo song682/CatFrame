@@ -18,21 +18,21 @@ public class JsonModelBake {
 
     public static List<BakedQuad> bakeElement(ModelJson.Element e, Map<String, IIcon> iconMap, int[] textureSize) {
         List<BakedQuad> out = new ArrayList<>();
-        // [C6] 空值检查：from/to 为 JSON 必需字段，损坏模型可能为 null
+        // [C6] Null check: from/to are required JSON fields; a corrupted model may have them null
         if (e.from == null || e.to == null) {
             CatFrame.logger.warn("[BlockJsonModelBake] bakeElement: element has null from/to, skipping");
             return out;
         }
-        // [C7] 范围校验：每个分量必须在 [-16, 32] 像素范围内（对齐 26.1 CuboidModelElement）
+        // [C7] Range validation: every component must lie within [-16, 32] pixels (aligned with 26.1 CuboidModelElement)
         if (!isInBounds(e.from) || !isInBounds(e.to)) {
             CatFrame.logger.warn("[BlockJsonModelBake] bakeElement: from/to out of bounds [-16,32], from={} to={}, skipping",
                     java.util.Arrays.toString(e.from), java.util.Arrays.toString(e.to));
             return out;
         }
-        // 保存原始 from/to（像素坐标），UV 计算依赖原始未旋转的 bounds
+        // Keep the original from/to (pixel coordinates): UV computation relies on the original, unrotated bounds
         final float[] elemFrom = e.from;
         final float[] elemTo = e.to;
-        // 获取元素级别的 ambientocclusion 和 shade 设置
+        // Read the element-level ambientocclusion and shade settings
         final Boolean elemAO = e.ambientocclusion;
         final Boolean elemShade = e.shade;
         double x0 = e.from[0] / 16.0, y0 = e.from[1] / 16.0, z0 = e.from[2] / 16.0;
@@ -46,10 +46,9 @@ public class JsonModelBake {
         C[idx(1, 0, 1)] = new Vector3d(x1, y0, z1);
         C[idx(0, 1, 1)] = new Vector3d(x0, y1, z1);
         C[idx(1, 1, 1)] = new Vector3d(x1, y1, z1);
-        // 旋转解析：支持单轴（angle/axis）和多轴（x/y/z）两种格式。
-        // [FIX] 只读取到局部变量，绝不写回共享的 e.rotation：ModelResolver 缓存使同一个
-        //     Element 被多个烘焙线程并发复用，就地改写会造成竞态。
-        // [FIX] Read-only into locals; never mutate shared e.rotation (cached, concurrent).
+        // Rotation parsing: supports both the single-axis (angle/axis) and multi-axis (x/y/z) formats.
+        // [FIX] Read-only into locals; never mutate the shared e.rotation: the ModelResolver cache makes the same
+        //     Element reused concurrently by multiple baking threads, so in-place rewriting would race.
         boolean isMultiAxis = false;
         float rotAngle = 0f;
         char rotAxis = 0;
@@ -60,13 +59,13 @@ public class JsonModelBake {
             rotRescale = e.rotation.rescale;
             rotOrigin = e.rotation.origin;
             if (e.rotation.angle != 0f || e.rotation.axis != null) {
-                // 单轴格式：{"angle": <deg>, "axis": "x"|"y"|"z"}
+                // Single-axis format: {"angle": <deg>, "axis": "x"|"y"|"z"}
                 rotAngle = e.rotation.angle;
                 if (e.rotation.axis != null && !e.rotation.axis.isEmpty()) {
                     rotAxis = Character.toLowerCase(e.rotation.axis.charAt(0));
                 }
             } else if (e.rotation.x != 0f || e.rotation.y != 0f || e.rotation.z != 0f) {
-                // 多轴格式：{"x": <deg>, "y": <deg>, "z": <deg>}
+                // Multi-axis format: {"x": <deg>, "y": <deg>, "z": <deg>}
                 isMultiAxis = true;
                 rotX = e.rotation.x;
                 rotY = e.rotation.y;
@@ -74,7 +73,7 @@ public class JsonModelBake {
             }
         }
 
-        // [C6] origin 空值兜底（Blockbench 导出可能不含 origin）
+        // [C6] origin null fallback (Blockbench exports may omit origin)
         float[] o = rotOrigin;
         if (o == null) o = new float[]{8f, 8f, 8f};
         boolean originIsZero = (o.length >= 3 && o[0] == 0f && o[1] == 0f && o[2] == 0f);
@@ -91,9 +90,9 @@ public class JsonModelBake {
             rot.setIdentity();
 
             if (isMultiAxis) {
-                // 多轴旋转：按 X→Y→Z 顺序依次应用（对齐 26.1 Quaternionf.rotationXYZ）。
-                // 支持任意角度（不限于 22.5° 倍数），支持多轴同时非零。
-                // 左乘顺序：rot = Rz * Ry * Rx，顶点作用顺序 Rx 先 → Ry → Rz。
+                // Multi-axis rotation: applied in X→Y→Z order (aligned with 26.1 Quaternionf.rotationXYZ).
+                // Arbitrary angles are supported (not limited to multiples of 22.5°), and multiple axes may be non-zero at once.
+                // Left-multiplication order: rot = Rz * Ry * Rx, so vertices are affected by Rx first → Ry → Rz.
                 if (rotX != 0) {
                     Matrix4d rx = new Matrix4d();
                     rx.setIdentity();
@@ -113,7 +112,7 @@ public class JsonModelBake {
                     rot.mul(rz, rot);
                 }
             } else {
-                // 单轴旋转：angle/axis 格式
+                // Single-axis rotation: the angle/axis format
                 double angRad = Math.toRadians(rotAngle);
                 switch (rotAxis) {
                     case 'x': rot.rotX(angRad); break;
@@ -123,9 +122,9 @@ public class JsonModelBake {
                 }
             }
 
-            // [W4] rescale：旋转前沿各局部坐标轴应用非均匀缩放，
-            // 使旋转后的最大投影分量恢复至原始大小，补偿旋转造成的视觉收缩。
-            // 对齐 26.1 CuboidRotation.computeRescale 语义：rotation × scale。
+            // [W4] rescale: apply non-uniform scaling along each local axis before rotation so the largest
+            // projected component returns to its original size after rotation, compensating the visual shrink
+            // caused by rotation. Aligned with 26.1 CuboidRotation.computeRescale semantics: rotation × scale.
             if (rotRescale) {
                 double[] rescaleS = computeRescaleFactors(rot);
                 for (int i = 0; i < 8; i++) {
@@ -135,7 +134,7 @@ public class JsonModelBake {
                 }
             }
 
-            // 应用旋转：sub(origin) → rotate → add(origin)
+            // Apply the rotation: sub(origin) → rotate → add(origin)
             Vector3d origin = new Vector3d(ox, oy, oz);
             for (int i = 0; i < 8; i++) {
                 C[i].sub(origin);
@@ -180,7 +179,7 @@ public class JsonModelBake {
         q.face = facing;
         q.tintIndex = f.tintIndex;
         q.cullface = parseCullface(f.cullface);
-        // 用 vecmath 向量运算替代标量 normal() 函数
+        // Use vecmath vector operations instead of the scalar normal() function
         Vector3d a = new Vector3d(q.vertices[1]);
         a.sub(q.vertices[0]);
         Vector3d b = new Vector3d(q.vertices[2]);
@@ -188,7 +187,7 @@ public class JsonModelBake {
         q.faceNormal = new Vector3d();
         q.faceNormal.cross(a, b);
         q.faceNormal.normalize();
-        // 传递元素级别的 AO 和 shade 设置
+        // Propagate the element-level AO and shade settings
         q.ambientOcclusion = elemAO;
         q.shadeEnabled = elemShade;
         out.add(q);
@@ -261,10 +260,10 @@ public class JsonModelBake {
             outV[i] = v0 + dv * tt;
         }
 
-        // Blockbench 导出的 UV 值已基于 texture_size 换算到 16x16 抽象空间：
-        // 实际映射为 texture_size * (uv / 16) = 材质的实际像素位置。
-        // IIcon.getInterpolatedU/V() 也使用 0-16 范围，因此无需额外缩放。
-        // 参考：https://en.wiki.vg/File_Formats#Model
+        // UV values exported by Blockbench are already converted to the 16x16 abstract space based on
+        // texture_size: the actual mapping is texture_size * (uv / 16) = the material's real pixel position.
+        // IIcon.getInterpolatedU/V() also use the 0-16 range, so no extra scaling is needed.
+        // Reference: https://en.wiki.vg/File_Formats#Model
     }
 
     /**
@@ -272,7 +271,8 @@ public class JsonModelBake {
      * Independent of rotation — matches vanilla Minecraft behavior.
      */
     /**
-     * 校验 float[3] 的每个分量是否在 [-16, 32] 范围内（对齐 26.1 CuboidModelElement 边界检查）。
+     * Validates that every component of a float[3] lies within [-16, 32]
+     * (aligned with the 26.1 CuboidModelElement bounds check).
      */
     private static boolean isInBounds(float[] v) {
         return v != null && v.length >= 3
@@ -307,26 +307,28 @@ public class JsonModelBake {
     }
 
     /**
-     * 计算 rescale 非均匀缩放因子，对齐 26.1 {@code CuboidRotation.computeRescale}。
-     * <p>通用实现：将各轴正方向单位向量经旋转矩阵变换（等价于取旋转矩阵的对应列），
-     * 取变换结果各分量的最大绝对值，缩放因子 = 1 / 该最大绝对值。
-     * 对单轴旋转 θ 退化为：
+     * Computes the rescale non-uniform scale factors, aligned with 26.1 {@code CuboidRotation.computeRescale}.
+     * <p>General implementation: transform each axis's positive unit vector by the rotation matrix (equivalent to
+     * taking the corresponding column of the rotation matrix), take the maximum absolute value of the transformed
+     * components, and set the scale factor = 1 / that maximum.
+     * For a single-axis rotation θ it degenerates to:
      * <ul>
-     *   <li>Y 轴旋转：scaleX = scaleZ = 1 / max(|cosθ|, |sinθ|), scaleY = 1</li>
-     *   <li>X 轴旋转：scaleY = scaleZ = 1 / max(|cosθ|, |sinθ|), scaleX = 1</li>
-     *   <li>Z 轴旋转：scaleX = scaleY = 1 / max(|cosθ|, |sinθ|), scaleZ = 1</li>
+     *   <li>Y-axis rotation: scaleX = scaleZ = 1 / max(|cosθ|, |sinθ|), scaleY = 1</li>
+     *   <li>X-axis rotation: scaleY = scaleZ = 1 / max(|cosθ|, |sinθ|), scaleX = 1</li>
+     *   <li>Z-axis rotation: scaleX = scaleY = 1 / max(|cosθ|, |sinθ|), scaleZ = 1</li>
      * </ul>
-     * 45° 时该因子为 √2（> 1）：先放大再旋转，使旋转后的最大投影分量恢复原始大小，
-     * 补偿旋转造成的视觉收缩。
-     * <p>[FIX] 不能用「各行绝对值之和取倒数」：该值在任意 θ ∈ (0°, 90°) 恒 &gt; 1，
-     * 倒数恒 &lt; 1，会把元素整体压瘦（45° 时压到 1/√2），cross 类模型因此变窄。
+     * At 45° the factor is √2 (> 1): scale up first, then rotate, so the largest projected component returns to
+     * its original size after rotation, compensating the visual shrink caused by rotation.
+     * <p>[FIX] The reciprocal of the sum of absolute row values cannot be used: that value is always &gt; 1 for any
+     * θ ∈ (0°, 90°), so its reciprocal is always &lt; 1 and would squeeze the element thinner (down to 1/√2 at 45°),
+     * narrowing cross-type models.
      *
-     * @param rot 旋转矩阵（单轴或多轴合成）
-     * @return [sx, sy, sz] 缩放因子
+     * @param rot the rotation matrix (single-axis or multi-axis composition)
+     * @return [sx, sy, sz] scale factors
      */
     private static double[] computeRescaleFactors(Matrix4d rot) {
-        // 26.1 scaleFactorForAxis：rotation.transformDirection(axis.getPositive().getUnitVec3f())，
-        // 即 (1,0,0)/(0,1,0)/(0,0,1) 变换后得到的第 0/1/2 列（vecmath 记法 m<row><col>）。
+        // 26.1 scaleFactorForAxis: rotation.transformDirection(axis.getPositive().getUnitVec3f()),
+        // i.e. columns 0/1/2 obtained by transforming (1,0,0)/(0,1,0)/(0,0,1) (vecmath notation m<row><col>).
         return new double[]{
             scaleFactorForAxis(rot.m00, rot.m10, rot.m20),
             scaleFactorForAxis(rot.m01, rot.m11, rot.m21),
@@ -335,7 +337,8 @@ public class JsonModelBake {
     }
 
     /**
-     * 1 / max(|a|, |b|, |c|)：单位向量变换后分量最大绝对值取倒数（26.1 {@code scaleFactorForAxis}）。
+     * 1 / max(|a|, |b|, |c|): the reciprocal of the largest absolute component after transforming a unit vector
+     * (26.1 {@code scaleFactorForAxis}).
      */
     private static double scaleFactorForAxis(double a, double b, double c) {
         double maxComponent = Math.max(Math.abs(a), Math.max(Math.abs(b), Math.abs(c)));
@@ -343,43 +346,44 @@ public class JsonModelBake {
     }
 
     /**
-     * 对一组 BakedQuad 应用 Y 轴旋转（绕方块中心 0.5, 0.5）。
-     * 同时旋转顶点坐标和 faceNormal，保持 UV 不变。
+     * Applies a Y-axis rotation to a list of BakedQuads (around the block center 0.5, 0.5).
+     * Rotates both vertex coordinates and faceNormal while keeping UVs unchanged.
      * <p>
-     * [C1 修复] 返回深拷贝的新列表，不修改原始 quad，防止缓存污染。
+     * [C1 fix] Returns a new, deep-copied list without modifying the original quads, preventing cache pollution.
      *
-     * @param quads   待旋转的 quad 列表（不会被修改）
-     * @param degY    Y 轴旋转角度（支持任意角度，如 22.5°）
-     * @return 旋转后的新 BakedQuad 列表
+     * @param quads the quad list to rotate (not modified)
+     * @param degY  Y-axis rotation angle (arbitrary angles supported, e.g. 22.5°)
+     * @return the rotated new BakedQuad list
      */
     public static List<BakedQuad> applyYRotation(List<BakedQuad> quads, float degY) {
         if (quads == null || quads.isEmpty() || degY == 0) return quads;
-        // Minecraft blockstate 的 y 旋转是「俯视顺时针」（北→东→南→西），
-        // 而 vecmath Matrix4d.rotY 是右手系逆时针（北→西），二者方向相反，
-        // 故取负角度对齐 Minecraft 约定，否则会出现玻璃板等方块东西方向反转。
+        // Minecraft blockstate y rotation is clockwise when viewed from above (north→east→south→west),
+        // whereas vecmath Matrix4d.rotY is counter-clockwise in a right-handed system (north→west); the two
+        // directions are opposite, so a negated angle is used to match the Minecraft convention - otherwise
+        // blocks such as glass panes would flip east/west.
         Matrix4d rotY = new Matrix4d();
         rotY.rotY(Math.toRadians(-degY));
         List<BakedQuad> result = new ArrayList<>(quads.size());
         for (BakedQuad src : quads) {
             BakedQuad q = deepCopyQuad(src);
             for (int i = 0; i < 4; i++) {
-                // Tuple3d 没有 sub(double,double,double)，手动偏移
+                // Tuple3d has no sub(double,double,double): offset manually
                 q.vertices[i].x -= 0.5;
                 q.vertices[i].z -= 0.5;
                 rotY.transform(q.vertices[i]);
                 q.vertices[i].x += 0.5;
                 q.vertices[i].z += 0.5;
             }
-            // 旋转法线
+            // Rotate the normal
             if (q.faceNormal != null) {
                 rotY.transform(q.faceNormal);
             }
-            // Y 轴旋转会改变面朝向与遮挡方向：同步旋转 face 与 cullface，
-            // 否则玻璃板等依赖 cullface 的连接方块会出现东西方向错乱、剔除错误。
+            // A Y-axis rotation changes the face orientation and cull direction: rotate face and cullface along with it,
+            // otherwise connection blocks relying on cullface (such as glass panes) would flip east/west and cull incorrectly.
             q.face = recomputeFace(q);
             q.cullface = rotateCullface(q.cullface, rotY);
-            // 旋转后按新 face 重排顶点顺序（对齐 26.1.2 FaceBakery.recalculateWinding），
-            // 否则 AO 亮度会映射到错误的角（如树皮 S/N 亮度不对称）。
+            // Reorder vertices by the new face after rotation (aligned with 26.1.2 FaceBakery.recalculateWinding),
+            // otherwise AO brightness maps to the wrong corner (e.g. asymmetric bark brightness on S/N faces).
             recalculateWinding(q);
             result.add(q);
         }
@@ -387,14 +391,14 @@ public class JsonModelBake {
     }
 
     /**
-     * 对一组 BakedQuad 应用 X 轴旋转（绕方块中心 0.5, 0.5）。
-     * 同时旋转顶点坐标和 faceNormal，保持 UV 不变。
+     * Applies an X-axis rotation to a list of BakedQuads (around the block center 0.5, 0.5).
+     * Rotates both vertex coordinates and faceNormal while keeping UVs unchanged.
      * <p>
-     * [W3] 支持 blockstate 中的 x 旋转字段。
+     * [W3] Supports the x rotation field in blockstates.
      *
-     * @param quads   待旋转的 quad 列表（不会被修改）
-     * @param degX    X 轴旋转角度（支持任意角度，如 22.5°）
-     * @return 旋转后的新 BakedQuad 列表
+     * @param quads the quad list to rotate (not modified)
+     * @param degX  X-axis rotation angle (arbitrary angles supported, e.g. 22.5°)
+     * @return the rotated new BakedQuad list
      */
     public static List<BakedQuad> applyXRotation(List<BakedQuad> quads, float degX) {
         if (quads == null || quads.isEmpty() || degX == 0) return quads;
@@ -410,15 +414,15 @@ public class JsonModelBake {
                 q.vertices[i].y += 0.5;
                 q.vertices[i].z += 0.5;
             }
-            // 旋转法线
+            // Rotate the normal
             if (q.faceNormal != null) {
                 rotX.transform(q.faceNormal);
             }
-            // X 轴旋转会改变面朝向与遮挡方向，需要重新计算 face 并同步旋转 cullface
+            // An X-axis rotation changes the face orientation and cull direction: recompute face and rotate cullface accordingly
             q.face = recomputeFace(q);
             q.cullface = rotateCullface(q.cullface, rotX);
-            // 旋转后按新 face 重排顶点顺序（对齐 26.1.2 FaceBakery.recalculateWinding），
-            // 否则 AO 亮度会映射到错误的角（如横置原木木质部底部比顶部亮）。
+            // Reorder vertices by the new face after rotation (aligned with 26.1.2 FaceBakery.recalculateWinding),
+            // otherwise AO brightness maps to the wrong corner (e.g. the bark bottom brighter than the top on a sideways log).
             recalculateWinding(q);
             result.add(q);
         }
@@ -426,12 +430,12 @@ public class JsonModelBake {
     }
 
     /**
-     * 对一组 BakedQuad 应用 Z 轴旋转（绕方块中心 0.5, 0.5）。
-     * 同时旋转顶点坐标和 faceNormal，保持 UV 不变。
+     * Applies a Z-axis rotation to a list of BakedQuads (around the block center 0.5, 0.5).
+     * Rotates both vertex coordinates and faceNormal while keeping UVs unchanged.
      *
-     * @param quads   待旋转的 quad 列表（不会被修改）
-     * @param degZ    Z 轴旋转角度（支持任意角度，如 22.5°）
-     * @return 旋转后的新 BakedQuad 列表
+     * @param quads the quad list to rotate (not modified)
+     * @param degZ  Z-axis rotation angle (arbitrary angles supported, e.g. 22.5°)
+     * @return the rotated new BakedQuad list
      */
     public static List<BakedQuad> applyZRotation(List<BakedQuad> quads, float degZ) {
         if (quads == null || quads.isEmpty() || degZ == 0) return quads;
@@ -447,15 +451,15 @@ public class JsonModelBake {
                 q.vertices[i].x += 0.5;
                 q.vertices[i].y += 0.5;
             }
-            // 旋转法线
+            // Rotate the normal
             if (q.faceNormal != null) {
                 rotZ.transform(q.faceNormal);
             }
-            // Z 轴旋转会改变面朝向与遮挡方向，需要重新计算 face 并同步旋转 cullface
+            // A Z-axis rotation changes the face orientation and cull direction: recompute face and rotate cullface accordingly
             q.face = recomputeFace(q);
             q.cullface = rotateCullface(q.cullface, rotZ);
-            // 旋转后按新 face 重排顶点顺序（对齐 26.1.2 FaceBakery.recalculateWinding），
-            // 否则 AO 亮度会映射到错误的角。
+            // Reorder vertices by the new face after rotation (aligned with 26.1.2 FaceBakery.recalculateWinding),
+            // otherwise AO brightness maps to the wrong corner.
             recalculateWinding(q);
             result.add(q);
         }
@@ -463,7 +467,7 @@ public class JsonModelBake {
     }
 
     /**
-     * 深拷贝一个 BakedQuad 的顶点数据，生成独立副本。
+     * Deep-copies the vertex data of a BakedQuad into an independent copy.
      */
     private static BakedQuad deepCopyQuad(BakedQuad src) {
         BakedQuad q = new BakedQuad();
@@ -487,13 +491,14 @@ public class JsonModelBake {
     }
 
     /**
-     * 用与几何体相同的旋转矩阵变换 cullface 的法向量，再映射回最近的 {@link Direction}。
-     * <p>保证 cullface（遮挡检测方向）始终与旋转后的几何朝向一致，
-     * 避免旋转后仍以原始方向检测相邻方块导致的剔除错误。
+     * Transforms the cullface normal vector with the same rotation matrix used for the geometry, then maps it back
+     * to the nearest {@link Direction}.
+     * <p>Guarantees that the cullface (occlusion test direction) always stays consistent with the rotated geometry
+     * orientation, avoiding culling errors from still testing neighbors along the original direction.
      *
-     * @param cull 原始 cullface（可为 null）
-     * @param rot  与顶点/法线相同的旋转矩阵
-     * @return 旋转后的 cullface，输入为 null 时返回 null
+     * @param cull the original cullface (may be null)
+     * @param rot  the same rotation matrix used for vertices/normals
+     * @return the rotated cullface, or null when the input is null
      */
     private static Direction rotateCullface(Direction cull, Matrix4d rot) {
         if (cull == null) return null;
@@ -503,7 +508,7 @@ public class JsonModelBake {
     }
 
     /**
-     * 根据面法线重新确定 Direction（X 轴旋转后面朝向可能改变）。
+     * Re-derives the Direction from the face normal (the orientation may change after an X-axis rotation).
      */
     private static Direction recomputeFace(BakedQuad q) {
         if (q.faceNormal == null) return q.face;
@@ -514,20 +519,21 @@ public class JsonModelBake {
     }
 
     /**
-     * 旋转后重排顶点顺序（对齐 26.1.2 {@code FaceBakery.recalculateWinding}）。
+     * Reorders vertices after rotation (aligned with 26.1.2 {@code FaceBakery.recalculateWinding}).
      * <p>
-     * X/Y 旋转会改变面朝向：{@code q.face} 已按新法线重算，但顶点数组仍保持旋转前
-     * 的约定顺序。AO 着色（AmbientVertexRemap）依赖「v0=左上角、从面外看逆时针」的
-     * FaceInfo 顶点约定，顺序错位会把角亮度写到错误位置——例如 UP 面经 x:90 旋转为
-     * SOUTH 后，原 v0（北-上）落到（南-下），导致横置原木木质部底部比顶部亮、
-     * 树皮 S/N 不对称。此方法按旋转后的 {@code q.face} 用 FaceInfo 选择器重排
-     * vertices/up/vp，UV 随顶点同步移动（与 26.1.2 行为一致）。
+     * X/Y rotations change the face orientation: {@code q.face} has been recomputed from the new normal, but the
+     * vertex array still keeps the pre-rotation conventional order. AO shading (AmbientVertexRemap) relies on the
+     * "v0 = top-left corner, counter-clockwise seen from outside the face" FaceInfo vertex convention, so a wrong
+     * order writes corner brightness to the wrong position - e.g. after an UP face is turned into SOUTH by x:90,
+     * the original v0 (north-top) lands on (south-bottom), making the bark bottom brighter than the top on a
+     * sideways log and the bark S/N faces asymmetric. This method reorders vertices/up/vp by the rotated
+     * {@code q.face} using the FaceInfo selector, moving UVs along with the vertices (consistent with 26.1.2).
      */
     private static void recalculateWinding(BakedQuad q) {
         Direction face = q.face;
         if (face == null) return;
-        // FaceInfo 槽位选择器：{a轴, a轴取MAX, b轴, b轴取MAX}（0=x, 1=y, 2=z），
-        // 对齐 26.1.2 FaceInfo 顶点约定（v0=左上，从面外看逆时针）。
+        // FaceInfo slot selector: {a axis, a axis takes MAX, b axis, b axis takes MAX} (0=x, 1=y, 2=z),
+        // aligned with the 26.1.2 FaceInfo vertex convention (v0=top-left, counter-clockwise seen from outside the face).
         final int[][] sel;
         switch (face) {
             case DOWN:  sel = new int[][]{{0,0,2,1},{0,0,2,0},{0,1,2,0},{0,1,2,1}}; break;
@@ -537,7 +543,7 @@ public class JsonModelBake {
             case WEST:  sel = new int[][]{{1,1,2,0},{1,0,2,0},{1,0,2,1},{1,1,2,1}}; break;
             default:    sel = new int[][]{{1,1,2,1},{1,0,2,1},{1,0,2,0},{1,1,2,0}}; break; // EAST
         }
-        // 面内轴坐标范围中点作分档阈值（旋转后顶点为浮点值，取 (min+max)/2 更稳）
+        // The midpoint of the in-face axis coordinate range serves as the bucket threshold (rotated vertices are floats, so (min+max)/2 is more robust)
         double midA = midCoord(q, sel[0][0]);
         double midB = midCoord(q, sel[0][2]);
         Vector3d[] nv = new Vector3d[4];
@@ -561,7 +567,7 @@ public class JsonModelBake {
         System.arraycopy(nvp, 0, q.vp, 0, 4);
     }
 
-    /** 取 quad 四顶点在指定轴上的坐标中点（(min+max)/2）。 */
+    /** Takes the coordinate midpoint of the quad's four vertices along the given axis ((min+max)/2). */
     private static double midCoord(BakedQuad q, int axis) {
         double min = Double.MAX_VALUE, max = -Double.MAX_VALUE;
         for (int i = 0; i < 4; i++) {
@@ -574,7 +580,7 @@ public class JsonModelBake {
         return (min + max) * 0.5;
     }
 
-    /** 取向量的指定轴坐标（0=x, 1=y, 2=z）。 */
+    /** Gets the given axis coordinate of a vector (0=x, 1=y, 2=z). */
     private static double coord(Vector3d v, int axis) {
         switch (axis) {
             case 0: return v.x;
@@ -591,7 +597,7 @@ public class JsonModelBake {
     }
 
     public static class BakedQuad {
-        /** 4 个顶点的 3D 坐标（替换旧的 vx/vy/vz 标量数组） */
+        /** 3D coordinates of the 4 vertices (replacing the old scalar vx/vy/vz arrays) */
         public final Vector3d[] vertices = new Vector3d[4];
         public final float[] up = new float[4];
         public final float[] vp = new float[4];
@@ -607,56 +613,56 @@ public class JsonModelBake {
          */
         public Direction cullface;
         /**
-         * 环境光遮蔽标记: null 表示使用模型级别默认值, true=启用 AO, false=禁用 AO
+         * Ambient occlusion flag: null = use the model-level default, true = enable AO, false = disable AO
          */
         public Boolean ambientOcclusion = null;
         /**
-         * 方向阴影标记: null 表示使用模型级别默认值, true=启用, false=禁用(自发光)
+         * Directional shading flag: null = use the model-level default, true = enabled, false = disabled (emissive)
          */
         public Boolean shadeEnabled = null;
 
         /**
-         * 图集归属标记（对标 26.1.2 {@code BakedQuad.MaterialInfo} 按
-         * {@code sprite.atlasLocation()} 定 RenderType）：烘焙期由
-         * {@code ModelJsonUnbakedAdapter} 后置扫描写入，渲染期据此选择绑定图集。
-         * true=blocks 图集（默认，与 missingno/null icon 兜底一致），false=items 图集。
+         * Atlas ownership flag (mirroring how 26.1.2 {@code BakedQuad.MaterialInfo} picks a RenderType by
+         * {@code sprite.atlasLocation()}): written during baking by the {@code ModelJsonUnbakedAdapter} post-scan and
+         * used at render time to choose the atlas to bind.
+         * true = blocks atlas (default, consistent with the missingno/null icon fallback), false = items atlas.
          */
         public boolean blockAtlas = true;
 
         /**
-         * 便利方法：获取顶点 i 的 X 坐标。
-         * 在向 Tessellator 提交时替代旧的 vx[i] 引用。
+         * Convenience method: gets the X coordinate of vertex i.
+         * Replaces the old vx[i] references when submitting to the Tessellator.
          */
         public double vx(int i) { return vertices[i] != null ? vertices[i].x : 0; }
 
         /**
-         * 便利方法：获取顶点 i 的 Y 坐标。
-         * 在向 Tessellator 提交时替代旧的 vy[i] 引用。
+         * Convenience method: gets the Y coordinate of vertex i.
+         * Replaces the old vy[i] references when submitting to the Tessellator.
          */
         public double vy(int i) { return vertices[i] != null ? vertices[i].y : 0; }
 
         /**
-         * 便利方法：获取顶点 i 的 Z 坐标。
-         * 在向 Tessellator 提交时替代旧的 vz[i] 引用。
+         * Convenience method: gets the Z coordinate of vertex i.
+         * Replaces the old vz[i] references when submitting to the Tessellator.
          */
         public double vz(int i) { return vertices[i] != null ? vertices[i].z : 0; }
 
         /**
-         * 光照模式（模型级别）。
+         * Lighting mode (model level).
          * <ul>
-         *   <li>{@code "front"} — 正面光照（物品/平面光照）</li>
-         *   <li>{@code "side"} — 侧面光照（方块/3D 光照）</li>
-         *   <li>{@code null} — 未设置</li>
+         *   <li>{@code "front"} - front lighting (item / flat lighting)</li>
+         *   <li>{@code "side"} - side lighting (block / 3D lighting)</li>
+         *   <li>{@code null} - not set</li>
          * </ul>
          */
         public String guiLight = null;
 
 
         /**
-         * 纯色填充（ARGB，0 表示不使用纯色，正常纹理采样）。
-         * <p>用于 builtin/generated 物品模型的侧面 quad：
-         * 烘焙阶段从纹理边缘像素直接采样颜色，渲染阶段作为顶点颜色乘数应用，
-         * 确保侧面显示为与边缘像素一致的纯色，避免纹理图集采样偏差。
+         * Solid-color fill (ARGB; 0 means no solid color, normal texture sampling).
+         * <p>Used for the side quads of builtin/generated item models: during baking the color is sampled directly
+         * from the texture's edge pixels and applied as a vertex-color multiplier at render time, ensuring the sides
+         * show a solid color consistent with the edge pixels and avoiding texture-atlas sampling deviations.
          */
         public int solidColor = 0;
     }

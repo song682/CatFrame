@@ -13,23 +13,26 @@ import net.minecraft.block.BlockStairs;
 import net.minecraft.init.Blocks;
 
 /**
- * 原版方块的类型化状态定义（{@link CatStateDefinition}）登记入口。
+ * Registration entry point for typed state definitions ({@link CatStateDefinition}) of vanilla blocks.
  * <p>
- * 取代旧的 {@code VanillaMetadataMapper}（{@code IMetadataMapper} lambda）与冗余的
- * {@code metadata_map.json}：把「metadata → 属性值 → variant key」的解码层统一收口到
- * {@link Property} 值域 + {@link CatStateDefinition.MetaCodec}，对齐 wiki / 高版本
- * {@code BlockStateModelDispatcher} 的「属性 + 值域驱动调度」模型。
+ * Replaces the old {@code VanillaMetadataMapper} ({@code IMetadataMapper} lambda) and the redundant
+ * {@code metadata_map.json}: the "metadata → property value → variant key" decoding layer is unified into
+ * {@link Property} value domains + {@link CatStateDefinition.MetaCodec}, aligning with the wiki / modern
+ * {@code BlockStateModelDispatcher} "property + value-domain driven dispatch" model.
  *
- * <h3>行为保持</h3>
- * 每个 def 的 {@code getStateFromMeta(meta)} 复现旧 lambda 输出的相同 {@code {属性名:值}}
- * 映射；variant 匹配统一走 {@code RenderDispatcher.buildVariantKey}（字母序 +
- * {@code toString()}），
- * 故最终 variant key 与旧路径逐字节相同。所有属性一律用 {@link StateDefinitions#stringProp}
- * （值即字符串，{@code toString()} 与 blockstate JSON 的 variant key 值精确对齐）。
+ * <h3>Behavior preservation</h3>
+ * Each def's {@code getStateFromMeta(meta)} reproduces the same {@code {property:value}} mapping emitted by the
+ * old lambdas; variant matching uniformly goes through {@code RenderDispatcher.buildVariantKey} (alphabetical +
+ * {@code toString()}),
+ * so the final variant key is byte-identical to the old path. All properties use
+ * {@link StateDefinitions#stringProp}
+ * (the value is the string itself, so {@code toString()} aligns exactly with the variant key values in the
+ * blockstate JSON).
  *
- * <h3>动态属性</h3>
- * 楼梯 {@code shape}、玻璃板 {@code north/east/south/west} 标记为 {@code .dynamic(...)}
- * （不参与 meta 解码），运行时由 {@link VanillaBlockResolvers} 从世界计算并覆盖。
+ * <h3>Dynamic properties</h3>
+ * Stair {@code shape} and pane {@code north/east/south/west} are marked {@code .dynamic(...)}
+ * (excluded from meta decoding) and are computed from the world and overridden at runtime by
+ * {@link VanillaBlockResolvers}.
  */
 @SideOnly(Side.CLIENT)
 public final class VanillaStateDefinitions {
@@ -37,14 +40,14 @@ public final class VanillaStateDefinitions {
         private VanillaStateDefinitions() {
         }
 
-        // ==================== 共享 / 每块属性常量 ====================
+        // ==================== Shared / per-block property constants ====================
 
-        // 原木 / 树叶
+        // Logs / leaves
         private static final Property<String> LOG_WOOD = StateDefinitions.stringProp("wood", "oak", "spruce", "birch",
                         "jungle");
         private static final Property<String> LOG2_WOOD = StateDefinitions.stringProp("wood", "acacia", "dark_oak");
 
-        // 单 variant / wood（clamp 解码）
+        // Single variant / wood (clamp decode)
         private static final Property<String> SAPLING_VARIANT = StateDefinitions.stringProp("variant", "oak", "spruce",
                         "birch", "jungle", "acacia", "dark_oak");
         private static final Property<String> EGG_VARIANT = StateDefinitions.stringProp("variant", "stone",
@@ -62,92 +65,92 @@ public final class VanillaStateDefinitions {
         private static final Property<String> WALL_VARIANT = StateDefinitions.stringProp("variant", "cobblestone",
                         "mossy_cobblestone");
 
-        // 花
+        // Flowers
         private static final Property<String> RED_FLOWER_VARIANT = StateDefinitions.stringProp("variant", "poppy",
                         "blue_orchid", "allium", "houstonia",
                         "tulip_red", "tulip_orange", "tulip_white", "tulip_pink", "oxeye_daisy");
         private static final Property<String> YELLOW_FLOWER_VARIANT = StateDefinitions.stringProp("variant",
                         "dandelion");
 
-        // 高草丛（单格）
+        // Tall grass (single block)
         private static final Property<String> TALLGRASS_VARIANT = StateDefinitions.stringProp("variant", "grass",
                         "fern");
 
-        // 草方块雪覆盖（动态，运行时由 SNOWY resolver 从上方方块材质计算）
+        // Grass block snow overlay (dynamic; computed at runtime by the SNOWY resolver from the block above)
         private static final Property<String> SNOWY = StateDefinitions.stringProp("snowy", "false", "true");
 
-        // 双草丛（2 格高）
+        // Double plants (2 blocks tall)
         private static final Property<String> DOUBLE_PLANT_VARIANT = StateDefinitions.stringProp("variant", "sunflower",
                         "lilac",
                         "double_grass", "double_fern", "rose_bush", "peony");
         // Vanilla double_plant half uses lower/upper — NOT the slab's bottom/top
         // vocabulary
-        // 原版 double_plant 的 half 是 lower/upper —— 不是台阶的 bottom/top 词汇，不可复用 SLAB_HALF
+        // Vanilla double_plant's half is lower/upper - not the slab's bottom/top vocabulary, so SLAB_HALF cannot be reused
         private static final Property<String> PLANT_HALF = StateDefinitions.stringProp("half", "lower", "upper");
 
-        // 石台阶
+        // Stone slab
         private static final Property<String> SLAB_VARIANT = StateDefinitions.stringProp("variant", "stone",
                         "sandstone", "wood", "cobblestone",
                         "brick", "stone_brick", "nether_brick", "quartz");
 
-        // 铁砧
+        // Anvil
         private static final Property<String> ANVIL_FACING = StateDefinitions.stringProp("facing", "north", "east",
                         "south", "west");
         private static final Property<String> ANVIL_DAMAGE = StateDefinitions.stringProp("damage", "0", "1", "2");
 
-        // 作物 age
+        // Crop age
         private static final Property<String> AGE = StateDefinitions.stringProp("age", "0", "1", "2", "3", "4", "5",
                         "6", "7");
 
-        // 漏斗
+        // Hopper
         private static final Property<String> HOPPER_FACING = StateDefinitions.stringProp("facing", "down", "north",
                         "south", "west", "east");
         private static final Property<String> POWERED = StateDefinitions.stringProp("powered", "false", "true");
 
-        // 石英块
+        // Quartz block
         private static final Property<String> QUARTZ_TYPE = StateDefinitions.stringProp("type", "quartz_block",
                         "chiseled_quartz_block", "quartz_pillar");
 
-        // 楼梯
+        // Stairs
         private static final Property<String> STAIR_FACING = StateDefinitions.stringProp("facing", "east", "west",
                         "south", "north");
         private static final Property<String> STAIR_SHAPE = StateDefinitions.stringProp("shape", "straight",
                         "inner_left", "inner_right", "outer_left", "outer_right");
 
-        // 玻璃板连接
+        // Pane connections
         private static final Property<String> PANE_NORTH = StateDefinitions.stringProp("north", "false", "true");
         private static final Property<String> PANE_EAST = StateDefinitions.stringProp("east", "false", "true");
         private static final Property<String> PANE_SOUTH = StateDefinitions.stringProp("south", "false", "true");
         private static final Property<String> PANE_WEST = StateDefinitions.stringProp("west", "false", "true");
 
-        // 木台阶变种（double_wooden_slab / wooden_slab：BlockWoodSlab.field_150005_b 共 6 种）
+        // Wooden slab variants (double_wooden_slab / wooden_slab: 6 in total via BlockWoodSlab.field_150005_b)
         private static final Property<String> WOOD_SLAB_VARIANT = StateDefinitions.stringProp("variant", "oak",
                         "spruce", "birch", "jungle", "acacia", "big_oak");
 
-        // 火把 facing（east/west/south/north 壁挂, standing 地面）
+        // Torch facing (east/west/south/north wall-mounted, standing on the ground)
         private static final Property<String> TORCH_FACING = StateDefinitions.stringProp("facing", "east", "west",
                         "south", "north", "standing");
 
-        // 活板门
+        // Trapdoor
         private static final Property<String> TRAPDOOR_FACING = StateDefinitions.stringProp("facing", "north", "south",
                         "east", "west");
         private static final Property<String> OPEN = StateDefinitions.stringProp("open", "false", "true");
 
-        // 门（铁门+木门）：facing 取值对齐 DOOR 解析器的 1.8 映射表（east/south/west/north）
+        // Doors (iron + wooden): the facing values align with the DOOR resolver's 1.8 mapping table (east/south/west/north)
         private static final Property<String> DOOR_FACING = StateDefinitions.stringProp("facing", "east", "south",
                         "west", "north");
         private static final Property<String> DOOR_HALF = StateDefinitions.stringProp("half", "lower", "upper");
         private static final Property<String> DOOR_HINGE = StateDefinitions.stringProp("hinge", "left", "right");
 
-        // 炼药锅水位
+        // Cauldron water level
         private static final Property<String> LEVEL = StateDefinitions.stringProp("level", "0", "1", "2", "3");
 
-        // 红石线信号强度
+        // Redstone wire signal strength
         private static final Property<String> POWER = StateDefinitions.stringProp("power", "0", "1", "2", "3", "4", "5",
                         "6", "7",
                         "8", "9", "10", "11", "12", "13", "14", "15");
 
-        // 红石线爬线（1.7.10 renderBlockRedstoneWire 四方向独立上坡面）
+        // Redstone wire climbing (1.7.10 renderBlockRedstoneWire's four independent ramp faces)
         private static final Property<String> REDSTONE_UP_NORTH = StateDefinitions.stringProp("up_north", "false",
                         "true");
         private static final Property<String> REDSTONE_UP_EAST = StateDefinitions.stringProp("up_east", "false",
@@ -157,56 +160,56 @@ public final class VanillaStateDefinitions {
         private static final Property<String> REDSTONE_UP_WEST = StateDefinitions.stringProp("up_west", "false",
                         "true");
 
-        // 中继器 / 比较器的 facing（输出方向）
+        // Repeater / comparator facing (output direction)
         private static final Property<String> DIODE_FACING = StateDefinitions.stringProp("facing", "north", "east",
                         "south", "west");
         private static final Property<String> DELAY = StateDefinitions.stringProp("delay", "1", "2", "3", "4");
         private static final Property<String> COMPARATOR_MODE = StateDefinitions.stringProp("mode", "compare",
                         "subtract");
 
-        // 活塞 facing（down/up/north/south/west/east——EnumFacing 顺序）与伸出/粘性标志
-        // BlockPistonBase meta[0:2]=facing, bit3=extended；BlockPistonExtension 同布局但
+        // Piston facing (down/up/north/south/west/east - EnumFacing order) plus the extended/sticky flags
+        // BlockPistonBase meta[0:2]=facing, bit3=extended; BlockPistonExtension has the same layout but
         // bit3=sticky
         private static final Property<String> PISTON_FACING = StateDefinitions.stringProp("facing", "down", "up",
                         "north", "south", "west", "east");
         private static final Property<String> EXTENDED = StateDefinitions.stringProp("extended", "false", "true");
         private static final Property<String> STICKY = StateDefinitions.stringProp("sticky", "false", "true");
 
-        // ==================== 第四组：梯子/拉杆/栅栏门等 ====================
+        // ==================== Group four: ladder / lever / fence gate, etc. ====================
 
-        // 梯子 facing（north/south/west/east）
+        // Ladder facing (north/south/west/east)
         private static final Property<String> LADDER_FACING = StateDefinitions.stringProp("facing", "north", "south",
                         "west", "east");
 
-        // 拉杆 facing（east/west/south/north/up/down）
+        // Lever facing (east/west/south/north/up/down)
         private static final Property<String> LEVER_FACING = StateDefinitions.stringProp("facing", "east", "west",
                         "south", "north", "up", "down");
 
-        // 栅栏门 facing（south/west/north/east——BlockDirectional 顺序）
+        // Fence gate facing (south/west/north/east - BlockDirectional order)
         private static final Property<String> FENCE_GATE_FACING = StateDefinitions.stringProp("facing", "south", "west",
                         "north", "east");
 
-        // 南瓜 facing（south/east/north/west——特殊顺序）
+        // Pumpkin facing (south/east/north/west - special order)
         private static final Property<String> PUMPKIN_FACING = StateDefinitions.stringProp("facing", "south", "east",
                         "north", "west");
 
-        // 发射器/投掷器 facing（down/up/north/south/west/east——EnumFacing 顺序）
+        // Dispenser/dropper facing (down/up/north/south/west/east - EnumFacing order)
         private static final Property<String> DISPENSER_FACING = StateDefinitions.stringProp("facing", "down", "up",
                         "north", "south", "west", "east");
 
-        // 按钮 facing（east/west/south/north——仅壁挂）
+        // Button facing (east/west/south/north - wall-mounted only)
         private static final Property<String> BUTTON_FACING = StateDefinitions.stringProp("facing", "east", "west",
                         "south", "north");
 
-        // 熔炉 facing（north/south/west/east）
+        // Furnace facing (north/south/west/east)
         private static final Property<String> FURNACE_FACING = StateDefinitions.stringProp("facing", "north", "south",
                         "west", "east");
 
-        // ==================== 登记入口 ====================
+        // ==================== Registration entry points ====================
 
         /**
-         * 登记全部原版方块的类型化状态定义。preInit 阶段调用（早于纹理缝合期
-         * 由 {@code TexturesStitch} 触发的 {@code ModelManagerDataLoader.init()}）。
+         * Registers the typed state definitions of all vanilla blocks. Called during preInit (earlier than the
+         * texture-stitching-time {@code ModelManagerDataLoader.init()} triggered by {@code TexturesStitch}).
          */
         @SideOnly(Side.CLIENT)
         public static void registerVanillaStateDefinitions() {
@@ -242,23 +245,24 @@ public final class VanillaStateDefinitions {
                 registerPistons();
         }
 
-        // ==================== 原版基类状态定义片段（自动 BlockState 继承）
-        // ====================
+        // ==================== Vanilla base-class state definition fragments (automatic BlockState
+        // inheritance) ====================
 
         /**
-         * 登记原版方块基类的状态定义片段，供自定义子类沿继承链自动获得属性与 meta 解码。
+         * Registers state definition fragments of vanilla block base classes so that custom subclasses
+         * automatically inherit properties and meta decoding along the inheritance chain.
          * <p>
-         * 子类（如模组的 {@code PillarBlock} 扩展）无需手动声明属性：在 preInit 调用
-         * {@code CatModels.register(block).register()} 或 {@code ModernBlock.register(block)}
-         * 时自动合并父类片段（见 {@code CatStateInheritance}）。
+         * Subclasses (such as a mod's {@code PillarBlock} extension) need not declare properties manually: calling
+         * {@code CatModels.register(block).register()} or {@code ModernBlock.register(block)} during preInit
+         * automatically merges the parent fragments (see {@code CatStateInheritance}).
          * <p>
-         * 注意：codec 必须对全部 16 个 meta 值安全（Builder.create() 会预填
-         * resolvedByMeta[0..15]），索引一律钳制到值域内。
+         * Note: the codec must be safe for all 16 meta values (Builder.create() pre-fills
+         * resolvedByMeta[0..15]), so indices are always clamped into the value domain.
          */
         private static void registerVanillaBaseClasses() {
-                // BlockRotatedPillar（1.7.10 的 PillarBlock）：axis 编码于 meta bit2-3
-                // （0=y,1=x,2=z），低 2 位保留给子类（如原木的 wood 类型）——
-                // 对齐 onBlockPlaced 的 j1|b0 位域布局。
+                // BlockRotatedPillar (1.7.10's PillarBlock): axis is encoded in meta bit2-3
+                // (0=y,1=x,2=z), with the low 2 bits reserved for subclasses (e.g. a log's wood type) -
+                // aligned with the j1|b0 bit-field layout of onBlockPlaced.
                 CatStateDefinition<Class<?>> pillarDef = new CatStateDefinition.Builder<Class<?>>(
                                 BlockRotatedPillar.class)
                                 .add(StateDefinitions.AXIS)
@@ -267,8 +271,8 @@ public final class VanillaStateDefinitions {
                                 .create();
                 CatModels.registerBase(BlockRotatedPillar.class).states(pillarDef).register();
 
-                // BlockStairs：facing[meta&3: 0=east,1=west,2=south,3=north] +
-                // half[bit2: 0=bottom,1=top] + shape 动态（运行时由 STAIRS resolver 计算转角）。
+                // BlockStairs: facing[meta&3: 0=east,1=west,2=south,3=north] +
+                // half[bit2: 0=bottom,1=top] + shape dynamic (corner computed at runtime by the STAIRS resolver).
                 CatStateDefinition<Class<?>> stairsDef = new CatStateDefinition.Builder<Class<?>>(
                                 BlockStairs.class)
                                 .add(STAIR_FACING, StateDefinitions.SLAB_HALF, STAIR_SHAPE)
@@ -282,7 +286,7 @@ public final class VanillaStateDefinitions {
                                 .dynamic(VanillaBlockResolvers.STAIRS)
                                 .register();
 
-                // BlockSlab：half 编码于 meta bit3（0=bottom,1=top），低 3 位保留给子类 variant。
+                // BlockSlab: half is encoded in meta bit3 (0=bottom,1=top), with the low 3 bits reserved for subclass variants.
                 CatStateDefinition<Class<?>> slabDef = new CatStateDefinition.Builder<Class<?>>(BlockSlab.class)
                                 .add(StateDefinitions.SLAB_HALF)
                                 .metaCodec(meta -> new Comparable<?>[] {
@@ -291,7 +295,7 @@ public final class VanillaStateDefinitions {
                 CatModels.registerBase(BlockSlab.class).states(slabDef).register();
         }
 
-        // ==================== 纯 16 色（单 COLOR，默认笛卡尔解码 meta&15） ====================
+        // ==================== Pure 16-color blocks (single COLOR, default cartesian decode of meta&15) ====================
 
         private static void registerColorBlocks() {
                 colorBlock(Blocks.wool);
@@ -307,7 +311,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(block).states(def).register();
         }
 
-        // ==================== 原木（wood+axis）/ 树叶（wood） ====================
+        // ==================== Logs (wood+axis) / leaves (wood) ====================
 
         private static void registerLogsAndLeaves() {
                 // log: wood={oak,spruce,birch,jungle}[meta&3], axis={y,x,z}[(meta>>2)%3]
@@ -319,7 +323,7 @@ public final class VanillaStateDefinitions {
                                 .create();
                 CatModels.register(Blocks.log).states(logDef).register();
 
-                // log2: wood={acacia,dark_oak}[meta&1], axis 同上
+                // log2: wood={acacia,dark_oak}[meta&1], axis as above
                 CatStateDefinition<Block> log2Def = new CatStateDefinition.Builder<Block>(Blocks.log2)
                                 .add(LOG2_WOOD, StateDefinitions.AXIS)
                                 .metaCodec(meta -> new Comparable<?>[] {
@@ -328,20 +332,20 @@ public final class VanillaStateDefinitions {
                                 .create();
                 CatModels.register(Blocks.log2).states(log2Def).register();
 
-                // leaves: wood[meta&3]（单属性，默认解码 meta%4 == meta&3）
+                // leaves: wood[meta&3] (single property, default decode meta%4 == meta&3)
                 CatStateDefinition<Block> leavesDef = new CatStateDefinition.Builder<Block>(Blocks.leaves)
                                 .add(LOG_WOOD)
                                 .create();
                 CatModels.register(Blocks.leaves).states(leavesDef).register();
 
-                // leaves2: wood[meta&1]（单属性，默认解码 meta%2 == meta&1）
+                // leaves2: wood[meta&1] (single property, default decode meta%2 == meta&1)
                 CatStateDefinition<Block> leaves2Def = new CatStateDefinition.Builder<Block>(Blocks.leaves2)
                                 .add(LOG2_WOOD)
                                 .create();
                 CatModels.register(Blocks.leaves2).states(leaves2Def).register();
         }
 
-        // ==================== 单 variant/wood（clamp / 条件解码） ====================
+        // ==================== Single variant/wood (clamp / conditional decode) ====================
 
         private static void registerSingleVariantBlocks() {
                 // sapling: min(meta&7, 5)
@@ -372,7 +376,7 @@ public final class VanillaStateDefinitions {
         }
 
         /**
-         * 单属性 clamp 解码器：索引 = {@code min(mask>0 ? meta&mask : meta, count-1)}。
+         * Single-property clamp decoder: index = {@code min(mask>0 ? meta&mask : meta, count-1)}.
          */
         private static CatStateDefinition.MetaCodec clampCodec(final Property<String> prop, final int mask) {
                 final int max = prop.getValueCount() - 1;
@@ -386,7 +390,7 @@ public final class VanillaStateDefinitions {
                 };
         }
 
-        // ==================== 石台阶（half+variant）/ 铁砧（facing+damage）
+        // ==================== Stone slab (half+variant) / anvil (facing+damage)
         // ====================
 
         private static void registerSlabAndAnvil() {
@@ -410,7 +414,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.anvil).states(anvilDef).register();
         }
 
-        // ==================== 作物（单 age，meta&7；默认解码 meta%8 == meta&7）
+        // ==================== Crops (single age, meta&7; default decode meta%8 == meta&7)
         // ====================
 
         private static void registerCrops() {
@@ -429,7 +433,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(block).states(def).register();
         }
 
-        // ==================== 漏斗（facing+powered，自定义 codec） ====================
+        // ==================== Hopper (facing+powered, custom codec) ====================
 
         private static void registerHopper() {
                 CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.hopper)
@@ -460,7 +464,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.hopper).states(def).register();
         }
 
-        // ==================== 石英块（type[+axis]，自定义 codec） ====================
+        // ==================== Quartz block (type[+axis], custom codec) ====================
 
         private static void registerQuartzBlock() {
                 CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.quartz_block)
@@ -484,7 +488,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.quartz_block).states(def).register();
         }
 
-        // ==================== 楼梯（facing+half 静态，shape 动态） ====================
+        // ==================== Stairs (facing+half static, shape dynamic) ====================
 
         private static void registerStairs() {
                 Block[] stairs = {
@@ -511,12 +515,13 @@ public final class VanillaStateDefinitions {
                 }
         }
 
-        // ==================== 石墙（variant 静态 + 连接全动态） ====================
+        // ==================== Cobblestone wall (variant static + connections fully dynamic) ====================
 
         private static void registerWall() {
-                // cobblestone_wall: meta 0/1 静态解码材质 variant，连接状态由 PANE resolver 计算。
-                // 1.7.10 BlockWall 非 BlockPane，靠 resolver 的 canConnectWallTo 特判；
-                // blockstate 为 10-case multipart（2 材质 × post + 4 向 side，when 匹配 variant+方向）。
+                // cobblestone_wall: meta 0/1 statically decodes the material variant; connection states are computed
+                // by the PANE resolver.
+                // 1.7.10 BlockWall is not a BlockPane, so it relies on the resolver's canConnectWallTo special case;
+                // the blockstate is a 10-case multipart (2 materials × post + 4-way sides, with when matching variant+direction).
                 CatStateDefinition<Block> wallDef = new CatStateDefinition.Builder<Block>(Blocks.cobblestone_wall)
                                 .add(WALL_VARIANT, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
@@ -530,10 +535,10 @@ public final class VanillaStateDefinitions {
                                 .register();
         }
 
-        // ==================== 玻璃板 / 栅栏（连接全动态） ====================
+        // ==================== Pane / fence (connections fully dynamic) ====================
 
         private static void registerPanes() {
-                // glass_pane: north/east/south/west 全动态（meta 忽略，运行时由 PANE resolver 计算）
+                // glass_pane: north/east/south/west fully dynamic (meta ignored, computed at runtime by the PANE resolver)
                 CatStateDefinition<Block> paneDef = new CatStateDefinition.Builder<Block>(Blocks.glass_pane)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
@@ -544,7 +549,7 @@ public final class VanillaStateDefinitions {
                                 .connectionMultipart()
                                 .register();
 
-                // stained_glass_pane: 连接同上 + 颜色走 per-color blockstate redirect
+                // stained_glass_pane: same connections as above + color handled via per-color blockstate redirect
                 CatStateDefinition<Block> stainedPaneDef = new CatStateDefinition.Builder<Block>(
                                 Blocks.stained_glass_pane)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
@@ -558,7 +563,7 @@ public final class VanillaStateDefinitions {
                                                 "minecraft")
                                 .register();
 
-                // fence: 连接同上（1.7.10 BlockFence 非 BlockPane，靠 resolver 的 canConnectFenceTo 特判）
+                // fence: same connections as above (1.7.10 BlockFence is not a BlockPane, so it relies on the resolver's canConnectFenceTo special case)
                 CatStateDefinition<Block> fenceDef = new CatStateDefinition.Builder<Block>(Blocks.fence)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
@@ -569,8 +574,8 @@ public final class VanillaStateDefinitions {
                                 .connectionMultipart()
                                 .register();
 
-                // iron_bars: BlockPane 实例（canPaneConnectTo 判定），blockstate 为 10-case multipart
-                // （post + 4 向 side + 4 向 cap + 全连接 post_ends）
+                // iron_bars: a BlockPane instance (decided by canPaneConnectTo); the blockstate is a 10-case multipart
+                // (post + 4-way sides + 4-way caps + fully connected post_ends)
                 CatStateDefinition<Block> barsDef = new CatStateDefinition.Builder<Block>(Blocks.iron_bars)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
@@ -581,7 +586,7 @@ public final class VanillaStateDefinitions {
                                 .connectionMultipart()
                                 .register();
 
-                // nether_brick_fence: BlockFence 实例（canConnectFenceTo 判定），blockstate 为 5-case
+                // nether_brick_fence: a BlockFence instance (decided by canConnectFenceTo); the blockstate is a 5-case
                 // multipart
                 CatStateDefinition<Block> nbfDef = new CatStateDefinition.Builder<Block>(Blocks.nether_brick_fence)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
@@ -594,11 +599,11 @@ public final class VanillaStateDefinitions {
                                 .register();
         }
 
-        // ==================== 草方块（snowy 动态） ====================
+        // ==================== Grass block (snowy dynamic) ====================
 
         private static void registerGrass() {
-                // grass: 无 meta（原版恒 0），snowy 为动态属性——上方为雪/雪块材质时切到
-                // grass_block_snow 模型（对齐 1.7.10 BlockGrass.getIcon 的侧边纹理切换）
+                // grass: no meta (always 0 in vanilla); snowy is a dynamic property - when the block above uses a
+                // snow / snow-block material it switches to the grass_block_snow model (matching 1.7.10 BlockGrass.getIcon's side-texture switch)
                 CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.grass)
                                 .add(SNOWY)
                                 .dynamic(SNOWY)
@@ -609,12 +614,12 @@ public final class VanillaStateDefinitions {
                                 .register();
         }
 
-        // ==================== 花/高草丛/双草丛 ====================
+        // ==================== Flowers / tall grass / double plants ====================
 
         private static void registerFlowersAndGrass() {
-                // red_flower: meta%9（9 种花）
+                // red_flower: meta%9 (9 flower kinds)
                 singleVariant(Blocks.red_flower, RED_FLOWER_VARIANT, clampCodec(RED_FLOWER_VARIANT, 0));
-                // yellow_flower: 仅 dandelion（meta 恒 0）
+                // yellow_flower: dandelion only (meta always 0)
                 singleVariant(Blocks.yellow_flower, YELLOW_FLOWER_VARIANT, meta -> new Comparable<?>[] { "dandelion" });
                 // tallgrass: meta==1→grass, meta==2→fern
                 singleVariant(Blocks.tallgrass, TALLGRASS_VARIANT,
@@ -623,9 +628,9 @@ public final class VanillaStateDefinitions {
                 // double_plant: variant[min(meta&7, 5)] + half[(meta&8)==0?lower:upper]
                 // Clamp to 5: only 6 variants exist but meta&7 ranges 0~7 (vanilla
                 // BlockDoublePlant clamps too)
-                // 钳制到 5：变体只有 6 种，但 meta&7 范围是 0~7（原版 BlockDoublePlant 同样做了钳制）
-                // 上半块的低 3 位是 onBlockPlacedBy 写入的朝向残值而非变体，真实变体由
-                // DOUBLE_PLANT 动态解析器从下方方块读取（对齐原版 func_149885_e）
+                // Clamp to 5: only 6 variants exist but meta&7 ranges 0~7 (vanilla BlockDoublePlant clamps too)
+                // The low 3 bits of the upper half are a facing residue written by onBlockPlacedBy rather than the variant;
+                // the real variant is read from the block below by the DOUBLE_PLANT dynamic resolver (matching vanilla func_149885_e)
                 CatStateDefinition<Block> doublePlantDef = new CatStateDefinition.Builder<Block>(Blocks.double_plant)
                                 .add(DOUBLE_PLANT_VARIANT, PLANT_HALF)
                                 .metaCodec(meta -> new Comparable<?>[] {
@@ -636,7 +641,7 @@ public final class VanillaStateDefinitions {
                                 .dynamic(VanillaBlockResolvers.DOUBLE_PLANT).register();
         }
 
-        // ==================== 双台阶（double_stone_slab / double_wooden_slab）
+        // ==================== Double slabs (double_stone_slab / double_wooden_slab)
         // ====================
 
         private static void registerDoubleSlabs() {
@@ -644,7 +649,7 @@ public final class VanillaStateDefinitions {
                 singleVariant(Blocks.double_stone_slab, SLAB_VARIANT,
                                 meta -> new Comparable<?>[] { SLAB_VARIANT.getValues().get(meta & 7) });
 
-                // double_wooden_slab: variant[meta&7 再 clamp 到 5]（BlockWoodSlab 支持 6 种）
+                // double_wooden_slab: variant[meta&7 clamped to 5] (BlockWoodSlab supports 6 kinds)
                 CatStateDefinition<Block> woodDef = new CatStateDefinition.Builder<Block>(Blocks.double_wooden_slab)
                                 .add(WOOD_SLAB_VARIANT)
                                 .metaCodec(meta -> new Comparable<?>[] {
@@ -653,11 +658,11 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.double_wooden_slab).states(woodDef).register();
         }
 
-        // ==================== 木台阶（wooden_slab，half+variant） ====================
+        // ==================== Wooden slab (wooden_slab, half+variant) ====================
 
         private static void registerWoodenSlab() {
                 // wooden_slab: variant[meta&7→clamp 5] + half[(meta&8)==0?bottom:top]
-                // BlockWoodSlab 支持 6 种木板（oak/spruce/birch/jungle/acacia/big_oak）
+                // BlockWoodSlab supports 6 plank kinds (oak/spruce/birch/jungle/acacia/big_oak)
                 CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.wooden_slab)
                                 .add(WOOD_SLAB_VARIANT, StateDefinitions.SLAB_HALF)
                                 .metaCodec(meta -> new Comparable<?>[] {
@@ -667,7 +672,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.wooden_slab).states(def).register();
         }
 
-        // ==================== 火把（torch / redstone_torch / unlit_redstone_torch）
+        // ==================== Torches (torch / redstone_torch / unlit_redstone_torch)
         // ====================
 
         private static void registerTorches() {
@@ -692,7 +697,7 @@ public final class VanillaStateDefinitions {
                 singleVariant(Blocks.unlit_redstone_torch, TORCH_FACING, torchCodec);
         }
 
-        // ==================== 活板门（facing+half+open） ====================
+        // ==================== Trapdoor (facing+half+open) ====================
 
         private static void registerTrapdoor() {
                 // trapdoor: facing[meta&3: 0=north,1=south,2=east,3=west]
@@ -707,12 +712,12 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.trapdoor).states(def).register();
         }
 
-        // ==================== 门（facing+hinge+open 动态，half 静态） ====================
+        // ==================== Doors (facing+hinge+open dynamic, half static) ====================
 
         private static void registerDoors() {
-                // door: half[(meta&8)!=0?upper:lower] 由自身 meta 静态解码；
-                // facing/open 存在下半 meta、hinge 存在上半 meta，
-                // 需跨方块读取另一半 → 交给 VanillaBlockResolvers.DOOR 运行时解析
+                // door: half[(meta&8)!=0?upper:lower] is statically decoded from its own meta;
+                // facing/open live in the lower half's meta and hinge in the upper half's,
+                // requiring a cross-block read of the other half → delegated to the runtime VanillaBlockResolvers.DOOR
                 Block[] doors = { Blocks.wooden_door, Blocks.iron_door };
                 for (Block door : doors) {
                         CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(door)
@@ -728,7 +733,7 @@ public final class VanillaStateDefinitions {
                 }
         }
 
-        // ==================== 炼药锅（level） ====================
+        // ==================== Cauldron (level) ====================
 
         private static void registerCauldron() {
                 // cauldron: level[meta&3] 0-3
@@ -736,12 +741,12 @@ public final class VanillaStateDefinitions {
                                 meta -> new Comparable<?>[] { LEVEL.getValues().get(meta & 3) });
         }
 
-        // ==================== 红石线（power + 连接方向） ====================
+        // ==================== Redstone wire (power + connection directions) ====================
 
         private static void registerRedstoneWire() {
-                // redstone_wire: power[meta] 0-15 静态；north/east/south/west 连接 + up_* 爬线
-                // 全动态，运行时由 REDSTONE_WIRE resolver 按 1.7.10 isPowerProviderOrWire
-                // 及 renderBlockRedstoneWire 判定计算。metaCodec 只解码 power。
+                // redstone_wire: power[meta] 0-15 static; north/east/south/west connections + up_* climbing are
+                // fully dynamic, computed at runtime by the REDSTONE_WIRE resolver following 1.7.10
+                // isPowerProviderOrWire and renderBlockRedstoneWire. metaCodec only decodes power.
                 CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.redstone_wire)
                                 .add(POWER, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST,
                                                 REDSTONE_UP_NORTH, REDSTONE_UP_EAST, REDSTONE_UP_SOUTH,
@@ -758,7 +763,7 @@ public final class VanillaStateDefinitions {
                                 .register();
         }
 
-        // ==================== 中继器（facing+delay） ====================
+        // ==================== Repeaters (facing+delay) ====================
 
         private static void registerRepeaters() {
                 // repeater: facing={north,east,south,west}+delay={1,2,3,4}
@@ -781,13 +786,11 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.unpowered_repeater).states(unpoweredDef).register();
         }
 
-        // ==================== 比较器（facing+mode+powered） ====================
+        // ==================== Comparators (facing+mode+powered) ====================
 
         private static void registerComparators() {
                 // comparator: facing={north,east,south,west}+mode={compare,subtract}+powered
                 // meta&3=facing, (meta&4)!=0→subtract, (meta&8)!=0→powered(lit)
-                // 1.7.10 点亮状态存于 meta bit 8 且方块保持 unpowered_comparator；
-                // powered_comparator 实例恒按点亮渲染（isRepeaterPowered）。
                 // The lit state lives in meta bit 8 while the block stays
                 // unpowered_comparator; the powered_comparator instance always
                 // renders lit (isRepeaterPowered).
@@ -814,16 +817,16 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.unpowered_comparator).states(unpoweredDef).register();
         }
 
-        // ==================== 活塞（facing+extended / 活塞头 facing+sticky）
+        // ==================== Pistons (facing+extended / piston head facing+sticky)
         // ====================
 
         private static void registerPistons() {
                 // piston / sticky_piston (BlockPistonBase): facing[meta&7] + extended[bit3]
-                // 1.7.10 meta 布局：meta[0:2] =
-                // EnumFacing（0=down,1=up,2=north,3=south,4=west,5=east），
-                // bit3 = extended（伸出状态，本体缩回 1/4 格并露出 piston_inner 面）。
-                // meta 6/7 是无效 facing（EnumFacing 仅 0-5），但 create() 预填
-                // resolvedByMeta[0..15] 会对全部 meta 调用本 codec，必须钳制索引
+                // 1.7.10 meta layout: meta[0:2] =
+                // EnumFacing (0=down,1=up,2=north,3=south,4=west,5=east),
+                // bit3 = extended (the extended state; the body retracts 1/4 block and exposes the piston_inner face).
+                // meta 6/7 are invalid facings (EnumFacing is only 0-5), but create() pre-fills
+                // resolvedByMeta[0..15] and calls this codec for every meta, so the index must be clamped
                 CatStateDefinition.MetaCodec pistonCodec = meta -> new Comparable<?>[] {
                                 PISTON_FACING.getValues().get(Math.min(meta & 7, 5)),
                                 (meta & 8) != 0 ? "true" : "false" };
@@ -841,7 +844,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.sticky_piston).states(stickyDef).register();
 
                 // piston_head (BlockPistonExtension): facing[meta&7] + sticky[bit3]
-                // 静止活塞头方块（piston_extension / BlockPistonMoving 移动中走 TileEntity 渲染，不注册）
+                // the stationary piston head block (piston_extension / BlockPistonMoving during movement is rendered via TileEntity and is not registered)
                 CatStateDefinition<Block> headDef = new CatStateDefinition.Builder<Block>(Blocks.piston_head)
                                 .add(PISTON_FACING, STICKY)
                                 .metaCodec(pistonCodec)
@@ -849,7 +852,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.piston_head).states(headDef).register();
         }
 
-        // ==================== 梯子（单 facing，自定义解码） ====================
+        // ==================== Ladder (single facing, custom decode) ====================
 
         private static void registerLadder() {
                 // ladder: facing={north,south,west,east} meta 2=north,3=south,4=west,5=east
@@ -870,7 +873,7 @@ public final class VanillaStateDefinitions {
                 singleVariant(Blocks.ladder, LADDER_FACING, codec);
         }
 
-        // ==================== 拉杆（facing+powered） ====================
+        // ==================== Lever (facing+powered) ====================
 
         private static void registerLever() {
                 // lever: facing={east,west,south,north,up,down} + powered
@@ -910,7 +913,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.lever).states(def).register();
         }
 
-        // ==================== 栅栏门（facing+open） ====================
+        // ==================== Fence gate (facing+open) ====================
 
         private static void registerFenceGate() {
                 // fence_gate: facing={south,west,north,east} + open
@@ -926,7 +929,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.fence_gate).states(def).register();
         }
 
-        // ==================== 南瓜 / 南瓜灯（单 facing，特殊解码） ====================
+        // ==================== Pumpkins / jack o'lanterns (single facing, special decode) ====================
 
         private static void registerPumpkins() {
                 // pumpkin/lit_pumpkin: facing={south,east,north,west}
@@ -937,7 +940,7 @@ public final class VanillaStateDefinitions {
                 singleVariant(Blocks.lit_pumpkin, PUMPKIN_FACING, codec);
         }
 
-        // ==================== 发射器 / 投掷器（单 facing，EnumFacing 解码） ====================
+        // ==================== Dispensers / droppers (single facing, EnumFacing decode) ====================
 
         private static void registerDispenserAndDropper() {
                 // dispenser/dropper: facing={down,up,north,south,west,east}
@@ -964,7 +967,7 @@ public final class VanillaStateDefinitions {
                 singleVariant(Blocks.dropper, DISPENSER_FACING, codec);
         }
 
-        // ==================== 按钮（facing+powered，仅壁挂） ====================
+        // ==================== Buttons (facing+powered, wall-mounted only) ====================
 
         private static void registerButtons() {
                 // stone_button/wooden_button: facing={east,west,south,north} + powered
@@ -1005,7 +1008,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.wooden_button).states(woodDef).register();
         }
 
-        // ==================== 熔炉 / 燃烧熔炉（单 facing，自定义解码） ====================
+        // ==================== Furnaces / lit furnaces (single facing, custom decode) ====================
 
         private static void registerFurnaces() {
                 // furnace/lit_furnace: facing={north,south,west,east}

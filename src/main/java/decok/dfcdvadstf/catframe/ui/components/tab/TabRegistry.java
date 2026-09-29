@@ -51,12 +51,11 @@ public final class TabRegistry {
      */
     public static void registerTab(String barId, Supplier<Tab> factory, int tabId, Text nameText, int priority) {
         if (barId == null || barId.isEmpty()) {
-            throw new IllegalArgumentException("barId must not be null or empty / barId 不能为 null 或空");
+            throw new IllegalArgumentException("barId must not be null or empty");
         }
         if (frozenBars.contains(barId)) {
             throw new IllegalStateException(
-                    "TabRegistry bar '" + barId + "' is already frozen. Tabs must be registered before GUI initialization." +
-                            " / TabRegistry bar '" + barId + "' 已冻结，必须在GUI初始化之前注册标签页。"
+                    "TabRegistry bar '" + barId + "' is already frozen. Tabs must be registered before GUI initialization."
             );
         }
 
@@ -68,8 +67,7 @@ public final class TabRegistry {
             if (entry.tabId == tabId) {
                 String display = entry.nameText != null ? entry.nameText.getString() : entry.nameKey;
                 throw new IllegalArgumentException(
-                        "Tab ID " + tabId + " is already registered in bar '" + barId + "' by " + display +
-                                " / Tab ID " + tabId + " 已在 bar '" + barId + "' 中被 " + display + " 注册"
+                        "Tab ID " + tabId + " is already registered in bar '" + barId + "' by " + display
                 );
             }
         }
@@ -105,12 +103,11 @@ public final class TabRegistry {
      */
     public static void registerTab(String barId, Supplier<Tab> factory, int tabId, String nameKey, int priority) {
         if (barId == null || barId.isEmpty()) {
-            throw new IllegalArgumentException("barId must not be null or empty / barId 不能为 null 或空");
+            throw new IllegalArgumentException("barId must not be null or empty");
         }
         if (frozenBars.contains(barId)) {
             throw new IllegalStateException(
-                    "TabRegistry bar '" + barId + "' is already frozen. Tabs must be registered before GUI initialization." +
-                            " / TabRegistry bar '" + barId + "' 已冻结，必须在GUI初始化之前注册标签页。"
+                    "TabRegistry bar '" + barId + "' is already frozen. Tabs must be registered before GUI initialization."
             );
         }
 
@@ -122,8 +119,7 @@ public final class TabRegistry {
             if (entry.tabId == tabId) {
                 String display = entry.nameText != null ? entry.nameText.getString() : entry.nameKey;
                 throw new IllegalArgumentException(
-                        "Tab ID " + tabId + " is already registered in bar '" + barId + "' by " + display +
-                                " / Tab ID " + tabId + " 已在 bar '" + barId + "' 中被 " + display + " 注册"
+                        "Tab ID " + tabId + " is already registered in bar '" + barId + "' by " + display
                 );
             }
         }

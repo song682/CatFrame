@@ -29,73 +29,79 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 监听资源管理器重载，检测顶层资源包提供的模型 JSON 和 BlockState JSON 内容。
+ * Listens for resource manager reloads and detects model JSON / BlockState JSON content provided by the top
+ * resource pack.
  * <p>
- * 当玩家加载/切换资源包时，自动扫描已注册命名空间中已知的模型和 blockstate 路径，
- * 使用 {@link IResourceManager#getResource(ResourceLocation)} 获取顶层资源包中的版本，
- * 解析为 {@link ModelJson} / {@link BlockstateJson} 供其他子系统查询。
+ * When the player loads or switches a resource pack, the known model and blockstate paths of every registered
+ * namespace are scanned automatically; {@link IResourceManager#getResource(ResourceLocation)} is used to fetch the
+ * version in the top resource pack, which is parsed into {@link ModelJson} / {@link BlockstateJson} for other
+ * subsystems to query.
  * <p>
- * 注册方式完全复用
- * {@link decok.dfcdvadstf.catframe.adapter.vanilla.LanguageReloadListener}
- * 的延迟注册模式：资源管理器不可用时通过一次性 ClientTick 延迟注册。
+ * Registration fully reuses the deferred-registration pattern of
+ * {@link decok.dfcdvadstf.catframe.adapter.vanilla.LanguageReloadListener}: when the resource manager is not ready
+ * it registers via a one-shot ClientTick.
  * <p>
- * 资源包覆盖生效链路（扫描 → 合并 → 重注册）：
+ * Resource-pack override pipeline (scan → merge → re-register):
  * <ul>
- * <li><b>items/ ItemState 决策树</b>：候选名来自 Item 注册表 ∪ 已加载决策树；
- * 通过 {@link IResourceManager#getAllResources} 区分“仅 mod jar 自带”与“被资源包覆盖/新增”，
- * 覆盖项合并进 {@link ModelManagerDataLoader#loadedItemStates} 后重建 item 模型
- * wrapper。</li>
- * <li><b>blockstates/</b>：候选名来自 Block 注册表 ∪ 已加载 blockstate；同样区分 jar 自带与真覆盖，
- * 覆盖项合并进 {@link ModelManagerDataLoader#loadedBlockstates} 后重新注册方块模型。</li>
- * <li><b>model_mappings.json</b>：候选名为已注册 namespace
- * （{@link ModelManagerDataLoader#namespaces}）；同样内容比对判定真覆盖，
- * 以<b>整文件替换</b>语义合并进 {@link ModelManagerDataLoader#loadedMappings}
- * 后触发全量重注册（mapping 可能同时影响 block 与 item 两侧注册）。</li>
- * <li><b>models/</b>：无需合并 —— {@link ModelResolver} 每次解析都走 IResourceManager，
- * 重载时清缓存即可自然感知资源包；这里的扫描结果仅供诊断。</li>
+ * <li><b>items/ ItemState decision trees</b>: candidate names come from the Item registry ∪ loaded decision trees;
+ * {@link IResourceManager#getAllResources} distinguishes "jar-only" from "overridden/added by a pack",
+ * and overrides are merged into {@link ModelManagerDataLoader#loadedItemStates} before rebuilding the item model
+ * wrappers.</li>
+ * <li><b>blockstates/</b>: candidate names come from the Block registry ∪ loaded blockstates; jar-provided and real
+ * overrides are distinguished the same way, and overrides are merged into
+ * {@link ModelManagerDataLoader#loadedBlockstates} before re-registering block models.</li>
+ * <li><b>model_mappings.json</b>: candidate names are the registered namespaces
+ * ({@link ModelManagerDataLoader#namespaces}); content comparison again decides a real override, merged with
+ * <b>whole-file replacement</b> semantics into {@link ModelManagerDataLoader#loadedMappings}
+ * before triggering a full re-registration (mappings may affect both block and item side registrations).</li>
+ * <li><b>models/</b>: no merging needed - {@link ModelResolver} always goes through IResourceManager for every
+ * resolution, so clearing the cache on reload naturally picks up resource packs; the scan results here are for
+ * diagnostics only.</li>
  * </ul>
  * <p>
- * 时序说明：1.7.10 中 TextureMap 的 reload listener 先于本监听器注册，因此重载时
- * 纹理缝合（及其触发的 {@code registerAllModels}）已完成，本监听器是重载链的末端 ——
- * 在此合并覆盖并重注册懒模型是安全落点。注意 {@code registerReloadListener} 注册时
- * 会立即回调一次（此时图集未就绪），故重注册步骤以图集就绪为前提。
+ * Timing note: in 1.7.10 the TextureMap reload listener registers before this listener, so on reload the texture
+ * stitching (and the {@code registerAllModels} it triggers) has already finished; this listener is the tail of the
+ * reload chain - merging overrides and re-registering lazy models here is a safe point. Note that
+ * {@code registerReloadListener} fires an immediate callback once at registration time (when the atlas is not
+ * ready), so the re-registration step assumes an atlas that is ready.
  * <p>
- * 已知局限：资源包新引入的纹理（未在 preInit 纹理收集阶段登记过的）不在图集中，
- * 会回退到 missingno；覆盖已有模型的几何/属性/决策逻辑则完全生效。
+ * Known limitation: textures newly introduced by a resource pack (not registered during the preInit texture
+ * collection phase) are not in the atlas and fall back to missingno; overriding the geometry/properties/decision
+ * logic of existing models works fully.
  */
 public class ResourcePackModelDetector implements IResourceManagerReloadListener {
 
-    /** namespace:path → 顶层资源包提供的 ModelJson */
+    /** namespace:path → the ModelJson provided by the top resource pack */
     public static final Map<String, ModelJson> PACK_MODELS = new ConcurrentHashMap<>();
-    /** namespace:blockName → 顶层资源包提供的 BlockstateJson */
+    /** namespace:blockName → the BlockstateJson provided by the top resource pack */
     public static final Map<String, BlockstateJson> PACK_BLOCKSTATES = new ConcurrentHashMap<>();
-    /** namespace:itemName → 顶层资源包提供的 ItemState 决策树根（含根级字段） */
+    /** namespace:itemName → the ItemState decision-tree root provided by the top resource pack (including root-level fields) */
     public static final Map<String, ItemStateRoot> PACK_ITEM_STATES = new ConcurrentHashMap<>();
-    /** 顶层资源包覆盖的模型路径集合 */
+    /** Set of model paths overridden by the top resource pack */
     public static final Set<String> PACK_MODEL_PATHS = ConcurrentHashMap.newKeySet();
-    /** 顶层资源包覆盖的 blockstate 路径集合 */
+    /** Set of blockstate paths overridden by the top resource pack */
     public static final Set<String> PACK_BLOCKSTATE_PATHS = ConcurrentHashMap.newKeySet();
-    /** 顶层资源包覆盖的 ItemState 路径集合 */
+    /** Set of ItemState paths overridden by the top resource pack */
     public static final Set<String> PACK_ITEM_STATE_PATHS = ConcurrentHashMap.newKeySet();
-    /** namespace → 顶层资源包提供的 ModelMappings（整文件替换语义） */
+    /** namespace → the ModelMappings provided by the top resource pack (whole-file replacement semantics) */
     public static final Map<String, VanillaModelManager.ModelMappings> PACK_MAPPINGS = new ConcurrentHashMap<>();
 
-    // ==================== classpath 基线快照（资源包移除时还原用） ====================
+    // ==================== Classpath baseline snapshots (used to restore when a pack is removed) ====================
 
-    /** 首次合并前的 loadedBlockstates 快照（内层 map 浅拷贝） */
+    /** loadedBlockstates snapshot taken before the first merge (shallow copy of the inner map) */
     private static Map<String, Map<String, BlockstateJson>> baselineBlockstates = null;
-    /** 首次合并前的 loadedItemStates 快照（内层 map 浅拷贝） */
+    /** loadedItemStates snapshot taken before the first merge (shallow copy of the inner map) */
     private static Map<String, Map<String, ItemStateNode>> baselineItemStates = null;
-    /** 首次合并前的 loadedOversizedItems 快照 */
+    /** loadedOversizedItems snapshot taken before the first merge */
     private static Map<String, Set<String>> baselineOversizedItems = null;
-    /** 首次合并前的 loadedMappings 快照（内部 blocks/items map 浅拷贝） */
+    /** loadedMappings snapshot taken before the first merge (shallow copy of the inner blocks/items maps) */
     private static Map<String, VanillaModelManager.ModelMappings> baselineMappings = null;
 
-    /** 上一轮重载是否存在 blockstate 覆盖（覆盖被移除时也需重注册以还原） */
+    /** Whether blockstate overrides existed in the previous reload (re-registration is also needed when overrides disappear) */
     private static boolean blockOverridesWereActive = false;
-    /** 上一轮重载是否存在 ItemState 覆盖 */
+    /** Whether ItemState overrides existed in the previous reload */
     private static boolean itemOverridesWereActive = false;
-    /** 上一轮重载是否存在 model_mappings 覆盖 */
+    /** Whether model_mappings overrides existed in the previous reload */
     private static boolean mappingsOverridesWereActive = false;
 
     @Override
@@ -104,9 +110,7 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         clear();
         ModelResolver.clearCache();
         scanAllNamespaces(manager);
-        // 合并覆盖并重注册懒模型（扫描 → 还原基线 → 叠加覆盖 → 重注册）
-        // Merge overrides and re-register lazy models (scan → restore baseline →
-        // overlay → re-register)
+        // Merge overrides and re-register lazy models (scan → restore baseline → overlay → re-register)
         applyOverrides();
         CatFrame.logger.info(
                 "ResourcePackModelDetector: detected {} model overrides, {} blockstate overrides, {} item state overrides, {} mapping overrides",
@@ -131,8 +135,8 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
     }
 
     private static void scanNamespace(IResourceManager manager, String ns) {
-        // 扫描 BlockStates：候选名 = 已加载 blockstate 名 ∪ Block 注册表中属于该 namespace 的方块名
-        // （后者允许资源包为 jar 未提供 blockstate 的方块新增定义）
+        // Scan BlockStates: candidate names = loaded blockstate names ∪ block names of this namespace in the Block registry
+        // (the latter lets a resource pack add definitions for blocks whose blockstate the jar does not provide)
         Map<String, BlockstateJson> nsBlockstates = ModelManagerDataLoader.loadedBlockstates.get(ns);
         Set<String> blockCandidates = new LinkedHashSet<>();
         if (nsBlockstates != null) {
@@ -157,17 +161,12 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
                 List<?> all = manager.getAllResources(loc);
                 if (all == null || all.isEmpty())
                     continue;
-                // 多模组环境下 Forge 的 ModResourcePack 在 mod jar 内找不到资源时会 fallback
-                // 全局 classpath，使本 jar 的 JSON 被每个 mod 的包层重复提供 —— 层数判定必然
-                // 误报（all.size() 恒 ≥2）。改为内容比对：mod fallback 提供的就是 classpath
-                // 上的同一份字节，与基线相同 → 跳过；仅当某层内容异于 classpath 基线
-                // （用户资源包真覆盖/纯新增）时才视为覆盖，且取最后一个异层（最高优先级）。
-                // In multi-mod envs ModResourcePack falls back to the global classpath, so
-                // every mod pack layer re-provides this jar's JSON and layer-count checks
-                // always false-positive. Compare CONTENT instead: the mod fallback serves
-                // the exact classpath bytes (equal to baseline → skip); only a layer whose
-                // content differs from the classpath baseline (real pack override / pure
-                // addition) counts, and the last differing layer wins.
+                // In multi-mod environments Forge's ModResourcePack falls back to the global classpath when a
+                // resource is missing inside the mod jar, so this jar's JSON is re-provided by every mod's pack layer
+                // and layer counting necessarily false-positives (all.size() is always ≥2). Compare content instead: the
+                // mod fallback serves the exact same bytes as the classpath, equal to the baseline → skipped; only a layer
+                // whose content differs from the classpath baseline (real user pack override / pure addition) counts as an
+                // override, and the last differing layer (highest priority) wins.
                 IResource topResource = findTopOverride(all,
                         "/assets/" + ns + "/blockstates/" + blockName + ".json");
                 if (topResource == null)
@@ -182,21 +181,21 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
                     CatFrame.logger.debug("ResourcePackModelDetector: detected top-pack blockstate '{}'", key);
                 }
             } catch (Exception ignored) {
-                // 顶层资源包未覆盖此 blockstate
+                // The top resource pack does not override this blockstate
             }
         }
 
-        // 扫描 items/ ItemState 决策树
+        // Scan items/ ItemState decision trees
         scanItemStates(manager, ns);
 
-        // 扫描资源包覆盖/新增的 model_mappings.json（真正的合并发生在 applyOverrides）
+        // Scan the resource pack for model_mappings.json overrides/additions (the actual merge happens in applyOverrides)
         // Scan pack overrides for model_mappings.json (the merge itself happens in applyOverrides)
         scanMappings(manager, ns);
 
-        // 扫描已知模型路径（仅诊断用途 —— 模型加载本身已经由 ModelResolver 走 IResourceManager）
-        // 用最终生效的 mappings（资源包覆盖优先于 classpath 基线），使覆盖新增的映射
-        // 引用的模型也进入诊断集合
-        // state_mapping 模式下 mappings 值是 state 名而非模型路径，跳过
+        // Scan known model paths (diagnostics only - model loading itself already goes through ModelResolver → IResourceManager)
+        // Use the effective mappings (pack overrides take priority over the classpath baseline) so models referenced by
+        // newly added mappings also enter the diagnostic set
+        // in state_mapping mode the mapping values are state names rather than model paths, so skip
         // Skip state_mapping mode: values are state names, not model paths
         VanillaModelManager.ModelMappings mappings = PACK_MAPPINGS.containsKey(ns)
                 ? PACK_MAPPINGS.get(ns)
@@ -216,14 +215,15 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
     }
 
     /**
-     * 扫描该 namespace 下被资源包覆盖/新增的 {@code items/{name}.json} 决策树。
+     * Scans the {@code items/{name}.json} decision trees overridden/added by resource packs under this namespace.
      * <p>
-     * 候选名 = Item 注册表中属于该 namespace 的物品名 ∪ classpath 已加载的决策树名，
-     * 与 {@code NamespaceLoadTask#loadItemStates} 的自动发现口径一致。
-     * 通过 {@link IResourceManager#getAllResources} 的**内容比对**判断是否为真覆盖：
-     * 仅当某层内容异于 classpath 基线（用户资源包真覆盖/纯新增）时才记录；
-     * 多模组下 Forge ModResourcePack 会 fallback classpath 重复提供本 jar 的 JSON，
-     * 其内容与基线相同，层数判定必然误报，同内容层一律忽略。
+     * Candidate names = item names of this namespace in the Item registry ∪ decision-tree names already loaded
+     * from the classpath, matching the auto-discovery criteria of {@code NamespaceLoadTask#loadItemStates}.
+     * **Content comparison** of {@link IResourceManager#getAllResources} decides whether it is a real override:
+     * only a layer whose content differs from the classpath baseline (a real user pack override / pure addition) is
+     * recorded; in multi-mod setups Forge's ModResourcePack falls back to the classpath and re-provides this jar's
+     * JSON, whose content equals the baseline, so layer counting necessarily false-positives and identical-content
+     * layers are always ignored.
      */
     private static void scanItemStates(IResourceManager manager, String ns) {
         Map<String, ItemStateNode> nsItemStates = ModelManagerDataLoader.loadedItemStates.get(ns);
@@ -251,9 +251,8 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
                 List<?> all = manager.getAllResources(loc);
                 if (all == null || all.isEmpty())
                     continue;
-                // 同 scanNamespace：层数判定在多模组下必然误报，改为内容比对判定
-                // Same as scanNamespace: layer-count checks false-positive in multi-mod
-                // environments; judge by content comparison instead.
+                // Same as scanNamespace: layer counting necessarily false-positives in multi-mod environments;
+                // judge by content comparison instead.
                 IResource topResource = findTopOverride(all,
                         "/assets/" + ns + "/items/" + itemName + ".json");
                 if (topResource == null)
@@ -268,21 +267,23 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
                     CatFrame.logger.debug("ResourcePackModelDetector: detected top-pack item state '{}'", key);
                 }
             } catch (Exception ignored) {
-                // 顶层资源包未覆盖此 ItemState
+                // The top resource pack does not override this ItemState
             }
         }
     }
 
     /**
-     * 扫描该 namespace 下被资源包覆盖/新增的 {@code model_mappings.json}。
+     * Scans for {@code model_mappings.json} overridden/added by resource packs under this namespace.
      * <p>
-     * 与 blockstate/item 扫描一致：通过 {@link IResourceManager#getAllResources} 的
-     * <b>内容比对</b>判定真覆盖（多模组下 Forge ModResourcePack 会 fallback classpath
-     * 重复提供本 jar 的 JSON，其内容与基线相同，层数判定必然误报）。
+     * Consistent with the blockstate/item scan: **content comparison** of
+     * {@link IResourceManager#getAllResources} decides a real override (in multi-mod setups Forge's ModResourcePack
+     * falls back to the classpath and re-provides this jar's JSON, whose content equals the baseline, so layer
+     * counting necessarily false-positives).
      * <p>
-     * 语义注意：mappings 覆盖是<b>整文件替换</b>而非按条目合并 —— 资源包必须提供
-     * 完整的 model_mappings.json（blocks/items 全部条目），jar 版本中未出现在包版本中的
-     * 条目会随之消失。这与 blockstates/items 的按条目合并语义不同。
+     * Semantic note: a mappings override is a <b>whole-file replacement</b> rather than per-entry merging - the pack
+     * must ship a complete model_mappings.json (all blocks/items entries); entries present in the jar version but
+     * absent from the pack version vanish accordingly. This differs from the per-entry merge semantics of
+     * blockstates/items.
      * <p>
      * Scan pack overrides for {@code model_mappings.json}. Unlike blockstates/items the
      * override is a <b>whole-file replacement</b>: the pack must ship the complete file
@@ -294,9 +295,8 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
             List<?> all = manager.getAllResources(loc);
             if (all == null || all.isEmpty())
                 return;
-            // 同 scanNamespace：层数判定在多模组下必然误报，改为内容比对判定
-            // Same as scanNamespace: layer-count checks false-positive in multi-mod
-            // environments; judge by content comparison instead.
+            // Same as scanNamespace: layer counting necessarily false-positives in multi-mod environments;
+            // judge by content comparison instead.
             IResource topResource = findTopOverride(all, "/assets/" + ns + "/model_mappings.json");
             if (topResource == null)
                 return;
@@ -308,7 +308,7 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
                 CatFrame.logger.debug("ResourcePackModelDetector: detected top-pack model mappings '{}'", ns);
             }
         } catch (Exception ignored) {
-            // 顶层资源包未覆盖此 model_mappings
+            // The top resource pack does not override this model_mappings
         }
     }
 
@@ -325,7 +325,7 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         }
         ResourceLocation loc = new ResourceLocation(ns, "models/" + path + ".json");
         try {
-            // 与 blockstate/item 一致：内容比对，忽略 mod fallback 假层
+            // Same as blockstate/item: content comparison, ignoring fake mod-fallback layers
             // Diagnostic only — same content comparison to ignore mod-fallback layers
             List<?> all = manager.getAllResources(loc);
             IResource topResource = findTopOverride(all,
@@ -342,25 +342,26 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
                 CatFrame.logger.debug("ResourcePackModelDetector: detected top-pack model '{}'", key);
             }
         } catch (Exception ignored) {
-            // 顶层资源包未覆盖此模型
+            // The top resource pack does not override this model
         }
     }
 
-    // ==================== 资源包覆盖内容判定 ====================
+    // ==================== Resource-pack override content detection ====================
 
     /**
-     * 在 getAllResources 的层列表中查找最后一个「内容异于 classpath 基线」的层。
+     * Finds the last layer in the getAllResources layer list whose content differs from the classpath baseline.
      * <p>
-     * 1.7.10 中 Forge 的 ModResourcePack 在 mod jar 内找不到资源时会 fallback 到全局
-     * classpath，因此多模组环境下本 jar 自带的 JSON 会被每个 mod 的包层重复提供，
-     * 且提供的正是 classpath 上的同一份字节 —— 层数判定必然误报，而内容比对天然
-     * 排除这些假层：仅当某层内容与 classpath 基线不同（用户资源包真覆盖）或基线
-     * 不存在（资源包纯新增）时才算覆盖，取最后一个异层即最高优先级覆盖。
+     * In 1.7.10 Forge's ModResourcePack falls back to the global classpath when a resource is not found inside the mod
+     * jar, so in multi-mod environments the JSON shipped by this jar is re-provided by every mod's pack layer, and it
+     * serves exactly the same bytes as the classpath - layer counting necessarily false-positives, whereas content
+     * comparison naturally excludes those fake layers: a layer counts as an override only when its content differs
+     * from the classpath baseline (a real user pack override) or the baseline does not exist (a pure pack addition),
+     * and the last differing layer is the highest-priority override.
      *
-     * @param all           getAllResources 返回的完整层列表（可能为空）
-     * @param classpathPath 同一资源在 classpath 上的路径（如
-     *                      /assets/minecraft/blockstates/x.json）
-     * @return 最后一个内容异于基线的层；无真覆盖时返回 null
+     * @param all           the complete layer list returned by getAllResources (may be empty)
+     * @param classpathPath the classpath path of the same resource (e.g.
+     *                      /assets/minecraft/blockstates/x.json)
+     * @return the last layer whose content differs from the baseline; null when there is no real override
      */
     private static IResource findTopOverride(List<?> all, String classpathPath) {
         if (all == null || all.isEmpty())
@@ -379,7 +380,7 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         return override;
     }
 
-    /** 读取输入流全部字节；失败或流为空时返回 null */
+    /** Reads all bytes from the input stream; returns null on failure or when the stream is empty */
     private static byte[] readAll(InputStream in) {
         if (in == null)
             return null;
@@ -401,9 +402,10 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
     }
 
     /**
-     * 浅拷贝 ModelMappings（内部 blocks/items map 拷贝，条目引用共享）。
+     * Shallow-copies a ModelMappings (inner blocks/items maps copied, entries shared).
      * <p>
-     * 基线快照与还原之间不发生条目级修改，浅拷贝足以隔离容器替换。
+     * No entry-level mutation happens between the baseline snapshot and the restore, so a shallow copy suffices to
+     * isolate container replacement.
      * <p>
      * Shallow-copy a ModelMappings (inner blocks/items maps copied, entries shared).
      */
@@ -417,50 +419,37 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         return copy;
     }
 
-    // ==================== 覆盖生效（合并 + 重注册） ====================
+    // ==================== Override application (merge + re-register) ====================
 
     /**
-     * 将扫描到的资源包覆盖合并进模型系统并重注册懒模型。
+     * Merges the scanned resource-pack overrides into the model system and re-registers lazy models.
      * <p>
      * Apply scanned resource-pack overrides into the model system and re-register
      * lazy models.
      * <p>
-     * 流程 / Flow：
+     * Flow:
      * <ol>
-     * <li>按命名空间增量快照 classpath 基线（内层容器浅拷贝；缝合驱动发现后命名空间可能随时新增）
-     * / snapshot classpath baseline per namespace incrementally (shallow-copy inner
-     * containers; stitch-driven discovery can add namespaces at any pass)</li>
-     * <li>还原基线 —— 资源包被移除后覆盖自动消失
-     * / restore baseline so overrides vanish when the pack is removed</li>
-     * <li>叠加本轮扫描到的 blockstate / ItemState 覆盖
-     * / overlay this round's blockstate / ItemState overrides</li>
-     * <li>图集就绪时按需重注册（blockstate 变化走全量，仅 item 变化走增量）
-     * / re-register on demand when the atlas is ready (full for blockstates,
-     * incremental for items only)</li>
+     * <li>Incrementally snapshot the classpath baseline per namespace (shallow-copy the inner containers;
+     * stitch-driven discovery can add namespaces at any pass)</li>
+     * <li>Restore the baseline so overrides vanish when the pack is removed</li>
+     * <li>Overlay this round's blockstate / ItemState overrides</li>
+     * <li>Re-register on demand when the atlas is ready (full for blockstates, incremental for items only)</li>
      * </ol>
-     * 注意：{@code registerReloadListener} 注册时的立即回调场景下图集未就绪，
-     * 此时仅合并数据、跳过重注册（首轮 {@code registerAllModels} 由纹理缝合事件触发）。
+     * Note: during the immediate callback fired by {@code registerReloadListener} the atlas is not ready, so only
+     * data is merged and re-registration is skipped (the first {@code registerAllModels} round is triggered by the
+     * texture stitching event).
      */
     private static void applyOverrides() {
-        // 模型系统尚未初始化（preInit 阶段的立即回调）→ 无基线可合并
-        // Model system not initialized yet (immediate callback during preInit) →
-        // nothing to merge
+        // Model system not initialized yet (immediate callback during preInit) → nothing to merge
         if (!ModelManagerDataLoader.initialized)
             return;
 
-        // 1. 按命名空间增量拍基线 / snapshot classpath baseline per namespace, incrementally
+        // 1. Snapshot the classpath baseline per namespace, incrementally
         //
-        // 发现流程改由纹理缝合驱动后，命名空间可能在任意一轮缝合时新增（迟到的 mod 注册）。
-        // 缝合（TextureMap 监听器）先于本监听器执行，此刻新命名空间的 loaded* 数据仍是纯
-        // classpath 内容（覆盖叠加发生在下方步骤 3），因此在这里补拍安全；若仍用一次性
-        // 全量快照，后续轮次的「还原基线」会把迟到命名空间的数据整个抹掉。
-        // Since discovery became stitch-driven, namespaces may appear at ANY stitch
-        // pass
-        // (late mod registrations). The stitch (TextureMap listener) runs before this
-        // listener, so a newly discovered namespace's loaded* data is still pure
-        // classpath
-        // here (overlays are applied only in step 3 below) — snapshotting now is safe.
-        // A one-shot full snapshot would let the "restore baseline" step wipe them.
+        // Since discovery became stitch-driven, namespaces may appear at any stitch pass (late mod registrations).
+        // The stitch (TextureMap listener) runs before this listener, so a newly discovered namespace's loaded* data
+        // is still pure classpath here (overlays are applied only in step 3 below), making a snapshot safe at this
+        // point; a one-shot full snapshot would instead let the "restore baseline" step wipe late namespaces entirely.
         if (baselineBlockstates == null) {
             baselineBlockstates = new HashMap<>();
             baselineItemStates = new HashMap<>();
@@ -483,7 +472,7 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
             baselineMappings.put(ns, copyMappings(ModelManagerDataLoader.loadedMappings.get(ns)));
         }
 
-        // 2. 还原基线 / restore baseline (so removed packs revert cleanly)
+        // 2. Restore the baseline so removed packs revert cleanly
         ModelManagerDataLoader.loadedBlockstates.clear();
         for (Map.Entry<String, Map<String, BlockstateJson>> e : baselineBlockstates.entrySet()) {
             ModelManagerDataLoader.loadedBlockstates.put(e.getKey(), new HashMap<>(e.getValue()));
@@ -496,9 +485,8 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         for (Map.Entry<String, Set<String>> e : baselineOversizedItems.entrySet()) {
             ModelManagerDataLoader.loadedOversizedItems.put(e.getKey(), new HashSet<>(e.getValue()));
         }
-        // mappings 还原：基线为 null 的 namespace（jar 无此文件）跳过，避免空值进入注册流程
-        // Restore mappings; skip null baselines (namespaces without a jar file must not
-        // inject a null entry into registration)
+        // Restore mappings; skip null baselines (namespaces without a jar file must not inject a null entry into
+        // the registration flow)
         ModelManagerDataLoader.loadedMappings.clear();
         for (Map.Entry<String, VanillaModelManager.ModelMappings> e : baselineMappings.entrySet()) {
             if (e.getValue() != null) {
@@ -506,7 +494,7 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
             }
         }
 
-        // 3. 叠加覆盖 / overlay overrides
+        // 3. Overlay overrides
         for (Map.Entry<String, BlockstateJson> e : PACK_BLOCKSTATES.entrySet()) {
             String key = e.getKey();
             int sep = key.indexOf(':');
@@ -525,7 +513,7 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
             ModelManagerDataLoader.loadedItemStates
                     .computeIfAbsent(ns, k -> new HashMap<>())
                     .put(name, root.model);
-            // oversized_in_gui 根级字段随覆盖同步（false 时清除基线中的旧标记）
+            // Sync the root-level oversized_in_gui (false removes any stale baseline flag)
             // Sync root-level oversized_in_gui (false removes any stale baseline flag)
             Set<String> oversized = ModelManagerDataLoader.loadedOversizedItems
                     .computeIfAbsent(ns, k -> new HashSet<>());
@@ -535,30 +523,24 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
                 oversized.remove(name);
             }
         }
-        // model_mappings 覆盖：整文件替换（资源包文件即最终版本）
         // model_mappings overrides: whole-file replacement (the pack file is authoritative)
         for (Map.Entry<String, VanillaModelManager.ModelMappings> e : PACK_MAPPINGS.entrySet()) {
             ModelManagerDataLoader.loadedMappings.put(e.getKey(), e.getValue());
         }
 
-        // 4. 条件重注册 / conditional re-registration
+        // 4. Conditional re-registration
         boolean anyBlockNow = !PACK_BLOCKSTATES.isEmpty();
         boolean anyItemNow = !PACK_ITEM_STATES.isEmpty();
         boolean anyMappingNow = !PACK_MAPPINGS.isEmpty();
-        // 图集就绪判断：注册时的立即回调发生在缝合之前，此时跳过重注册
-        // Atlas-ready check: the immediate callback on registration happens before
-        // stitching
+        // Atlas-ready check: the immediate callback on registration happens before stitching
         boolean atlasReady = !VanillaTextureTracker.textureIcons.isEmpty();
         if (atlasReady) {
             if (anyBlockNow || blockOverridesWereActive
                     || anyMappingNow || mappingsOverridesWereActive) {
-                // blockstate/mapping 覆盖出现或消失 → 全量重注册（同时覆盖 item 侧；
-                // mapping 可能改变 block 侧注册）
-                // Blockstate/mapping overrides appeared/vanished → full re-registration
-                // (covers items too; mappings may change the block side)
+                // Blockstate/mapping overrides appeared/vanished → full re-registration (covers items too;
+                // mappings may change the block side)
                 VanillaModelManager.Baking.registerAllModels();
             } else if (anyItemNow || itemOverridesWereActive) {
-                // 仅 ItemState 覆盖变化 → 增量重建物品 wrapper
                 // Only ItemState overrides changed → incremental item wrapper rebuild
                 VanillaModelManager.Baking.registerItemModels();
             }
@@ -568,11 +550,11 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         mappingsOverridesWereActive = anyMappingNow;
     }
 
-    // ==================== 注册 ====================
+    // ==================== Registration ====================
 
     /**
-     * 注册此监听器到 Minecraft 资源管理器。
-     * 安全地在 mod init 调用 —— 若资源管理器未就绪，通过一次性 Tick 延迟注册。
+     * Registers this listener with the Minecraft resource manager.
+     * Safe to call from mod init - if the resource manager is not ready, registration is deferred via a one-shot Tick.
      */
     public static void register() {
         Minecraft mc = Minecraft.getMinecraft();
@@ -599,44 +581,44 @@ public class ResourcePackModelDetector implements IResourceManagerReloadListener
         }
     }
 
-    // ==================== 查询 API ====================
+    // ==================== Query API ====================
 
-    /** 顶层资源包是否覆盖了指定模型？ */
+    /** Does the top resource pack override the given model? */
     public static boolean hasModelOverride(String ns, String path) {
         return PACK_MODEL_PATHS.contains(ns + ":" + path);
     }
 
-    /** 顶层资源包是否覆盖了指定 blockstate？ */
+    /** Does the top resource pack override the given blockstate? */
     public static boolean hasBlockstateOverride(String ns, String blockName) {
         return PACK_BLOCKSTATE_PATHS.contains(ns + ":" + blockName);
     }
 
-    /** 获取顶层资源包的模型 JSON，或 null */
+    /** Gets the top resource pack's model JSON, or null */
     public static ModelJson getTopModel(String ns, String path) {
         return PACK_MODELS.get(ns + ":" + path);
     }
 
-    /** 获取顶层资源包的 Blockstate JSON，或 null */
+    /** Gets the top resource pack's Blockstate JSON, or null */
     public static BlockstateJson getTopBlockstate(String ns, String blockName) {
         return PACK_BLOCKSTATES.get(ns + ":" + blockName);
     }
 
-    /** 获取所有被覆盖的模型路径（不可变视图，用于调试） */
+    /** Gets all overridden model paths (immutable view, for debugging) */
     public static Set<String> getOverriddenModelPaths() {
         return Collections.unmodifiableSet(PACK_MODEL_PATHS);
     }
 
-    /** 获取所有被覆盖的 blockstate 路径（不可变视图，用于调试） */
+    /** Gets all overridden blockstate paths (immutable view, for debugging) */
     public static Set<String> getOverriddenBlockstatePaths() {
         return Collections.unmodifiableSet(PACK_BLOCKSTATE_PATHS);
     }
 
-    /** 顶层资源包是否覆盖了指定 namespace 的 model_mappings？ */
+    /** Does the top resource pack override the model_mappings of the given namespace? */
     public static boolean hasMappingOverride(String ns) {
         return PACK_MAPPINGS.containsKey(ns);
     }
 
-    /** 获取顶层资源包的 model_mappings，或 null */
+    /** Gets the top resource pack's model_mappings, or null */
     public static VanillaModelManager.ModelMappings getTopMappings(String ns) {
         return PACK_MAPPINGS.get(ns);
     }

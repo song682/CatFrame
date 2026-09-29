@@ -24,72 +24,73 @@ import javax.vecmath.Matrix4d;
 import javax.vecmath.Vector3d;
 
 /**
- * Forge {@link IItemRenderer}，将 CatFrame 模型系统接入 Forge 物品渲染管线。
+ * Forge {@link IItemRenderer} that wires the CatFrame model system into the Forge item render pipeline.
  *
- * <h3>核心设计</h3>
+ * <h3>Core design</h3>
  * <ul>
- *   <li><b>物品模型独立于方块模型</b>——物品渲染只通过
- *       {@link ModelRegistry#getRegisteredItemModel} 查找 {@code registeredItemModels}
- *       中显式注册的 {@link IItemStateProvider}（items/ItemState）。
- *       历史上曾对 ItemBlock 自动回退到 {@code registeredBlockModels} 并包装为
- *       {@code BlockStateItemState}，该机制已移除——未实现 ItemState 的方块物品
- *       退回原版物品渲染。</li>
- *   <li><b>{@link #shouldUseRenderHelper} 对 EQUIPPED_BLOCK 返回 true
- *       （所有物品，统一让 Forge 做 translate(-0.5) 前置），对 INVENTORY_BLOCK 始终返回 false</b>——
- *       手持路径让 Forge 做 translate(-0.5) 前置，GUI 路径不依赖 Forge，
- *       等距旋转完全由 model JSON 的 {@code display.gui} 字段控制，
- *       由 {@link DisplayTransformExtension} 在
- *       {@link UniformRenderPipeline#renderItemQuads} 中消费。</li>
+ *   <li><b>Item models are independent of block models</b> - item rendering only looks up the
+ *       {@link IItemStateProvider} explicitly registered in {@code registeredItemModels}
+ *       (items/ItemState) via {@link ModelRegistry#getRegisteredItemModel}.
+ *       Historically ItemBlock auto-fell back to {@code registeredBlockModels} and was wrapped as
+ *       {@code BlockStateItemState}; that mechanism has been removed - block items that do not
+ *       implement ItemState fall back to vanilla item rendering.</li>
+ *   <li><b>{@link #shouldUseRenderHelper} returns true for EQUIPPED_BLOCK
+ *       (all items, uniformly letting Forge apply the translate(-0.5) pre-transform), and always returns false for INVENTORY_BLOCK</b> -
+ *       the hand path lets Forge apply the translate(-0.5) pre-transform, while the GUI path does not depend on Forge;
+ *       the isometric rotation is entirely controlled by the model JSON's {@code display.gui} field,
+ *       consumed by {@link DisplayTransformExtension} in
+ *       {@link UniformRenderPipeline#renderItemQuads}.</li>
  * </ul>
  *
- * <h3>ItemRenderType → RenderPhase 映射</h3>
+ * <h3>ItemRenderType → RenderPhase mapping</h3>
  * <ul>
- *   <li>{@link ItemRenderType#ENTITY} → {@link RenderPhase#DROPPED_ITEM_GROUND}（普通物品）/
- *       {@link RenderPhase#DROPPED_BLOCK_GROUND}（方块物品）</li>
+ *   <li>{@link ItemRenderType#ENTITY} → {@link RenderPhase#DROPPED_ITEM_GROUND} (regular items) /
+ *       {@link RenderPhase#DROPPED_BLOCK_GROUND} (block items)</li>
  *   <li>{@link ItemRenderType#EQUIPPED} → {@link RenderPhase#ITEM_HAND_THIRD_PERSON}
- *       （宿主为头部槽时细化为 {@link RenderPhase#ITEM_HEAD}——玩家头盔槽 / 怪物头顶
- *       装备槽 / 雪傀儡南瓜，见 {@code resolveHeadSlotKind}）</li>
+ *       (refined to {@link RenderPhase#ITEM_HEAD} when the host is a head slot - player helmet slot / mob head
+ *       equipment slot / snow golem pumpkin, see {@code resolveHeadSlotKind})</li>
  *   <li>{@link ItemRenderType#EQUIPPED_FIRST_PERSON} → {@link RenderPhase#ITEM_HAND_FIRST_PERSON}</li>
  *   <li>{@link ItemRenderType#INVENTORY} → {@link RenderPhase#ITEM_GUI}</li>
- *   <li>{@link ItemRenderType#FIRST_PERSON_MAP} → 不接管</li>
+ *   <li>{@link ItemRenderType#FIRST_PERSON_MAP} → not handled</li>
  * </ul>
  *
- * <h3>Forge 前置变换与反抵消</h3>
- * Forge 在 {@code ForgeHooksClient.renderEquippedItem} 中：
+ * <h3>Forge pre-transforms and their inverse cancellation</h3>
+ * In {@code ForgeHooksClient.renderEquippedItem}, Forge applies:
  * <ul>
- *   <li>{@code EQUIPPED_BLOCK=true}：{@code translate(-0.5, -0.5, -0.5)}</li>
- *   <li>{@code EQUIPPED_BLOCK=false}：{@code scale(1.5) + rotate(50°Y, 335°Z)}</li>
+ *   <li>{@code EQUIPPED_BLOCK=true}: {@code translate(-0.5, -0.5, -0.5)}</li>
+ *   <li>{@code EQUIPPED_BLOCK=false}: {@code scale(1.5) + rotate(50°Y, 335°Z)}</li>
  * </ul>
- * Forge 在 {@code ForgeHooksClient.renderInventoryItem} 中：
+ * In {@code ForgeHooksClient.renderInventoryItem}, Forge applies:
  * <ul>
- *   <li>{@code INVENTORY_BLOCK=true}：{@code scale(10) → translate(1, 0.5, 1)
- *       → scale(1,1,-1) → rotate(210°X, 45°Y, -90°Y)}（3D 等距）</li>
- *   <li>{@code INVENTORY_BLOCK=false}：简单 translate</li>
+ *   <li>{@code INVENTORY_BLOCK=true}: {@code scale(10) → translate(1, 0.5, 1)
+ *       → scale(1,1,-1) → rotate(210°X, 45°Y, -90°Y)} (3D isometric)</li>
+ *   <li>{@code INVENTORY_BLOCK=false}: a simple translate</li>
  * </ul>
  *
- * <p>{@link #renderItem} 中对 EQUIPPED/EQUIPPED_FIRST_PERSON 路径：
- * 第一人称额外反抵消 Forge 的 rotate(45°Y)+scale(0.4)，
- * 所有物品统一反抵消 ForgeHooksClient 的 translate(-0.5) 偏移。
- * INVENTORY 路径的 Forge 3D 变换靠模型自身的 display transform 配合，
- * 不需要额外处理。</p>
+ * <p>For the EQUIPPED/EQUIPPED_FIRST_PERSON paths in {@link #renderItem}:
+ * first person additionally cancels Forge's rotate(45°Y)+scale(0.4),
+ * and all items uniformly cancel ForgeHooksClient's translate(-0.5) offset.
+ * The Forge 3D transform on the INVENTORY path is handled in tandem with the model's own display transform,
+ * requiring no extra processing.</p>
  */
 public class RenderJsonItemModel implements IItemRenderer {
 
-    /** 单例，所有物品共用（渲染逻辑委托给各 IItemStateProvider）。 */
+    /** Singleton shared by all items (render logic is delegated to each IItemStateProvider). */
     public static final RenderJsonItemModel INSTANCE = new RenderJsonItemModel();
 
     /**
-     * 当前渲染线程正在渲染的掉落物实体（仅 ENTITY 阶段，由 Forge {@code renderEntityItem}
-     * 经 {@link #renderItem} 的 data[1] 传入）。客户端渲染单线程、提交与写入同栈，
-     * 普通静态字段即可；非掉落物渲染（GUI / 手持 / 展示框等）恒为 null。
+     * The dropped-item entity currently being rendered by the render thread (ENTITY phase only, passed in by Forge's
+     * {@code renderEntityItem} via data[1] of {@link #renderItem}). Client rendering is single-threaded and submission
+     * and writing share the same stack, so a plain static field suffices; it is always null for non-dropped rendering
+     * (GUI / hand / item frame, etc.).
      */
     @javax.annotation.Nullable
     private static EntityItem currentDroppedEntity;
 
     /**
-     * 供 QuadWriter 在掉落物阶段采样实体位置世界光照的上下文读取口。
+     * Context accessor for QuadWriter to sample world light at the entity position during the dropped phase.
      *
-     * @return 当前掉落物实体；非掉落物阶段或上下文已清除时为 null
+     * @return the current dropped entity; null outside the dropped phase or after the context has been cleared
      */
     @javax.annotation.Nullable
     public static EntityItem getCurrentDroppedEntity() {
@@ -97,14 +98,14 @@ public class RenderJsonItemModel implements IItemRenderer {
     }
 
     /**
-     * 当前渲染线程正在渲染的物品附着实体（仅附着阶段——手持 / 头部槽，由 Forge
-     * {@code renderEquippedItem} / {@code ItemRenderer.renderItem} 经 {@link #renderItem}
-     * 的 data[1] 传入）。客户端渲染单线程、提交与写入同栈，普通静态字段即可；
-     * 非附着渲染（GUI / 掉落物 / 展示框等）恒为 null。
+     * The item-attached entity currently being rendered by the render thread (attached phases only - hand / head slot,
+     * passed in by Forge's {@code renderEquippedItem} / {@code ItemRenderer.renderItem} via data[1] of
+     * {@link #renderItem}). Client rendering is single-threaded and submission and writing share the same stack, so a
+     * plain static field suffices; it is always null for non-attached rendering (GUI / dropped item / item frame, etc.).
      * <p>
-     * 供 {@code RenderPhasePolicy} 在附着阶段按附着实体（怪物 / 其他玩家 / 雪傀儡）位置
-     * 采样世界光照（对标原版 {@code RenderManager.renderEntityStatic} 的实体光照贴图语义），
-     * 避免按本地玩家位置取光导致的错位高亮。
+     * Lets {@code RenderPhasePolicy} sample world light at the attached entity's position (mob / other player / snow golem)
+     * during attached phases (mirroring vanilla {@code RenderManager.renderEntityStatic}'s entity lightmap semantics),
+     * avoiding misaligned highlighting caused by sampling light at the local player's position.
      * <p>
      * The entity the item is attached to (in hand or on the head slot), visible only
      * inside {@link #renderItem}'s attached-item window; lets the brightness policy
@@ -114,9 +115,10 @@ public class RenderJsonItemModel implements IItemRenderer {
     private static EntityLivingBase currentHolderEntity;
 
     /**
-     * 供 {@code RenderPhasePolicy} 在附着阶段（手持 / 头部槽）采样附着实体光照的上下文读取口。
+     * Context accessor for {@code RenderPhasePolicy} to sample attached-entity light during attached phases
+     * (hand / head slot).
      *
-     * @return 当前附着实体；非附着阶段或上下文已清除时为 null
+     * @return the current attached entity; null outside attached phases or after the context has been cleared
      */
     @javax.annotation.Nullable
     public static EntityLivingBase getCurrentHolderEntity() {
@@ -128,29 +130,29 @@ public class RenderJsonItemModel implements IItemRenderer {
     // ==================== handleRenderType ====================
 
     /**
-     * 检查 CatFrame 是否接管该物品在指定阶段的渲染。
+     * Checks whether CatFrame takes over rendering of this item in the given phase.
      *
-     * <p>所有物品（含 {@link ItemBlock}）统一通过
-     * {@link ModelRegistry#getRegisteredItemModel} 获取注册的
-     * {@link IItemStateProvider}，再将其
-     * {@link IItemStateProvider#handles(RenderPhase)} 映射到 Forge 的
-     * {@code handleRenderType} 返回值。未显式注册物品模型的方块物品
-     * 返回 false，退回原版渲染。</p>
+     * <p>All items (including {@link ItemBlock}) uniformly obtain the registered
+     * {@link IItemStateProvider} via
+     * {@link ModelRegistry#getRegisteredItemModel}, then map its
+     * {@link IItemStateProvider#handles(RenderPhase)} to Forge's
+     * {@code handleRenderType} return value. Block items that do not explicitly register
+     * an item model return false and fall back to vanilla rendering.</p>
      *
-     * <p>这样，实现了 {@code handles()} 的 IItemState 可以精细控制
-     * 哪些阶段由 CatFrame 接管、哪些退回原版渲染。
-     * 例如 {@code handles(ITEM_GUI) = false} 的模型在 GUI 会走原版 2D，
-     * 而 {@code handles(ITEM_HAND_*) = true} 的手持阶段走自定义 3D。</p>
+     * <p>This lets an IItemState that implements {@code handles()} finely control
+     * which phases CatFrame takes over and which fall back to vanilla rendering.
+     * For example, a model with {@code handles(ITEM_GUI) = false} uses vanilla 2D in the GUI,
+     * while its hand phases with {@code handles(ITEM_HAND_*) = true} use the custom 3D path.</p>
      *
-     * <p>FIRST_PERSON_MAP 不接管——地图物品专用路径。</p>
+     * <p>FIRST_PERSON_MAP is not handled - the map item has a dedicated path.</p>
      */
     @Override
     public boolean handleRenderType(ItemStack item, ItemRenderType type) {
         if (item == null || item.getItem() == null) return false;
         if (type == ItemRenderType.FIRST_PERSON_MAP) return false;
 
-        // 统一路径：通过 getRegisteredItemModel 获取显式注册的物品模型
-        // （方块物品不再自动 fallback，未注册则退回原版渲染）
+        // Unified path: obtain the explicitly registered item model via getRegisteredItemModel
+        // (block items no longer auto-fallback; unregistered ones fall back to vanilla rendering)
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(item.getItem());
         if (model == null) return false;
 
@@ -163,22 +165,22 @@ public class RenderJsonItemModel implements IItemRenderer {
     // ==================== shouldUseRenderHelper ====================
 
     /**
-     * EQUIPPED_BLOCK 对所有物品返回 true，让 Forge 统一应用
-     * {@code translate(-0.5, -0.5, -0.5)} 前置变换。
-     * 原先非方块物品走 EQUIPPED_BLOCK=false 路径，会触发 Forge 的 legacy 2D
-     * 变换链 ({@code translate + scale(1.5) + rotate(50°Y) + rotate(335°Z) + translate})，
-     * 这些变换与 26.1 {@code ItemTransform.apply()} 语义不兼容。
-     * 统一走 EQUIPPED_BLOCK=true 路径后，只需在 {@link #renderItem} 中
-     * 反抵消 {@code translate(-0.5)} 即可回归干净的模型空间。
+     * Returns true for EQUIPPED_BLOCK for all items, so Forge uniformly applies the
+     * {@code translate(-0.5, -0.5, -0.5)} pre-transform.
+     * Previously non-block items took the EQUIPPED_BLOCK=false path, which triggered Forge's legacy 2D
+     * transform chain ({@code translate + scale(1.5) + rotate(50°Y) + rotate(335°Z) + translate});
+     * those transforms are incompatible with the 26.1 {@code ItemTransform.apply()} semantics.
+     * After uniformly taking the EQUIPPED_BLOCK=true path, it suffices to cancel
+     * {@code translate(-0.5)} in {@link #renderItem} to return to a clean model space.
      *
-     * <p>INVENTORY_BLOCK 始终返回 false——所有物品在 GUI 走同一条路径：
-     * 等距旋转由 model JSON 的 {@code display.gui} 字段（rotation + scale）
-     * + 管线的 {@code scale(16, -16, 16)} 投影构成，
-     * 不再依赖 Forge 的 legacy 等距变换（{@code scale(10) + rotate}）。
+     * <p>INVENTORY_BLOCK always returns false - all items take the same path in the GUI:
+     * the isometric rotation is formed by the model JSON's {@code display.gui} field (rotation + scale)
+     * plus the pipeline's {@code scale(16, -16, 16)} projection,
+     * no longer relying on Forge's legacy isometric transform ({@code scale(10) + rotate}).
      *
-     * <p>Model JSON 的 {@code display} 字段在烘焙时存入
-     * {@code BlockStateModelPart.partDisplay}，由 {@link DisplayTransformExtension}
-     * 在扩展链中消费。</p>
+     * <p>The model JSON's {@code display} field is stored into
+     * {@code BlockStateModelPart.partDisplay} at bake time and consumed by {@link DisplayTransformExtension}
+     * in the extension chain.</p>
      */
     @Override
     public boolean shouldUseRenderHelper(ItemRenderType type, ItemStack item, ItemRendererHelper helper) {
@@ -186,19 +188,19 @@ public class RenderJsonItemModel implements IItemRenderer {
             case EQUIPPED_BLOCK:
                 return true;
             case BLOCK_3D:
-                // 统一所有自定义渲染物品走 RenderPlayer 方块路径，
-                // 避免非方块物品落入 isFull3D() / else 分支（变换不一致）
-                // 但 ENTITY 类型除外——Forge 在 BLOCK_3D=true 时走 3D 分支
-                // 预应用 scale(0.5 或 0.25)，与 display.ground 叠加导致过小
+                // Route all custom-rendered items through the RenderPlayer block path,
+                // so non-block items do not fall into the isFull3D() / else branch (inconsistent transforms)
+                // except for the ENTITY type - when BLOCK_3D=true Forge takes the 3D branch and
+                // pre-applies scale(0.5 or 0.25), which stacks with display.ground and makes the item too small
                 return type != ItemRenderType.ENTITY;
             case ENTITY_ROTATION:
-                // 掉落物 Y 轴旋转动画（spin）
-                // Forge renderEntityItem 会 glRotatef(rotation, 0, 1, 0)，
-                // 对齐 26.1.2 GroundItemTransforms 的 spin 旋转语义
+                // Dropped-item Y-axis spin animation
+                // Forge's renderEntityItem calls glRotatef(rotation, 0, 1, 0),
+                // aligning with the 26.1.2 GroundItemTransforms spin rotation semantics
                 return type == ItemRenderType.ENTITY;
             case ENTITY_BOBBING:
-                // 返回 true = 保留 Forge 的 bobbing 浮动效果（世界级别）
-                // display.ground.translation 负责模型级别的垂直偏移
+                // Returning true = keep Forge's bobbing float effect (world-level)
+                // display.ground.translation handles the model-level vertical offset
                 return type == ItemRenderType.ENTITY;
             case INVENTORY_BLOCK:
                 return false;
@@ -210,39 +212,39 @@ public class RenderJsonItemModel implements IItemRenderer {
     // ==================== renderItem ====================
 
     /**
-     * 统一渲染入口。
+     * Unified render entry point.
      *
-     * <h3>Forge 前置变换与反抵消</h3>
-     * <p>Forge 在调用 {@code renderItem} 前已经做过一批 GL 变换，
-     * 这些变换与 26.1 的 {@code ItemTransform.apply()} 语义不兼容。
-     * 为了让后续的 {@link DisplayTransformExtension} 在干净的模型空间干活，
-     * 需要先反抵消掉 Forge 的遗留变换：</p>
+     * <h3>Forge pre-transforms and their inverse cancellation</h3>
+     * <p>Before calling {@code renderItem}, Forge has already applied a batch of GL transforms
+     * that are incompatible with the 26.1 {@code ItemTransform.apply()} semantics.
+     * To let the subsequent {@link DisplayTransformExtension} work in a clean model space,
+     * Forge's legacy transforms must first be cancelled:</p>
      *
      * <pre>{@code
-     * EQUIPPED_FIRST_PERSON (第一人称，所有物品):
+     * EQUIPPED_FIRST_PERSON (first person, all items):
      *   Forge renderItemInFirstPerson: rotate(45°Y) + scale(0.4)
-     *   反抵消: scale(2.5) + rotate(-45°Y) → 净效果 = I
+     *   cancel: scale(2.5) + rotate(-45°Y) → net effect = I
      *   ForgeHooksClient (EQUIPPED_BLOCK=true): translate(-0.5, -0.5, -0.5)
-     *   反抵消: translate(+0.5, +0.5, +0.5) → 净效果 = I
+     *   cancel: translate(+0.5, +0.5, +0.5) → net effect = I
      *
-     * EQUIPPED (第三人称，所有物品):
+     * EQUIPPED (third person, all items):
      *   ForgeHooksClient (EQUIPPED_BLOCK=true): translate(-0.5, -0.5, -0.5)
-     *   反抵消: translate(+0.5, +0.5, +0.5) → 净效果 = I
+     *   cancel: translate(+0.5, +0.5, +0.5) → net effect = I
      *
-     * INVENTORY (所有物品 GUI):
-     *   Forge: 简单 2D translate → 无 Forge 等距旋转
-     *   → DisplayTransformExtension 应用 display.gui (rotate → scale)
-     *   → 管线 scale(16, -16, 16) 投影到 16×16 GUI 槽位
-     *   等距变换完全由 model JSON 的 display.gui 字段控制，对齐 26.1 语义
+     * INVENTORY (all items in the GUI):
+     *   Forge: simple 2D translate → no Forge isometric rotation
+     *   → DisplayTransformExtension applies display.gui (rotate → scale)
+     *   → pipeline scale(16, -16, 16) projects into the 16×16 GUI slot
+     *   the isometric transform is entirely controlled by the model JSON's display.gui field, aligned with 26.1 semantics
      * }</pre>
      *
-     * <p>反抵消后进入干净的模型空间 [0,1]³，
+     * <p>After cancellation it enters a clean model space [0,1]³,
      * {@code model.render(stack, phase)} → {@link UniformRenderPipeline#renderItemQuads}
-     * → {@link DisplayTransformExtension} 在扩展链中应用 JSON model 的
-     * {@code display} 变换（translate(-0.5) 中心偏移 → scale → rotate → translate）。</p>
+     * → {@link DisplayTransformExtension} applies the JSON model's
+     * {@code display} transform in the extension chain (translate(-0.5) center offset → scale → rotate → translate).</p>
      *
-     * <p>模型查找通过 {@link ModelRegistry#getRegisteredItemModel}，
-     * 只返回显式注册的物品模型；未注册的方块物品退回原版渲染。</p>
+     * <p>Model lookup goes through {@link ModelRegistry#getRegisteredItemModel}
+     * and returns only explicitly registered item models; unregistered block items fall back to vanilla rendering.</p>
      */
     @Override
     public void renderItem(ItemRenderType type, ItemStack stack, Object... data) {
@@ -251,7 +253,7 @@ public class RenderJsonItemModel implements IItemRenderer {
         RenderPhase phase = toRenderPhase(type, stack);
         if (phase == null) return;
 
-        // ---- 提取手持实体 / 掉落物实体（data[0]=renderBlocks, data[1]=entity） ----
+        // ---- Extract the holder entity / dropped entity (data[0]=renderBlocks, data[1]=entity) ----
         EntityLivingBase entity = null;
         EntityItem droppedEntity = null;
         if (data != null && data.length > 1) {
@@ -260,30 +262,32 @@ public class RenderJsonItemModel implements IItemRenderer {
             } else if ((phase == RenderPhase.DROPPED_ITEM_GROUND
                     || phase == RenderPhase.DROPPED_BLOCK_GROUND)
                     && data[1] instanceof EntityItem) {
-                // Forge renderEntityItem 传入的 EntityItem（非 EntityLivingBase）：
-                // 建立掉落物亮度上下文，供 QuadWriter 写入顶点时采样实体位置世界光照，
-                // 使夜间/无光源处掉落物与环境同暗（对标附着阶段 holderBrightness 语义）。
+                // The EntityItem (not an EntityLivingBase) passed in by Forge's renderEntityItem:
+                // establish the dropped-item brightness context so QuadWriter can sample world light at the entity
+                // position when writing vertices, making dropped items as dark as their surroundings at night / with no light source
+                // (mirroring the attached-phase holderBrightness semantics).
                 droppedEntity = (EntityItem) data[1];
             }
         }
 
-        // ---- 头部槽细化（EQUIPPED 且命中头部槽判定时替换为 ITEM_HEAD） ----
-        // 1.7.10 三处头部宿主（玩家头盔槽 / 怪物头顶装备槽 / 雪傀儡南瓜）均以
-        // EQUIPPED 类型到达；判定依据宿主渲染器与 heldItem 引用（见 resolveHeadSlotKind）。
+        // ---- Head slot refinement (replace with ITEM_HEAD when EQUIPPED and the head slot test matches) ----
+        // In 1.7.10, the three head hosts (player helmet slot / mob head equipment slot / snow golem pumpkin) all
+        // arrive as EQUIPPED; the test uses the host renderer and the heldItem reference (see resolveHeadSlotKind).
         if (type == ItemRenderType.EQUIPPED && resolveHeadSlotKind(entity, stack) != null) {
             phase = RenderPhase.ITEM_HEAD;
         }
 
-        // ---- 计算反抵消预变换 ----
-        // 将反抵消变换计算为 Matrix4d 矩阵，由管线在顶点提交时统一变换
+        // ---- Compute the inverse-cancellation pre-transform ----
+        // Compute the inverse-cancellation transform as a Matrix4d matrix, applied uniformly by the pipeline when submitting vertices
         Matrix4d preTransform = computePreTransform(type, entity, stack);
 
-        // ---- 附着实体上下文（手持 / 头部槽阶段） ----
-        // 与掉落实体同构：供 RenderPhasePolicy 在冲刷期按附着实体（怪物 / 其他玩家 / 雪傀儡）
-        // 位置采样光照；固定取本地玩家位置光会让远处实体的附着物品呈现错位高亮。
+        // ---- Attached-entity context (hand / head slot phases) ----
+        // Isomorphic to the dropped entity: lets RenderPhasePolicy sample light at the attached entity's position
+        // (mob / other player / snow golem) during the flush; always sampling light at the local player's position
+        // would render attached items of distant entities with misaligned highlighting.
         EntityLivingBase holderEntity = phase.isAttachedItemPhase() ? entity : null;
 
-        // getRegisteredItemModel 只返回显式注册的物品模型（无方块 fallback）
+        // getRegisteredItemModel returns only explicitly registered item models (no block fallback)
         IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
         if (model == null) return;
 
@@ -305,56 +309,56 @@ public class RenderJsonItemModel implements IItemRenderer {
         }
     }
 
-    // ==================== 内部映射 ====================
+    // ==================== Internal mappings ====================
 
     /**
-     * 计算反抵消预变换矩阵。
+     * Computes the inverse-cancellation pre-transform matrix.
      * <p>
-     * Forge 在调用 {@code renderItem} 前已经做过一批 GL 变换（见 {@link #shouldUseRenderHelper}），
-     * 这些变换与 26.1 的 {@code ItemTransform.apply()} 语义不兼容。
-     * 本方法将反抵消操作计算为 {@link Matrix4d} 矩阵，
-     * 由管线在顶点提交时应用于顶点坐标。
+     * Before calling {@code renderItem}, Forge has already applied a batch of GL transforms (see {@link #shouldUseRenderHelper}),
+     * which are incompatible with the 26.1 {@code ItemTransform.apply()} semantics.
+     * This method computes the inverse-cancellation operation as a {@link Matrix4d} matrix,
+     * applied by the pipeline to vertex coordinates when submitting vertices.
      * <p>
-     * 矩阵构造顺序与 GL 后乘顺序一致：先调用的操作对应最终矩阵左乘。
+     * The matrix construction order matches GL's post-multiply order: an operation called earlier corresponds to a left multiplication of the final matrix.
      *
-     * @param type   Forge 物品渲染类型
-     * @param entity 附着物品的实体（可能为 null，用于 EQUIPPED 阶段判断头部槽 /
-     *               RenderWitch 宿主 / RenderBiped vs RenderPlayer 分流）
-     * @param stack  物品栈（用于 EQUIPPED 阶段判断物品类型与头部槽归属）
-     * @return 反抵消 Matrix4d 矩阵，若无需要返回 null
+     * @param type   Forge item render type
+     * @param entity the entity the item is attached to (may be null; used during EQUIPPED to determine head slot /
+     *               RenderWitch host / RenderBiped vs RenderPlayer routing)
+     * @param stack  the item stack (used during EQUIPPED to determine item type and head slot ownership)
+     * @return the inverse-cancellation Matrix4d matrix, or null if none is needed
      */
     @javax.annotation.Nullable
     private static Matrix4d computePreTransform(ItemRenderType type,
                                                  @javax.annotation.Nullable EntityLivingBase entity,
                                                  @javax.annotation.Nullable ItemStack stack) {
         if (type == ItemRenderType.INVENTORY) {
-            // GUI：将模型空间 [0,1]³ 映射到 16×16 像素 GUI 槽位
-            // Forge 已经设置了 glTranslatef(x, y, -3+zLevel) 定位到槽位原点
-            // 需要将 display-centered 顶点 [-0.5,0.5]³ 映射到 [0,16]×[16,0]×[-8,8] 像素空间
-            // 变换: T(8,8,0) × S(16,-16,16)
-            // 与 display transform T(-0.5) 组合后:
+            // GUI: map model space [0,1]³ to a 16×16 pixel GUI slot
+            // Forge has already set glTranslatef(x, y, -3+zLevel) to position at the slot origin
+            // display-centered vertices [-0.5,0.5]³ must be mapped to the [0,16]×[16,0]×[-8,8] pixel space
+            // transform: T(8,8,0) × S(16,-16,16)
+            // combined with the display transform T(-0.5):
             //   v' = T(8,8,0) × S(16,-16,16) × T(-0.5) × v
-            //   v(0,0,0) → (0, 16, -8) 左上角
-            //   v(1,1,1) → (16, 0, 8)  右下角
+            //   v(0,0,0) → (0, 16, -8) top-left corner
+            //   v(1,1,1) → (16, 0, 8)  bottom-right corner
             Matrix4d m = new Matrix4d();
             m.setIdentity();
             Matrix4d tmp = new Matrix4d();
 
-            // 先平移 (8, 8, 0)
+            // first translate (8, 8, 0)
             tmp.setIdentity();
             tmp.setTranslation(new Vector3d(8.0, 8.0, 0.0));
             m.mul(tmp);
 
-            // 再缩放 (16, -16, 16) — 翻转 Y 使 GUI Y-down 匹配模型 Y-up
+            // then scale (16, -16, 16) — flip Y so GUI Y-down matches model Y-up
             tmp.setIdentity();
             tmp.m00 = 16.0; tmp.m11 = -16.0; tmp.m22 = 16.0;
             m.mul(tmp);
 
             return m;
         } else if (type == ItemRenderType.EQUIPPED_FIRST_PERSON) {
-            // Forge 调用链: rotate(45°Y) → swing_rot → scale(0.4) → [FHClient: translate(-0.5)]
-            // 反抵消矩阵: T(0.5) × S(2.5) × RY(-45)
-            // 构造顺序与 GL 同序（后乘）：先 T 再 S 再 R
+            // Forge call chain: rotate(45°Y) → swing_rot → scale(0.4) → [FHClient: translate(-0.5)]
+            // inverse-cancellation matrix: T(0.5) × S(2.5) × RY(-45)
+            // construction order matches GL (post-multiply): T first, then S, then R
             Matrix4d m = new Matrix4d();
             m.setIdentity();
             Matrix4d tmp = new Matrix4d();
@@ -368,12 +372,12 @@ public class RenderJsonItemModel implements IItemRenderer {
             m.mul(tmp);
             return m;
         } else if (type == ItemRenderType.EQUIPPED) {
-            // 附着物品：先按宿主渲染器分流头部槽 / 女巫，再按实体 + 物品类型分流手持
+            // Attached item: first route to head slot / witch by host renderer, then route the hand by entity + item type
             Render hostRenderer = getHostRenderer(entity);
 
-            // ① 头部槽（玩家头盔槽 / 怪物头顶装备槽 / 雪傀儡南瓜）：
-            //    1.7.10 三处宿主均以 EQUIPPED 类型到达（见 resolveHeadSlotKind 判定），
-            //    变换链与手持完全不同，需独立反抵消 + 26.1 头部层对齐。
+            // (1) Head slot (player helmet slot / mob head equipment slot / snow golem pumpkin):
+            //    In 1.7.10 all three hosts arrive as EQUIPPED (see resolveHeadSlotKind),
+            //    and their transform chain is entirely different from the hand, needing independent inverse cancellation + 26.1 head-layer alignment.
             HeadSlotKind headKind = resolveHeadSlotKind(entity, stack);
             if (headKind == HeadSlotKind.SNOWMAN) {
                 return computeSnowGolemHeadPreTransform();
@@ -381,51 +385,51 @@ public class RenderJsonItemModel implements IItemRenderer {
                 return computeHeadPreTransform();
             }
 
-            // ② RenderWitch：女巫手持物品（RenderWitch.renderEquippedItems L52-128）。
-            //    必须在 isPlayer / ItemBlock 判定之前分流——女巫是独立宿主链
-            //    （extends RenderLiving，非 RenderBiped）：hand offset 不同
-            //    （T(-0.0625,0.53125,0.21875)）、ItemBlock 分支无 is3D 保底
-            //    且缩放 X 符号相反、尾部额外 RX(-15) × RZ(40)。
+            // (2) RenderWitch: witch's held item (RenderWitch.renderEquippedItems L52-128).
+            //    Must be routed before the isPlayer / ItemBlock test - the witch is an independent host chain
+            //    (extends RenderLiving, not RenderBiped): different hand offset
+            //    (T(-0.0625,0.53125,0.21875)), the ItemBlock branch has no is3D guarantee
+            //    and has the opposite X scale sign, plus the extra RX(-15) × RZ(40) at the tail.
             if (hostRenderer instanceof RenderWitch) {
                 return computeWitchPreTransform(stack != null ? stack.getItem() : null);
             }
 
-            // 手持物品实体 + 物品类型判断
-            // RenderPlayer 对所有物品统一走 BLOCK_3D 路径（因为 is3D=true）
-            // RenderBiped 对非 ItemBlock 物品走物品特定路径（弓/Full3D/默认）
+            // Held item entity + item type test
+            // RenderPlayer uniformly takes the BLOCK_3D path for all items (since is3D=true)
+            // RenderBiped takes item-specific paths for non-ItemBlock items (bow / Full3D / default)
             boolean isPlayer = (entity instanceof EntityPlayer);
             boolean isBlockItem = (stack != null && stack.getItem() instanceof ItemBlock);
 
             if (isPlayer || isBlockItem) {
-                // RenderPlayer 路径：所有物品走 BLOCK_3D
-                // RenderBiped + ItemBlock：也走 BLOCK_3D
+                // RenderPlayer path: all items take BLOCK_3D
+                // RenderBiped + ItemBlock: also takes BLOCK_3D
                 return computePlayerBlock3DPreTransform();
             } else {
-                // RenderBiped 路径：非方块物品走 RenderBiped 专用变换
+                // RenderBiped path: non-block items take the RenderBiped-specific transform
                 Item item = stack != null ? stack.getItem() : null;
                 if (item == Items.bow) {
-                    // RenderBiped bow 路径 (lines 278-286):
+                    // RenderBiped bow path (lines 278-286):
                     //   T(0,0.125,0.3125) × RY(-20) × S(0.625,-0.625,0.625)
                     //   × RX(-100) × RY(45) × FHClient T(-0.5)
                     return computeBipedBowPreTransform();
                 } else if (item != null && item.isFull3D()) {
-                    // RenderBiped isFull3D 路径 (lines 287-301):
+                    // RenderBiped isFull3D path (lines 287-301):
                     //   [rotateAround RZ(180) × T(0,-0.125,0)] × func_82422_c()
                     //   × S(0.625,-0.625,0.625) × RX(-100) × RY(45) × FHClient T(-0.5)
-                    // func_82422_c 偏移按宿主渲染器分流：骷髅重写为 T(0.09375,0.1875,0)；
-                    // 钓竿 / 胡萝卜钓竿（shouldRotateAroundWhenRendering）额外插入中括号段。
+                    // the func_82422_c offset is routed by host renderer: skeleton overrides it to T(0.09375,0.1875,0);
+                    // fishing rod / carrot on a stick (shouldRotateAroundWhenRendering) additionally insert the bracketed segment.
                     return computeBipedFull3DPreTransform(hostRenderer instanceof RenderSkeleton,
                             item.shouldRotateAroundWhenRendering());
                 } else {
-                    // RenderBiped 默认 2D 路径 (lines 302-310):
+                    // RenderBiped default 2D path (lines 302-310):
                     //   T(0.25,0.1875,-0.1875) × S(0.375) × RZ(60) × RX(-90) × RZ(20)
                     //   × FHClient T(-0.5)
                     return computeBipedDefaultPreTransform();
                 }
             }
         } else if (type == ItemRenderType.ENTITY) {
-            // Forge renderEntityItem 在 BLOCK_3D=false 时走 else 分支
-            // 预应用 scale(0.5, 0.5, 0.5)。反抵消: scale(2.0)
+            // Forge's renderEntityItem takes the else branch when BLOCK_3D=false and
+            // pre-applies scale(0.5, 0.5, 0.5). Inverse cancellation: scale(2.0)
             Matrix4d s = new Matrix4d();
             s.setIdentity();
             s.m00 = 2.0; s.m11 = 2.0; s.m22 = 2.0;
@@ -434,24 +438,24 @@ public class RenderJsonItemModel implements IItemRenderer {
         return null;
     }
 
-    // ==================== EQUIPPED 反抵消子方法（按实体/物品类型分流） ====================
+    // ==================== EQUIPPED inverse-cancellation sub-methods (routed by entity / item type) ====================
 
     /**
-     * 头部槽归属类型（{@link #resolveHeadSlotKind} 判定结果）。
+     * Head slot ownership kind (the result of {@link #resolveHeadSlotKind}).
      */
     private enum HeadSlotKind {
-        /** 玩家头盔槽 / 怪物头顶装备槽（RenderPlayer L197-211 / RenderBiped L203-223）。 */
+        /** Player helmet slot / mob head equipment slot (RenderPlayer L197-211 / RenderBiped L203-223). */
         NORMAL,
-        /** 雪傀儡南瓜（RenderSnowMan L36-60），尾部缩放 Z 符号与 NORMAL 相反。 */
+        /** Snow golem pumpkin (RenderSnowMan L36-60); its tail scale Z sign is opposite to NORMAL. */
         SNOWMAN
     }
 
     /**
-     * 获取实体当前使用的宿主渲染器，用于精确判定头部槽 / 女巫 / 骷髅分支
-     * （不按实体类型猜测——同一实体类可能被不同渲染器接管）。
+     * Gets the host renderer currently used by the entity, for precise head slot / witch / skeleton routing
+     * (without guessing by entity type - the same entity class may be handled by different renderers).
      *
-     * @param entity 附着物品的实体，可为 null
-     * @return 宿主 {@link Render}；实体为 null 或渲染管理器未初始化时返回 null
+     * @param entity the entity the item is attached to; may be null
+     * @return the host {@link Render}; null when the entity is null or the render manager is uninitialized
      */
     @javax.annotation.Nullable
     private static Render getHostRenderer(@javax.annotation.Nullable EntityLivingBase entity) {
@@ -460,20 +464,21 @@ public class RenderJsonItemModel implements IItemRenderer {
     }
 
     /**
-     * 判定 EQUIPPED 渲染是否来自实体头部槽（玩家头盔槽 / 怪物头顶装备槽 / 雪傀儡南瓜）。
+     * Determines whether an EQUIPPED render comes from an entity head slot (player helmet slot / mob head equipment slot / snow golem pumpkin).
      * <p>
-     * 1.7.10 三处头部宿主均以 EQUIPPED 类型调用 {@code itemRenderer.renderItem}：
-     * 玩家头盔槽（{@code RenderPlayer} L197-211，仅 ItemBlock）、怪物头顶装备槽
-     * （{@code RenderBiped} L203-223，仅 ItemBlock）、雪傀儡南瓜（{@code RenderSnowMan}
-     * L36-60，恒为南瓜 ItemBlock）。头部槽与手持共用同一入口，只能通过宿主渲染器
-     * 与堆引用区分：头部槽传入的 stack 恒为 ItemBlock 且与 {@code getHeldItem()}
-     * 不是同一实例（怪物头顶槽传 {@code func_130225_q(3)} 槽位栈、玩家传头盔槽栈、
-     * 雪傀儡传新建南瓜栈）。头颅（Items.skull）走 TileEntitySkullRenderer 独立路径、
-     * 盔甲走装备模型路径，均不经过物品渲染入口，此处天然排除。
+     * In 1.7.10 all three head hosts call {@code itemRenderer.renderItem} with the EQUIPPED type:
+     * player helmet slot ({@code RenderPlayer} L197-211, ItemBlock only), mob head equipment slot
+     * ({@code RenderBiped} L203-223, ItemBlock only), snow golem pumpkin ({@code RenderSnowMan}
+     * L36-60, always a pumpkin ItemBlock). Head slots and the hand share the same entry point, so they can only be
+     * distinguished by the host renderer and the stack reference: a head slot's stack is always an ItemBlock and is
+     * not the same instance as {@code getHeldItem()} (the mob head slot passes the {@code func_130225_q(3)} slot stack,
+     * the player passes the helmet slot stack, and the snow golem passes a freshly created pumpkin stack). Skulls
+     * (Items.skull) use the separate TileEntitySkullRenderer path and armor uses the equipment model path, neither going
+     * through the item render entry, so they are naturally excluded here.
      *
-     * @param entity 附着物品的实体，可为 null
-     * @param stack  本次渲染的物品栈
-     * @return 头部槽类型；非头部槽（含手持）返回 null
+     * @param entity the entity the item is attached to; may be null
+     * @param stack  the item stack being rendered
+     * @return the head slot kind; null for non-head slots (including the hand)
      */
     @javax.annotation.Nullable
     private static HeadSlotKind resolveHeadSlotKind(@javax.annotation.Nullable EntityLivingBase entity,
@@ -485,13 +490,13 @@ public class RenderJsonItemModel implements IItemRenderer {
     }
 
     /**
-     * 头部槽反抵消（玩家头盔槽 / 怪物头顶装备槽）+ 26.1 对齐。
+     * Head slot inverse cancellation (player helmet slot / mob head equipment slot) + 26.1 alignment.
      * <p>
-     * 反抵消 1.7.10 头部槽变换链（{@code RenderPlayer} L204-207 =
-     * {@code RenderBiped} L217-219）：
+     * Cancel the 1.7.10 head slot transform chain ({@code RenderPlayer} L204-207 =
+     * {@code RenderBiped} L217-219):
      *   T(0,-0.25,0) × RY(90) × S(0.625,-0.625,-0.625) × FHClient T(-0.5)
      * <p>
-     * 26.1 对齐：{@code CustomHeadLayer} 的头部物品姿态（display 取 head）：
+     * 26.1 alignment: {@code CustomHeadLayer}'s head item pose (display takes head):
      *   T(0,-0.25,0) × RY(180) × S(0.625,-0.625,-0.625)
      */
     private static Matrix4d computeHeadPreTransform() {
@@ -499,28 +504,28 @@ public class RenderJsonItemModel implements IItemRenderer {
         m.setIdentity();
         Matrix4d tmp = new Matrix4d();
 
-        // ① 反抵消 FHClient translate(-0.5)
+        // (1) cancel FHClient translate(-0.5)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
         m.mul(tmp);
 
-        // ② 反抵消 1.7.10 头部槽链:
-        //    S(1.6,-1.6,-1.6) 逆 S(0.625,-0.625,-0.625)
+        // (2) cancel the 1.7.10 head slot chain:
+        //    S(1.6,-1.6,-1.6) inverse of S(0.625,-0.625,-0.625)
         tmp.setIdentity();
         tmp.m00 = 1.6; tmp.m11 = -1.6; tmp.m22 = -1.6;
         m.mul(tmp);
 
-        //    RY(-90) 逆 RY(90)
+        //    RY(-90) inverse of RY(90)
         tmp.rotY(Math.toRadians(-90));
         m.mul(tmp);
 
-        //    T(0,0.25,0) 逆 T(0,-0.25,0)
+        //    T(0,0.25,0) inverse of T(0,-0.25,0)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0, 0.25, 0));
         m.mul(tmp);
 
-        // ③ 应用 26.1 CustomHeadLayer 头部物品姿态
-        //    （中段 T(0,0.25,0) 与 T(0,-0.25,0) 相消，保留完整段以便审计）：
+        // (3) apply the 26.1 CustomHeadLayer head item pose
+        //    (the middle T(0,0.25,0) and T(0,-0.25,0) cancel out; the full segment is kept for auditability):
         //    T(0,-0.25,0)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0, -0.25, 0));
@@ -539,12 +544,12 @@ public class RenderJsonItemModel implements IItemRenderer {
     }
 
     /**
-     * 雪傀儡头部槽反抵消（南瓜）+ 26.1 对齐。
+     * Snow golem head slot inverse cancellation (pumpkin) + 26.1 alignment.
      * <p>
-     * 反抵消 1.7.10 雪傀儡变换链（{@code RenderSnowMan} L49-55，尾部缩放 Z 为正）：
+     * Cancel the 1.7.10 snow golem transform chain ({@code RenderSnowMan} L49-55, tail scale Z is positive):
      *   T(0,-0.34375,0) × RY(90) × S(0.625,-0.625,+0.625) × FHClient T(-0.5)
      * <p>
-     * 26.1 对齐：{@code SnowGolemHeadLayer} 的南瓜姿态（Z 缩放为负）：
+     * 26.1 alignment: {@code SnowGolemHeadLayer}'s pumpkin pose (Z scale is negative):
      *   T(0,-0.34375,0) × RY(180) × S(0.625,-0.625,-0.625)
      */
     private static Matrix4d computeSnowGolemHeadPreTransform() {
@@ -552,28 +557,28 @@ public class RenderJsonItemModel implements IItemRenderer {
         m.setIdentity();
         Matrix4d tmp = new Matrix4d();
 
-        // ① 反抵消 FHClient translate(-0.5)
+        // (1) cancel FHClient translate(-0.5)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
         m.mul(tmp);
 
-        // ② 反抵消 1.7.10 雪傀儡链:
-        //    S(1.6,-1.6,+1.6) 逆 S(0.625,-0.625,+0.625)
+        // (2) cancel the 1.7.10 snow golem chain:
+        //    S(1.6,-1.6,+1.6) inverse of S(0.625,-0.625,+0.625)
         tmp.setIdentity();
         tmp.m00 = 1.6; tmp.m11 = -1.6; tmp.m22 = 1.6;
         m.mul(tmp);
 
-        //    RY(-90) 逆 RY(90)
+        //    RY(-90) inverse of RY(90)
         tmp.rotY(Math.toRadians(-90));
         m.mul(tmp);
 
-        //    T(0,0.34375,0) 逆 T(0,-0.34375,0)
+        //    T(0,0.34375,0) inverse of T(0,-0.34375,0)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0, 0.34375, 0));
         m.mul(tmp);
 
-        // ③ 应用 26.1 SnowGolemHeadLayer 南瓜姿态
-        //    （中段 T(0,0.34375,0) 与 T(0,-0.34375,0) 相消，保留完整段以便审计）：
+        // (3) apply the 26.1 SnowGolemHeadLayer pumpkin pose
+        //    (the middle T(0,0.34375,0) and T(0,-0.34375,0) cancel out; the full segment is kept for auditability):
         //    T(0,-0.34375,0)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0, -0.34375, 0));
@@ -592,66 +597,66 @@ public class RenderJsonItemModel implements IItemRenderer {
     }
 
     /**
-     * RenderWitch 独立宿主链反抵消 + 26.1 对齐。
+     * RenderWitch independent host chain inverse cancellation + 26.1 alignment.
      * <p>
-     * RenderWitch 继承 {@code RenderLiving}（非 RenderBiped），手持物品链独立
-     * （{@code RenderWitch} L52-128）：
-     *   T(-0.0625,0.53125,0.21875) × [分支链] × RX(-15) × RZ(40) × FHClient T(-0.5)
-     * 分支链按物品类型（方块判定仅 {@code RenderBlocks.renderItemIn3d}、无 is3D 保底，
-     * 且 ItemBlock 分支缩放 X 符号与 RenderBiped 相反）：
-     *   方块 T(0,0.1875,-0.3125) × RX(20) × RY(45) × S(0.375,-0.375,0.375)；
-     *   弓 / Full3D（同 RenderBiped 对应分支）/ 默认 2D。
+     * RenderWitch extends {@code RenderLiving} (not RenderBiped); its held-item chain is independent
+     * ({@code RenderWitch} L52-128):
+     *   T(-0.0625,0.53125,0.21875) × [branch chain] × RX(-15) × RZ(40) × FHClient T(-0.5)
+     * The branch chain depends on item type (the block test uses only {@code RenderBlocks.renderItemIn3d}, with no is3D guarantee,
+     * and the ItemBlock branch's X scale sign is opposite to RenderBiped):
+     *   block: T(0,0.1875,-0.3125) × RX(20) × RY(45) × S(0.375,-0.375,0.375);
+     *   bow / Full3D (same as the corresponding RenderBiped branches) / default 2D.
      * <p>
-     * 26.1 对齐：{@code WitchItemLayer} 的鼻端持药姿态静态段
-     *   T(0.0625,0.25,0) × RZ(180) × RX(140) × RZ(10) × RX(180)。
-     * （非药水物品 26.1 走 CrossedArms 姿态，其枢轴不同于 1.7.10 鼻子枢轴、
-     * 无法用静态矩阵反抵消，此处统一采用鼻端姿态。）
+     * 26.1 alignment: {@code WitchItemLayer}'s static nose-potion pose segment
+     *   T(0.0625,0.25,0) × RZ(180) × RX(140) × RZ(10) × RX(180).
+     * (For non-potion items, 26.1 uses the CrossedArms pose whose pivot differs from the 1.7.10 nose pivot and
+     * cannot be cancelled with a static matrix, so the nose pose is used uniformly here.)
      *
-     * @param item 女巫手持物品（可为 null，null 时走默认 2D 分支）
+     * @param item the witch's held item (may be null; the default 2D branch is used when null)
      */
     private static Matrix4d computeWitchPreTransform(@javax.annotation.Nullable Item item) {
         Matrix4d m = new Matrix4d();
         m.setIdentity();
         Matrix4d tmp = new Matrix4d();
 
-        // ① 反抵消 FHClient translate(-0.5)
+        // (1) cancel FHClient translate(-0.5)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
         m.mul(tmp);
 
-        // ② 反抵消尾部 RX(-15) × RZ(40)（RZ 先于 RX 作用于顶点）:
-        //    RZ(-40) 逆 RZ(40)
+        // (2) cancel the tail RX(-15) × RZ(40) (RZ applies to vertices before RX):
+        //    RZ(-40) inverse of RZ(40)
         tmp.rotZ(Math.toRadians(-40));
         m.mul(tmp);
 
-        //    RX(15) 逆 RX(-15)
+        //    RX(15) inverse of RX(-15)
         tmp.rotX(Math.toRadians(15));
         m.mul(tmp);
 
-        // ③ 反抵消分支链（RenderWitch lines 74-115）:
+        // (3) cancel the branch chain (RenderWitch lines 74-115):
         if (item instanceof ItemBlock
                 && RenderBlocks.renderItemIn3d(Block.getBlockFromItem(item).getRenderType())) {
-            //    方块路径: T(0,0.1875,-0.3125) × RX(20) × RY(45) × S(0.375,-0.375,0.375)
-            //    S(2.667,-2.667,2.667) 逆 S(0.375,-0.375,0.375)
+            //    block path: T(0,0.1875,-0.3125) × RX(20) × RY(45) × S(0.375,-0.375,0.375)
+            //    S(2.667,-2.667,2.667) inverse of S(0.375,-0.375,0.375)
             tmp.setIdentity();
             double invScale = 1.0 / 0.375; // ≈ 2.667
             tmp.m00 = invScale; tmp.m11 = -invScale; tmp.m22 = invScale;
             m.mul(tmp);
 
-            //    RY(-45) 逆 RY(45)
+            //    RY(-45) inverse of RY(45)
             tmp.rotY(Math.toRadians(-45));
             m.mul(tmp);
 
-            //    RX(-20) 逆 RX(20)
+            //    RX(-20) inverse of RX(20)
             tmp.rotX(Math.toRadians(-20));
             m.mul(tmp);
 
-            //    T(0,-0.1875,0.3125) 逆 T(0,0.1875,-0.3125)
+            //    T(0,-0.1875,0.3125) inverse of T(0,0.1875,-0.3125)
             tmp.setIdentity();
             tmp.setTranslation(new Vector3d(0, -0.1875, 0.3125));
             m.mul(tmp);
         } else if (item == Items.bow) {
-            //    弓路径: T(0,0.125,0.3125) × RY(-20) × S(0.625,-0.625,0.625)
+            //    bow path: T(0,0.125,0.3125) × RY(-20) × S(0.625,-0.625,0.625)
             //    × RX(-100) × RY(45)
             tmp.rotY(Math.toRadians(-45));
             m.mul(tmp);
@@ -670,7 +675,7 @@ public class RenderJsonItemModel implements IItemRenderer {
             tmp.setTranslation(new Vector3d(0, -0.125, -0.3125));
             m.mul(tmp);
         } else if (item != null && item.isFull3D()) {
-            //    Full3D 路径: [rotateAround RZ(180) × T(0,-0.125,0)] × func_82410_b()
+            //    Full3D path: [rotateAround RZ(180) × T(0,-0.125,0)] × func_82410_b()
             //    × S(0.625,-0.625,0.625) × RX(-100) × RY(45)
             tmp.rotY(Math.toRadians(-45));
             m.mul(tmp);
@@ -682,13 +687,13 @@ public class RenderJsonItemModel implements IItemRenderer {
             tmp.m00 = 1.6; tmp.m11 = -1.6; tmp.m22 = 1.6;
             m.mul(tmp);
 
-            //    T(0,-0.1875,0) 逆 func_82410_b T(0,0.1875,0)
+            //    T(0,-0.1875,0) inverse of func_82410_b T(0,0.1875,0)
             tmp.setIdentity();
             tmp.setTranslation(new Vector3d(0, -0.1875, 0));
             m.mul(tmp);
 
-            //    rotateAround 逆（钓竿 / 胡萝卜钓竿）：原版在 func 之前追加
-            //    RZ(180) × T(0,-0.125,0)，逆序在 func 逆之后插入 T(0,0.125,0) × RZ(180)
+            //    rotateAround inverse (fishing rod / carrot on a stick): vanilla appends
+            //    RZ(180) × T(0,-0.125,0) before func; in reverse order, insert T(0,0.125,0) × RZ(180) after the func inverse
             if (item.shouldRotateAroundWhenRendering()) {
                 tmp.setIdentity();
                 tmp.setTranslation(new Vector3d(0, 0.125, 0));
@@ -698,7 +703,7 @@ public class RenderJsonItemModel implements IItemRenderer {
                 m.mul(tmp);
             }
         } else {
-            //    默认 2D 路径: T(0.25,0.1875,-0.1875) × S(0.375) × RZ(60) × RX(-90) × RZ(20)
+            //    default 2D path: T(0.25,0.1875,-0.1875) × S(0.375) × RZ(60) × RX(-90) × RZ(20)
             tmp.rotZ(Math.toRadians(-20));
             m.mul(tmp);
 
@@ -708,24 +713,24 @@ public class RenderJsonItemModel implements IItemRenderer {
             tmp.rotZ(Math.toRadians(-60));
             m.mul(tmp);
 
-            //    S(2.667) 逆 S(0.375) — 均匀缩放
+            //    S(2.667) inverse of S(0.375) — uniform scale
             tmp.setIdentity();
             double invScale = 1.0 / 0.375; // ≈ 2.667
             tmp.m00 = invScale; tmp.m11 = invScale; tmp.m22 = invScale;
             m.mul(tmp);
 
-            //    T(-0.25,-0.1875,0.1875) 逆 T(0.25,0.1875,-0.1875)
+            //    T(-0.25,-0.1875,0.1875) inverse of T(0.25,0.1875,-0.1875)
             tmp.setIdentity();
             tmp.setTranslation(new Vector3d(-0.25, -0.1875, 0.1875));
             m.mul(tmp);
         }
 
-        // ④ 反抵消 hand offset T(-0.0625, 0.53125, 0.21875)
+        // (4) cancel the hand offset T(-0.0625, 0.53125, 0.21875)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.0625, -0.53125, -0.21875));
         m.mul(tmp);
 
-        // ⑤ 应用 26.1 WitchItemLayer 鼻端持药姿态静态段:
+        // (5) apply the 26.1 WitchItemLayer static nose-potion pose segment:
         //    T(0.0625,0.25,0)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.0625, 0.25, 0));
@@ -751,9 +756,9 @@ public class RenderJsonItemModel implements IItemRenderer {
     }
 
     /**
-     * RenderPlayer（或 RenderBiped + ItemBlock）的 BLOCK_3D 路径反抵消 + 26.1 对齐。
+     * Inverse cancellation for RenderPlayer's (or RenderBiped + ItemBlock's) BLOCK_3D path + 26.1 alignment.
      * <p>
-     * 反抵消 RenderPlayer BLOCK_3D 变换链：
+     * Cancel the RenderPlayer BLOCK_3D transform chain:
      *   T(-0.0625,0.4375,0.0625) × T(0,0.1875,-0.3125) × RX(20) × RY(45)
      *   × S(-0.375,-0.375,0.375) × FHClient T(-0.5)
      */
@@ -762,12 +767,12 @@ public class RenderJsonItemModel implements IItemRenderer {
         m.setIdentity();
         Matrix4d tmp = new Matrix4d();
 
-        // ① 反抵消 FHClient translate(-0.5)
+        // (1) cancel FHClient translate(-0.5)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
         m.mul(tmp);
 
-        // ② 反抵消 RenderPlayer BLOCK_3D 路径
+        // (2) cancel the RenderPlayer BLOCK_3D path
         //    scale(-2.667, -2.667, 2.667)
         tmp.setIdentity();
         tmp.m00 = -2.667; tmp.m11 = -2.667; tmp.m22 = 2.667;
@@ -786,12 +791,12 @@ public class RenderJsonItemModel implements IItemRenderer {
         tmp.setTranslation(new Vector3d(0, -0.1875, 0.3125));
         m.mul(tmp);
 
-        // ③ 反抵消 hand offset T(-0.0625, 0.4375, 0.0625)
+        // (3) cancel the hand offset T(-0.0625, 0.4375, 0.0625)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.0625, -0.4375, -0.0625));
         m.mul(tmp);
 
-        // ④ 应用 26.1.2 ItemInHandLayer 标准对齐变换
+        // (4) apply the 26.1.2 ItemInHandLayer standard alignment transform
         //    RX(-90)
         tmp.rotX(Math.toRadians(-90));
         m.mul(tmp);
@@ -809,13 +814,13 @@ public class RenderJsonItemModel implements IItemRenderer {
     }
 
     /**
-     * RenderBiped bow 路径反抵消 + 26.1 对齐。
+     * RenderBiped bow path inverse cancellation + 26.1 alignment.
      * <p>
-     * RenderBiped 对 {@code Items.bow} 的变换链 (lines 278-286)：
+     * RenderBiped's transform chain for {@code Items.bow} (lines 278-286):
      *   T(-0.0625,0.4375,0.0625) × T(0,0.125,0.3125) × RY(-20)
      *   × S(0.625,-0.625,0.625) × RX(-100) × RY(45) × FHClient T(-0.5)
      * <p>
-     * 反抵消矩阵（后乘序）：
+     * Inverse-cancellation matrix (post-multiply order):
      *   T(0.5) × RY(-45) × RX(100) × S(1.6,-1.6,1.6) × RY(20)
      *   × T(0,-0.125,-0.3125) × T(0.0625,-0.4375,-0.0625)
      *   × RX(-90) × RY(180) × T(1/16, 2/16, -10/16)
@@ -825,40 +830,40 @@ public class RenderJsonItemModel implements IItemRenderer {
         m.setIdentity();
         Matrix4d tmp = new Matrix4d();
 
-        // ① 反抵消 FHClient translate(-0.5)
+        // (1) cancel FHClient translate(-0.5)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
         m.mul(tmp);
 
-        // ② 反抵消 bow 路径:
-        //    RY(-45) 逆 RY(45)
+        // (2) cancel the bow path:
+        //    RY(-45) inverse of RY(45)
         tmp.rotY(Math.toRadians(-45));
         m.mul(tmp);
 
-        //    RX(100) 逆 RX(-100)
+        //    RX(100) inverse of RX(-100)
         tmp.rotX(Math.toRadians(100));
         m.mul(tmp);
 
-        //    S(1.6,-1.6,1.6) 逆 S(0.625,-0.625,0.625)
+        //    S(1.6,-1.6,1.6) inverse of S(0.625,-0.625,0.625)
         tmp.setIdentity();
         tmp.m00 = 1.6; tmp.m11 = -1.6; tmp.m22 = 1.6;
         m.mul(tmp);
 
-        //    RY(20) 逆 RY(-20)
+        //    RY(20) inverse of RY(-20)
         tmp.rotY(Math.toRadians(20));
         m.mul(tmp);
 
-        //    T(0,-0.125,-0.3125) 逆 T(0,0.125,0.3125)
+        //    T(0,-0.125,-0.3125) inverse of T(0,0.125,0.3125)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0, -0.125, -0.3125));
         m.mul(tmp);
 
-        // ③ 反抵消 hand offset T(-0.0625, 0.4375, 0.0625)
+        // (3) cancel the hand offset T(-0.0625, 0.4375, 0.0625)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.0625, -0.4375, -0.0625));
         m.mul(tmp);
 
-        // ④ 26.1.2 对齐
+        // (4) 26.1.2 alignment
         tmp.rotX(Math.toRadians(-90));
         m.mul(tmp);
         tmp.rotY(Math.toRadians(180));
@@ -871,51 +876,51 @@ public class RenderJsonItemModel implements IItemRenderer {
     }
 
     /**
-     * RenderBiped isFull3D 路径反抵消 + 26.1 对齐。
+     * RenderBiped isFull3D path inverse cancellation + 26.1 alignment.
      * <p>
-     * RenderBiped 对 {@code isFull3D()} 物品的变换链 (lines 287-301)：
+     * RenderBiped's transform chain for {@code isFull3D()} items (lines 287-301):
      *   T(-0.0625,0.4375,0.0625) × [RZ(180) × T(0,-0.125,0)] × func_82422_c()
      *   × S(0.625,-0.625,0.625) × RX(-100) × RY(45) × FHClient T(-0.5)
      * <p>
-     * func_82422_c() 被宿主渲染器重写：基类 RenderBiped 为 T(0,0.1875,0)，
-     * {@code RenderSkeleton}（骷髅）重写为 T(0.09375,0.1875,0)。
-     * 中括号段仅当 {@code shouldRotateAroundWhenRendering()}
-     * （钓竿 / 胡萝卜钓竿）时存在。
+     * func_82422_c() is overridden by the host renderer: the base RenderBiped uses T(0,0.1875,0),
+     * while {@code RenderSkeleton} (skeleton) overrides it to T(0.09375,0.1875,0).
+     * The bracketed segment exists only when {@code shouldRotateAroundWhenRendering()}
+     * (fishing rod / carrot on a stick).
      *
-     * @param skeletonRenderer 宿主是否骷髅渲染器（决定 func_82422_c 的 X 偏移）
-     * @param rotateAround     物品是否 shouldRotateAroundWhenRendering（钓竿类）
+     * @param skeletonRenderer whether the host is the skeleton renderer (determines func_82422_c's X offset)
+     * @param rotateAround     whether the item is shouldRotateAroundWhenRendering (fishing-rod-like)
      */
     private static Matrix4d computeBipedFull3DPreTransform(boolean skeletonRenderer, boolean rotateAround) {
         Matrix4d m = new Matrix4d();
         m.setIdentity();
         Matrix4d tmp = new Matrix4d();
 
-        // ① 反抵消 FHClient
+        // (1) cancel FHClient
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
         m.mul(tmp);
 
-        // ② 反抵消 Full3D 路径:
-        //    RY(-45) 逆 RY(45)
+        // (2) cancel the Full3D path:
+        //    RY(-45) inverse of RY(45)
         tmp.rotY(Math.toRadians(-45));
         m.mul(tmp);
 
-        //    RX(100) 逆 RX(-100)
+        //    RX(100) inverse of RX(-100)
         tmp.rotX(Math.toRadians(100));
         m.mul(tmp);
 
-        //    S(1.6,-1.6,1.6) 逆 S(0.625,-0.625,0.625)
+        //    S(1.6,-1.6,1.6) inverse of S(0.625,-0.625,0.625)
         tmp.setIdentity();
         tmp.m00 = 1.6; tmp.m11 = -1.6; tmp.m22 = 1.6;
         m.mul(tmp);
 
-        //    func_82422_c 逆：基类 T(0,0.1875,0)；骷髅重写为 T(0.09375,0.1875,0)
+        //    func_82422_c inverse: base is T(0,0.1875,0); skeleton overrides it to T(0.09375,0.1875,0)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(skeletonRenderer ? -0.09375 : 0.0, -0.1875, 0));
         m.mul(tmp);
 
-        //    rotateAround 逆（钓竿 / 胡萝卜钓竿）：原版在 func_82422_c 之前追加
-        //    RZ(180) × T(0,-0.125,0)，逆序在 func 逆之后插入 T(0,0.125,0) × RZ(180)
+        //    rotateAround inverse (fishing rod / carrot on a stick): vanilla appends
+        //    RZ(180) × T(0,-0.125,0) before func_82422_c; in reverse order, insert T(0,0.125,0) × RZ(180) after the func inverse
         if (rotateAround) {
             tmp.setIdentity();
             tmp.setTranslation(new Vector3d(0, 0.125, 0));
@@ -925,12 +930,12 @@ public class RenderJsonItemModel implements IItemRenderer {
             m.mul(tmp);
         }
 
-        // ③ 反抵消 hand offset
+        // (3) cancel the hand offset
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.0625, -0.4375, -0.0625));
         m.mul(tmp);
 
-        // ④ 26.1.2 对齐
+        // (4) 26.1.2 alignment
         tmp.rotX(Math.toRadians(-90));
         m.mul(tmp);
         tmp.rotY(Math.toRadians(180));
@@ -943,9 +948,9 @@ public class RenderJsonItemModel implements IItemRenderer {
     }
 
     /**
-     * RenderBiped 默认 2D 路径反抵消 + 26.1 对齐。
+     * RenderBiped default 2D path inverse cancellation + 26.1 alignment.
      * <p>
-     * RenderBiped 默认 2D 物品的变换链 (lines 302-310)：
+     * RenderBiped's transform chain for default 2D items (lines 302-310):
      *   T(-0.0625,0.4375,0.0625) × T(0.25,0.1875,-0.1875) × S(0.375)
      *   × RZ(60) × RX(-90) × RZ(20) × FHClient T(-0.5)
      */
@@ -954,41 +959,41 @@ public class RenderJsonItemModel implements IItemRenderer {
         m.setIdentity();
         Matrix4d tmp = new Matrix4d();
 
-        // ① 反抵消 FHClient
+        // (1) cancel FHClient
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.5, 0.5, 0.5));
         m.mul(tmp);
 
-        // ② 反抵消默认 2D 路径:
-        //    RZ(-20) 逆 RZ(20)
+        // (2) cancel the default 2D path:
+        //    RZ(-20) inverse of RZ(20)
         tmp.rotZ(Math.toRadians(-20));
         m.mul(tmp);
 
-        //    RX(90) 逆 RX(-90)
+        //    RX(90) inverse of RX(-90)
         tmp.rotX(Math.toRadians(90));
         m.mul(tmp);
 
-        //    RZ(-60) 逆 RZ(60)
+        //    RZ(-60) inverse of RZ(60)
         tmp.rotZ(Math.toRadians(-60));
         m.mul(tmp);
 
-        //    S(2.667) 逆 S(0.375) — 均匀缩放
+        //    S(2.667) inverse of S(0.375) — uniform scale
         tmp.setIdentity();
         double invScale = 1.0 / 0.375; // ≈ 2.667
         tmp.m00 = invScale; tmp.m11 = invScale; tmp.m22 = invScale;
         m.mul(tmp);
 
-        //    T(-0.25,-0.1875,0.1875) 逆 T(0.25,0.1875,-0.1875)
+        //    T(-0.25,-0.1875,0.1875) inverse of T(0.25,0.1875,-0.1875)
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(-0.25, -0.1875, 0.1875));
         m.mul(tmp);
 
-        // ③ 反抵消 hand offset
+        // (3) cancel the hand offset
         tmp.setIdentity();
         tmp.setTranslation(new Vector3d(0.0625, -0.4375, -0.0625));
         m.mul(tmp);
 
-        // ④ 26.1.2 对齐
+        // (4) 26.1.2 alignment
         tmp.rotX(Math.toRadians(-90));
         m.mul(tmp);
         tmp.rotY(Math.toRadians(180));
@@ -1001,8 +1006,8 @@ public class RenderJsonItemModel implements IItemRenderer {
     }
 
     /**
-     * Forge ItemRenderType → CatFrame RenderPhase。
-     * ENTITY 根据是否为方块物品分别映射到 DROPPED_BLOCK_GROUND / DROPPED_ITEM_GROUND。
+     * Forge ItemRenderType → CatFrame RenderPhase.
+     * ENTITY maps to DROPPED_BLOCK_GROUND / DROPPED_ITEM_GROUND depending on whether the item is a block item.
      */
     private static RenderPhase toRenderPhase(ItemRenderType type, ItemStack stack) {
         if (type == null) return null;

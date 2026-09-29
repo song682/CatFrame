@@ -12,23 +12,24 @@ import javax.vecmath.Matrix4d;
 import java.util.Map;
 
 /**
- * 一次 quad 渲染的上下文，扩展链 {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry#apply(RenderContext)}
- * 会按注册顺序遍历 {@link IModelRenderExtension}，每个扩展都可以读 / 改本对象。
+ * Context for rendering a single quad. The extension chain
+ * {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry#apply(RenderContext)}
+ * iterates over {@link IModelRenderExtension} in registration order; each extension may read / modify this object.
  *
- * <h3>字段语义</h3>
+ * <h3>Field semantics</h3>
  * <ul>
- *   <li>输入字段（final）：quad、phase、world/x/y/z/block、stack 等环境信息。</li>
- *   <li>输出字段（可变）：
+ *   <li>Input fields (final): quad, phase, world/x/y/z/block, stack and other environment info.</li>
+ *   <li>Output fields (mutable):
  *     <ul>
- *       <li>{@link #skip}：true 时丢弃该 quad（用于面剔除）。</li>
- *       <li>{@link #color}：0xRRGGBB 颜色乘数，默认 0xFFFFFF。
- *           推荐用 {@link #mulColor(int)} 累积，多个扩展可叠加。</li>
- *       <li>{@link #brightnessOverride}：≥0 时强制使用该亮度（用于阴影/自发光），
- *           -1 表示沿用 {@link #baselineBrightness}。</li>
- *       <li>{@link #shade}：方向光照系数（顶面 1.0、侧面 0.8、底面 0.5 等），
- *           会与 color 一起送入 Tessellator。</li>
- *       <li>{@link #aoBrightness} 和 {@link #aoColorMul}：逐顶点 AO 数据（每面 4 个值），
- *           仅 BLOCK_WORLD 阶段可用。当所有值为 -1 时退化到 uniform 渲染。</li>
+ *       <li>{@link #skip}: when true this quad is discarded (used for face culling).</li>
+ *       <li>{@link #color}: 0xRRGGBB color multiplier, defaults to 0xFFFFFF.
+ *           Prefer accumulating via {@link #mulColor(int)} so multiple extensions can stack.</li>
+ *       <li>{@link #brightnessOverride}: when ≥0 this brightness is forced (for shading / emissive),
+ *           -1 means reuse {@link #baselineBrightness}.</li>
+ *       <li>{@link #shade}: directional lighting coefficient (top face 1.0, side 0.8, bottom 0.5, etc.),
+ *           sent to the Tessellator together with color.</li>
+ *       <li>{@link #aoBrightness} and {@link #aoColorMul}: per-vertex AO data (4 values per face),
+ *           available only during the BLOCK_WORLD phase. When all values are -1 it degrades to uniform rendering.</li>
  *     </ul>
  *   </li>
  * </ul>
@@ -47,52 +48,52 @@ public final class RenderContext {
     public final ItemStack stack;
 
     /**
-     * 方块状态属性（blockstate properties），由 CatFrame 的动态属性解析器
-     * （{@code VanillaBlockResolvers}）在模型解析时计算，例如玻璃板/铁栏杆的
-     * north/east/south/west 连接状态、楼梯的 facing/half/shape、红石线的 power 等。
+     * Blockstate properties, computed at model resolution time by CatFrame's dynamic property
+     * resolver ({@code VanillaBlockResolvers}), for example the north/east/south/west connection
+     * states of glass panes / iron bars, the facing/half/shape of stairs, the power of redstone wire, etc.
      * <p>
-     * 仅 {@link RenderPhase#BLOCK_WORLD} / {@link RenderPhase#BLOCK_DESTROY} 阶段可用；
-     * 物品阶段或未计算动态属性的方块为 null。
+     * Available only during the {@link RenderPhase#BLOCK_WORLD} / {@link RenderPhase#BLOCK_DESTROY} phases;
+     * null for item phases or blocks whose dynamic properties were not computed.
      * <p>
-     * 只读约定：返回不可修改视图，扩展不得修改；引用仅在扩展链调用期间有效
-     * （同帧同线程），不得跨帧保留。
+     * Read-only contract: returns an unmodifiable view that extensions must not modify; the reference is
+     * valid only during the extension chain invocation (same frame, same thread) and must not be retained across frames.
      */
     @Nullable
     public final Map<String, String> blockstateProps;
 
     /**
-     * 物品属性（item properties），由 CatFrame 的物品属性系统
-     * （{@code ItemProperties.buildProperties}）计算，例如 damage / max_damage /
-     * using_item / use_duration / display_context 等，供 items JSON 决策树求值使用。
+     * Item properties, computed by CatFrame's item property system
+     * ({@code ItemProperties.buildProperties}), for example damage / max_damage /
+     * using_item / use_duration / display_context, etc., used to evaluate the items JSON decision tree.
      * <p>
-     * 仅 {@code ITEM_*} 阶段可用；方块阶段为 null。
+     * Available only during the {@code ITEM_*} phases; null for block phases.
      * <p>
-     * 只读惰性 Map（{@code LazyPropertyMap}）：读取某个 key 才会触发对应 provider 的
-     * 计算并缓存，请避免 {@code entrySet()/values()} 全量遍历（会触发全部求值）。
-     * 引用仅在扩展链调用期间有效（同帧同线程），不得跨帧保留。
+     * Read-only lazy map ({@code LazyPropertyMap}): reading a key triggers the corresponding provider's
+     * computation and caching; avoid full traversals via {@code entrySet()/values()} (they trigger all evaluations).
+     * The reference is valid only during the extension chain invocation (same frame, same thread) and must not be retained across frames.
      */
     @Nullable
     public final Map<String, Comparable<?>> itemProps;
 
     /**
-     * [S1] 方块的 metadata 值，由渲染管线在提交时携带（历史上用于 GUI 方块染色）。
-     * 默认为 0，由渲染管线在已知 metadata 时设置。
+     * [S1] The block's metadata value, carried by the render pipeline on submit (historically used for GUI block tinting).
+     * Defaults to 0 and is set by the render pipeline when metadata is known.
      */
     public int metadata = 0;
 
     /**
-     * 由渲染器预先计算的基础亮度（来自相邻方块光照）。扩展可读不改。
+     * Base brightness precomputed by the renderer (from neighboring block light). Extensions may read but not modify it.
      */
     public final int baselineBrightness;
     /**
-     * 逐顶点 AO 亮度（packed int，skyLight<<16 | blockLight 格式）。
-     * -1 表示该顶点无逐顶点数据，退化到 {@link #effectiveBrightness()} 统一亮度。
-     * 仅 {@link RenderPhase#BLOCK_WORLD} 阶段由 VanillaModelManager 填入。
+     * Per-vertex AO brightness (packed int, skyLight<<16 | blockLight format).
+     * -1 means the vertex has no per-vertex data and degrades to the uniform {@link #effectiveBrightness()}.
+     * Filled in by VanillaModelManager only during the {@link RenderPhase#BLOCK_WORLD} phase.
      */
     public final int[] aoBrightness = {-1, -1, -1, -1};
     /**
-     * 逐顶点 AO 遮挡系数（0.0~1.0，1.0=无遮挡），与原版 block.getAmbientOcclusionLightValue() 等效。
-     * 渲染时会乘入最终颜色：{@code finalColor = color * shade * aoColorMul[i]}。
+     * Per-vertex AO occlusion coefficient (0.0~1.0, 1.0 = no occlusion), equivalent to vanilla block.getAmbientOcclusionLightValue().
+     * Multiplied into the final color at render time: {@code finalColor = color * shade * aoColorMul[i]}.
      */
     public final float[] aoColorMul = {1.0f, 1.0f, 1.0f, 1.0f};
     // ==================== Outputs (mutable) ====================
@@ -101,38 +102,39 @@ public final class RenderContext {
     public int brightnessOverride = -1;
     public float shade;
     /**
-     * 纹理覆盖。当此字段非 null 时，渲染器将使用此 IIcon 代替
-     * {@link BakedQuad#icon} 进行 UV 采样。
-     * 适用于运行时的纹理切换（例如根据画质切换树叶纹理）。
+     * Texture override. When this field is non-null, the renderer uses this IIcon instead of
+     * {@link BakedQuad#icon} for UV sampling.
+     * Suitable for runtime texture switching (for example swapping leaf textures based on graphics quality).
      */
     public IIcon iconOverride = null;
 
     /**
-     * 逐顶点 UV 覆写（模型空间 0-16，与 {@link BakedQuad#up}/{@link BakedQuad#vp} 单位一致）。
+     * Per-vertex UV override (model space 0-16, same units as {@link BakedQuad#up}/{@link BakedQuad#vp}).
      * <p>
-     * null = 不覆写（默认）；非 null 须为长度 8 的数组，布局
-     * {@code [u0,v0,u1,v1,u2,v2,u3,v3]}，与管线顶点调用序 0..3 对应。管线以本数组替代
-     * {@code q.up[i]}/{@code q.vp[i]} 作为 {@code icon.getInterpolatedU/V} 的入参：
-     * sprite 的 padding / UV shrink / 动画帧 / 图集映射仍全部由 icon 负责。与
-     * {@link #iconOverride} 正交（后者决定用哪个 sprite，本字段决定其上的采样位置）。
+     * null = no override (default); non-null must be an array of length 8, laid out as
+     * {@code [u0,v0,u1,v1,u2,v2,u3,v3]}, corresponding to pipeline vertex call order 0..3. The pipeline uses this
+     * array instead of {@code q.up[i]}/{@code q.vp[i]} as the arguments to {@code icon.getInterpolatedU/V}:
+     * the sprite's padding / UV shrink / animation frames / atlas mapping are still entirely handled by icon. Orthogonal
+     * to {@link #iconOverride} (the latter decides which sprite to use, this field decides the sampling position on it).
      * <p>
-     * 引用仅在扩展链调用期间有效（同帧同线程），不得跨帧保留；扩展应自持并复用数组
-     * （渲染热路径，不得每 quad 分配）。destroy 贴花投影与 solidColor 无纹理 pass
-     * 不消费本字段；建议经 {@link #effectiveUvOverride()} 读取（含长度防御）。
+     * The reference is valid only during the extension chain invocation (same frame, same thread) and must not be
+     * retained across frames; extensions should own and reuse the array (render hot path, must not allocate per quad).
+     * The destroy decal projection and the solidColor textureless pass do not consume this field; read it via
+     * {@link #effectiveUvOverride()} (which includes length defense).
      */
     @Nullable
     public float[] uvOverride = null;
 
     /**
-     * Display transform 矩阵（向量空间）。
-     * 由 {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
-     * 在扩展链中计算并设置，管线在提交顶点前应用此矩阵变换顶点坐标。
+     * Display transform matrix (vector space).
+     * Computed and set by {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
+     * during the extension chain; the pipeline applies this matrix to transform vertex coordinates before submitting vertices.
      */
     @Nullable
     public Matrix4d displayTransform = null;
 
     /**
-     * 旧签名构造器兼容 shim：blockstateProps / itemProps 均为 null。
+     * Legacy-signature constructor compatibility shim: blockstateProps / itemProps are both null.
      */
     public RenderContext(RenderPhase phase, BakedQuad quad,
                          IBlockAccess world, int x, int y, int z, Block block,
@@ -163,8 +165,8 @@ public final class RenderContext {
     }
 
     /**
-     * 将给定 0xRRGGBB 颜色按通道乘入当前 {@link #color}。
-     * 适合"叠加"风格的扩展（如 Tint + 暗化护甲）。
+     * Multiplies the given 0xRRGGBB color into the current {@link #color} per channel.
+     * Suited to "stacking"-style extensions (such as Tint + armor darkening).
      */
     public void mulColor(int rgb) {
         int r0 = (color >> 16) & 0xFF, g0 = (color >> 8) & 0xFF, b0 = color & 0xFF;
@@ -176,14 +178,14 @@ public final class RenderContext {
     }
 
     /**
-     * 当前使用的最终亮度（override 优先，否则 baseline）。
+     * The final brightness in use (override takes priority, otherwise baseline).
      */
     public int effectiveBrightness() {
         return brightnessOverride >= 0 ? brightnessOverride : baselineBrightness;
     }
 
     /**
-     * 长度合法的 UV 覆写数组；null 或长度不足 8 时返回 null（按不覆写处理）。
+     * The UV override array when its length is valid; returns null when null or shorter than 8 (treated as no override).
      */
     @Nullable
     public float[] effectiveUvOverride() {

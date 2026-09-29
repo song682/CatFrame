@@ -15,24 +15,29 @@ import javax.vecmath.Vector3d;
 import java.util.List;
 
 /**
- * 顶点写入器：把原 {@code UniformRenderPipeline} 中“逐顶点写 Tessellator 的循环体”
- * 抽取为可复用的纯写入静态方法，对标原版 26w+ 管线中的 {@code QuadWriter}。
+ * Vertex writer: extracts the "per-vertex Tessellator writing loop" from the former
+ * {@code UniformRenderPipeline} into reusable pure static write methods, mirroring the
+ * {@code QuadWriter} of the vanilla 26w+ pipeline.
  * <p>
- * <b>职责边界（严格，DBF 化后）</b>：本类<em>只发射顶点</em> —— 按
- * {@link RenderSubmit}（完全解析的提交输入）与扩展链结果，计算颜色/UV、执行顶点变换、
- * 调用 {@code t.addVertexWithUV}。<b>不</b>做 {@code startDrawingQuads}/{@code draw}、
- * <b>不</b>改 GL 状态、<b>不</b>绑纹理、<b>不</b>调用 {@code applyBeforePart}/{@code applyAfterPart}
- * （这些生命周期由 {@link FeatureRenderDispatcher} 按提交项管理）。
+ * <b>Responsibility boundary (strict, post-DBF)</b>: this class <em>only emits vertices</em> - based on
+ * {@link RenderSubmit} (fully resolved submit input) and the extension chain result, it computes color/UV,
+ * performs vertex transforms, and calls {@code t.addVertexWithUV}. It does <b>not</b> call
+ * {@code startDrawingQuads}/{@code draw}, <b>not</b> modify GL state, <b>not</b> bind textures, <b>not</b> call
+ * {@code applyBeforePart}/{@code applyAfterPart}
+ * (those lifecycles are managed per submit item by {@link FeatureRenderDispatcher}).
  * <p>
- * 阶段政策（亮度基线 / GL 光照模式判定）已外移至内建 {@code LightPolicyExtension}
- * （扩展链 apply 期写 {@code brightnessOverride}，override 恒优先于构造输入）与
- * {@link RenderPhasePolicy}（唯一计算工具）：本类不再按 {@code RenderPhase} 做任何决策，
- * 仅在 {@code RenderSubmit.baselineBrightness = -1}（直接构造方 / 内建扩展缺席）时回退
- * 经 {@code RenderPhasePolicy} 计算作链缺失兜底（fallback 保留）。
- * 残余的“几何 / 着色发射规则”（按面方向烘焙 shade、GUI 屏幕空间方向光、destroy UV 投影）
- * 属逐 quad 发射语义，留在本类。
+ * Phase policy (brightness baseline / GL lighting mode decision) has been moved out to the built-in
+ * {@code LightPolicyExtension} (which writes {@code brightnessOverride} during the extension chain apply;
+ * the override always takes priority over the constructor input) and {@link RenderPhasePolicy}
+ * (the single computation helper): this class no longer makes any decision based on {@code RenderPhase},
+ * and only falls back to computing via {@code RenderPhasePolicy} when
+ * {@code RenderSubmit.baselineBrightness = -1} (direct constructors / built-in extension absent) as a
+ * chain-missing fallback (fallback retained).
+ * The residual "geometry / shading emission rules" (per-face-direction baked shade, GUI screen-space
+ * directional light, destroy UV projection) are per-quad emission semantics and stay in this class.
  * <p>
- * 逐顶点逻辑与原 {@code UniformRenderPipeline} 保持逐行一致，确保零渲染回归。
+ * The per-vertex logic remains line-by-line identical to the former {@code UniformRenderPipeline}
+ * to guarantee zero render regressions.
  */
 public final class QuadWriter {
 
@@ -40,15 +45,17 @@ public final class QuadWriter {
     }
 
     /**
-     * 写入方块 quads（世界 / 破坏贴图）。迁移自原 {@code renderBlockQuads} 的 for-quad 循环。
+     * Writes block quads (world / destroy overlay). Migrated from the for-quad loop of the former
+     * {@code renderBlockQuads}.
      * <p>
-     * [渲染三域架构] 原版后端唯一路径：BLOCK_WORLD 由 {@code flushInline} 内联写入
-     * chunk 批次（绑定原版 blocks 图集），烘焙期 quad 携带的即 vanilla IIcon（原版空间
-     * UV）；破坏贴花（BLOCK_DESTROY）同由 {@code flushInline} 写入 vanilla destroy 批次
-     * （同样绑定原版 blocks 图集），其 iconOverride 为原版 destroy_stage_N，与批次
-     * 绑定一致。两者共用同一无分支写入循环。
+     * [Three-domain render architecture] The only path on the vanilla backend: BLOCK_WORLD is written
+     * inline into the chunk batch by {@code flushInline} (bound to the vanilla blocks atlas), and the quads
+     * carry vanilla IIcons at bake time (vanilla-space UVs); the destroy decal (BLOCK_DESTROY) is likewise
+     * written into the vanilla destroy batch by {@code flushInline} (also bound to the vanilla blocks atlas),
+     * with its iconOverride being the vanilla destroy_stage_N, consistent with the batch binding.
+     * Both share the same branchless write loop.
      *
-     * @return 是否写入了任何顶点（供调用方决定是否 {@code t.draw()}）
+     * @return whether any vertex was written (lets the caller decide whether to call {@code t.draw()})
      */
     public static boolean writeBlockQuads(RenderSubmit s, Tessellator t) {
         List<BakedQuad> allQuads = s.part.getAllQuads();
@@ -58,18 +65,19 @@ public final class QuadWriter {
         Point3d tmpVec = new Point3d();
 
         boolean hasVertices = false;
-        // 亮度基线：正常路径由内建 LightPolicyExtension 在 apply 写 brightnessOverride
-        // （override 优先于本构造输入）；此处仅作 fallback —— -1（直接构造方 / 链缺失）
-        // 回退按 phase 经 RenderPhasePolicy 计算（fallback 保留）。基础亮度与 quad 无关，
-        // 提升到循环外消除每 quad 重复采样（AO 逐顶点路径经 aoBrightness 覆盖）。
+        // Brightness baseline: on the normal path the built-in LightPolicyExtension writes brightnessOverride
+        // during apply (the override takes priority over this constructor input); this is only a fallback - -1
+        // (direct constructors / chain missing) falls back to computing per phase via RenderPhasePolicy (fallback retained).
+        // The base brightness is quad-independent, so hoisting it outside the loop eliminates repeated per-quad sampling
+        // (the per-vertex AO path overrides it via aoBrightness).
         int baseBrightness = s.baselineBrightness >= 0
                 ? s.baselineBrightness
                 : RenderPhasePolicy.baselineBrightness(s.phase, s.world, s.x, s.y, s.z, s.block);
         for (BakedQuad q : allQuads) {
-            // 方向阴影：按面方向取 CardinalLighting 系数。
+            // Directional shading: take the CardinalLighting coefficient by face direction.
             float baseShade = CardinalLighting.DEFAULT.byFace(q.face);
 
-            // 创建上下文并运行扩展链
+            // Create the context and run the extension chain
             RenderContext ctx = new RenderContext(s.phase, q,
                     s.world, s.x, s.y, s.z, s.block, null, baseBrightness, baseShade,
                     s.blockstateProps, s.itemProps);
@@ -78,23 +86,23 @@ public final class QuadWriter {
             if (ctx.skip)
                 continue;
 
-            // [渲染三域架构] 原版后端唯一路径：quad 携带 vanilla IIcon（原版空间 UV），
-            // 与 BLOCK_WORLD chunk 批次 / BLOCK_DESTROY destroy 批次绑定的原版 blocks
-            // 图集一致；iconOverride（破坏贴花注入的 vanilla destroy_stage_N）同属
-            // 原版图集空间。同一无分支写入循环适用。
+            // [Three-domain render architecture] The only path on the vanilla backend: quads carry vanilla IIcons
+            // (vanilla-space UVs), consistent with the vanilla blocks atlas bound by both the BLOCK_WORLD chunk batch
+            // and the BLOCK_DESTROY destroy batch; iconOverride (the vanilla destroy_stage_N injected by the destroy decal)
+            // also lives in the vanilla atlas space. The same branchless write loop applies.
             // Vanilla backend only: quad icons live in the vanilla atlas space bound
             // by both chunk batches and the destroy batch.
             IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
             if (icon == null) {
-                // 防御：无 icon 的 quad（如 solidColor 侧面）跳过
+                // Defense: skip quads without an icon (such as solidColor side quads)
                 continue;
             }
             hasVertices = true;
 
-            // 提交到 Tessellator
+            // Submit to the Tessellator
             boolean hasVertexAO = ctx.aoBrightness[0] >= 0;
-            // UV 覆写（模型空间 0-16）局部引用：null = 无覆写；AO / 非 AO 普通分支共用。
-            // destroy 贴花投影分支不消费（贴花 UV 与模型 UV 解耦，设计如此）。
+            // Local reference to the UV override (model space 0-16): null = no override; shared by the AO / non-AO regular branches.
+            // The destroy decal projection branch does not consume it (decal UVs are decoupled from model UVs by design).
             final float[] uvOv = ctx.effectiveUvOverride();
 
             if (hasVertexAO) {
@@ -111,7 +119,7 @@ public final class QuadWriter {
                         vx = px * cos - pz * sin + 0.5;
                         vz = px * sin + pz * cos + 0.5;
                     }
-                    // 应用 display transform（方块阶段扩展链默认不设置，null 检查兜底）
+                    // Apply the display transform (block phases do not set it by default in the extension chain; the null check is a fallback)
                     if (ctx.displayTransform != null) {
                         tmpVec.set(vx, vy, vz);
                         ctx.displayTransform.transform(tmpVec);
@@ -137,7 +145,7 @@ public final class QuadWriter {
                         vx = px * cos - pz * sin + 0.5;
                         vz = px * sin + pz * cos + 0.5;
                     }
-                    // 应用 display transform（方块阶段扩展链默认不设置，null 检查兜底）
+                    // Apply the display transform (block phases do not set it by default in the extension chain; the null check is a fallback)
                     if (ctx.displayTransform != null) {
                         tmpVec.set(vx, vy, vz);
                         ctx.displayTransform.transform(tmpVec);
@@ -147,12 +155,13 @@ public final class QuadWriter {
                     }
                     double U, V;
                     if (s.phase == RenderPhase.BLOCK_DESTROY) {
-                        // 破坏贴图 UV = 方块空间位置投影（复刻 1.7.10 renderFace* 的
-                        // renderMin/Max*16 语义）：按面法向选择切向轴，旋转后顶点局部坐标 ×16
-                        // 插值 → 贴图钉在几何上、绕方块一周连续（对齐 26.1.2 贴花语义）。
-                        // 垂直面 V 取 16 - y*16（原版顶部顶点 y=maxY → V(0)，底部 → V(16)），
-                        // 否则上下颠倒；NORTH/EAST 的 U 反向取 16 - x*16 / 16 - z*16，
-                        // 使贴图沿南→东→北→西环绕时 U 连续（贴纸环绕语义）。
+                        // Destroy decal UV = block-space position projection (replicating the 1.7.10 renderFace*
+                        // renderMin/Max*16 semantics): pick the tangent axes by face normal, interpolate the rotated
+                        // vertex local coordinates ×16 → the texture is pinned to the geometry and continuous
+                        // around the block (aligned with 26.1.2 decal semantics).
+                        // Vertical faces use V = 16 - y*16 (vanilla binds the top vertex y=maxY → V(0), bottom → V(16)),
+                        // otherwise it would be flipped; NORTH/EAST reverse U to 16 - x*16 / 16 - z*16,
+                        // keeping U continuous as the texture wraps south→east→north→west (sticker wrap semantics).
                         // Destroy decal UVs: block-space position projection, mimicking the
                         // vanilla renderMin/Max*16 semantics; the decal is pinned to the
                         // geometry and wraps continuously around the four vertical faces.
@@ -176,14 +185,14 @@ public final class QuadWriter {
                             U = icon.getInterpolatedU(16.0 - vz * 16.0);
                             V = icon.getInterpolatedV(16.0 - vy * 16.0);
                         } else {
-                            // face 为 null（cross 等无向 quad）兜底回退模型 UV
+                            // face is null (direction-less quads such as cross): fall back to model UVs
                             // Fall back to baked model UVs for direction-less quads
-                            // destroy 分支不消费 uvOverride（贴花 UV 与模型 UV 解耦，设计如此）
+                            // the destroy branch does not consume uvOverride (decal UVs are decoupled from model UVs by design)
                             U = icon.getInterpolatedU(q.up[i]);
                             V = icon.getInterpolatedV(q.vp[i]);
                         }
                     } else {
-                        // 非 destroy：uvOverride（模型空间覆写）优先
+                        // non-destroy: uvOverride (model-space override) takes priority
                         U = icon.getInterpolatedU(uvOv != null ? uvOv[i * 2] : q.up[i]);
                         V = icon.getInterpolatedV(uvOv != null ? uvOv[i * 2 + 1] : q.vp[i]);
                     }
@@ -195,52 +204,55 @@ public final class QuadWriter {
     }
 
     /**
-     * 写入物品 quads（GUI / 手持 / 掉落 / 展示框）。迁移自原 {@code renderItemQuads} 的 for-quad 循环。
+     * Writes item quads (GUI / hand / dropped / item frame). Migrated from the for-quad loop of the former
+     * {@code renderItemQuads}.
      * <p>
-     * {@code solidColor != 0} 的 quad（侧面纯色 quad）在本方法中<b>跳过</b>，
-     * 由 {@link #writeSolidColorQuads(RenderSubmit, Tessellator)} 在独立的无纹理 draw call
-     * 中渲染：
-     * 侧面 quad 的 UV 紧贴“不透明→透明”边界，双线性 / mipmap 采样会混入透明邻居纹素，
-     * 且 GL_MODULATE 会将纹素 alpha 乘入片段，导致窄面渲染为透明。
+     * Quads with {@code solidColor != 0} (solid-color side quads) are <b>skipped</b> in this method and rendered
+     * by {@link #writeSolidColorQuads(RenderSubmit, Tessellator)} in a separate untextured draw call:
+     * side quads have UVs hugging the "opaque→transparent" boundary, so bilinear / mipmap sampling would blend in
+     * transparent neighbor texels, and GL_MODULATE would multiply the texel alpha into the fragment, rendering the
+     * narrow faces transparent.
      *
-     * @return {@code true} 若存在被跳过的 solidColor quad（调用方需执行第二遍无纹理渲染）
+     * @return {@code true} if any solidColor quad was skipped (the caller must perform a second untextured pass)
      */
     public static boolean writeItemQuads(RenderSubmit s, Tessellator t) {
         List<BakedQuad> allQuads = s.part.getAllQuads();
         boolean gui = (s.phase == RenderPhase.ITEM_GUI);
-        // [方案B] GL_LIGHTING 判定单源收敛于 RenderPhasePolicy.isItemGlLit：非 GUI 且非
-        // 手持物品阶段（掉落 / 展示框）保留 GL_LIGHTING，改用逐面法线让 GL 计算方向光照，
-        // 不再把 CardinalLighting 方向阴影烘焙进顶点色，避免“烘焙阴影 + GL 光照”双重着色。
-        // GUI 与手持阶段维持烘焙阴影：手持阶段不启用 GL_LIGHTING（避免双重着色），亮度
-        // （lightmap）取玩家位置的世界光，完全无外部光照时物品渲染为全黑，对标 1.7.10
-        // ItemRenderer 的手持亮度语义（私有 helper 已随亮度政策迁移至 RenderPhasePolicy）。
+        // [Plan B] GL_LIGHTING decision converges on the single source RenderPhasePolicy.isItemGlLit: non-GUI and
+        // non-hand item phases (dropped / item frame) keep GL_LIGHTING and use per-face normals so GL computes
+        // directional lighting, no longer baking CardinalLighting directional shade into vertex colors, avoiding
+        // "baked shade + GL lighting" double shading.
+        // The GUI and hand phases keep baked shading: the hand phase does not enable GL_LIGHTING (avoiding double
+        // shading), and brightness (lightmap) samples world light at the player position, rendering the item fully
+        // black when there is no external light, mirroring the 1.7.10 ItemRenderer hand brightness semantics
+        // (the private helper has migrated to RenderPhasePolicy along with the brightness policy).
         boolean glLit = RenderPhasePolicy.isItemGlLit(s.phase);
         Matrix4d preTransform = s.preTransform;
-        // 物品模型渲染变换（items JSON transformation 标签）：永远在 display 变换之后应用
+        // Item model render transformation (items JSON transformation tag): always applied after the display transform
         // Per-model item transformation: always applied after the display transform
         Matrix4d transformation = s.transformation;
         Point3d tmpVec = new Point3d();
         Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
-        // 亮度（lightmap）：正常路径由内建 LightPolicyExtension（beforePart 接力计算 →
-        // apply 写 brightnessOverride，override 优先于本构造输入）；此处仅作 fallback ——
-        // -1（直接构造方 / 链缺失）回退按 phase 经 RenderPhasePolicy 计算，保持夜间 /
-        // 无光源处掉落物与环境同暗、GUI 恒 255 的语义。
+        // Brightness (lightmap): on the normal path the built-in LightPolicyExtension (relayed computation in
+        // beforePart → writes brightnessOverride in apply, which takes priority over this constructor input); this is
+        // only a fallback - -1 (direct constructors / chain missing) falls back to computing per phase via
+        // RenderPhasePolicy, preserving the semantics of dropped items being as dark as their surroundings at night /
+        // with no light source, and GUI being always 255.
         int baseBrightness = s.baselineBrightness >= 0
                 ? s.baselineBrightness
                 : RenderPhasePolicy.baselineBrightness(s.phase, s.world, s.x, s.y, s.z, s.block);
         boolean hasSolidColor = false;
 
         for (BakedQuad q : allQuads) {
-            // solidColor quad 跳过，留给 writeSolidColorQuads 无纹理渲染
-            // Skip solid-color side quads: rendered in a separate untextured pass
+            // Skip solidColor quads: rendered separately by writeSolidColorQuads without textures
             if (q.solidColor != 0) {
                 hasSolidColor = true;
                 continue;
             }
 
-            // 方向阴影：GUI 按面方向烘焙 CardinalLighting 系数；
-            // 非 GUI 交由 GL_LIGHTING 依逐面法线计算，baseShade 取 1.0 以免双重着色。
+            // Directional shading: the GUI bakes CardinalLighting coefficients by face direction;
+            // non-GUI defers to GL_LIGHTING with per-face normals, using baseShade 1.0 to avoid double shading.
             float baseShade = glLit ? 1.0f : CardinalLighting.DEFAULT.byFace(q.face);
             RenderContext ctx = new RenderContext(s.phase, q,
                     s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, baseShade,
@@ -249,15 +261,15 @@ public final class QuadWriter {
             if (ctx.skip)
                 continue;
 
-            // GUI 阶段屏幕空间光照：方块类模型（gui_light="side"/null）按旋转后的
-            // 法线方向着色，明暗固定在屏幕上（顶 1.0 / 左 0.8 / 右 0.6 / 底 0.5），
-            // 不随 display.gui.rotation 变化；gui_light="front" 的 2D 物品保持全亮。
+            // GUI-phase screen-space lighting: block-like models (gui_light="side"/null) are shaded by the rotated
+            // normal direction, with brightness fixed on screen (top 1.0 / left 0.8 / right 0.6 / bottom 0.5),
+            // independent of display.gui.rotation; gui_light="front" 2D items stay fully lit.
             if (gui && !"front".equals(ctx.quad.guiLight) && ctx.displayTransform != null) {
                 ctx.shade = guiScreenShade(q, ctx.displayTransform);
             }
 
-            // 非 GUI 阶段：发送逐面法线（随 display / transformation / preTransform 旋转），供 GL_LIGHTING
-            // 使用。
+            // Non-GUI phases: emit per-face normals (rotated along with display / transformation / preTransform)
+            // for GL_LIGHTING.
             if (glLit) {
                 writeQuadNormal(t, q, ctx.displayTransform, transformation, preTransform, tmpNormal);
             }
@@ -287,29 +299,29 @@ public final class QuadWriter {
     }
 
     /**
-     * 写入 solidColor quad（侧面纯色 quad）—— 纯顶点色渲染，<b>调用方必须先禁用纹理</b>。
+     * Writes solidColor quads (solid-color side quads) - pure vertex-color rendering; <b>the caller must disable textures first</b>.
      * <p>
-     * 对标 26.1.2 {@code ItemModelGenerator} 侧面渲染语义：侧面使用边缘像素的 RGB
-     * 作为不透明纯色填充，不受纹理 alpha 影响。1.7.10 固定管线下，{@code GL_MODULATE}
-     * 会把半透明纹素 alpha 乘入最终片段，导致半透明纹理的侧面消失；禁用纹理后 fragment
-     * 颜色完全由顶点色决定，alpha 恒为 1.0。
+     * Mirrors the 26.1.2 {@code ItemModelGenerator} side-render semantics: sides use the edge pixel's RGB as an
+     * opaque solid fill, unaffected by texture alpha. Under the 1.7.10 fixed pipeline, {@code GL_MODULATE} would
+     * multiply the translucent texel alpha into the final fragment, making the sides of translucent textures disappear;
+     * with textures disabled the fragment color is entirely determined by the vertex color and alpha is always 1.0.
      * <p>
-     * <b>职责边界</b>：本方法只写顶点，不做 {@code glDisable(GL_TEXTURE_2D)} 等 GL
-     * 状态管理（由 {@link FeatureRenderDispatcher} 负责）。
+     * <b>Responsibility boundary</b>: this method only writes vertices and performs no GL state management such as
+     * {@code glDisable(GL_TEXTURE_2D)} (handled by {@link FeatureRenderDispatcher}).
      */
     public static void writeSolidColorQuads(RenderSubmit s, Tessellator t) {
         List<BakedQuad> allQuads = s.part.getAllQuads();
         boolean gui = (s.phase == RenderPhase.ITEM_GUI);
-        // 与 writeItemQuads 一致（单源 RenderPhasePolicy.isItemGlLit）：手持阶段不应用
-        // GL_LIGHTING，走烘焙阴影分支
+        // Consistent with writeItemQuads (single source RenderPhasePolicy.isItemGlLit): the hand phase does not
+        // apply GL_LIGHTING and takes the baked-shading branch
         boolean glLit = RenderPhasePolicy.isItemGlLit(s.phase);
         Matrix4d preTransform = s.preTransform;
         Matrix4d transformation = s.transformation;
         Point3d tmpVec = new Point3d();
         Vector3d tmpNormal = glLit ? new Vector3d() : null;
 
-        // 亮度分支与 writeItemQuads 一致：LightPolicyExtension 写 override 优先；
-        // 此处 -1 回退仅作链缺失兜底（fallback 保留，按 phase 经 RenderPhasePolicy 计算）
+        // Brightness branch consistent with writeItemQuads: the override written by LightPolicyExtension takes priority;
+        // the -1 fallback here is only a chain-missing safety net (fallback retained, computed per phase via RenderPhasePolicy)
         int baseBrightness = s.baselineBrightness >= 0
                 ? s.baselineBrightness
                 : RenderPhasePolicy.baselineBrightness(s.phase, s.world, s.x, s.y, s.z, s.block);
@@ -326,31 +338,29 @@ public final class QuadWriter {
             if (ctx.skip)
                 continue;
 
-            // GUI 阶段屏幕空间光照：与 writeItemQuads 一致的屏幕空间方向着色
+            // GUI-phase screen-space lighting: the same screen-space directional shading as writeItemQuads
             if (gui && !"front".equals(ctx.quad.guiLight) && ctx.displayTransform != null) {
                 ctx.shade = guiScreenShade(q, ctx.displayTransform);
             }
 
-            // 非 GUI 阶段：发送逐面法线（随 display / transformation / preTransform 旋转），供 GL_LIGHTING
-            // 使用。
+            // Non-GUI phases: emit per-face normals (rotated along with display / transformation / preTransform)
+            // for GL_LIGHTING.
             if (glLit) {
                 writeQuadNormal(t, q, ctx.displayTransform, transformation, preTransform, tmpNormal);
             }
 
             t.setBrightness(ctx.effectiveBrightness());
-            // 使用 solidColor 的 RGB，alpha 固定 1.0（侧面恒不透明）
-            // 颜色再乘 ctx.color（tint 扩展注入）：与 writeItemQuads 正面渲染对齐，
-            // 避免 grass 等 tint 物品的侧面挤出显示未染色的原始纹理色（颜色失调）
-            // Multiply by ctx.color (tint) to match the front-face pass, so tinted
-            // items (e.g. grass) no longer show raw un-tinted side extrusions.
+            // Use solidColor's RGB with alpha fixed at 1.0 (sides are always opaque)
+            // Multiply by ctx.color (injected by tint extensions) to match the front-face pass, so tinted
+            // items (e.g. grass) no longer show raw un-tinted colors on side extrusions.
             float cr = ((q.solidColor >> 16) & 0xFF) / 255.0f * ((ctx.color >> 16) & 0xFF) / 255.0f * ctx.shade;
             float cg = ((q.solidColor >> 8) & 0xFF) / 255.0f * ((ctx.color >> 8) & 0xFF) / 255.0f * ctx.shade;
             float cb = (q.solidColor & 0xFF) / 255.0f * (ctx.color & 0xFF) / 255.0f * ctx.shade;
             t.setColorRGBA_F(cr, cg, cb, 1.0f);
 
             for (int i = 0; i < 4; i++) {
-                // 无纹理时 UV 被忽略，但 addVertexWithUV 是 Tessellator 唯一的提交 API
-                // 本 pass 不消费 uvOverride（无纹理渲染，UV 不参与采样）
+                // UVs are ignored without textures, but addVertexWithUV is the Tessellator's only submit API
+                // this pass does not consume uvOverride (textureless rendering; UVs do not participate in sampling)
                 tmpVec.set(q.vx(i), q.vy(i), q.vz(i));
                 applyTransformChain(tmpVec, ctx.displayTransform, transformation, preTransform);
                 t.addVertexWithUV(tmpVec.x, tmpVec.y, tmpVec.z, 0, 0);
@@ -359,31 +369,29 @@ public final class QuadWriter {
     }
 
     /**
-     * 写入附魔光效（glint）quads —— 重放提交项的<b>纹理</b>几何（跳过 solidColor 侧面），
-     * 供 {@code GuiGraphicsExtractor.renderEnchantmentGlint} 以 glint 纹理 +
-     * 滚动纹理矩阵叠加绘制。
-     * Write enchantment glint quads: replays the textured geometry (skipping
-     * solid-color side quads) so the glint follows the opaque texel contour,
-     * for the glint overlay passes.
+     * Write enchantment glint quads: replays the <b>textured</b> geometry of the submit item (skipping solid-color
+     * sides) so {@code GuiGraphicsExtractor.renderEnchantmentGlint} can overlay it with the glint texture and a
+     * scrolling texture matrix, letting the glint follow the opaque texel contour.
      * <p>
-     * 与 {@link #writeItemQuads} 的差异：
+     * Differences from {@link #writeItemQuads}:
      * <ul>
-     * <li><b>跳过</b> {@code solidColor != 0} 的 quad —— 侧面深度由正常 pass 第二遍
-     * 无纹理渲染以强制不透明 alpha 写入（无 alpha 裁剪），重放会使光效在侧面投影
-     * 覆盖的透明像素上出现（溢出）；光效只需贴合正常 pass 第一遍经 alpha test
-     * 裁剪后写入深度的纹理轮廓，对标原版 1.7.10 光效语义；</li>
-     * <li>颜色强制为 glint 紫（对标原版 {@code RenderItem.renderEffect} 的
-     * {@code (0.5, 0.25, 0.8)}；非 GUI 阶段对标 1.7.10 {@code ItemRenderer}
-     * 手持光效乘 0.76）；</li>
-     * <li>不写法线 —— 光效 pass 已关闭 {@code GL_LIGHTING}；</li>
-     * <li>UV 仍取烘焙图集 UV，流纹跨度由光效 pass 的纹理矩阵 scale 控制。</li>
+     * <li><b>Skips</b> quads with {@code solidColor != 0} - side depth is written by the second untextured pass of
+     * the normal render with forced-opaque alpha (no alpha cutout); replaying them would make the glint appear on
+     * transparent pixels covered by the side projection (overflow). The glint only needs to hug the textured contour
+     * whose depth was written by the normal pass's first draw after alpha-test culling, matching vanilla 1.7.10 glint semantics;</li>
+     * <li>Color is forced to glint purple (mirroring vanilla {@code RenderItem.renderEffect}'s
+     * {@code (0.5, 0.25, 0.8)}; for non-GUI phases it mirrors the 1.7.10 {@code ItemRenderer}
+     * hand glint multiplied by 0.76);</li>
+     * <li>No normals are written - the glint pass has {@code GL_LIGHTING} disabled;</li>
+     * <li>UVs still use the baked atlas UVs; the flow span is controlled by the glint pass's texture matrix scale.</li>
      * </ul>
-     * 顶点变换链与 {@link #writeItemQuads} <b>逐位一致</b>
-     * （v' = M_pre × M_transformation × M_display × v），且运行同一扩展链尊重
-     * {@code ctx.skip}，保证重放几何与正常 pass 完全重合，通过 {@code GL_EQUAL} 深度测试。
+     * The vertex transform chain is <b>bit-identical</b> to {@link #writeItemQuads}
+     * (v' = M_pre × M_transformation × M_display × v), and the same extension chain runs honoring
+     * {@code ctx.skip}, guaranteeing the replayed geometry exactly coincides with the normal pass and passes the
+     * {@code GL_EQUAL} depth test.
      * <p>
-     * <b>调用前提</b>：必须在 {@code applyBeforePart} 状态仍有效期间调用
-     * （display 矩阵等 beforePart 状态才能重算一致）。
+     * <b>Precondition</b>: must be called while {@code applyBeforePart} state is still valid
+     * (only then can beforePart state such as the display matrix be recomputed consistently).
      */
     public static void writeGlintQuads(RenderSubmit s, Tessellator t) {
         List<BakedQuad> allQuads = s.part.getAllQuads();
@@ -393,29 +401,23 @@ public final class QuadWriter {
         Point3d tmpVec = new Point3d();
 
         int baseBrightness = gui ? 255 : 15728880;
-        // glint 紫：GUI 对标 RenderItem.renderEffect (0.5, 0.25, 0.8)；
-        // 非 GUI 对标 1.7.10 ItemRenderer 手持光效（同色乘 0.76）
-        // Glint purple: GUI matches RenderItem.renderEffect; non-GUI multiplied by 0.76
+        // Glint purple: GUI matches RenderItem.renderEffect (0.5, 0.25, 0.8);
+        // non-GUI matches the 1.7.10 ItemRenderer hand glint (same color multiplied by 0.76)
         float k = gui ? 1.0f : 0.76f;
         float gr = 0.5f * k, gg = 0.25f * k, gb = 0.8f * k;
 
         for (BakedQuad q : allQuads) {
-            // 跳过 solidColor 侧面 quad：正常 pass 中侧面在第二遍无纹理渲染以强制
-            // 不透明 alpha 写入深度（无 alpha 裁剪），重放会使 GL_EQUAL 光效渲染在
-            // 侧面投影覆盖的透明像素上（手持旋转视角下侧面投影偏离正面轮廓，溢出明显）。
-            // 跳过使光效严格贴合正常 pass 第一遍（alpha test 裁剪后）写入深度的
-            // 不透明像素，保持与原版 1.7.10 相同的视觉行为。
-            // Skip solid-color side quads: their depth is written by the second
-            // untextured pass with forced-opaque alpha (no cutout), so replaying
-            // them would paint glint over transparent texels wherever the side
-            // projection overlaps them. Skipping confines glint to the opaque
-            // texels that survived the normal pass's alpha test, matching vanilla.
+            // Skip solid-color side quads: their depth is written by the second untextured pass with forced-opaque
+            // alpha (no cutout), so replaying them would let the GL_EQUAL glint render over transparent pixels
+            // covered by the side projection (under rotated hand views the side projection deviates from the front
+            // contour and the overflow is obvious). Skipping confines the glint strictly to the opaque texels whose
+            // depth was written by the normal pass's first draw (after alpha-test culling), preserving the same visual
+            // behavior as vanilla 1.7.10.
             if (q.solidColor != 0) {
                 continue;
             }
 
-            // 运行扩展链：获取 displayTransform 并尊重 skip（与正常 pass 的可见性一致）
-            // Run extension chain: obtain displayTransform and honor skip flag
+            // Run the extension chain: obtain displayTransform and honor the skip flag (consistent visibility with the normal pass)
             RenderContext ctx = new RenderContext(s.phase, q,
                     s.world, s.x, s.y, s.z, s.block, s.stack, baseBrightness, 1.0f,
                     s.blockstateProps, s.itemProps);
@@ -429,8 +431,7 @@ public final class QuadWriter {
             IIcon icon = (ctx.iconOverride != null) ? ctx.iconOverride : q.icon;
             final float[] uvOv = ctx.effectiveUvOverride();
             for (int i = 0; i < 4; i++) {
-                // solidColor quad 可能无 icon，UV 兜底为 0（流纹动画仍由纹理矩阵驱动）
-                // solid-color quads may lack an icon; fall back to UV 0
+                // solid-color quads may lack an icon; fall back to UV 0 (the flow animation is still driven by the texture matrix)
                 double U = (icon != null) ? icon.getInterpolatedU(uvOv != null ? uvOv[i * 2] : q.up[i]) : 0.0;
                 double V = (icon != null) ? icon.getInterpolatedV(uvOv != null ? uvOv[i * 2 + 1] : q.vp[i]) : 0.0;
 
@@ -442,23 +443,23 @@ public final class QuadWriter {
     }
 
     /**
-     * 顶点变换链单源：v' = M_pre × M_transformation × M_display × v。
+     * Single source for the vertex transform chain: v' = M_pre × M_transformation × M_display × v.
      * <p>
-     * 供 {@link #writeItemQuads} / {@link #writeSolidColorQuads} /
-     * {@link #writeGlintQuads} 共用（三个 pass 的几何必须逐位一致，否则 glint 重放
-     * 与正常 pass 不重合）：先应用 display transform（扩展链注入），再应用
-     * transformation（items JSON {@code transformation} 标签，永远在 display 之后），
-     * 最后应用 preTransform（反抵消）。各矩阵均可为 null（跳过对应环节）。
+     * Shared by {@link #writeItemQuads} / {@link #writeSolidColorQuads} /
+     * {@link #writeGlintQuads} (the geometry of the three passes must be bit-identical, otherwise the glint replay
+     * would not coincide with the normal pass): first apply the display transform (injected by the extension chain),
+     * then the transformation (the items JSON {@code transformation} tag, always after display),
+     * and finally the preTransform (inverse cancellation). Each matrix may be null (the corresponding step is skipped).
      * <p>
-     * {@link #writeBlockQuads} 不使用本链：方块相位几何语义不同（旋转绕 0.5 轴心 +
-     * displayTransform 逐顶点，无 items transformation / preTransform），保持各自分支。
+     * {@link #writeBlockQuads} does not use this chain: block-phase geometry semantics differ (rotation around the
+     * 0.5 pivot plus a per-vertex displayTransform, with no items transformation / preTransform), so it keeps its own branch.
      * Single source for the vertex transform chain shared by the three item passes;
      * block-phase writing keeps its own rotation branch instead.
      *
-     * @param tmp            顶点缓冲（就地变换）
-     * @param display        扩展链注入的 display 矩阵，可为 null
-     * @param transformation items JSON 物品模型渲染变换，可为 null
-     * @param preTransform   预变换（反抵消），可为 null
+     * @param tmp            vertex buffer (transformed in place)
+     * @param display        the display matrix injected by the extension chain; may be null
+     * @param transformation the items JSON item model render transformation; may be null
+     * @param preTransform   the pre-transform (inverse cancellation); may be null
      */
     private static void applyTransformChain(Point3d tmp, Matrix4d display,
                                             Matrix4d transformation, Matrix4d preTransform) {
@@ -474,11 +475,12 @@ public final class QuadWriter {
     }
 
     /**
-     * [方案B] 计算 quad 的逐面法线并写入 Tessellator。
+     * [Plan B] Computes the quad's per-face normal and writes it to the Tessellator.
      * <p>
-     * 法线取自 {@link BakedQuad#face} 的方向向量，依次经 display / transformation / preTransform
-     * 的旋转部分变换（与软件变换后的顶点保持一致），归一化后调用 {@code t.setNormal}。
-     * 长度由 {@code GL_NORMALIZE} 兜底（见 {@link FeatureRenderDispatcher}），故只需方向正确。
+     * The normal is taken from {@link BakedQuad#face}'s direction vector, transformed sequentially by the rotation
+     * parts of display / transformation / preTransform (staying consistent with the software-transformed vertices),
+     * then normalized and passed to {@code t.setNormal}. The length is handled by {@code GL_NORMALIZE}
+     * (see {@link FeatureRenderDispatcher}), so only the direction must be correct.
      */
     private static void writeQuadNormal(Tessellator t, BakedQuad q,
             Matrix4d displayTransform, Matrix4d transformation,
@@ -501,7 +503,7 @@ public final class QuadWriter {
         t.setNormal((float) tmp.x, (float) tmp.y, (float) tmp.z);
     }
 
-    /** 用 4x4 矩阵的 3x3 旋转部分变换方向向量（忽略平移）。 */
+    /** Transforms a direction vector by the 3x3 rotation part of a 4x4 matrix (ignoring translation). */
     private static void transformDirection(Matrix4d m, Vector3d v) {
         double x = m.m00 * v.x + m.m01 * v.y + m.m02 * v.z;
         double y = m.m10 * v.x + m.m11 * v.y + m.m12 * v.z;
@@ -510,32 +512,32 @@ public final class QuadWriter {
     }
 
     /**
-     * 计算 GUI 阶段的屏幕空间方向光照（对标 1.7.10 {@code RenderItem} 方块分支的
-     * 视觉语义）：光照方向固定在屏幕上——顶部 1.0、屏幕左侧 0.8、屏幕右侧 0.6、
-     * 底部 0.5，不随 {@code display.gui.rotation} 的旋转角度变化。
+     * Computes the GUI-phase screen-space directional lighting (mirroring the visual semantics of the 1.7.10
+     * {@code RenderItem} block branch): the light direction is fixed on screen - top 1.0, screen-left 0.8,
+     * screen-right 0.6, bottom 0.5 - independent of the {@code display.gui.rotation} angle.
      * <p>
-     * 原理：将 quad 的模型空间面法线经 display 矩阵的旋转部分变换到世界/屏幕空间后，
-     * 按旋转后法线的主导轴向查表。这保证无论 GUI 视角角度如何，明暗分布始终是
-     * 「顶部最亮、下左面次之、下右面最暗」，避免模型空间 shade 随视角旋转导致的
-     * 左右亮度颠倒。
+     * How it works: the quad's model-space face normal is transformed into world/screen space by the rotation part of
+     * the display matrix, then looked up by the dominant axis of the rotated normal. This guarantees that regardless
+     * of the GUI view angle, the shading distribution is always "top brightest, lower-left next, lower-right darkest",
+     * avoiding the left/right brightness flip that model-space shade suffers as the view rotates.
      * <p>
-     * 仅用于 {@code gui_light="side"}（或 null）的方块类模型；{@code gui_light="front"}
-     * 的 2D 物品保持全亮（shade=1.0），不进入本方法。
+     * Used only for block-like models with {@code gui_light="side"} (or null); {@code gui_light="front"}
+     * 2D items stay fully lit (shade=1.0) and do not enter this method.
      * <p>
      * Screen-space directional shading for GUI block models: the light is fixed
      * on screen (top 1.0 / screen-left 0.8 / screen-right 0.6 / bottom 0.5)
      * regardless of the display.gui.rotation angle.
      */
     private static float guiScreenShade(BakedQuad q, Matrix4d displayTransform) {
-        // 模型空间面法线（轴对齐单位向量），face 为 null（cross 等无向面）时按 UP 处理
+        // Model-space face normal (axis-aligned unit vector); treated as UP when face is null (direction-less faces such as cross)
         double nx = 0, ny = 1, nz = 0;
         if (q.face != null) {
             nx = q.face.getStepX();
             ny = q.face.getStepY();
             nz = q.face.getStepZ();
         }
-        // 经 display 矩阵旋转到屏幕/世界空间（忽略平移；GUI scale 通常均匀，
-        // 非均匀缩放下的方向偏差可接受）
+        // Rotated into screen/world space by the display matrix (translation ignored; GUI scale is usually uniform,
+        // so the direction deviation under non-uniform scale is acceptable)
         if (displayTransform != null) {
             double x = displayTransform.m00 * nx + displayTransform.m01 * ny + displayTransform.m02 * nz;
             double y = displayTransform.m10 * nx + displayTransform.m11 * ny + displayTransform.m12 * nz;
@@ -545,9 +547,9 @@ public final class QuadWriter {
             nz = z;
         }
         double ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
-        if (ay >= ax && ay >= az) return ny > 0 ? 1.0f : 0.5f; // 顶面最亮 / 底面最暗
-        if (ax >= ay && ax >= az) return nx > 0 ? 0.6f : 0.8f; // 屏幕右侧暗 / 屏幕左侧亮
-        return 0.8f; // 正对屏幕方向（南北面语义）
+        if (ay >= ax && ay >= az) return ny > 0 ? 1.0f : 0.5f; // top face brightest / bottom face darkest
+        if (ax >= ay && ax >= az) return nx > 0 ? 0.6f : 0.8f; // screen-right dark / screen-left bright
+        return 0.8f; // facing the screen (north/south face semantics)
     }
 
 }

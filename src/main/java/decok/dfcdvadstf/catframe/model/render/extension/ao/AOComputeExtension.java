@@ -27,6 +27,11 @@ public final class AOComputeExtension implements IModelRenderExtension {
         if (ctx.phase != RenderPhase.BLOCK_WORLD) return;
         if (ctx.world == null || ctx.block == null) return;
 
+        // Emissive blocks never take the per-vertex AO path (aligned with 26.1.2 ModelBlockRenderer
+        // dispatch, which additionally requires blockState.getLightEmission() == 0). They degrade to
+        // the flat path via LightPolicyExtension writing the block's mixed brightness.
+        if (ctx.block.getLightValue(ctx.world, ctx.x, ctx.y, ctx.z) != 0) return;
+
         BakedQuad q = ctx.quad;
         if (q.face == null) return;
 

@@ -27,6 +27,16 @@ public class ModelJson {
     public String guiLight;
 
     /**
+     * Model-level ambient occlusion flag (top-level {@code "ambientocclusion"} in the model JSON,
+     * aligned with 26.1.2 {@code CuboidModel.getAmbientOcclusion}).
+     * <p>
+     * true = per-vertex AO (smooth lighting), false = flat lighting (uniform, e.g. the
+     * cross/tinted_cross plants), null = not declared by this model — inherit it from the
+     * parent chain; when nothing in the chain declares it the 26.1.2 default is true.
+     */
+    public Boolean ambientocclusion;
+
+    /**
      * 标记此模型继承自 builtin/generated（需触发生成侧面 quad）。
      * transient — 不由 Gson 反序列化，仅由 ModelResolver 在 resolve 时设置。
      */
@@ -255,6 +265,11 @@ public class ModelJson {
 
             model.guiLight = obj.has("gui_light") ? obj.get("gui_light").getAsString() : null;
 
+            // Model-level ambient occlusion (top-level "ambientocclusion"): null = absent
+            // (inherit along the parent chain; 26.1.2 default true when nothing declares it)
+            model.ambientocclusion = obj.has("ambientocclusion")
+                    ? obj.get("ambientocclusion").getAsBoolean() : null;
+
             // display: {slot: DisplayTransform}，值需逐项指定 DisplayTransform.class
             // 不能使用 context.deserialize(..., Map.class)：同上，会解析成 LinkedTreeMap
             if (obj.has("display") && obj.get("display").isJsonObject()) {
@@ -268,7 +283,7 @@ public class ModelJson {
 
             // 未识别顶层键 → raw 快照（只存不解释）
             model.raw = collectUnknown("model", obj,
-                    "parent", "textures", "elements", "texture_size", "gui_light", "display");
+                    "parent", "textures", "elements", "texture_size", "gui_light", "display", "ambientocclusion");
 
             return model;
         }

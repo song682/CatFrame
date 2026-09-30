@@ -30,6 +30,11 @@ public final class AOComputeExtension implements IModelRenderExtension {
         BakedQuad q = ctx.quad;
         if (q.face == null) return;
 
+        // Model-level ambientocclusion=false → flat lighting path (aligned with 26.1.2
+        // ModelBlockRenderer dispatching such models to tesselateFlat): per-vertex AO must not run.
+        // The degrade brightness/shade is written by LightPolicyExtension / AOShadeExtension instead.
+        if (q.ambientOcclusion != null && !q.ambientOcclusion) return;
+
         BlockModelLighter.get().prepareQuadAmbientOcclusion(
                 ctx.world, ctx.x, ctx.y, ctx.z,
                 ctx.block, q, ctx);

@@ -184,6 +184,11 @@ public class ModelResolver {
         // gui_light: child overrides parent
         merged.guiLight = (child.guiLight != null) ? child.guiLight : parent.guiLight;
 
+        // ambientocclusion: child overrides parent (model-level flag; when neither declares it the
+        // value stays null and the bake stage applies the 26.1.2 default of true)
+        merged.ambientocclusion = (child.ambientocclusion != null)
+                ? child.ambientocclusion : parent.ambientocclusion;
+
         // raw: 未识别键合并（child 覆盖 parent，与 textures/display 同策略），保证兼容快照不因继承链丢失
         if (parent.raw != null || child.raw != null) {
             merged.raw = new HashMap<>();
@@ -520,6 +525,7 @@ public class ModelResolver {
         }
         copy.raw = source.raw;
         copy.guiLight = source.guiLight;
+        copy.ambientocclusion = source.ambientocclusion;
         copy.builtinGenerated = source.builtinGenerated;
         if (source.texture_size != null) {
             copy.texture_size = source.texture_size.clone();

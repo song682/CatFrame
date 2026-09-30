@@ -60,7 +60,8 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
     @Nullable
     @Override
     public Boolean ambientOcclusion() {
-        return null; // 模型级别的环境光遮蔽暂未使用
+        // Model-level "ambientocclusion" (26.1.2 CuboidModel.getAmbientOcclusion); null = not declared
+        return json.ambientocclusion;
     }
 
     @Nullable
@@ -147,6 +148,18 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         if (json.guiLight != null) {
             for (BakedQuad q : quads) {
                 q.guiLight = json.guiLight;
+            }
+        }
+
+        // 6.1 传播模型级别的 ambientocclusion 到 element 未单独声明的 quad。
+        // Aligned with 26.1.2 SimpleModelWrapper.useAmbientOcclusion: the model-level flag drives
+        // the AO/flat dispatch. Element-level "ambientocclusion" is a CatFrame extension and keeps
+        // precedence (child overrides model default).
+        if (json.ambientocclusion != null) {
+            for (BakedQuad q : quads) {
+                if (q.ambientOcclusion == null) {
+                    q.ambientOcclusion = json.ambientocclusion;
+                }
             }
         }
 

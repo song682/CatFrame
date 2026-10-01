@@ -1,218 +1,131 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
+import decok.dfcdvadstf.catframe.ui.GuiDrawing;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.components.tab.Tab;
-import decok.dfcdvadstf.catframe.ui.components.tab.TabBar;
+import decok.dfcdvadstf.catframe.ui.components.tab.TabManager;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
- * Tab 按钮组件 —— 一个托管到 TabBar 的独立按钮控件，
- * 使用九宫格拉伸渲染四种状态的纹理（normal / highlighted / selected / selected+highlighted）。
+ * 页签按钮组件 —— 四态九宫格精灵（选中 / 未选中 × 普通 / 高亮）+ 选中态装饰
+ * （菜单背景填充 + 焦点下划线）+ 居中标题。<br>
+ * 对标 26.1.2 {@code net.minecraft.client.gui.components.TabButton}。
  * </p>
  * <p>
- * Tab button component — an independent button widget managed by TabBar,
- * renders four state textures (normal / highlighted / selected / selected+highlighted)
- * with nine-patch stretching.
+ * Tab button — four-state nine-patch sprites (selected / normal × plain /
+ * highlighted) plus selected-state decoration (menu-background fill and focus
+ * underline) and a centred title. Counterpart of the high-version
+ * {@code TabButton}.
+ * </p>
+ * <p>
+ * 选中判定为引用相等（{@code tabManager.getCurrentTab() == tab}）；切换动作由
+ * {@code TabNavigationBar} 的焦点钩子驱动，故本组件自身不处理点击。
  * </p>
  */
-public class TabButton extends AbstractButton {
+public class TabButton extends AbstractComponent.WithInactiveMessage {
 
-    // ──── Constants ────
+    /**
+     * 四态精灵 —— 与高版本 {@code widget/tab_selected | tab |
+     * tab_selected_highlighted | tab_highlighted} 一一对应。
+     */
+    private static final WidgetSprites SPRITES = new WidgetSprites(
+            new ResourceLocation("catframe", "textures/gui/tabs/tab_selected.png"),
+            new ResourceLocation("catframe", "textures/gui/tabs/tab.png"),
+            new ResourceLocation("catframe", "textures/gui/tabs/tab_selected_highlighted.png"),
+            new ResourceLocation("catframe", "textures/gui/tabs/tab_highlighted.png"));
 
-    /** Nine-patch edge size in texture pixels / 九宫格边缘尺寸（纹理像素） */
-    private static final int EDGE = 2;
+    /** mcmeta 缺失时的九宫格回退参数（nine_patch / 130x24 / edge 2） */
+    private static final int TEX_DEFAULT_W = 130;
+    private static final int TEX_DEFAULT_H = 24;
+    private static final int TEX_DEFAULT_EDGE = 2;
 
-    /** Default texture dimensions / 默认纹理尺寸 */
-    private static final int TEX_W = 130;
-    private static final int TEX_H = 24;
+    private static final int SELECTED_OFFSET = 3;
+    private static final int TEXT_MARGIN = 1;
+    private static final int UNDERLINE_HEIGHT = 1;
+    private static final int UNDERLINE_MARGIN_X = 4;
+    private static final int UNDERLINE_MARGIN_BOTTOM = 2;
 
-    // ──── State textures ────
-
-    private static final ResourceLocation TAB_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/tabs/tab.png");
-    private static final ResourceLocation TAB_HIGHLIGHTED_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/tabs/tab_highlighted.png");
-    private static final ResourceLocation TAB_SELECTED_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/tabs/tab_selected.png");
-    private static final ResourceLocation TAB_SELECTED_HIGHLIGHTED_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/tabs/tab_selected_highlighted.png");
-
-    // ──── Instance-level texture fields (default to static constants) ────
-
-    private ResourceLocation texNormal       = TAB_TEXTURE;
-    private ResourceLocation texHighlighted  = TAB_HIGHLIGHTED_TEXTURE;
-    private ResourceLocation texSelected     = TAB_SELECTED_TEXTURE;
-    private ResourceLocation texSelHighlight = TAB_SELECTED_HIGHLIGHTED_TEXTURE;
-
-    // ──── Text colours (instance-level, customizable) ────
-
-    /** Text colour when selected / 选中时文本颜色 */
-    private int colorSelected = 0xFFFFFF;
-    /** Text colour when hovered / 悬停时文本颜色 */
-    private int colorHovered = 0xFFFF55;
-    /** Text colour in normal state / 普通状态文本颜色 */
-    private int colorNormal   = 0xA0A0A0;
-
-    // ──── Fields ────
-
+    private final TabManager tabManager;
     private final Tab tab;
-    private boolean selected;
-    private Runnable onPress = () -> {};
 
-    // ──── Constructor ────
-
-    public TabButton(Tab tab) {
-        super(0, 0, 0, TabBar.NAV_HEIGHT);
-        if (tab == null) throw new IllegalArgumentException("tab must not be null");
+    public TabButton(TabManager tabManager, Tab tab, int width, int height) {
+        super(0, 0, width, height, tab.getTabTitle());
+        this.tabManager = tabManager;
         this.tab = tab;
     }
 
-    // ──── State ────
-
-    public void setSelected(boolean selected) {
-        this.selected = selected;
-    }
-
-    public boolean isSelected() {
-        return selected;
-    }
-
-    public Tab getTab() {
-        return tab;
-    }
-
-    // ──── Colour customization ────
-
     /**
-     * Set the text colour for the selected state.
-     * <p>设置选中状态文本颜色。</p>
-     */
-    public void setColorSelected(int color) { this.colorSelected = color; }
-
-    /**
-     * Set the text colour for the hovered state.
-     * <p>设置悬停状态文本颜色。</p>
-     */
-    public void setColorHovered(int color) { this.colorHovered = color; }
-
-    /**
-     * Set the text colour for the normal state.
-     * <p>设置普通状态文本颜色。</p>
-     */
-    public void setColorNormal(int color) { this.colorNormal = color; }
-
-    // ──── Texture customization ────
-
-    /**
-     * Set custom state textures for this button.
-     * <p>为此按钮设置自定义状态纹理。传入 null 的项保留当前值。</p>
-     */
-    public void setStateTexture(ResourceLocation normal, ResourceLocation highlighted,
-                                ResourceLocation selected, ResourceLocation selectedHighlighted) {
-        if (normal != null)              this.texNormal       = normal;
-        if (highlighted != null)         this.texHighlighted  = highlighted;
-        if (selected != null)            this.texSelected     = selected;
-        if (selectedHighlighted != null) this.texSelHighlight = selectedHighlighted;
-    }
-
-    // ──── Callback ────
-
-    public void setOnPress(Runnable onPress) {
-        this.onPress = onPress != null ? onPress : () -> {};
-    }
-
-    @Override
-    public void onPress() {
-        onPress.run();
-    }
-
-    // ──── Rendering ────
-
-    /**
-     * 绘制 Tab 背景与标题 —— 可见性与悬停状态已由 {@link #extractRenderState}
-     * 在调用前处理。<br>
-     * Draws the tab background and title — visibility and hover state are
-     * already handled by {@link #extractRenderState}.
+     * 绘制页签 —— 四态精灵、选中态装饰与标题。可见性与悬停状态已由
+     * {@link #extractRenderState} 在调用前处理。
      */
     @Override
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-        renderBackground(graphics, mouseX, mouseY, partialTicks);
-        renderTitle();
-    }
+        TextureStretching.drawAutoNinePatch(
+                SPRITES.get(this.isSelected(), this.isHovered() || this.isFocused()),
+                this.getX(), this.getY(), this.getWidth(), this.getHeight(),
+                TEX_DEFAULT_W, TEX_DEFAULT_H, TEX_DEFAULT_EDGE);
 
-    @Override
-    protected void renderBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-        if (width <= 0 || height <= 0) return;
-
-        ResourceLocation tex = getStateTexture();
-
-        // Render with nine-patch stretching
-        TextureStretching.drawNinePatch(tex, x, y, width, height,
-                EDGE, EDGE, EDGE, EDGE, TEX_W, TEX_H);
-
-        // When selected, fill interior with panel background to cover the separator
-        // 选中时，在内部填充面板背景以盖住分隔线
-        if (selected) {
-            ContentPanelRenderer.drawPanelBackground(x + 2, y + 2, width - 4, height - 4);
+        int underlineColor = this.active ? -1 : -6250336;
+        if (this.isSelected()) {
+            this.renderMenuBackground();
+            this.renderFocusUnderline(underlineColor);
         }
+
+        this.renderLabel();
     }
 
     /**
-     * Pick the correct texture for the current button state.
-     * <p>根据当前按钮状态选择正确的纹理。</p>
+     * 选中页签的内部填充（{@code x+2, y+2, x+w-2, y+h}）—— 盖住分隔线，对应高版本
+     * {@code Screen.MENU_BACKGROUND}。
      */
-    private ResourceLocation getStateTexture() {
-        // Priority 1: Four-state textures from Tab interface (highest priority)
-        Tab.TabTextures textures = tab.getTabTextures();
-        if (textures != null) {
-            if (!active) return textures.normal;
-            if (selected && isHovered) return textures.selectedHighlighted;
-            if (selected) return textures.selected;
-            if (isHovered) return textures.highlighted;
-            return textures.normal;
-        }
-        // Priority 2: Single custom texture from Tab interface
-        ResourceLocation custom = tab.getTabTexture();
-        if (custom != Tab.DEFAULT_TAB_TEXTURE) {
-            return custom;
-        }
-        // Priority 3: Instance-level four-state textures (from setStateTexture or TabBar push)
-        if (!active) return texNormal;
-        if (selected && isHovered) return texSelHighlight;
-        if (selected) return texSelected;
-        if (isHovered) return texHighlighted;
-        return texNormal;
+    private void renderMenuBackground() {
+        ContentPanelRenderer.drawPanelBackground(this.getX() + 2, this.getY() + 2,
+                this.getWidth() - 4, this.getHeight() - 2);
     }
 
     /**
-     * Draw the tab title text centered in the button.
-     * <p>在按钮中央绘制 Tab 标题文本。</p>
+     * 选中页签的下划线 —— 宽 = min(文本宽, 按钮宽 - 4)，水平居中，高 1px，
+     * 贴按钮底边上方 2px。
      */
-    private void renderTitle() {
-        FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-        Text title = tab.getTabTitle();
-        String titleStr = title != null ? title.getString() : tab.getTabName();
+    private void renderFocusUnderline(int color) {
+        int width = Math.min(FontHelper.width(this.getMessage()), this.getWidth() - UNDERLINE_MARGIN_X);
+        int left = this.getX() + (this.getWidth() - width) / 2;
+        int top = this.getY() + this.getHeight() - UNDERLINE_MARGIN_BOTTOM;
+        GuiDrawing.drawRect(left, top, left + width, top + UNDERLINE_HEIGHT, color);
+    }
 
-        int textColor;
-        if (selected) {
-            textColor = colorSelected;
-        } else if (isHovered) {
-            textColor = colorHovered;
-        } else {
-            textColor = colorNormal;
-        }
+    /**
+     * 居中标题 —— 水平带 {@code [x+1, x+w-1]}，垂直带 {@code [top, y+h]}
+     * （未选中时顶部下移 {@link #SELECTED_OFFSET}px）。
+     */
+    private void renderLabel() {
+        Text message = this.getMessage();
+        int left = this.getX() + TEXT_MARGIN;
+        int right = this.getX() + this.getWidth() - TEXT_MARGIN;
+        int top = this.getY() + (this.isSelected() ? 0 : SELECTED_OFFSET);
+        int bottom = this.getY() + this.getHeight();
+        int textX = left + (right - left - FontHelper.width(message)) / 2;
+        int textY = top + (bottom - top - Minecraft.getMinecraft().fontRenderer.FONT_HEIGHT) / 2;
+        FontHelper.draw(message, textX, textY);
+    }
 
-        int textWidth = font.getStringWidth(titleStr);
-        int textX = x + (width - textWidth) / 2;
-        // Selected tab text is at top, unselected is shifted down by 3px
-        // 选中时文字贴顶，未选中时向下偏移 3px
-        int textY = y + (selected ? 5 : 8);
-        font.drawStringWithShadow(titleStr, textX, textY, textColor);
+    /**
+     * @return the tab this button represents / 此按钮代表的标签页
+     */
+    public Tab tab() {
+        return this.tab;
+    }
+
+    /**
+     * @return whether this button's tab is the current tab (reference equality)
+     *         / 此按钮的标签页是否为当前页（引用相等）
+     */
+    public boolean isSelected() {
+        return this.tabManager.getCurrentTab() == this.tab;
     }
 }

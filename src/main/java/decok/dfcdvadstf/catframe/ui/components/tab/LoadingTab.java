@@ -1,127 +1,76 @@
 package decok.dfcdvadstf.catframe.ui.components.tab;
 
-import decok.dfcdvadstf.catframe.ui.LoadingDotsText;
 import decok.dfcdvadstf.catframe.ui.Text;
+import decok.dfcdvadstf.catframe.ui.components.LoadingDotsWidgets;
 import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
 import decok.dfcdvadstf.catframe.ui.layouts.FrameLayout;
-import decok.dfcdvadstf.catframe.ui.layouts.LayoutSettings;
 import decok.dfcdvadstf.catframe.ui.layouts.LinearLayout;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.GuiButton;
 
 import java.util.function.Consumer;
 
 /**
  * <p>
- * 加载状态标签页 —— 在加载完成之前显示加载动画提示。<br>
- * 对标高版本 Minecraft 的 {@code LoadingTab}。
+ * 加载状态标签页 —— 在加载完成之前显示加载动画提示，唯一子件为
+ * {@link LoadingDotsWidgets}（居中标题 + 流动 dots 指示）。<br>
+ * 对标 26.1.2 {@code net.minecraft.client.gui.components.tabs.LoadingTab}。
  * </p>
  * <p>
- * Loading tab — displays a loading animation while content is being prepared.<br>
- * Counterpart of higher Minecraft versions' {@code LoadingTab}.
+ * Loading tab — displays a loading placeholder until content is ready. Its only
+ * child is a {@link LoadingDotsWidgets} (centred title plus flowing dots).
+ * Counterpart of the high-version {@code LoadingTab}.
  * </p>
  *
  * <p>Usage / 用法:</p>
  * <pre>{@code
- * TabRegistry.registerTab("mybar", () -> new LoadingTab(
- *     200, "catframe:tab.loading",
- *     Text.translatable("catframe:tab.loading.title"),
+ * new LoadingTab(
+ *     Text.translatable("catframe:tab.loading"),
  *     Text.translatable("catframe:tab.loading.status")
- * ), 200, "catframe:tab.loading");
+ * );
  * }</pre>
  */
-public class LoadingTab extends AbstractScreenTab {
+public class LoadingTab implements Tab {
 
     private final Text title;
     private final Text loadingTitle;
     protected final LinearLayout layout = new LinearLayout(LinearLayout.Axis.VERTICAL, LinearLayout.Alignment.CENTER);
-    private int tabAreaX;
-    private int tabAreaY;
-    private int tabAreaWidth;
-    private int tabAreaHeight;
 
     /**
-     * @param tabId       标签页 ID / tab ID
-     * @param tabNameKey  本地化键名 / localization key
-     * @param title       标签页标题（用于 TabButton 显示） / tab title for TabButton display
-     * @param loadingTitle 加载中标题（用于旁白） / loading title for narration
+     * @param title        tab button title / 页签按钮标题
+     * @param loadingTitle title shown on the loading placeholder (also used as
+     *                     extra narration) / 加载占位页显示的标题（亦作旁白文本）
      */
-    public LoadingTab(int tabId, String tabNameKey, Text title, Text loadingTitle) {
-        super(tabId, tabNameKey);
+    public LoadingTab(Text title, Text loadingTitle) {
         this.title = title;
         this.loadingTitle = loadingTitle;
-    }
-
-    @Override
-    public void initGui(TabManager tabManager, int width, int height) {
-        super.initGui(tabManager, width, height);
-        this.layout.clear();
-        LayoutSettings settings = this.layout.newChildLayoutSettings();
-        settings.align(0.5F, 0.5F).paddingBottom(30);
+        LoadingDotsWidgets loadingDotsWidgets = new LoadingDotsWidgets(loadingTitle);
+        this.layout.defaultChildLayoutSetting().alignVerticallyMiddle().alignHorizontallyCenter();
+        this.layout.addChild(loadingDotsWidgets, settings -> settings.paddingBottom(30));
     }
 
     @Override
     public Text getTabTitle() {
-        return title;
+        return this.title;
     }
 
     @Override
     public Text getTabExtraNarration() {
-        return loadingTitle;
+        return this.loadingTitle;
     }
 
     @Override
-    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        if (!visible) return;
-
-        FontRenderer font = mc.fontRenderer;
-        String loadingText = LoadingDotsText.get(System.currentTimeMillis());
-        int textWidth = font.getStringWidth(loadingText);
-
-        int centerX = tabAreaX + tabAreaWidth / 2;
-        int centerY = tabAreaY + tabAreaHeight / 2;
-        int textX = centerX - textWidth / 2;
-        int textY = centerY - font.FONT_HEIGHT / 2;
-
-        font.drawStringWithShadow(loadingText, textX, textY, 0xFFFFFF);
+    public void visitChildren(Consumer<GuiEventListener> childrenConsumer) {
+        this.layout.visitChildren(child -> {
+            if (child instanceof GuiEventListener) {
+                childrenConsumer.accept((GuiEventListener) child);
+            }
+        });
     }
 
     @Override
-    public void visitChildren(Consumer<Object> visitor) {
-        // No interactive child widgets
-        // 没有交互子控件
-    }
-
-    @Override
-    public void visitComponents(Consumer<GuiEventListener> visitor) {
-        // No Component children
-    }
-
-    @Override
-    public void doLayout(ScreenRectangle rectangle) {
-        this.tabAreaX = rectangle.x;
-        this.tabAreaY = rectangle.y;
-        this.tabAreaWidth = rectangle.width;
-        this.tabAreaHeight = rectangle.height;
+    public void doLayout(ScreenRectangle screenRectangle) {
         this.layout.arrangeElements();
-        FrameLayout.alignInRectangle(
-                this.layout,
-                rectangle.x, rectangle.y,
-                rectangle.width, rectangle.height,
-                0.5F, 0.5F
-        );
-    }
-
-    @Override
-    public void actionPerformed(GuiButton button) {
-    }
-
-    @Override
-    public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-    }
-
-    @Override
-    public void keyTyped(char typedChar, int keyCode) {
+        FrameLayout.alignInRectangle(this.layout, screenRectangle.x, screenRectangle.y,
+                screenRectangle.width, screenRectangle.height, 0.5F, 0.5F);
     }
 }

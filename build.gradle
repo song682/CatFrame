@@ -291,19 +291,19 @@ artifacts {
 
 if (project.include_license.toBoolean()){
     jar {
-        from file("./LICENSE") into ("license")
-        from file("./LICENSE-Assets") into ("license")
-        from file("./LICENSE-OF-MC_MOD-REDISTRIBUTION") into ("license")
+        from(file("./LICENSE")) { into("license") }
+        from(file("./LICENSE-Assets")) { into("license") }
+        from(file("./LICENSE-OF-MC_MOD-REDISTRIBUTION")) { into("license") }
     }
     deobfJar {
-        from file("./LICENSE") into ("license")
-        from file("./LICENSE-Assets") into ("license")
-        from file("./LICENSE-OF-MC_MOD-REDISTRIBUTION") into ("license")
+        from(file("./LICENSE")) { into("license") }
+        from(file("./LICENSE-Assets")) { into("license") }
+        from(file("./LICENSE-OF-MC_MOD-REDISTRIBUTION")) { into("license") }
     }
     sourcesJar {
-        from file("./LICENSE") into ("license")
-        from file("./LICENSE-Assets") into ("license")
-        from file("./LICENSE-OF-MC_MOD-REDISTRIBUTION") into ("license")    
+        from(file("./LICENSE")) { into("license") }
+        from(file("./LICENSE-Assets")) { into("license") }
+        from(file("./LICENSE-OF-MC_MOD-REDISTRIBUTION")) { into("license") }
     }
 }
 

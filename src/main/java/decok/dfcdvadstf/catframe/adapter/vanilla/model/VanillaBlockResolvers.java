@@ -322,6 +322,11 @@ public final class VanillaBlockResolvers {
      * So rendering the upper half requires reading the meta of the block below across blocks.
      * When that block is missing / is a different block (e.g. a leftover stalk placed by setblock),
      * fall back to this half's own low 3 bits.
+     * <p>
+     * Render-path veto ({@link #shouldRender}): while the upper half's block below is not the
+     * same double plant, nothing is emitted — the in-resolve fallback above therefore no longer
+     * surfaces as a "phantom upper half" during the client-sync window right after the lower
+     * half is broken (its low 3 bits are an {@code onBlockPlacedBy} facing residue, not a variant).
      */
     public static final DynamicPropertyResolver DOUBLE_PLANT = new DynamicPropertyResolver() {
         @Override
@@ -337,6 +342,20 @@ public final class VanillaBlockResolvers {
             }
             props.put("variant", DOUBLE_PLANT_VARIANTS[Math.min(variantMeta & 7, 5)]);
             props.put("half", upper ? "upper" : "lower");
+        }
+
+        /**
+         * Vanilla parity ({@code RenderBlocks#renderBlockDoublePlant}): the upper half is
+         * rendered only while the block below is the same double plant - vanilla returns
+         * false and emits nothing otherwise. Kept deliberately asymmetric, matching vanilla:
+         * the lower half has no such check, so a lower half whose upper half was just broken
+         * keeps rendering like vanilla until the server confirms the removal.
+         */
+        @Override
+        public boolean shouldRender(IBlockAccess world, int x, int y, int z, int meta) {
+            if ((meta & 8) == 0 || world == null) return true;
+            Block self = world.getBlock(x, y, z);
+            return world.getBlock(x, y - 1, z) == self;
         }
     };
 

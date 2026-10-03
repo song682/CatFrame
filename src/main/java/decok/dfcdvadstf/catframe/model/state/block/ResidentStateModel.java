@@ -57,6 +57,23 @@ public final class ResidentStateModel implements BlockStateModel {
     @FunctionalInterface
     public interface DynamicPropertyResolver {
         void resolve(IBlockAccess world, int x, int y, int z, int meta, Map<String, String> props);
+
+        /**
+         * 渲染否决钩子：允许解析器按当前世界状态整体抑制本位置的渲染。
+         * <p>
+         * 返回 false 时 {@link ResidentStateModel#collectPartsWithProps} 直接产出空部件，
+         * 渲染调用方（RenderDispatcher）随即跳过该位置——等价于原版渲染器方法
+         * {@code return false}（如 {@code RenderBlocks#renderBlockDoublePlant} 在上半的
+         * 下方不是同一方块时直接返回 false、不产出任何几何）。
+         * <p>
+         * Render veto hook: lets a resolver suppress rendering for the current world state.
+         * Returning false makes collectPartsWithProps emit an empty part, which the render
+         * caller treats as "nothing to draw" - the vanilla equivalent of a renderer
+         * returning false. Defaults to true; existing resolvers are unaffected.
+         */
+        default boolean shouldRender(IBlockAccess world, int x, int y, int z, int meta) {
+            return true;
+        }
     }
 
     private final Block block;
@@ -109,6 +126,16 @@ public final class ResidentStateModel implements BlockStateModel {
     public CollectedPart collectPartsWithProps(IBlockAccess world, int x, int y, int z, int metadata) {
         BlockstateJson target = resolveTarget(metadata);
         if (target == null) return new CollectedPart(BlockStateModelPart.empty(), null);
+
+        // 渲染否决：dynamic 解析器可按世界状态整体抑制渲染（如双层植物上半在下方
+        // 缺失时不出几何——对标原版 renderBlockDoublePlant 的 return false，避免破坏
+        // 下半后的客户端同步窗口期内以上半自身残值 meta 残留"幽灵上半"）。
+        // Render veto: a dynamic resolver may suppress rendering for the current world
+        // state (double plant upper half with a missing block below - renderBlockDoublePlant
+        // parity; avoids the phantom upper half during the post-break sync window).
+        if (dynamic != null && !dynamic.shouldRender(world, x, y, z, metadata)) {
+            return new CollectedPart(BlockStateModelPart.empty(), null);
+        }
 
         Map<String, String> props = resolveProps(world, x, y, z, metadata);
         if (dynamic != null) {

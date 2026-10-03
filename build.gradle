@@ -7,7 +7,7 @@ buildscript {
         }
         maven {
             name = "forge"
-            url = "https://maven.minecraftforge.net"
+            url = "https://files.minecraftforge.net/maven"
         }
         maven {
             name = "sonatype"
@@ -54,7 +54,7 @@ configurations {
 
 minecraft {
     version = "1.7.10-10.13.4.1614-1.7.10"
-    runDir = ".minecraft"
+    runDir = "minecraft"
 }
 
 repositories {
@@ -94,15 +94,17 @@ dependencies {
     runtimeOnly "maven.modrinth:notenoughitems-unofficial:${project.nei_version}-GTNH"
     runtimeOnly "maven.modrinth:codechickencore-unofficial:${project.cc_version}"
     runtimeOnly "maven.modrinth:codechickenlib-unofficial:${project.cc_version}"
-
-    
     implementation fileTree(dir: 'lib', includes: ['*.jar'])
-
-    testImplementation 'junit:junit:4.13.2'
 }
 
 def dependenciesList = []
-if (!project.modDependencies.isEmpty()) dependenciesList.add(project.modDependencies)
+if (!project.modDependencies.isEmpty()) {
+    // mcmod.info expects one dependency per array element; the modDependencies
+    // string is ';'-separated, so split it into individual entries.
+    project.modDependencies.replaceAll('"', '').tokenize(';').each { dep ->
+        dependenciesList.add("\"${dep}\"")
+    }
+}
 if (project.enableUsingMysteriumLib.toBoolean()) dependenciesList.add("\"required-after:MysteriumLib\"")
 
 def extractTagsFromJava() {
@@ -213,7 +215,7 @@ sourceCompatibility = targetCompatibility = "1.8"
 
 tasks.withType(Jar).configureEach {
     compileJava.options.encoding = 'UTF-8'
-    compileJava.options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:all" << "-Xlint:-processing"
+    compileJava.options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:all"
 }
 
 
@@ -221,7 +223,7 @@ allprojects {
     gradle.projectsEvaluated {
         tasks.withType(JavaCompile).tap {
             configureEach {
-                options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:all" << "-Xlint:-processing"
+                options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:all"
             }
         }
     }
@@ -287,19 +289,19 @@ artifacts {
 
 if (project.include_license.toBoolean()){
     jar {
-        from file("./LICENSE")
-        from file("./LICENSE-Assets")
-        from file("./LICENSE-OF-MC_Mod-REDISTRIBUTION")
+        from file("./LICENSE") into ("license")
+        from file("./LICENSE-Assets") into ("license")
+        from file("./LICENSE-OF-MC_MOD-REDISTRIBUTION") into ("license")
     }
     deobfJar {
-        from file("./LICENSE")
-        from file("./LICENSE-Assets")
-        from file("./LICENSE-OF-MC_Mod-REDISTRIBUTION")
+        from file("./LICENSE") into ("license")
+        from file("./LICENSE-Assets") into ("license")
+        from file("./LICENSE-OF-MC_MOD-REDISTRIBUTION") into ("license")
     }
     sourcesJar {
-        from file("./LICENSE")
-        from file("./LICENSE-Assets")
-        from file("./LICENSE-OF-MC_Mod-REDISTRIBUTION")
+        from file("./LICENSE") into ("license")
+        from file("./LICENSE-Assets") into ("license")
+        from file("./LICENSE-OF-MC_MOD-REDISTRIBUTION") into ("license")    
     }
 }
 
@@ -319,17 +321,17 @@ publishing {
 
             // 过滤掉 forgeBin 这种没有 groupId 的依赖
             pom.withXml {
-				def depsNode = asNode().get("dependencies")
-				if (depsNode.size() > 0) {
-					depsNode[0].children().removeAll { dep ->
-						if (!(dep instanceof Node)) return false
-						if (dep.name().localPart != "dependency") return false
-						def groupIdNodes = dep.get("groupId")
-						// 删除：没有 groupId 节点，或者 groupId 内容为空
-						return groupIdNodes.isEmpty() || groupIdNodes[0].text().trim().isEmpty()
-					}
-				}
-			}
+                def depsNode = asNode().get("dependencies")
+                if (depsNode.size() > 0) {
+                    depsNode[0].children().removeAll { dep ->
+                        if (!(dep instanceof Node)) return false
+                        if (dep.name().localPart != "dependency") return false
+                        def groupIdNodes = dep.get("groupId")
+                        // 删除：没有 groupId 节点，或者 groupId 内容为空
+                        return groupIdNodes.isEmpty() || groupIdNodes[0].text().trim().isEmpty()
+                    }
+                }
+            }
         }
     }
 }

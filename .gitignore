@@ -1,41 +1,32 @@
 # eclipse
-bin/
+/bin/
 *.launch
 .settings
 .metadata
 .classpath
 .project
-.gitattributes
 
 # idea
 out
 *.ipr
 *.iws
 *.iml
-.idea/
+/.idea/
 idea
+/.qoder/
 
 # gradle
-build
-.gradle
+/build/
+/.gradle/
 
 # minecraft
-.minecraft/
-eclipse
-run
+/.minecraft/
+/eclipse/
+/run/
 
 # Files from Forge MDK
 forge*changelog.txt
-docs/
-markdown/minecraft-clientOnly-52430b475d-26.1.2-sources/
-markdown/minecraft-common-52430b475d-26.1.2-sources/
-docs/CatFrame-0.2.0.10-bluey-deobf-sources/
-unimixins-all-1.7.10-0.2.1-sources/
-.vscode/
-GTNHLib/
-/markdown
-/.qoder
-TODO.md
-UI-Completity.md
-ModelModern-Key.md
-src.zip
+
+# Wiki
+/tmps/
+/.vscode/

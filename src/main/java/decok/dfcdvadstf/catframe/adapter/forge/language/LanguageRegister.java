@@ -91,7 +91,7 @@ public final class LanguageRegister {
      * @param fileName       all-lowercase json name, e.g. "en_us.json"
      * @param in             the file's content stream
      */
-    static void injectExternal(String resourceDomain, String resourceDir, String fileName, InputStream in) {
+    public static void injectExternal(String resourceDomain, String resourceDir, String fileName, InputStream in) {
         String langCode = fileName.substring(0, fileName.length() - ".json".length());
         String vanillaCode = toVanillaCode(langCode);
         Map<String, String> data = parseJsonLang(in);

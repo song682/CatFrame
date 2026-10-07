@@ -73,13 +73,13 @@ public class MultipartSelector {
     }
 
     /**
-     * 根据 {@link CatBlockState} 选择所有匹配的 Variant。
+     * 根据 {@link BlockState} 选择所有匹配的 Variant。
      * 将 CatBlockState 转换为属性映射后委托给 {@link #select(Map)}。
      *
      * @param state CatBlockState 实例
      * @return 匹配的 Variant 列表，可能为空
      */
-    public List<BlockstateJson.Variant> select(CatBlockState state) {
+    public List<BlockstateJson.Variant> select(BlockState state) {
         if (state == null) return Collections.emptyList();
 
         Map<String, String> propMap = buildPropertyMap(state);
@@ -100,8 +100,8 @@ public class MultipartSelector {
     /**
      * 将 CatBlockState 转换为用于 multipart 条件匹配的 Map。
      */
-    private static Map<String, String> buildPropertyMap(CatBlockState state) {
-        CatStateDefinition<?> def = state.getDefinition();
+    private static Map<String, String> buildPropertyMap(BlockState state) {
+        BlockStateDefinition<?> def = state.getDefinition();
         if (def == null) return Collections.emptyMap();
 
         Property<?>[] properties = def.getProperties();

@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.model.state.property;
 
-import decok.dfcdvadstf.catframe.model.state.CatBlockState;
+import decok.dfcdvadstf.catframe.model.state.BlockState;
 
 import java.util.*;
 
@@ -8,7 +8,7 @@ import java.util.*;
  * 类型安全的块状态属性基类。类似于 1.21.5 的 {@code Property<T>}。
  *
  * <p>每个属性有一个唯一的名称、一个值类型，以及一个所有可能值的不可变列表。
- * {@link #getInternalIndex} 将值映射为内部索引，用于 {@link CatBlockState} 的邻居跳表。
+ * {@link #getInternalIndex} 将值映射为内部索引，用于 {@link BlockState} 的邻居跳表。
  *
  * <p>预定义子类：
  * <ul>

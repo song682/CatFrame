@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.model;
 
-import decok.dfcdvadstf.catframe.model.state.CatBlockState;
-import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
+import decok.dfcdvadstf.catframe.model.state.BlockState;
+import decok.dfcdvadstf.catframe.model.state.BlockStateDefinition;
 import net.minecraft.world.IBlockAccess;
 
 import java.util.Map;
@@ -14,7 +14,7 @@ import java.util.Map;
  * 2. On each render, call {@link #getStateProperties} to get the current property map
  * 3. Match properties against blockstate variants to select the correct model
  * <p>
- * v0.3.0 adds optional {@link CatStateDefinition} support via {@link #getStateDefinition()}
+ * v0.3.0 adds optional {@link BlockStateDefinition} support via {@link #getStateDefinition()}
  * and {@link #getBlockState(IBlockAccess, int, int, int, int)} for type-safe property handling.
  */
 public interface IBlockStateProvider {
@@ -48,20 +48,20 @@ public interface IBlockStateProvider {
     Map<String, String> getStateProperties(IBlockAccess world, int x, int y, int z, int metadata);
 
     /**
-     * v0.3.0: Optionally return a {@link CatStateDefinition} that defines all typed properties
-     * for this block. When non-null, the rendering system can use {@link CatBlockState}
+     * v0.3.0: Optionally return a {@link BlockStateDefinition} that defines all typed properties
+     * for this block. When non-null, the rendering system can use {@link BlockState}
      * for more efficient variant matching and O(1) state transitions.
      * <p>
      * Default returns {@code null} (no typed property definition).
      *
-     * @return CatStateDefinition defining this block's typed properties, or null
+     * @return BlockStateDefinition defining this block's typed properties, or null
      */
-    default CatStateDefinition<?> getStateDefinition() {
+    default BlockStateDefinition<?> getStateDefinition() {
         return null;
     }
 
     /**
-     * v0.3.0: Optionally return a {@link CatBlockState} for the given world position and metadata.
+     * v0.3.0: Optionally return a {@link BlockState} for the given world position and metadata.
      * This is used together with {@link #getStateDefinition()} to enable type-safe
      * property-based model dispatch.
      * <p>
@@ -75,7 +75,7 @@ public interface IBlockStateProvider {
      * @param metadata the block's metadata value
      * @return a CatBlockState for this position, or null
      */
-    default CatBlockState getBlockState(IBlockAccess world, int x, int y, int z, int metadata) {
+    default BlockState getBlockState(IBlockAccess world, int x, int y, int z, int metadata) {
         return null;
     }
 }

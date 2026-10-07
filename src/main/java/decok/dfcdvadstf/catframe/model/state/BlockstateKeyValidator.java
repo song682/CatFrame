@@ -14,10 +14,10 @@ import java.util.*;
  *
  * <p>A variant key is composed of {@code property=value} check groups joined by commas
  * (e.g. {@code "facing=north,half=upper"}). Each group is validated against the block's
- * typed {@link CatStateDefinition}:
+ * typed {@link BlockStateDefinition}:
  * <br>variant 键由逗号连接的 {@code 属性=属性值} 检查属性组构成（如
  * {@code "facing=north,half=upper"}），每组都要对照方块的 typed
- * {@link CatStateDefinition} 校验：
+ * {@link BlockStateDefinition} 校验：
  * <ul>
  *   <li>The property must be one the block actually has, otherwise the game logs
  *       {@code Unknown blockstate property: '<property>'}.
@@ -87,7 +87,7 @@ public final class BlockstateKeyValidator {
      *              日志上下文用的归属描述（如方块注册名）
      */
     public static void validate(@Nullable BlockstateJson bs,
-                                @Nullable CatStateDefinition<?> def,
+                                @Nullable BlockStateDefinition<?> def,
                                 String owner) {
         if (bs == null || def == null || bs.variants == null || bs.variants.isEmpty()) return;
         if (!VALIDATED.add(bs)) return;
@@ -248,7 +248,7 @@ public final class BlockstateKeyValidator {
      * 校验单个 variant 键中的每个 {@code 属性=属性值} 检查属性组；每个无效组各自告警，
      * 任一组失败则整个键无效。
      */
-    private static boolean isValidKey(String key, CatStateDefinition<?> def) {
+    private static boolean isValidKey(String key, BlockStateDefinition<?> def) {
         boolean valid = true;
         for (String group : key.split(",")) {
             int eq = group.indexOf('=');
@@ -279,7 +279,7 @@ public final class BlockstateKeyValidator {
 
     /** Find a property by name in the definition, or null. 按名称在定义中查找属性，找不到返回 null。 */
     @Nullable
-    private static Property<?> findProperty(CatStateDefinition<?> def, String name) {
+    private static Property<?> findProperty(BlockStateDefinition<?> def, String name) {
         for (Property<?> prop : def.getProperties()) {
             if (prop.getName().equals(name)) return prop;
         }

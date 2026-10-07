@@ -3,7 +3,7 @@ package decok.dfcdvadstf.catframe.adapter.vanilla.model;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.CatModels;
-import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
+import decok.dfcdvadstf.catframe.model.state.BlockStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import decok.dfcdvadstf.catframe.model.state.property.StateDefinitions;
 import net.minecraft.block.Block;
@@ -13,11 +13,11 @@ import net.minecraft.block.BlockStairs;
 import net.minecraft.init.Blocks;
 
 /**
- * Registration entry point for typed state definitions ({@link CatStateDefinition}) of vanilla blocks.
+ * Registration entry point for typed state definitions ({@link BlockStateDefinition}) of vanilla blocks.
  * <p>
  * Replaces the old {@code VanillaMetadataMapper} ({@code IMetadataMapper} lambda) and the redundant
  * {@code metadata_map.json}: the "metadata → property value → variant key" decoding layer is unified into
- * {@link Property} value domains + {@link CatStateDefinition.MetaCodec}, aligning with the wiki / modern
+ * {@link Property} value domains + {@link BlockStateDefinition.MetaCodec}, aligning with the wiki / modern
  * {@code BlockStateModelDispatcher} "property + value-domain driven dispatch" model.
  *
  * <h3>Behavior preservation</h3>
@@ -263,7 +263,7 @@ public final class VanillaStateDefinitions {
                 // BlockRotatedPillar (1.7.10's PillarBlock): axis is encoded in meta bit2-3
                 // (0=y,1=x,2=z), with the low 2 bits reserved for subclasses (e.g. a log's wood type) -
                 // aligned with the j1|b0 bit-field layout of onBlockPlaced.
-                CatStateDefinition<Class<?>> pillarDef = new CatStateDefinition.Builder<Class<?>>(
+                BlockStateDefinition<Class<?>> pillarDef = new BlockStateDefinition.Builder<Class<?>>(
                                 BlockRotatedPillar.class)
                                 .add(StateDefinitions.AXIS)
                                 .metaCodec(meta -> new Comparable<?>[] {
@@ -273,7 +273,7 @@ public final class VanillaStateDefinitions {
 
                 // BlockStairs: facing[meta&3: 0=east,1=west,2=south,3=north] +
                 // half[bit2: 0=bottom,1=top] + shape dynamic (corner computed at runtime by the STAIRS resolver).
-                CatStateDefinition<Class<?>> stairsDef = new CatStateDefinition.Builder<Class<?>>(
+                BlockStateDefinition<Class<?>> stairsDef = new BlockStateDefinition.Builder<Class<?>>(
                                 BlockStairs.class)
                                 .add(STAIR_FACING, StateDefinitions.SLAB_HALF, STAIR_SHAPE)
                                 .dynamic(STAIR_SHAPE)
@@ -287,7 +287,7 @@ public final class VanillaStateDefinitions {
                                 .register();
 
                 // BlockSlab: half is encoded in meta bit3 (0=bottom,1=top), with the low 3 bits reserved for subclass variants.
-                CatStateDefinition<Class<?>> slabDef = new CatStateDefinition.Builder<Class<?>>(BlockSlab.class)
+                BlockStateDefinition<Class<?>> slabDef = new BlockStateDefinition.Builder<Class<?>>(BlockSlab.class)
                                 .add(StateDefinitions.SLAB_HALF)
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 StateDefinitions.SLAB_HALF.getValues().get((meta & 8) == 0 ? 0 : 1) })
@@ -305,7 +305,7 @@ public final class VanillaStateDefinitions {
         }
 
         private static void colorBlock(Block block) {
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<>(block)
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<>(block)
                                 .add(StateDefinitions.COLOR)
                                 .create();
                 CatModels.register(block).states(def).register();
@@ -315,7 +315,7 @@ public final class VanillaStateDefinitions {
 
         private static void registerLogsAndLeaves() {
                 // log: wood={oak,spruce,birch,jungle}[meta&3], axis={y,x,z}[(meta>>2)%3]
-                CatStateDefinition<Block> logDef = new CatStateDefinition.Builder<Block>(Blocks.log)
+                BlockStateDefinition<Block> logDef = new BlockStateDefinition.Builder<Block>(Blocks.log)
                                 .add(LOG_WOOD, StateDefinitions.AXIS)
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 LOG_WOOD.getValues().get(meta & 3),
@@ -324,7 +324,7 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.log).states(logDef).register();
 
                 // log2: wood={acacia,dark_oak}[meta&1], axis as above
-                CatStateDefinition<Block> log2Def = new CatStateDefinition.Builder<Block>(Blocks.log2)
+                BlockStateDefinition<Block> log2Def = new BlockStateDefinition.Builder<Block>(Blocks.log2)
                                 .add(LOG2_WOOD, StateDefinitions.AXIS)
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 LOG2_WOOD.getValues().get(meta & 1),
@@ -333,13 +333,13 @@ public final class VanillaStateDefinitions {
                 CatModels.register(Blocks.log2).states(log2Def).register();
 
                 // leaves: wood[meta&3] (single property, default decode meta%4 == meta&3)
-                CatStateDefinition<Block> leavesDef = new CatStateDefinition.Builder<Block>(Blocks.leaves)
+                BlockStateDefinition<Block> leavesDef = new BlockStateDefinition.Builder<Block>(Blocks.leaves)
                                 .add(LOG_WOOD)
                                 .create();
                 CatModels.register(Blocks.leaves).states(leavesDef).register();
 
                 // leaves2: wood[meta&1] (single property, default decode meta%2 == meta&1)
-                CatStateDefinition<Block> leaves2Def = new CatStateDefinition.Builder<Block>(Blocks.leaves2)
+                BlockStateDefinition<Block> leaves2Def = new BlockStateDefinition.Builder<Block>(Blocks.leaves2)
                                 .add(LOG2_WOOD)
                                 .create();
                 CatModels.register(Blocks.leaves2).states(leaves2Def).register();
@@ -367,8 +367,8 @@ public final class VanillaStateDefinitions {
                                 meta -> new Comparable<?>[] { DIRT_VARIANT.getValues().get(meta == 2 ? 1 : 0) });
         }
 
-        private static void singleVariant(Block block, Property<String> prop, CatStateDefinition.MetaCodec codec) {
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<>(block)
+        private static void singleVariant(Block block, Property<String> prop, BlockStateDefinition.MetaCodec codec) {
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<>(block)
                                 .add(prop)
                                 .metaCodec(codec)
                                 .create();
@@ -378,7 +378,7 @@ public final class VanillaStateDefinitions {
         /**
          * Single-property clamp decoder: index = {@code min(mask>0 ? meta&mask : meta, count-1)}.
          */
-        private static CatStateDefinition.MetaCodec clampCodec(final Property<String> prop, final int mask) {
+        private static BlockStateDefinition.MetaCodec clampCodec(final Property<String> prop, final int mask) {
                 final int max = prop.getValueCount() - 1;
                 return meta -> {
                         int idx = mask > 0 ? (meta & mask) : meta;
@@ -395,7 +395,7 @@ public final class VanillaStateDefinitions {
 
         private static void registerSlabAndAnvil() {
                 // stone_slab: half=(meta&8)==0?bottom:top, variant=SLAB_TYPES[meta&7]
-                CatStateDefinition<Block> slabDef = new CatStateDefinition.Builder<Block>(Blocks.stone_slab)
+                BlockStateDefinition<Block> slabDef = new BlockStateDefinition.Builder<Block>(Blocks.stone_slab)
                                 .add(StateDefinitions.SLAB_HALF, SLAB_VARIANT)
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 StateDefinitions.SLAB_HALF.getValues().get((meta & 8) == 0 ? 0 : 1),
@@ -405,7 +405,7 @@ public final class VanillaStateDefinitions {
 
                 // anvil: facing={north,east,south,west}[meta&3],
                 // damage={0,1,2}[min((meta>>2)&3,2)]
-                CatStateDefinition<Block> anvilDef = new CatStateDefinition.Builder<Block>(Blocks.anvil)
+                BlockStateDefinition<Block> anvilDef = new BlockStateDefinition.Builder<Block>(Blocks.anvil)
                                 .add(ANVIL_FACING, ANVIL_DAMAGE)
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 ANVIL_FACING.getValues().get(meta & 3),
@@ -427,7 +427,7 @@ public final class VanillaStateDefinitions {
         }
 
         private static void cropAge(Block block) {
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<>(block)
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<>(block)
                                 .add(AGE)
                                 .create();
                 CatModels.register(block).states(def).register();
@@ -436,7 +436,7 @@ public final class VanillaStateDefinitions {
         // ==================== Hopper (facing+powered, custom codec) ====================
 
         private static void registerHopper() {
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.hopper)
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.hopper)
                                 .add(HOPPER_FACING, POWERED)
                                 .metaCodec(meta -> {
                                         String facing;
@@ -467,7 +467,7 @@ public final class VanillaStateDefinitions {
         // ==================== Quartz block (type[+axis], custom codec) ====================
 
         private static void registerQuartzBlock() {
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.quartz_block)
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.quartz_block)
                                 .add(QUARTZ_TYPE, StateDefinitions.AXIS)
                                 .metaCodec(meta -> {
                                         switch (meta) {
@@ -500,7 +500,7 @@ public final class VanillaStateDefinitions {
                 for (Block stair : stairs) {
                         // facing={east,west,south,north}[meta&3], half=(meta&4)==0?bottom:top,
                         // shape=dynamic
-                        CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(stair)
+                        BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(stair)
                                         .add(STAIR_FACING, StateDefinitions.SLAB_HALF, STAIR_SHAPE)
                                         .dynamic(STAIR_SHAPE)
                                         .metaCodec(meta -> new Comparable<?>[] {
@@ -522,7 +522,7 @@ public final class VanillaStateDefinitions {
                 // by the PANE resolver.
                 // 1.7.10 BlockWall is not a BlockPane, so it relies on the resolver's canConnectWallTo special case;
                 // the blockstate is a 10-case multipart (2 materials × post + 4-way sides, with when matching variant+direction).
-                CatStateDefinition<Block> wallDef = new CatStateDefinition.Builder<Block>(Blocks.cobblestone_wall)
+                BlockStateDefinition<Block> wallDef = new BlockStateDefinition.Builder<Block>(Blocks.cobblestone_wall)
                                 .add(WALL_VARIANT, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .metaCodec(meta -> new Comparable<?>[] {
@@ -539,7 +539,7 @@ public final class VanillaStateDefinitions {
 
         private static void registerPanes() {
                 // glass_pane: north/east/south/west fully dynamic (meta ignored, computed at runtime by the PANE resolver)
-                CatStateDefinition<Block> paneDef = new CatStateDefinition.Builder<Block>(Blocks.glass_pane)
+                BlockStateDefinition<Block> paneDef = new BlockStateDefinition.Builder<Block>(Blocks.glass_pane)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .create();
@@ -550,7 +550,7 @@ public final class VanillaStateDefinitions {
                                 .register();
 
                 // stained_glass_pane: same connections as above + color handled via per-color blockstate redirect
-                CatStateDefinition<Block> stainedPaneDef = new CatStateDefinition.Builder<Block>(
+                BlockStateDefinition<Block> stainedPaneDef = new BlockStateDefinition.Builder<Block>(
                                 Blocks.stained_glass_pane)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
@@ -564,7 +564,7 @@ public final class VanillaStateDefinitions {
                                 .register();
 
                 // fence: same connections as above (1.7.10 BlockFence is not a BlockPane, so it relies on the resolver's canConnectFenceTo special case)
-                CatStateDefinition<Block> fenceDef = new CatStateDefinition.Builder<Block>(Blocks.fence)
+                BlockStateDefinition<Block> fenceDef = new BlockStateDefinition.Builder<Block>(Blocks.fence)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .create();
@@ -576,7 +576,7 @@ public final class VanillaStateDefinitions {
 
                 // iron_bars: a BlockPane instance (decided by canPaneConnectTo); the blockstate is a 10-case multipart
                 // (post + 4-way sides + 4-way caps + fully connected post_ends)
-                CatStateDefinition<Block> barsDef = new CatStateDefinition.Builder<Block>(Blocks.iron_bars)
+                BlockStateDefinition<Block> barsDef = new BlockStateDefinition.Builder<Block>(Blocks.iron_bars)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .create();
@@ -588,7 +588,7 @@ public final class VanillaStateDefinitions {
 
                 // nether_brick_fence: a BlockFence instance (decided by canConnectFenceTo); the blockstate is a 5-case
                 // multipart
-                CatStateDefinition<Block> nbfDef = new CatStateDefinition.Builder<Block>(Blocks.nether_brick_fence)
+                BlockStateDefinition<Block> nbfDef = new BlockStateDefinition.Builder<Block>(Blocks.nether_brick_fence)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .create();
@@ -604,7 +604,7 @@ public final class VanillaStateDefinitions {
         private static void registerGrass() {
                 // grass: no meta (always 0 in vanilla); snowy is a dynamic property - when the block above uses a
                 // snow / snow-block material it switches to the grass_block_snow model (matching 1.7.10 BlockGrass.getIcon's side-texture switch)
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.grass)
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.grass)
                                 .add(SNOWY)
                                 .dynamic(SNOWY)
                                 .create();
@@ -631,7 +631,7 @@ public final class VanillaStateDefinitions {
                 // Clamp to 5: only 6 variants exist but meta&7 ranges 0~7 (vanilla BlockDoublePlant clamps too)
                 // The low 3 bits of the upper half are a facing residue written by onBlockPlacedBy rather than the variant;
                 // the real variant is read from the block below by the DOUBLE_PLANT dynamic resolver (matching vanilla func_149885_e)
-                CatStateDefinition<Block> doublePlantDef = new CatStateDefinition.Builder<Block>(Blocks.double_plant)
+                BlockStateDefinition<Block> doublePlantDef = new BlockStateDefinition.Builder<Block>(Blocks.double_plant)
                                 .add(DOUBLE_PLANT_VARIANT, PLANT_HALF)
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 DOUBLE_PLANT_VARIANT.getValues().get(Math.min(meta & 7, 5)),
@@ -650,7 +650,7 @@ public final class VanillaStateDefinitions {
                                 meta -> new Comparable<?>[] { SLAB_VARIANT.getValues().get(meta & 7) });
 
                 // double_wooden_slab: variant[meta&7 clamped to 5] (BlockWoodSlab supports 6 kinds)
-                CatStateDefinition<Block> woodDef = new CatStateDefinition.Builder<Block>(Blocks.double_wooden_slab)
+                BlockStateDefinition<Block> woodDef = new BlockStateDefinition.Builder<Block>(Blocks.double_wooden_slab)
                                 .add(WOOD_SLAB_VARIANT)
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 WOOD_SLAB_VARIANT.getValues().get(Math.min(meta & 7, 5)) })
@@ -663,7 +663,7 @@ public final class VanillaStateDefinitions {
         private static void registerWoodenSlab() {
                 // wooden_slab: variant[meta&7→clamp 5] + half[(meta&8)==0?bottom:top]
                 // BlockWoodSlab supports 6 plank kinds (oak/spruce/birch/jungle/acacia/big_oak)
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.wooden_slab)
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.wooden_slab)
                                 .add(WOOD_SLAB_VARIANT, StateDefinitions.SLAB_HALF)
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 WOOD_SLAB_VARIANT.getValues().get(Math.min(meta & 7, 5)),
@@ -677,7 +677,7 @@ public final class VanillaStateDefinitions {
 
         private static void registerTorches() {
                 // torch: facing[meta&7] 1=east,2=west,3=south,4=north,5=standing
-                CatStateDefinition.MetaCodec torchCodec = meta -> {
+                BlockStateDefinition.MetaCodec torchCodec = meta -> {
                         switch (meta & 7) {
                                 case 1:
                                         return new Comparable<?>[] { "east" };
@@ -702,7 +702,7 @@ public final class VanillaStateDefinitions {
         private static void registerTrapdoor() {
                 // trapdoor: facing[meta&3: 0=north,1=south,2=east,3=west]
                 // open[(meta&4)!=0], half[(meta&8)!=0?top:bottom]
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.trapdoor)
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.trapdoor)
                                 .add(TRAPDOOR_FACING, StateDefinitions.SLAB_HALF, OPEN)
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 TRAPDOOR_FACING.getValues().get(meta & 3),
@@ -720,7 +720,7 @@ public final class VanillaStateDefinitions {
                 // requiring a cross-block read of the other half → delegated to the runtime VanillaBlockResolvers.DOOR
                 Block[] doors = { Blocks.wooden_door, Blocks.iron_door };
                 for (Block door : doors) {
-                        CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(door)
+                        BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(door)
                                         .add(DOOR_FACING, DOOR_HALF, DOOR_HINGE, OPEN)
                                         .dynamic(DOOR_FACING, DOOR_HINGE, OPEN)
                                         .metaCodec(meta -> new Comparable<?>[] {
@@ -747,7 +747,7 @@ public final class VanillaStateDefinitions {
                 // redstone_wire: power[meta] 0-15 static; north/east/south/west connections + up_* climbing are
                 // fully dynamic, computed at runtime by the REDSTONE_WIRE resolver following 1.7.10
                 // isPowerProviderOrWire and renderBlockRedstoneWire. metaCodec only decodes power.
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.redstone_wire)
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.redstone_wire)
                                 .add(POWER, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST,
                                                 REDSTONE_UP_NORTH, REDSTONE_UP_EAST, REDSTONE_UP_SOUTH,
                                                 REDSTONE_UP_WEST)
@@ -768,17 +768,17 @@ public final class VanillaStateDefinitions {
         private static void registerRepeaters() {
                 // repeater: facing={north,east,south,west}+delay={1,2,3,4}
                 // meta&3=facing, (meta>>2)&3=delay
-                CatStateDefinition.MetaCodec repeaterCodec = meta -> new Comparable<?>[] {
+                BlockStateDefinition.MetaCodec repeaterCodec = meta -> new Comparable<?>[] {
                                 DIODE_FACING.getValues().get(meta & 3),
                                 DELAY.getValues().get((meta >> 2) & 3) };
 
-                CatStateDefinition<Block> poweredDef = new CatStateDefinition.Builder<Block>(Blocks.powered_repeater)
+                BlockStateDefinition<Block> poweredDef = new BlockStateDefinition.Builder<Block>(Blocks.powered_repeater)
                                 .add(DIODE_FACING, DELAY)
                                 .metaCodec(repeaterCodec)
                                 .create();
                 CatModels.register(Blocks.powered_repeater).states(poweredDef).register();
 
-                CatStateDefinition<Block> unpoweredDef = new CatStateDefinition.Builder<Block>(
+                BlockStateDefinition<Block> unpoweredDef = new BlockStateDefinition.Builder<Block>(
                                 Blocks.unpowered_repeater)
                                 .add(DIODE_FACING, DELAY)
                                 .metaCodec(repeaterCodec)
@@ -794,22 +794,22 @@ public final class VanillaStateDefinitions {
                 // The lit state lives in meta bit 8 while the block stays
                 // unpowered_comparator; the powered_comparator instance always
                 // renders lit (isRepeaterPowered).
-                CatStateDefinition.MetaCodec unpoweredCodec = meta -> new Comparable<?>[] {
+                BlockStateDefinition.MetaCodec unpoweredCodec = meta -> new Comparable<?>[] {
                                 DIODE_FACING.getValues().get(meta & 3),
                                 (meta & 4) != 0 ? "subtract" : "compare",
                                 (meta & 8) != 0 ? "true" : "false" };
-                CatStateDefinition.MetaCodec poweredCodec = meta -> new Comparable<?>[] {
+                BlockStateDefinition.MetaCodec poweredCodec = meta -> new Comparable<?>[] {
                                 DIODE_FACING.getValues().get(meta & 3),
                                 (meta & 4) != 0 ? "subtract" : "compare",
                                 "true" };
 
-                CatStateDefinition<Block> poweredDef = new CatStateDefinition.Builder<Block>(Blocks.powered_comparator)
+                BlockStateDefinition<Block> poweredDef = new BlockStateDefinition.Builder<Block>(Blocks.powered_comparator)
                                 .add(DIODE_FACING, COMPARATOR_MODE, POWERED)
                                 .metaCodec(poweredCodec)
                                 .create();
                 CatModels.register(Blocks.powered_comparator).states(poweredDef).register();
 
-                CatStateDefinition<Block> unpoweredDef = new CatStateDefinition.Builder<Block>(
+                BlockStateDefinition<Block> unpoweredDef = new BlockStateDefinition.Builder<Block>(
                                 Blocks.unpowered_comparator)
                                 .add(DIODE_FACING, COMPARATOR_MODE, POWERED)
                                 .metaCodec(unpoweredCodec)
@@ -827,17 +827,17 @@ public final class VanillaStateDefinitions {
                 // bit3 = extended (the extended state; the body retracts 1/4 block and exposes the piston_inner face).
                 // meta 6/7 are invalid facings (EnumFacing is only 0-5), but create() pre-fills
                 // resolvedByMeta[0..15] and calls this codec for every meta, so the index must be clamped
-                CatStateDefinition.MetaCodec pistonCodec = meta -> new Comparable<?>[] {
+                BlockStateDefinition.MetaCodec pistonCodec = meta -> new Comparable<?>[] {
                                 PISTON_FACING.getValues().get(Math.min(meta & 7, 5)),
                                 (meta & 8) != 0 ? "true" : "false" };
 
-                CatStateDefinition<Block> pistonDef = new CatStateDefinition.Builder<Block>(Blocks.piston)
+                BlockStateDefinition<Block> pistonDef = new BlockStateDefinition.Builder<Block>(Blocks.piston)
                                 .add(PISTON_FACING, EXTENDED)
                                 .metaCodec(pistonCodec)
                                 .create();
                 CatModels.register(Blocks.piston).states(pistonDef).register();
 
-                CatStateDefinition<Block> stickyDef = new CatStateDefinition.Builder<Block>(Blocks.sticky_piston)
+                BlockStateDefinition<Block> stickyDef = new BlockStateDefinition.Builder<Block>(Blocks.sticky_piston)
                                 .add(PISTON_FACING, EXTENDED)
                                 .metaCodec(pistonCodec)
                                 .create();
@@ -845,7 +845,7 @@ public final class VanillaStateDefinitions {
 
                 // piston_head (BlockPistonExtension): facing[meta&7] + sticky[bit3]
                 // the stationary piston head block (piston_extension / BlockPistonMoving during movement is rendered via TileEntity and is not registered)
-                CatStateDefinition<Block> headDef = new CatStateDefinition.Builder<Block>(Blocks.piston_head)
+                BlockStateDefinition<Block> headDef = new BlockStateDefinition.Builder<Block>(Blocks.piston_head)
                                 .add(PISTON_FACING, STICKY)
                                 .metaCodec(pistonCodec)
                                 .create();
@@ -856,7 +856,7 @@ public final class VanillaStateDefinitions {
 
         private static void registerLadder() {
                 // ladder: facing={north,south,west,east} meta 2=north,3=south,4=west,5=east
-                CatStateDefinition.MetaCodec codec = meta -> {
+                BlockStateDefinition.MetaCodec codec = meta -> {
                         switch (meta & 7) {
                                 case 2:
                                         return new Comparable<?>[] { "north" };
@@ -879,7 +879,7 @@ public final class VanillaStateDefinitions {
                 // lever: facing={east,west,south,north,up,down} + powered
                 // meta[0:2]: 1=east,2=west,3=south,4=north,5/6=up,0/7=down
                 // bit3: powered
-                CatStateDefinition.MetaCodec codec = meta -> {
+                BlockStateDefinition.MetaCodec codec = meta -> {
                         String facing;
                         switch (meta & 7) {
                                 case 1:
@@ -906,7 +906,7 @@ public final class VanillaStateDefinitions {
                         }
                         return new Comparable<?>[] { facing, (meta & 8) != 0 ? "true" : "false" };
                 };
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.lever)
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.lever)
                                 .add(LEVER_FACING, POWERED)
                                 .metaCodec(codec)
                                 .create();
@@ -919,10 +919,10 @@ public final class VanillaStateDefinitions {
                 // fence_gate: facing={south,west,north,east} + open
                 // meta[0:1] BlockDirectional: 0=south,1=west,2=north,3=east
                 // bit2: open
-                CatStateDefinition.MetaCodec codec = meta -> new Comparable<?>[] {
+                BlockStateDefinition.MetaCodec codec = meta -> new Comparable<?>[] {
                                 FENCE_GATE_FACING.getValues().get(meta & 3),
                                 (meta & 4) != 0 ? "true" : "false" };
-                CatStateDefinition<Block> def = new CatStateDefinition.Builder<Block>(Blocks.fence_gate)
+                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.fence_gate)
                                 .add(FENCE_GATE_FACING, OPEN)
                                 .metaCodec(codec)
                                 .create();
@@ -934,7 +934,7 @@ public final class VanillaStateDefinitions {
         private static void registerPumpkins() {
                 // pumpkin/lit_pumpkin: facing={south,east,north,west}
                 // meta 0=south,1=east,2=north,3=west
-                CatStateDefinition.MetaCodec codec = meta -> new Comparable<?>[] {
+                BlockStateDefinition.MetaCodec codec = meta -> new Comparable<?>[] {
                                 PUMPKIN_FACING.getValues().get(meta & 3) };
                 singleVariant(Blocks.pumpkin, PUMPKIN_FACING, codec);
                 singleVariant(Blocks.lit_pumpkin, PUMPKIN_FACING, codec);
@@ -945,7 +945,7 @@ public final class VanillaStateDefinitions {
         private static void registerDispenserAndDropper() {
                 // dispenser/dropper: facing={down,up,north,south,west,east}
                 // meta[0:2] EnumFacing: 0=down,1=up,2=north,3=south,4=west,5=east
-                CatStateDefinition.MetaCodec codec = meta -> {
+                BlockStateDefinition.MetaCodec codec = meta -> {
                         switch (meta & 7) {
                                 case 0:
                                         return new Comparable<?>[] { "down" };
@@ -973,7 +973,7 @@ public final class VanillaStateDefinitions {
                 // stone_button/wooden_button: facing={east,west,south,north} + powered
                 // meta[0:2]: 1=east,2=west,3=south,4=north
                 // bit3: powered
-                CatStateDefinition.MetaCodec codec = meta -> {
+                BlockStateDefinition.MetaCodec codec = meta -> {
                         String facing;
                         switch (meta & 7) {
                                 case 1:
@@ -995,13 +995,13 @@ public final class VanillaStateDefinitions {
                         return new Comparable<?>[] { facing, (meta & 8) != 0 ? "true" : "false" };
                 };
 
-                CatStateDefinition<Block> stoneDef = new CatStateDefinition.Builder<Block>(Blocks.stone_button)
+                BlockStateDefinition<Block> stoneDef = new BlockStateDefinition.Builder<Block>(Blocks.stone_button)
                                 .add(BUTTON_FACING, POWERED)
                                 .metaCodec(codec)
                                 .create();
                 CatModels.register(Blocks.stone_button).states(stoneDef).register();
 
-                CatStateDefinition<Block> woodDef = new CatStateDefinition.Builder<Block>(Blocks.wooden_button)
+                BlockStateDefinition<Block> woodDef = new BlockStateDefinition.Builder<Block>(Blocks.wooden_button)
                                 .add(BUTTON_FACING, POWERED)
                                 .metaCodec(codec)
                                 .create();
@@ -1013,7 +1013,7 @@ public final class VanillaStateDefinitions {
         private static void registerFurnaces() {
                 // furnace/lit_furnace: facing={north,south,west,east}
                 // meta 2=north,3=south,4=west,5=east
-                CatStateDefinition.MetaCodec codec = meta -> {
+                BlockStateDefinition.MetaCodec codec = meta -> {
                         switch (meta & 7) {
                                 case 2:
                                         return new Comparable<?>[] { "north" };

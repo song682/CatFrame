@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.util;
 
-import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
+import decok.dfcdvadstf.catframe.resources.atlas.Sprite;
 import decok.dfcdvadstf.catframe.ui.UiTextureAtlasManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
@@ -71,9 +71,9 @@ public final class TextureStretching {
     private static final class DrawBinding {
         final ResourceLocation bind;
         @Nullable
-        final CatSprite sprite;
+        final Sprite sprite;
 
-        DrawBinding(ResourceLocation bind, @Nullable CatSprite sprite) {
+        DrawBinding(ResourceLocation bind, @Nullable Sprite sprite) {
             this.bind = bind;
             this.sprite = sprite;
         }
@@ -86,7 +86,7 @@ public final class TextureStretching {
      */
     private static DrawBinding resolve(ResourceLocation texture) {
         if (texture != null) {
-            CatSprite sprite = UiTextureAtlasManager.resolve(texture);
+            Sprite sprite = UiTextureAtlasManager.resolve(texture);
             if (sprite != null) {
                 return new DrawBinding(UiTextureAtlasManager.getAtlasLocation(), sprite);
             }
@@ -155,11 +155,11 @@ public final class TextureStretching {
     /**
      * Atlas sprite UV range mapping: normalized pixel coords [0,1] → sprite UV.
      */
-    private static float mapU(CatSprite sprite, float u) {
+    private static float mapU(Sprite sprite, float u) {
         return sprite.getMinU() + (sprite.getMaxU() - sprite.getMinU()) * u;
     }
 
-    private static float mapV(CatSprite sprite, float v) {
+    private static float mapV(Sprite sprite, float v) {
         return sprite.getMinV() + (sprite.getMaxV() - sprite.getMinV()) * v;
     }
 
@@ -169,7 +169,7 @@ public final class TextureStretching {
      */
     private static void emitQuad(Tessellator t, int sx, int sy, int sw, int sh,
             float u1, float v1, float u2, float v2, float alpha,
-            @Nullable CatSprite sprite) {
+            @Nullable Sprite sprite) {
         float uu1 = sprite != null ? mapU(sprite, u1) : u1;
         float uu2 = sprite != null ? mapU(sprite, u2) : u2;
         float vv1 = sprite != null ? mapV(sprite, v1) : v1;
@@ -650,7 +650,7 @@ public final class TextureStretching {
      */
     private static void addTiledQuad(Tessellator t, int sx, int sy, int screenW, int screenH,
             float texU, float texV, float texTileW, float texTileH,
-            int texW, int texH, @Nullable CatSprite sprite) {
+            int texW, int texH, @Nullable Sprite sprite) {
         for (int offX = 0; offX < screenW; offX += (int) texTileW) {
             for (int offY = 0; offY < screenH; offY += (int) texTileH) {
                 int drawW = Math.min((int) texTileW, screenW - offX);

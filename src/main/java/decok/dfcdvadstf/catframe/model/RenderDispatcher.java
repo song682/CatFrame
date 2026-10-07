@@ -49,7 +49,7 @@ public class RenderDispatcher {
      * <p>
      * Preserves exact three-path semantics and order from pre-refactor renderBlock:
      * <ol>
-     *   <li>CatStateDefinition path: hit is final — parse failure returns null directly,
+     *   <li>BlockStateDefinition path: hit is final — parse failure returns null directly,
      *       no further path attempts (matches pre-refactor {@code return renderStateWithCatBlockState(...)}
      *       direct return semantics);</li>
      *   <li>registeredBlockModels path: collectParts non-empty → part + rotation;</li>
@@ -62,11 +62,11 @@ public class RenderDispatcher {
      */
     private static ResolvedModel resolveBlockModel(IBlockAccess world, int x, int y, int z,
                                                    Block block, int metadata) {
-        // --- Path 1: check CatStateDefinition first (v0.3.0) ---
-        CatStateDefinition<?> stateDef = ModelRegistry.blockStateDefinitions.get(block);
+        // --- Path 1: check BlockStateDefinition first (v0.3.0) ---
+        BlockStateDefinition<?> stateDef = ModelRegistry.blockStateDefinitions.get(block);
         if (stateDef != null && block instanceof IBlockStateProvider) {
             IBlockStateProvider sp = (IBlockStateProvider) block;
-            CatBlockState catState = sp.getBlockState(world, x, y, z, metadata);
+            BlockState catState = sp.getBlockState(world, x, y, z, metadata);
             if (catState != null) {
                 // Use CatBlockState.toVariantKey() for matching
                 BlockstateJson bs = ModelManagerDataLoader.stateBlockData.get(block);
@@ -159,7 +159,7 @@ public class RenderDispatcher {
      * @return resolution result (part + state properties); null if no renderable model
      */
     private static ResolvedModel renderStateWithCatBlockState(IBlockAccess world, int x, int y, int z,
-                                                              Block block, CatBlockState catState,
+                                                              Block block, BlockState catState,
                                                               BlockstateJson bs) {
         if (bs == null) return null;
 
@@ -222,11 +222,11 @@ public class RenderDispatcher {
 
     /**
      * Extract all typed properties from CatBlockState as name→value string map
-     * (consistent with {@link CatBlockState#toVariantKey()} serialization semantics).
+     * (consistent with {@link BlockState#toVariantKey()} serialization semantics).
      */
-    private static Map<String, String> propsFromCatState(CatBlockState catState) {
+    private static Map<String, String> propsFromCatState(BlockState catState) {
         Map<String, String> propMap = new java.util.HashMap<>();
-        CatStateDefinition<?> def = catState.getDefinition();
+        BlockStateDefinition<?> def = catState.getDefinition();
         if (def != null) {
             for (Property<?> p : def.getProperties()) {
                 propMap.put(p.getName(), catState.getValue(p).toString());

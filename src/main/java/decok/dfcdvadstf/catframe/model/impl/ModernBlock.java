@@ -8,11 +8,8 @@ import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonBlockModel;
-import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
-import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
-import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
-import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
-import decok.dfcdvadstf.catframe.model.state.CatStateInheritance;
+import decok.dfcdvadstf.catframe.model.state.*;
+import decok.dfcdvadstf.catframe.model.state.BlockStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.block.StateProviderBlockModel;
 import net.minecraft.block.Block;
@@ -32,7 +29,7 @@ import java.util.Map;
  *   <li>通过 {@link #setBlockstate(String, String)} 或 {@link #setBlockstate(String)} 指定 blockstate JSON 路径；
  *       未显式设置时从方块注册名推导</li>
  *   <li>继承即接入：注册到游戏注册表后在纹理缝合时被自动发现 —— 加载 blockstate、
- *       收集纹理、沿继承链自动登记 typed 状态定义（见 {@link CatStateInheritance}），
+ *       收集纹理、沿继承链自动登记 typed 状态定义（见 {@link BlockStateInheritance}），
  *       无需手动调用 {@link #register(ModernBlock)}</li>
  *   <li>{@link #register(ModernBlock)} 为可选显式入口：立即接入 + 在客户端分配 ISBRH renderType</li>
  *   <li>默认按 "normal" variant 渲染；子类可覆盖 {@link #getStateProperties} 实现动态属性匹配</li>
@@ -71,11 +68,11 @@ public class ModernBlock extends Block implements IBlockStateProvider {
      * v0.3.0+ 自动继承解析得到的 typed 状态定义（{@link #register(ModernBlock)} 时填充）。
      * <p>
      * 子类无需手动赋值：未显式配置时沿继承链合并基类片段（见
-     * {@link CatStateInheritance}），供渲染管线与 blockstate 键校验使用。
+     * {@link BlockStateInheritance}），供渲染管线与 blockstate 键校验使用。
      * 未调用 register() 时本字段保持 {@code null}，管线侧解析结果登记在
      * {@link ModelRegistry} 全局表中，并由 {@link #getStateDefinition()} 一并读取。
      */
-    private CatStateDefinition<?> stateDefinition;
+    private BlockStateDefinition<?> stateDefinition;
 
     protected ModernBlock(Material material) {
         super(material);
@@ -133,7 +130,7 @@ public class ModernBlock extends Block implements IBlockStateProvider {
     }
 
     @Override
-    public CatStateDefinition<?> getStateDefinition() {
+    public BlockStateDefinition<?> getStateDefinition() {
         // 未走显式 register() 时，typed 定义由管线自动解析并登记在全局表中
         // When register() was not called, the pipeline auto-resolves the typed
         // definition into the global registry — read it as the fallback source.
@@ -200,7 +197,7 @@ public class ModernBlock extends Block implements IBlockStateProvider {
         // Auto inheritance: merge base fragments (e.g. PillarBlock's axis) along the
         // class hierarchy when no explicit typed def exists.
         if (block.stateDefinition == null && !ModelRegistry.hasStateDefinition(block)) {
-            CatStateInheritance.Inherited inherited = CatStateInheritance.resolve(block);
+            BlockStateInheritance.Inherited inherited = BlockStateInheritance.resolve(block);
             if (inherited != null) {
                 block.stateDefinition = inherited.def;
                 ModelRegistry.registerStateDefinition(block, block.stateDefinition);
@@ -287,7 +284,7 @@ public class ModernBlock extends Block implements IBlockStateProvider {
                 if (bs != null) {
                     // typed 状态定义存在时（显式 .states(...) 或继承解析得到），
                     // 走 ResidentStateModel 属性驱动匹配；否则回退到 provider 动态属性。
-                    CatStateDefinition<?> def = ModelRegistry.getStateDefinition(block);
+                    BlockStateDefinition<?> def = ModelRegistry.getStateDefinition(block);
                     if (def != null) {
                         delegate = ResidentStateModel.builder(block)
                                         .blockstate(bs)

@@ -13,14 +13,14 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * 自动 BlockState 继承 —— 把方块类的继承链映射到 {@link CatStateDefinition} 片段，
+ * 自动 BlockState 继承 —— 把方块类的继承链映射到 {@link BlockStateDefinition} 片段，
  * 子类无需手动重复声明父类的属性与 meta 解码。
  * <p>
  * 模组开发者（或 CatFrame 内置表）先用 {@link #registerBase(Class)} 为某个方块基类
  * 登记「状态定义片段」（属性 + MetaCodec + 可选 dynamic resolver / redirect）；
  * 之后任何继承该基类的方块在注册时（{@code CatModels.Spec.register()} /
  * {@code ModernBlock.register()}）都会经 {@link #resolve(Block)} 自动合并出完整的
- * {@link CatStateDefinition}。
+ * {@link BlockStateDefinition}。
  *
  * <h3>合并语义</h3>
  * <ul>
@@ -40,9 +40,9 @@ import java.util.*;
  * {@code axis} 属性及其 meta 解码，无需重复声明。
  */
 @SideOnly(Side.CLIENT)
-public final class CatStateInheritance {
+public final class BlockStateInheritance {
 
-    private CatStateInheritance() {
+    private BlockStateInheritance() {
     }
 
     /** 基类片段注册表：方块类 → 状态定义片段（保序，供继承链遍历）。 */
@@ -64,7 +64,7 @@ public final class CatStateInheritance {
 
     public static final class BaseSpec {
         private final Class<? extends Block> clazz;
-        private CatStateDefinition<?> def;
+        private BlockStateDefinition<?> def;
         @Nullable
         private IMetadataBlockstateRedirect redirect;
         @Nullable
@@ -79,7 +79,7 @@ public final class CatStateInheritance {
         }
 
         /** 设置该基类的 typed 状态定义片段（属性 + 可选 MetaCodec + 可选动态属性）。 */
-        public BaseSpec states(CatStateDefinition<?> def) {
+        public BaseSpec states(BlockStateDefinition<?> def) {
             this.def = def;
             return this;
         }
@@ -128,7 +128,7 @@ public final class CatStateInheritance {
      * <p>
      * 从 {@code block.getClass()} 向上遍历（不含 {@link Object}），收集所有已登记的
      * 基类片段，按「父类在前、子类在后」合并属性 / MetaCodec / 动态标记 / 附加配置，
-     * 构建一个 owner 为该方块的 {@link CatStateDefinition}。
+     * 构建一个 owner 为该方块的 {@link BlockStateDefinition}。
      *
      * @param block 目标方块实例
      * @return 合并结果；继承链上没有任何基类片段（或多片段组合缺少 MetaCodec）时返回 {@code null}
@@ -159,7 +159,7 @@ public final class CatStateInheritance {
 
         // 3. 合并 meta 解码：拼接各片段输出 + 按最终静态属性顺序重排
         //    多片段且任一片段缺 codec 时无法表达位域 → 返回 null 由调用方回退
-        CatStateDefinition.MetaCodec mergedCodec = mergeCodecs(fragments, mergedProps, dynamicNames);
+        BlockStateDefinition.MetaCodec mergedCodec = mergeCodecs(fragments, mergedProps, dynamicNames);
         if (mergedCodec == null && fragments.size() > 1) {
             CatFrame.logger.warn(
                     "[CatStateInheritance] {} inherits from {} base fragment(s), but a fragment lacks a "
@@ -169,8 +169,8 @@ public final class CatStateInheritance {
             return null;
         }
 
-        // 4. 构建合并后的 CatStateDefinition（owner = 方块实例）
-        CatStateDefinition.Builder<Block> builder = new CatStateDefinition.Builder<>(block);
+        // 4. 构建合并后的 BlockStateDefinition（owner = 方块实例）
+        BlockStateDefinition.Builder<Block> builder = new BlockStateDefinition.Builder<>(block);
         for (Property<?> p : mergedProps) {
             builder.add(p);
         }
@@ -224,13 +224,13 @@ public final class CatStateInheritance {
      * @return 已登记（或本次登记）的 typed 状态定义；无来源时返回 {@code null}
      */
     @Nullable
-    public static CatStateDefinition<?> resolveAndRegister(Block block) {
-        CatStateDefinition<?> existing = ModelRegistry.getStateDefinition(block);
+    public static BlockStateDefinition<?> resolveAndRegister(Block block) {
+        BlockStateDefinition<?> existing = ModelRegistry.getStateDefinition(block);
         if (existing != null) return existing;
 
         // provider 显式覆写 getStateDefinition() 时优先采用（接口声明的 typed 钩子）
         if (block instanceof IBlockStateProvider) {
-            CatStateDefinition<?> declared = ((IBlockStateProvider) block).getStateDefinition();
+            BlockStateDefinition<?> declared = ((IBlockStateProvider) block).getStateDefinition();
             if (declared != null) {
                 ModelRegistry.registerStateDefinition(block, declared);
                 return declared;
@@ -250,15 +250,15 @@ public final class CatStateInheritance {
      * 任一片段缺 codec 时返回 {@code null}（单片段缺 codec 表示该片段整体走默认笛卡尔积解码）。
      */
     @Nullable
-    private static CatStateDefinition.MetaCodec mergeCodecs(List<Fragment> fragments,
-                                                            List<Property<?>> mergedProps,
-                                                            Set<String> dynamicNames) {
+    private static BlockStateDefinition.MetaCodec mergeCodecs(List<Fragment> fragments,
+                                                              List<Property<?>> mergedProps,
+                                                              Set<String> dynamicNames) {
         // 计算拼接偏移，并收集全部 codec
         int spliceLen = 0;
         int[] offsets = new int[fragments.size()];
-        CatStateDefinition.MetaCodec[] codecs = new CatStateDefinition.MetaCodec[fragments.size()];
+        BlockStateDefinition.MetaCodec[] codecs = new BlockStateDefinition.MetaCodec[fragments.size()];
         for (int i = 0; i < fragments.size(); i++) {
-            CatStateDefinition.MetaCodec codec = fragments.get(i).codec;
+            BlockStateDefinition.MetaCodec codec = fragments.get(i).codec;
             if (codec == null) return null;
             offsets[i] = spliceLen;
             codecs[i] = codec;
@@ -308,7 +308,7 @@ public final class CatStateInheritance {
     // ==================== 片段 / 结果 ====================
 
     /**
-     * 不可变基类片段：从 {@link CatStateDefinition} 提取属性 / MetaCodec / 动态标记，
+     * 不可变基类片段：从 {@link BlockStateDefinition} 提取属性 / MetaCodec / 动态标记，
      * 附加模型行为配置（redirect / dynamic resolver / multipart）。
      */
     private static final class Fragment {
@@ -316,7 +316,7 @@ public final class CatStateInheritance {
         final Property<?>[] staticProps;
         final Property<?>[] dynamic;
         @Nullable
-        final CatStateDefinition.MetaCodec codec;
+        final BlockStateDefinition.MetaCodec codec;
         @Nullable
         final IMetadataBlockstateRedirect redirect;
         @Nullable
@@ -326,7 +326,7 @@ public final class CatStateInheritance {
         final boolean connectionMultipart;
         final boolean fullModel;
 
-        Fragment(CatStateDefinition<?> def,
+        Fragment(BlockStateDefinition<?> def,
                  @Nullable IMetadataBlockstateRedirect redirect,
                  @Nullable String redirectNamespace,
                  @Nullable ResidentStateModel.DynamicPropertyResolver dynamicResolver,
@@ -354,14 +354,14 @@ public final class CatStateInheritance {
     }
 
     /**
-     * 继承解析结果：合并后的 {@link CatStateDefinition} 与附加模型行为配置。
+     * 继承解析结果：合并后的 {@link BlockStateDefinition} 与附加模型行为配置。
      * <p>
      * 由 {@link CatModels.Spec} / {@code ModernBlock.register} 消费：未显式配置的
      * 字段用继承结果填充，显式配置的字段保持优先。
      */
     public static final class Inherited {
         /** 合并后的 typed 状态定义（owner = 方块实例，非空）。 */
-        public final CatStateDefinition<?> def;
+        public final BlockStateDefinition<?> def;
         @Nullable
         public final IMetadataBlockstateRedirect redirect;
         @Nullable
@@ -371,7 +371,7 @@ public final class CatStateInheritance {
         public final boolean connectionMultipart;
         public final boolean fullModel;
 
-        Inherited(CatStateDefinition<?> def,
+        Inherited(BlockStateDefinition<?> def,
                   @Nullable IMetadataBlockstateRedirect redirect,
                   @Nullable String redirectNamespace,
                   @Nullable ResidentStateModel.DynamicPropertyResolver dynamic,

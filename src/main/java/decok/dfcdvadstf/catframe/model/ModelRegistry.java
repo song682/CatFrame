@@ -5,9 +5,9 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.core.component.DataComponents;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
+import decok.dfcdvadstf.catframe.model.state.BlockStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
-import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import net.minecraft.block.Block;
@@ -50,7 +50,7 @@ public class ModelRegistry {
     public static final Set<Item> oversizedItems = ConcurrentHashMap.newKeySet();
     static final Set<Block> randomRotationBlocks = ConcurrentHashMap.newKeySet();
     static final Set<Block> autoOverlayBlocks = ConcurrentHashMap.newKeySet();
-    static final Map<Block, CatStateDefinition<?>> blockStateDefinitions = new ConcurrentHashMap<>();
+    static final Map<Block, BlockStateDefinition<?>> blockStateDefinitions = new ConcurrentHashMap<>();
 
     /**
      * Public API: bake a model path into a BlockStateModelPart (with cache).
@@ -231,30 +231,30 @@ public class ModelRegistry {
             return registeredItemModels.containsKey(item);
         }
 
-        // ==================== CatStateDefinition API (v0.3.0) ====================
+        // ==================== BlockStateDefinition API (v0.3.0) ====================
 
         /**
-         * Register a type-safe CatStateDefinition for a block. This enables property-based
+         * Register a type-safe BlockStateDefinition for a block. This enables property-based
          * model dispatch using CatBlockState instead of raw String maps.
          *
          * @param block the block
-         * @param def   the CatStateDefinition defining typed properties
+         * @param def   the BlockStateDefinition defining typed properties
          */
-        public static void registerStateDefinition(Block block, CatStateDefinition<?> def) {
+        public static void registerStateDefinition(Block block, BlockStateDefinition<?> def) {
             blockStateDefinitions.put(block, def);
         }
 
         /**
-         * Check if a block has a registered CatStateDefinition.
+         * Check if a block has a registered BlockStateDefinition.
          */
         public static boolean hasStateDefinition(Block block) {
             return blockStateDefinitions.containsKey(block);
         }
 
         /**
-         * Get the registered CatStateDefinition for a block, or null.
+         * Get the registered BlockStateDefinition for a block, or null.
          */
-        public static CatStateDefinition<?> getStateDefinition(Block block) {
+        public static BlockStateDefinition<?> getStateDefinition(Block block) {
             return blockStateDefinitions.get(block);
         }
     }

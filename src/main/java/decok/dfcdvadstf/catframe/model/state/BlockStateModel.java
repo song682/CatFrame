@@ -74,7 +74,7 @@ public interface BlockStateModel {
     }
 
     /**
-     * v0.3.0: 通过 {@link CatBlockState} 收集渲染部件（新路径）。
+     * v0.3.0: 通过 {@link BlockState} 收集渲染部件（新路径）。
      * 默认实现委托给 metadata 版本，子类可覆盖以获得类型安全的属性匹配。
      *
      * @param world 世界（可为 null，物品渲染场景）
@@ -84,7 +84,7 @@ public interface BlockStateModel {
      * @param state CatBlockState 实例
      * @return 渲染部件集合
      */
-    default BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z, CatBlockState state) {
+    default BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z, BlockState state) {
         return collectParts(world, x, y, z, 0);
     }
 

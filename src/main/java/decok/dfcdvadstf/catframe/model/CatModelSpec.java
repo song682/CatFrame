@@ -3,8 +3,8 @@ package decok.dfcdvadstf.catframe.model;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
-import decok.dfcdvadstf.catframe.model.state.CatBlockState;
-import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
+import decok.dfcdvadstf.catframe.model.state.BlockState;
+import decok.dfcdvadstf.catframe.model.state.BlockStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
@@ -31,7 +31,7 @@ public final class CatModelSpec {
 
     public final Block block;
     @Nullable
-    public CatStateDefinition<?> def;
+    public BlockStateDefinition<?> def;
     @Nullable
     public IMetadataBlockstateRedirect redirect;
     @Nullable
@@ -141,7 +141,7 @@ public final class CatModelSpec {
     @Nullable
     private Map<String, String> resolveProps(int meta) {
         if (def != null) {
-            CatBlockState state = def.getStateFromMeta(meta);
+            BlockState state = def.getStateFromMeta(meta);
             Map<String, String> props = new LinkedHashMap<>();
             Property<?>[] properties = def.getProperties();
             List<String> valueNames = state.getValueNames();

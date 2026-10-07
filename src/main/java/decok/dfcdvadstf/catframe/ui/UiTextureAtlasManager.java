@@ -5,9 +5,9 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.resources.atlas.AtlasDefinitionLoader;
-import decok.dfcdvadstf.catframe.resources.atlas.CatAtlas;
-import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
-import decok.dfcdvadstf.catframe.resources.atlas.CatSpriteLoader;
+import decok.dfcdvadstf.catframe.resources.atlas.Atlas;
+import decok.dfcdvadstf.catframe.resources.atlas.Sprite;
+import decok.dfcdvadstf.catframe.resources.atlas.SpriteLoader;
 import decok.dfcdvadstf.catframe.resources.atlas.source.SpriteRef;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
@@ -27,8 +27,8 @@ import java.util.Map;
  * <ol>
  *   <li>{@link GuiTextureStitchEvent.Pre} — Collect: {@link AtlasDefinitionLoader#collectRefs}
  *       retrieves the {@code catframe:gui} definition ({@code assets/catframe/atlases/gui.json},
- *       allows other mods to declare ownership) sources, each decoded by {@link CatSpriteLoader}
- *       into {@link CatSprite}; missing/decode failures get missingno placeholder;</li>
+ *       allows other mods to declare ownership) sources, each decoded by {@link SpriteLoader}
+ *       into {@link Sprite}; missing/decode failures get missingno placeholder;</li>
  *   <li>{@link GuiTextureStitchEvent.On} — Stitch: CatAtlas layout (reuses TextureStitcher) +
  *       single CPU assembly + GL upload (<b>no mipmap</b>, hard rule), registered with
  *       TextureManager as {@link #ATLAS_LOCATION} ({@code catframe:atlas/gui}), render layer
@@ -55,11 +55,11 @@ public final class UiTextureAtlasManager {
     public static final ResourceLocation ATLAS_LOCATION = new ResourceLocation("catframe", "atlas/gui");
 
     /** Current UI atlas (null before stitch). */
-    private static CatAtlas atlas;
+    private static Atlas atlas;
     /** Post publish complete flag (lookup ready). */
     private static volatile boolean ready = false;
     /** Pre collection output (input to On stitch; rebuilt each stitch cycle). */
-    private static List<CatSprite> pending = new ArrayList<>();
+    private static List<Sprite> pending = new ArrayList<>();
 
     /** Registered to event bus on instantiation (GuiTextureStitchEvent subscriber); static lookup entry directly usable. */
     public UiTextureAtlasManager() {
@@ -74,11 +74,11 @@ public final class UiTextureAtlasManager {
         pending = new ArrayList<>(refs.size());
         int missing = 0;
         for (SpriteRef ref : refs) {
-            CatSprite sprite = CatSpriteLoader.load(
+            Sprite sprite = SpriteLoader.load(
                     ref.resource(), ref.spriteId().toString(), ATLAS_ID, ref.transform());
             if (sprite == null) {
                 // Texture missing/decode failed → missingno placeholder (preserves publish key integrity, matches vanilla missing semantics)
-                sprite = CatSprite.missing(ATLAS_ID, ref.spriteId().toString());
+                sprite = Sprite.missing(ATLAS_ID, ref.spriteId().toString());
                 missing++;
             }
             pending.add(sprite);
@@ -92,7 +92,7 @@ public final class UiTextureAtlasManager {
     @SubscribeEvent
     public void onOn(GuiTextureStitchEvent.On event) {
         if (atlas == null) {
-            atlas = new CatAtlas(ATLAS_ID, false);
+            atlas = new Atlas(ATLAS_ID, false);
         }
         int maxTextureSize = Math.min(GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE), 16384);
         atlas.stitch(pending, maxTextureSize);
@@ -121,7 +121,7 @@ public final class UiTextureAtlasManager {
      * returns null if not stitched / not found (caller falls back to {@link #getMissingSprite()}).
      */
     @Nullable
-    public static CatSprite findSprite(String texturePath) {
+    public static Sprite findSprite(String texturePath) {
         if (atlas == null || texturePath == null) {
             return null;
         }
@@ -130,7 +130,7 @@ public final class UiTextureAtlasManager {
 
     /** UI atlas built-in missing sprite (purple-black checkerboard fallback; non-null after stitch). */
     @Nullable
-    public static CatSprite getMissingSprite() {
+    public static Sprite getMissingSprite() {
         return atlas != null ? atlas.getMissingSprite() : null;
     }
 
@@ -165,7 +165,7 @@ public final class UiTextureAtlasManager {
      * stay on their own bind path).
      */
     @Nullable
-    public static CatSprite resolve(ResourceLocation texture) {
+    public static Sprite resolve(ResourceLocation texture) {
         if (!isReady() || texture == null) {
             return null;
         }
@@ -181,8 +181,8 @@ public final class UiTextureAtlasManager {
         if (atlas == null || !ready) {
             return;
         }
-        for (Map.Entry<String, CatSprite> entry : atlas.getSprites().entrySet()) {
-            CatSprite sprite = entry.getValue();
+        for (Map.Entry<String, Sprite> entry : atlas.getSprites().entrySet()) {
+            Sprite sprite = entry.getValue();
             if (sprite.isAnimated() && sprite.updateAnimationTick()) {
                 atlas.updateAnimationRegion(sprite);
             }

@@ -30,7 +30,7 @@ import java.util.Map;
  *   <li>assemble the ARGB int[] atlas buffer in one pass on the main thread
  *       (padding areas cleared to transparent), convert to an RGBA ByteBuffer and
  *       upload level-0 with a single {@code glTexImage2D};</li>
- *   <li>after a successful upload, call {@link CatSprite#complete} to write the UV
+ *   <li>after a successful upload, call {@link Sprite#complete} to write the UV
  *       data;</li>
  *   <li>also implements {@link ITextureObject} so it can be registered with the
  *       TextureManager as {@code catframe:atlas/<id>}, letting render layers bind
@@ -71,7 +71,7 @@ import java.util.Map;
  * touched (an advantage of native CPU pixels).
  */
 @SideOnly(Side.CLIENT)
-public class CatAtlas implements IAtlas, ITextureObject {
+public class Atlas implements IAtlas, ITextureObject {
 
     /** Atlas id (e.g. {@code minecraft:blocks} / {@code catframe:gui}). */
     private final String atlasId;
@@ -81,9 +81,9 @@ public class CatAtlas implements IAtlas, ITextureObject {
      *  The key is the publish key rather than iconName — a missing sprite's iconName is
      *  always "missingno", so using iconName would make multiple missing sprites
      *  overwrite each other; the publish key is unique. */
-    private final Map<String, CatSprite> sprites = new LinkedHashMap<>();
+    private final Map<String, Sprite> sprites = new LinkedHashMap<>();
     /** This atlas' built-in missing sprite (purple-black square; recorded at stitch time, always exactly one per atlas, used as fallback for missing lookups). */
-    private CatSprite missingSprite;
+    private Sprite missingSprite;
     /** GL texture object id (-1 = not allocated). */
     private int glTextureId = -1;
     /** Final atlas size (2^n). */
@@ -102,7 +102,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
      * @param atlasId       atlas id (this value is what {@code IAtlas#getAtlasName()} returns)
      * @param mipmapEnabled whether to generate the mip chain; pass false for the UI atlas ({@code catframe:gui}, the no-mipmap red line)
      */
-    public CatAtlas(String atlasId, boolean mipmapEnabled) {
+    public Atlas(String atlasId, boolean mipmapEnabled) {
         this.atlasId = atlasId;
         this.mipmapEnabled = mipmapEnabled;
     }
@@ -118,7 +118,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
      * @param sprites        sprites awaiting stitching (content pixels already prepared)
      * @param maxTextureSize size limit (min(GL_MAX_TEXTURE_SIZE, 16384), supplied by the caller)
      */
-    public void stitch(List<CatSprite> sprites, int maxTextureSize) {
+    public void stitch(List<Sprite> sprites, int maxTextureSize) {
         if (sprites.isEmpty()) {
             // Empty atlas: still allocate a 16×16 placeholder so render-layer bindings stay valid
             CatFrame.logger.warn("[CatAtlas] '{}' has no sprites, uploading 16x16 placeholder", atlasId);
@@ -132,7 +132,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
                 atlasId, sprites.size(), mipLevel, anisotropyBit);
 
         TextureStitcher stitcher = new TextureStitcher(maxTextureSize, maxTextureSize, mipLevel, anisotropyBit);
-        for (CatSprite sprite : sprites) {
+        for (Sprite sprite : sprites) {
             stitcher.registerSprite(sprite);
         }
         stitcher.stitch();
@@ -168,7 +168,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
 
         this.sprites.clear();
         this.missingSprite = null;
-        for (CatSprite sprite : sprites) {
+        for (Sprite sprite : sprites) {
             this.sprites.put(sprite.getTexturePath(), sprite);
             if (sprite.isMissing()) {
                 this.missingSprite = sprite;
@@ -185,11 +185,11 @@ public class CatAtlas implements IAtlas, ITextureObject {
      * floor(log2(min(min(w,h), lowestOneBit))) — warned when a small texture drags
      * the global level down.
      */
-    private int computeGlobalMipLevel(List<CatSprite> sprites) {
+    private int computeGlobalMipLevel(List<Sprite> sprites) {
         int gameMip = Math.max(0, Minecraft.getMinecraft().gameSettings.mipmapLevels);
         int global = Integer.MAX_VALUE;
         String limiter = null;
-        for (CatSprite sprite : sprites) {
+        for (Sprite sprite : sprites) {
             int v = Math.min(sprite.getIconWidth(), sprite.getIconHeight());
             int mip = Integer.numberOfTrailingZeros(Integer.lowestOneBit(v));
             if (mip < global) {
@@ -206,8 +206,8 @@ public class CatAtlas implements IAtlas, ITextureObject {
         return mipLevel;
     }
 
-    private static String findSize(List<CatSprite> sprites, String name) {
-        for (CatSprite s : sprites) {
+    private static String findSize(List<Sprite> sprites, String name) {
+        for (Sprite s : sprites) {
             if (name.equals(s.getIconName())) {
                 return s.getIconWidth() + "x" + s.getIconHeight();
             }
@@ -293,7 +293,7 @@ public class CatAtlas implements IAtlas, ITextureObject {
      *
      * @param sprite the animated sprite whose frame advanced (a member of this atlas)
      */
-    public void updateAnimationRegion(CatSprite sprite) {
+    public void updateAnimationRegion(Sprite sprite) {
         if (atlasPixels == null || glTextureId == -1) {
             return;
         }
@@ -479,17 +479,17 @@ public class CatAtlas implements IAtlas, ITextureObject {
     // ==================== Lookup ====================
 
     /** Looks up a sprite by publish key (texturePath). */
-    public CatSprite getSprite(String texturePath) {
+    public Sprite getSprite(String texturePath) {
         return sprites.get(texturePath);
     }
 
     /** This atlas' built-in missing sprite (the final fallback for missing lookups; always non-null after stitching). */
-    public CatSprite getMissingSprite() {
+    public Sprite getMissingSprite() {
         return missingSprite;
     }
 
     /** All sprites in the atlas (texturePath → CatSprite, read-only by convention). */
-    public Map<String, CatSprite> getSprites() {
+    public Map<String, Sprite> getSprites() {
         return Collections.unmodifiableMap(sprites);
     }
 

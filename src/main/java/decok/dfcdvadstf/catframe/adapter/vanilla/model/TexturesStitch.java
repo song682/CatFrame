@@ -6,7 +6,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.VanillaTextureTracker;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
-import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
+import decok.dfcdvadstf.catframe.resources.atlas.AtlasManager;
 import net.minecraftforge.client.event.TextureStitchEvent;
 
 public class TexturesStitch {
@@ -24,7 +24,7 @@ public class TexturesStitch {
             // vanilla stitcher performs layout + upload. UI-domain assets (the catframe:gui atlas
             // definition) are not part of this — they go through the independent
             // GuiTextureStitchEvent chain.
-            CatAtlasManager.registerDefinedSprites(event.map);
+            AtlasManager.registerDefinedSprites(event.map);
             // Register vanilla model textures before atlas is stitched
             VanillaTextureTracker.registerTextures(event.map);
             // Register _opaque leaf textures
@@ -32,7 +32,7 @@ public class TexturesStitch {
         } else if (event.map.getTextureType() == 1) {
             // [Render three-domain architecture] Vanilla backend: feed the definition-driven
             // collection into the vanilla items atlas.
-            CatAtlasManager.registerDefinedSprites(event.map);
+            AtlasManager.registerDefinedSprites(event.map);
             // Register item textures on the item atlas
             VanillaTextureTracker.registerItemTextures(event.map);
         }

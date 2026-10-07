@@ -41,7 +41,7 @@ import java.util.List;
  * {@link decok.dfcdvadstf.catframe.adapter.vanilla.model.GuiTextureStitchHandler}.
  */
 @SideOnly(Side.CLIENT)
-public final class CatAtlasManager {
+public final class AtlasManager {
 
     /** blocks atlas id (IAtlas.getAtlasName semantics; aligned with the Wiki: the vanilla
      * definition file {@code assets/minecraft/atlases/blocks.json} → atlas id {@code minecraft:blocks}). */
@@ -49,7 +49,7 @@ public final class CatAtlasManager {
     /** items atlas id (aligned with the Wiki: {@code atlases/items.json} → {@code minecraft:items}). */
     public static final String ITEM_ATLAS_ID = "minecraft:items";
 
-    private CatAtlasManager() {
+    private AtlasManager() {
     }
 
     /**

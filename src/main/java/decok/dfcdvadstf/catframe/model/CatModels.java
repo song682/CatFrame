@@ -4,8 +4,8 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
-import decok.dfcdvadstf.catframe.model.state.CatStateDefinition;
-import decok.dfcdvadstf.catframe.model.state.CatStateInheritance;
+import decok.dfcdvadstf.catframe.model.state.BlockStateDefinition;
+import decok.dfcdvadstf.catframe.model.state.BlockStateInheritance;
 import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
@@ -71,8 +71,8 @@ public final class CatModels {
      * @param clazz base class type (e.g. {@code BlockRotatedPillar.class})
      * @return chainable configurator
      */
-    public static CatStateInheritance.BaseSpec registerBase(Class<? extends Block> clazz) {
-        return CatStateInheritance.registerBase(clazz);
+    public static BlockStateInheritance.BaseSpec registerBase(Class<? extends Block> clazz) {
+        return BlockStateInheritance.registerBase(clazz);
     }
 
     // ==================== Chainable configurator ====================
@@ -85,7 +85,7 @@ public final class CatModels {
         }
 
         /** Set the typed resident state table (property-driven variant matching). */
-        public Spec states(CatStateDefinition<?> def) {
+        public Spec states(BlockStateDefinition<?> def) {
             spec.def = def;
             return this;
         }
@@ -139,7 +139,7 @@ public final class CatModels {
             // Auto inheritance: when no explicit typed def is set, merge base fragments
             // from the class hierarchy; materialize() retries for late-registered bases.
             if (spec.def == null) {
-                CatStateInheritance.Inherited inherited = CatStateInheritance.resolve(spec.block);
+                BlockStateInheritance.Inherited inherited = BlockStateInheritance.resolve(spec.block);
                 if (inherited != null) {
                     applyInherited(spec, inherited);
                 }
@@ -167,7 +167,7 @@ public final class CatModels {
      * so use conservative merge: base class enabling multipart / disabling fullModel overrides defaults,
      * reverse direction does not override.
      */
-    private static void applyInherited(CatModelSpec spec, CatStateInheritance.Inherited inherited) {
+    private static void applyInherited(CatModelSpec spec, BlockStateInheritance.Inherited inherited) {
         spec.def = inherited.def;
         if (spec.dynamic == null) {
             spec.dynamic = inherited.dynamic;
@@ -200,7 +200,7 @@ public final class CatModels {
             // Fallback inheritance resolution: base fragments may be registered after Spec.register()
             // (e.g. mod preInit earlier than CatFrame's internal base class table), catch up here.
             if (spec.def == null) {
-                CatStateInheritance.Inherited inherited = CatStateInheritance.resolve(spec.block);
+                BlockStateInheritance.Inherited inherited = BlockStateInheritance.resolve(spec.block);
                 if (inherited != null) {
                     applyInherited(spec, inherited);
                     ModelRegistry.registerStateDefinition(spec.block, spec.def);

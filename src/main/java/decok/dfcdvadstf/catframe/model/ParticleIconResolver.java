@@ -9,7 +9,7 @@ import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
 import decok.dfcdvadstf.catframe.model.state.block.StateProviderBlockModel;
-import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
+import decok.dfcdvadstf.catframe.resources.atlas.AtlasManager;
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
 
@@ -129,6 +129,6 @@ public final class ParticleIconResolver {
             CatFrame.logger.info("[ParticleIconResolver] missing particle slot: block={} meta={} -> missingno",
                     Block.blockRegistry.getNameForObject(block), metadata);
         }
-        return CatAtlasManager.getMissingIcon("particle");
+        return AtlasManager.getMissingIcon("particle");
     }
 }

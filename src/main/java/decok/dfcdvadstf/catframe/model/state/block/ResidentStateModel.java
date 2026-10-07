@@ -28,7 +28,7 @@ import java.util.*;
  * 本类以 {@link Builder} 配置的方式统一了原先四套并行的数据驱动世界方块模型：
  * <ul>
  *   <li>{@code LazyBlockstateModel} — 常规 variants / multipart（typed
- *       {@link CatStateDefinition} 驱动属性）</li>
+ *       {@link BlockStateDefinition} 驱动属性）</li>
  *   <li>{@code LazyRedirectModel} — per-meta 重定向到另一个 blockstate（{@link IMetadataBlockstateRedirect}）</li>
  *   <li>{@code StairsBlockModel} — 运行时转角形状（dynamic 属性 + resolver）</li>
  *   <li>{@code PaneMultipartRedirectModel} — 运行时连接状态（dynamic 属性 + resolver，face-map 合并）</li>
@@ -36,7 +36,7 @@ import java.util.*;
  *
  * <h3>属性来源（优先级）</h3>
  * <ol>
- *   <li>typed {@link CatStateDefinition}：{@code def.getStateFromMeta(meta)} 解出常驻状态，
+ *   <li>typed {@link BlockStateDefinition}：{@code def.getStateFromMeta(meta)} 解出常驻状态，
  *       再由 {@link DynamicPropertyResolver} 覆盖动态属性</li>
  *   <li>无 typed 定义但实现 {@link IBlockStateProvider}：逐渲染回落调用
  *       {@link IBlockStateProvider#getStateProperties}，返回非空属性表即参与 variant 匹配</li>
@@ -80,7 +80,7 @@ public final class ResidentStateModel implements BlockStateModel {
     @Nullable
     private final BlockstateJson bs;
     @Nullable
-    private final CatStateDefinition<?> def;
+    private final BlockStateDefinition<?> def;
     @Nullable
     private final IMetadataBlockstateRedirect redirect;
     @Nullable
@@ -267,7 +267,7 @@ public final class ResidentStateModel implements BlockStateModel {
     @Nullable
     private Map<String, String> resolveProps(IBlockAccess world, int x, int y, int z, int metadata) {
         if (def != null) {
-            CatBlockState state = def.getStateFromMeta(metadata);
+            BlockState state = def.getStateFromMeta(metadata);
             return propsFromState(state);
         }
         // 无 typed 定义时回落 legacy provider：逐渲染调用 getStateProperties，
@@ -282,9 +282,9 @@ public final class ResidentStateModel implements BlockStateModel {
         return null;
     }
 
-    private static Map<String, String> propsFromState(CatBlockState state) {
+    private static Map<String, String> propsFromState(BlockState state) {
         Map<String, String> props = new HashMap<>();
-        CatStateDefinition<?> d = state.getDefinition();
+        BlockStateDefinition<?> d = state.getDefinition();
         if (d != null) {
             Property<?>[] properties = d.getProperties();
             List<String> valueNames = state.getValueNames();
@@ -453,7 +453,7 @@ public final class ResidentStateModel implements BlockStateModel {
     public static final class Builder {
         private final Block block;
         private BlockstateJson bs;
-        private CatStateDefinition<?> def;
+        private BlockStateDefinition<?> def;
         private IMetadataBlockstateRedirect redirect;
         private String namespace;
         private DynamicPropertyResolver dynamic;
@@ -469,7 +469,7 @@ public final class ResidentStateModel implements BlockStateModel {
             return this;
         }
 
-        public Builder stateDefinition(CatStateDefinition<?> def) {
+        public Builder stateDefinition(BlockStateDefinition<?> def) {
             this.def = def;
             return this;
         }

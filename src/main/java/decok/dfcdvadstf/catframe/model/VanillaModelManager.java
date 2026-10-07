@@ -8,10 +8,7 @@ import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.lazy.LazySingleBlockModel;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
-import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
-import decok.dfcdvadstf.catframe.model.state.BlockstateKeyValidator;
-import decok.dfcdvadstf.catframe.model.state.CatStateInheritance;
-import decok.dfcdvadstf.catframe.model.state.IMetadataBlockstateRedirect;
+import decok.dfcdvadstf.catframe.model.state.*;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
@@ -114,7 +111,7 @@ public class VanillaModelManager {
      * <p>
      * 本类职责：
      * <ul>
-     *   <li>物化 CatModels 声明式 spec（typed {@link decok.dfcdvadstf.catframe.model.state.CatStateDefinition} 常驻表）</li>
+     *   <li>物化 CatModels 声明式 spec（typed {@link BlockStateDefinition} 常驻表）</li>
      *   <li>为 blockstate 创建常驻模型（{@link ResidentStateModel}）</li>
      *   <li>为 model_mappings 创建懒模型（{@link LazySingleBlockModel}、{@link ItemStateModel}）</li>
      *   <li>处理 BlockPane 特殊注册</li>
@@ -364,13 +361,13 @@ public class VanillaModelManager {
             // calls still land). No fragments → previous no-typed behavior. Runs before
             // the branch dispatch below — the plain branch reads this table.
             if (block instanceof IBlockStateProvider) {
-                CatStateInheritance.resolveAndRegister(block);
+                BlockStateInheritance.resolveAndRegister(block);
             }
             // Rotation angle validation is definition-independent and must run here too:
-            // blocks without a typed CatStateDefinition never reach
+            // blocks without a typed BlockStateDefinition never reach
             // BlockstateKeyValidator.validate() (no-op when def == null), and this method
             // is the single choke point of every resident blockstate registration.
-            // 旋转角度校验不依赖状态定义，必须在此补上一道：无 typed CatStateDefinition
+            // 旋转角度校验不依赖状态定义，必须在此补上一道：无 typed BlockStateDefinition
             // 的方块不会进入 BlockstateKeyValidator.validate()（def 为 null 时直接跳过），
             // 而本方法是所有常驻 blockstate 注册的唯一必经点。
             BlockstateKeyValidator.validateRotations(bs, blockId);
@@ -408,7 +405,7 @@ public class VanillaModelManager {
             }
 
             // 常规 variants/multipart —— 补查 typed 状态表：常驻模型每轮重建（纹理缝合 /
-            // 资源重载）时保留已登记的 CatStateDefinition，否则 typed 能力丢失后会落入
+            // 资源重载）时保留已登记的 BlockStateDefinition，否则 typed 能力丢失后会落入
             // 无属性回退链（首键回退）。表内无值时传 null，等价于原有行为。
             // Plain variants/multipart — re-apply the registered typed definition so resident
             // rebuilds keep property-driven matching instead of degrading to the

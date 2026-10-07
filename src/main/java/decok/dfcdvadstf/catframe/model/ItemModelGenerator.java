@@ -4,7 +4,7 @@ import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.core.AtlasPixelCache;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
-import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
+import decok.dfcdvadstf.catframe.resources.atlas.Sprite;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.IIcon;
 
@@ -58,8 +58,8 @@ public class ItemModelGenerator {
         // are content-sized.
         int[] flatPixels;
         int width, height;
-        if (icon instanceof CatSprite) {
-            CatSprite catSprite = (CatSprite) icon;
+        if (icon instanceof Sprite) {
+            Sprite catSprite = (Sprite) icon;
             flatPixels = catSprite.getPixels();
             width = catSprite.getIconWidth();
             height = catSprite.getIconHeight();

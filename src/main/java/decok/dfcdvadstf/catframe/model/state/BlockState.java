@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * 块状态持有者。类似于 1.21.5 的 {@code BlockState}（内部继承自 {@code StateHolder}）。
  *
- * <p>每个 CatBlockState 实例对应一组确定的属性值组合，通过 {@link CatStateDefinition.Builder}
+ * <p>每个 CatBlockState 实例对应一组确定的属性值组合，通过 {@link BlockStateDefinition.Builder}
  * 在构建时预创建为单例。运行时的所有状态转换都通过邻居跳表 O(1) 完成，无需分配新对象。
  *
  * <p><b>邻居跳表机制</b>：
@@ -26,10 +26,10 @@ import java.util.Map;
  * state0.setValue(WATERLOGGED, true) → state3  (neighbor[1][0])
  * </pre>
  */
-public final class CatBlockState {
+public final class BlockState {
 
-    // [C2 修复] 去掉 final，由 CatStateDefinition.Builder.create() 回填
-    CatStateDefinition<?> definition;
+    // [C2 修复] 去掉 final，由 BlockStateDefinition.Builder.create() 回填
+    BlockStateDefinition<?> definition;
 
     /**
      * 当前状态的属性值数组。索引与 definition 的 properties 数组位置对应。
@@ -39,10 +39,10 @@ public final class CatBlockState {
     /**
      * 邻居跳表。neighbors[p][v] 将属性 p 设置为值 v（内部索引）后得到的目标状态。
      */
-    CatBlockState[][] neighbors; // package-private
+    BlockState[][] neighbors; // package-private
 
-    // 仅由 CatStateDefinition.Builder.create() 调用
-    CatBlockState(CatStateDefinition<?> definition, Comparable<?>[] values) {
+    // 仅由 BlockStateDefinition.Builder.create() 调用
+    BlockState(BlockStateDefinition<?> definition, Comparable<?>[] values) {
         this.definition = definition;
         this.values = values;
     }
@@ -72,7 +72,7 @@ public final class CatBlockState {
      * @return 属性设置后的目标 CatBlockState
      */
     @SuppressWarnings("unchecked")
-    public <T extends Comparable<T>> CatBlockState setValue(Property<T> prop, T value) {
+    public <T extends Comparable<T>> BlockState setValue(Property<T> prop, T value) {
         int propIdx = definition.getPropertyIndex(prop);
         int valIdx = prop.getInternalIndex(value);
         return neighbors[propIdx][valIdx];
@@ -81,7 +81,7 @@ public final class CatBlockState {
     /**
      * 返回此 CatBlockState 的定义。
      */
-    public CatStateDefinition<?> getDefinition() {
+    public BlockStateDefinition<?> getDefinition() {
         return definition;
     }
 
@@ -100,7 +100,7 @@ public final class CatBlockState {
         if (properties.length == 0) return "normal";
 
         // 收集非默认属性值
-        CatBlockState anyState = definition.any();
+        BlockState anyState = definition.any();
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < properties.length; i++) {
             if (i > 0) sb.append(',');

@@ -1,10 +1,9 @@
 package decok.dfcdvadstf.catframe.model.core;
 
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.CatFrameConfig;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
-import decok.dfcdvadstf.catframe.resources.atlas.CatAtlasManager;
-import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
+import decok.dfcdvadstf.catframe.resources.atlas.AtlasManager;
+import decok.dfcdvadstf.catframe.resources.atlas.Sprite;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -125,8 +124,8 @@ public class TextureSlots {
         // 0. Custom-atlas sprites: classify by owning atlas id (design doc's custom stitching hook),
         //     must check before instanceof TextureAtlasSprite — otherwise CatSprite always classified as blocks.
         // Custom-atlas sprites are classified by their owning atlas id.
-        if (icon instanceof CatSprite) {
-            return CatAtlasManager.BLOCK_ATLAS_ID.equals(((CatSprite) icon).getAtlasId());
+        if (icon instanceof Sprite) {
+            return AtlasManager.BLOCK_ATLAS_ID.equals(((Sprite) icon).getAtlasId());
         }
         if (!(icon instanceof TextureAtlasSprite)) return true;
         try {
@@ -229,7 +228,7 @@ public class TextureSlots {
         // Final fallback: missingno (vanilla-space purple-black square).
         // Final fallback: missingno (vanilla-space purple-black square).
         CatFrame.logger.warn("[TextureSlots] texture error: '{}' not found in texture table, using missingno", texturePath);
-        return CatAtlasManager.getMissingIcon(texturePath);
+        return AtlasManager.getMissingIcon(texturePath);
     }
 
     // ==================== Object ====================

@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.resources.atlas.layout;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.resources.atlas.CatSprite;
+import decok.dfcdvadstf.catframe.resources.atlas.Sprite;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -83,7 +83,7 @@ public class TextureStitcher {
      * Registers a sprite awaiting stitching (content size + both-side padding,
      * mip-aligned to the holder size).
      */
-    public void registerSprite(CatSprite sprite) {
+    public void registerSprite(Sprite sprite) {
         Holder holder = new Holder(
                 sprite,
                 smallestFittingMinTexel(sprite.getIconWidth() + this.padding * 2, this.mipLevel),
@@ -197,16 +197,16 @@ public class TextureStitcher {
 
     /** Placement callback: sprite + physical origin + per-side padding. */
     public interface SpriteLoader {
-        void load(CatSprite sprite, int x, int y, int padding);
+        void load(Sprite sprite, int x, int y, int padding);
     }
 
     /** Pending placement: sprite + physical size already including both-side padding and mip-aligned. */
     private static final class Holder {
-        final CatSprite sprite;
+        final Sprite sprite;
         final int width;
         final int height;
 
-        Holder(CatSprite sprite, int width, int height) {
+        Holder(Sprite sprite, int width, int height) {
             this.sprite = sprite;
             this.width = width;
             this.height = height;

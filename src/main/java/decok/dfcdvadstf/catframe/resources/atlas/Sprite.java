@@ -26,13 +26,13 @@ import net.minecraft.util.IIcon;
  * The M3 animation milestone is in place: frame pixels of a multi-frame sprite
  * live in {@link #framePixels} (null = single frame), frame advancement is driven
  * per client tick by {@link #updateAnimationTick()} (skipped while the game is
- * paused), and after a frame switch {@link CatAtlas#updateAnimationRegion}
+ * paused), and after a frame switch {@link Atlas#updateAnimationRegion}
  * re-uploads the region via glTexSubImage2D. Bake threads read the <b>current
  * frame</b> through {@link #getPixels()}, keeping the same visible frame as the
  * atlas region update.
  */
 @SideOnly(Side.CLIENT)
-public class CatSprite implements IIcon {
+public class Sprite implements IIcon {
 
     /** Icon name of the missing-texture fallback sprite (matching the vanilla missingno semantics). */
     public static final String MISSING_NAME = "missingno";
@@ -90,8 +90,8 @@ public class CatSprite implements IIcon {
      * @param contentHeight content height
      * @param atlasId       owning atlas id
      */
-    public CatSprite(String texturePath, String name, int[] pixels,
-                     int contentWidth, int contentHeight, String atlasId) {
+    public Sprite(String texturePath, String name, int[] pixels,
+                  int contentWidth, int contentHeight, String atlasId) {
         this(texturePath, name, null, pixels, contentWidth, contentHeight, atlasId,
                 1, new int[0]);
     }
@@ -106,8 +106,8 @@ public class CatSprite implements IIcon {
      * @param framePixels animation frame pixels (length = frame count, each frame flat ARGB); null means single frame
      * @param frameTimeMs per-frame duration (ms), length = frame count
      */
-    CatSprite(String texturePath, String name, int[][] framePixels,
-              int contentWidth, int contentHeight, String atlasId, int[] frameTimeMs) {
+    Sprite(String texturePath, String name, int[][] framePixels,
+           int contentWidth, int contentHeight, String atlasId, int[] frameTimeMs) {
         this(texturePath, name, framePixels,
                 framePixels != null && framePixels.length > 0 ? framePixels[0] : null,
                 contentWidth, contentHeight, atlasId,
@@ -115,9 +115,9 @@ public class CatSprite implements IIcon {
     }
 
     /** Private full constructor: shared by single-frame (framePixels=null) and multi-frame. */
-    private CatSprite(String texturePath, String name, int[][] framePixels, int[] pixels,
-                      int contentWidth, int contentHeight, String atlasId,
-                      int frameCount, int[] frameTimeMs) {
+    private Sprite(String texturePath, String name, int[][] framePixels, int[] pixels,
+                   int contentWidth, int contentHeight, String atlasId,
+                   int frameCount, int[] frameTimeMs) {
         this.texturePath = texturePath;
         this.name = name;
         this.framePixels = framePixels;
@@ -141,7 +141,7 @@ public class CatSprite implements IIcon {
      * @param atlasId     owning atlas id
      * @param texturePath original texture path (kept so the publish key stays intact)
      */
-    public static CatSprite missing(String atlasId, String texturePath) {
+    public static Sprite missing(String atlasId, String texturePath) {
         int[] pixels = new int[MISSING_SIZE * MISSING_SIZE];
         for (int y = 0; y < MISSING_SIZE; y++) {
             for (int x = 0; x < MISSING_SIZE; x++) {
@@ -150,13 +150,13 @@ public class CatSprite implements IIcon {
                 pixels[y * MISSING_SIZE + x] = black ? 0xFF000000 : 0xFFFF00FF;
             }
         }
-        return new CatSprite(texturePath, MISSING_NAME, pixels,
+        return new Sprite(texturePath, MISSING_NAME, pixels,
                 MISSING_SIZE, MISSING_SIZE, atlasId);
     }
 
     /**
      * Stitch callback: writes the physical origin, padding and atlas size; UV data
-     * becomes usable afterwards. Called once by {@link CatAtlas} after layout
+     * becomes usable afterwards. Called once by {@link Atlas} after layout
      * completes and the final atlas size is fixed.
      *
      * @param x           physical storage origin X (region origin; content origin = x + padding)

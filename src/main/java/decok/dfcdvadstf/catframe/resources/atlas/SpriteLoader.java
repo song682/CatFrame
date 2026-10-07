@@ -35,7 +35,7 @@ import java.io.InputStreamReader;
  *   <li>apply the {@link PixelTransform} to every frame (unstitch clipping /
  *       paletted key-color replacement); if transformed frames end up with
  *       different sizes, degrade to a single frame (the transform result of frame 1);</li>
- *   <li>produce a {@link CatSprite} (single frame or animation frames); any failure
+ *   <li>produce a {@link Sprite} (single frame or animation frames); any failure
  *       returns null and the caller falls back to missing (texture not found →
  *       missingno, matching the vanilla missing semantics).</li>
  * </ul>
@@ -44,13 +44,13 @@ import java.io.InputStreamReader;
  * sprite (missing) without crashing.
  */
 @SideOnly(Side.CLIENT)
-public final class CatSpriteLoader {
+public final class SpriteLoader {
 
     private static final Gson GSON = new Gson();
     /** Duration per tick (ms); the mojang frametime unit = tick. */
     private static final int TICK_MS = 50;
 
-    private CatSpriteLoader() {
+    private SpriteLoader() {
     }
 
     /**
@@ -65,8 +65,8 @@ public final class CatSpriteLoader {
      * @param transform pixel transform (may be null)
      * @return the CatSprite (single frame or multiple frames); null on failure
      */
-    public static CatSprite load(ResourceLocation resource, String spriteId, String atlasId,
-                                 PixelTransform transform) {
+    public static Sprite load(ResourceLocation resource, String spriteId, String atlasId,
+                              PixelTransform transform) {
         // The icon name is the publish key itself; the data-driven key is used
         // verbatim, with no prefix rewriting or directory fallback.
         String iconName = spriteId;
@@ -177,15 +177,15 @@ public final class CatSpriteLoader {
      * frame + per-frame transform. If transformed frame sizes disagree (abnormal
      * clipping) → degrade to a single frame (the transform result of frame 1).
      */
-    private static CatSprite buildSprite(String spriteId, String iconName, int[] pixels,
-                                         int w, int h, String atlasId,
-                                         int[] frameTimes, PixelTransform transform) {
+    private static Sprite buildSprite(String spriteId, String iconName, int[] pixels,
+                                      int w, int h, String atlasId,
+                                      int[] frameTimes, PixelTransform transform) {
         if (frameTimes == null) {
             if (transform == null) {
-                return new CatSprite(spriteId, iconName, pixels, w, h, atlasId);
+                return new Sprite(spriteId, iconName, pixels, w, h, atlasId);
             }
             PixelTransform.Result r = transform.apply(pixels, w, h);
-            return new CatSprite(spriteId, iconName, r.pixels, r.width, r.height, atlasId);
+            return new Sprite(spriteId, iconName, r.pixels, r.width, r.height, atlasId);
         }
         // Multi-frame: frame height = total height / frame count (mojang convention), split frame by frame
         int frameCount = frameTimes.length;
@@ -214,11 +214,11 @@ public final class CatSpriteLoader {
                             "[SpriteLoader] '{}' transformed frame {} size {}x{} != first frame {}x{}, "
                                     + "falling back to static first frame",
                             spriteId, f, r.width, r.height, tw, th);
-                    return new CatSprite(spriteId, iconName, frames[0], tw, th, atlasId);
+                    return new Sprite(spriteId, iconName, frames[0], tw, th, atlasId);
                 }
             }
         }
-        return new CatSprite(spriteId, iconName, frames, w, frameH, atlasId, frameTimes);
+        return new Sprite(spriteId, iconName, frames, w, frameH, atlasId, frameTimes);
     }
 
     private static int intOf(JsonObject o, String key, int def) {

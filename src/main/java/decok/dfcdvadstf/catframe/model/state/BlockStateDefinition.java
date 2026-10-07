@@ -13,7 +13,7 @@ import java.util.*;
  * <ol>
  *   <li>定义属性（{@link Builder#add(Property[])}）</li>
  *   <li>创建所有状态的笛卡尔积，预计算邻居跳表（{@link Builder#create()}）</li>
- *   <li>运行时通过 {@link CatBlockState#setValue} O(1) 状态转换</li>
+ *   <li>运行时通过 {@link BlockState#setValue} O(1) 状态转换</li>
  * </ol>
  *
  * <h3>构建算法</h3>
@@ -25,13 +25,13 @@ import java.util.*;
  *
  * @param <O> 所属者类型（通常是 Block）
  */
-public final class CatStateDefinition<O> {
+public final class BlockStateDefinition<O> {
 
     private final O owner;
     private final Property<?>[] properties;
-    private final CatBlockState[] allStates;
+    private final BlockState[] allStates;
     private final Map<Property<?>, Integer> propertyIndex;
-    private final CatBlockState defaultState;
+    private final BlockState defaultState;
 
     // 由 Builder.create() 回填的 meta 编解码相关字段
     // dynamicFlags[i]：属性 i 是否为动态属性（运行时从世界计算，不参与 meta 解码）
@@ -41,7 +41,7 @@ public final class CatStateDefinition<O> {
     // meta 编解码器；为 null 时使用静态属性的笛卡尔积自然编码
     private MetaCodec metaCodec;
     // 常驻表：resolvedByMeta[meta] 直接给出 meta 对应的 CatBlockState（长度 16）
-    private CatBlockState[] resolvedByMeta;
+    private BlockState[] resolvedByMeta;
 
     /**
      * meta 编解码器。仅负责把 metadata 解码为「静态属性」的值数组
@@ -59,10 +59,10 @@ public final class CatStateDefinition<O> {
     }
 
     // 由 Builder.create() 调用
-    CatStateDefinition(O owner, Property<?>[] properties,
-                       CatBlockState[] allStates,
-                       Map<Property<?>, Integer> propertyIndex,
-                       CatBlockState defaultState) {
+    BlockStateDefinition(O owner, Property<?>[] properties,
+                         BlockState[] allStates,
+                         Map<Property<?>, Integer> propertyIndex,
+                         BlockState defaultState) {
         this.owner = owner;
         this.properties = properties;
         this.allStates = allStates;
@@ -100,14 +100,14 @@ public final class CatStateDefinition<O> {
     /**
      * 返回默认状态（第一个状态，所有属性取第一个值）。
      */
-    public CatBlockState any() {
+    public BlockState any() {
         return defaultState;
     }
 
     /**
      * 返回所有预创建的状态实例（不可修改）。
      */
-    public List<CatBlockState> getAllStates() {
+    public List<BlockState> getAllStates() {
         return Collections.unmodifiableList(Arrays.asList(allStates));
     }
 
@@ -147,7 +147,7 @@ public final class CatStateDefinition<O> {
      * @throws IllegalArgumentException 如果找不到匹配的状态
      */
     @SuppressWarnings("unchecked")
-    public CatBlockState findState(Comparable<?>... values) {
+    public BlockState findState(Comparable<?>... values) {
         if (values.length != properties.length) {
             throw new IllegalArgumentException("Expected " + properties.length + " values, got " + values.length);
         }
@@ -189,7 +189,7 @@ public final class CatStateDefinition<O> {
     /**
      * 返回 meta 编解码器；未设置时为 {@code null}（使用静态属性的笛卡尔积自然编码）。
      * <p>
-     * 供 {@link CatStateInheritance} 提取片段 codec 使用：子类继承父类状态定义时
+     * 供 {@link BlockStateInheritance} 提取片段 codec 使用：子类继承父类状态定义时
      * 需要把各片段的 codec 按位域拼接组合。
      *
      * @return meta 编解码器，或 {@code null}
@@ -201,19 +201,19 @@ public final class CatStateDefinition<O> {
 
     /**
      * 根据 metadata 查表得到对应的常驻 CatBlockState。
-     * <p>动态属性取默认值（第一个值），运行时可再通过 {@link CatBlockState#setValue} O(1) 跳转。
+     * <p>动态属性取默认值（第一个值），运行时可再通过 {@link BlockState#setValue} O(1) 跳转。
      *
      * @param meta 方块 metadata（0-15）
      * @return 该 meta 对应的常驻状态
      */
-    public CatBlockState getStateFromMeta(int meta) {
+    public BlockState getStateFromMeta(int meta) {
         if (resolvedByMeta != null) {
             return resolvedByMeta[meta & 15];
         }
         return computeStateFromMeta(meta);
     }
 
-    private CatBlockState computeStateFromMeta(int meta) {
+    private BlockState computeStateFromMeta(int meta) {
         Comparable<?>[] staticValues = metaCodec != null
                 ? metaCodec.decode(meta)
                 : defaultDecode(meta);
@@ -251,9 +251,9 @@ public final class CatStateDefinition<O> {
     // ==================== Builder ====================
 
     /**
-     * CatStateDefinition 的构建器。使用
+     * BlockStateDefinition 的构建器。使用
      * <pre>{@code
-     * CatStateDefinition<Block> def = new CatStateDefinition.Builder<>(myBlock)
+     * BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<>(myBlock)
      *     .add(TYPE, WATERLOGGED)
      *     .create();
      * }</pre>
@@ -321,11 +321,11 @@ public final class CatStateDefinition<O> {
         }
 
         /**
-         * 构建 CatStateDefinition。计算所有状态组合的笛卡尔积并构建邻居跳表。
+         * 构建 BlockStateDefinition。计算所有状态组合的笛卡尔积并构建邻居跳表。
          *
-         * @return 新的 CatStateDefinition 实例
+         * @return 新的 BlockStateDefinition 实例
          */
-        public CatStateDefinition<O> create() {
+        public BlockStateDefinition<O> create() {
             int propCount = props.size();
             Property<?>[] properties = props.toArray(new Property<?>[0]);
 
@@ -348,12 +348,12 @@ public final class CatStateDefinition<O> {
             }
 
             // 创建所有状态
-            CatBlockState[] states = new CatBlockState[Math.max(totalStates, 1)];
+            BlockState[] states = new BlockState[Math.max(totalStates, 1)];
             Comparable<?>[][] allValues = new Comparable<?>[states.length][propCount];
 
             if (propCount == 0) {
                 // 无属性：单例
-                states[0] = new CatBlockState(null, new Comparable<?>[0]);
+                states[0] = new BlockState(null, new Comparable<?>[0]);
             } else {
                 // 使用计数器生成所有值组合（最后一个属性变化最快）
                 int[] counters = new int[propCount];
@@ -361,7 +361,7 @@ public final class CatStateDefinition<O> {
                     for (int p = 0; p < propCount; p++) {
                         allValues[stateIdx][p] = properties[p].getValues().get(counters[p]);
                     }
-                    states[stateIdx] = new CatBlockState(null, allValues[stateIdx]);
+                    states[stateIdx] = new BlockState(null, allValues[stateIdx]);
 
                     // 递增计数器
                     for (int p = propCount - 1; p >= 0; p--) {
@@ -382,7 +382,7 @@ public final class CatStateDefinition<O> {
             }
 
             // 构建邻居跳表
-            CatStateDefinition<O> definition = new CatStateDefinition<>(owner, properties, states, propIndexMap, states[0]);
+            BlockStateDefinition<O> definition = new BlockStateDefinition<>(owner, properties, states, propIndexMap, states[0]);
 
             // 回填 meta 编解码相关字段
             definition.metaCodec = this.metaCodec;
@@ -399,17 +399,17 @@ public final class CatStateDefinition<O> {
 
             // [C2 修复] 回填 definition 到所有 CatBlockState 实例
             // （创建 CatBlockState 时 definition 为 null，因为 definition 尚未构建）
-            for (CatBlockState s : states) {
+            for (BlockState s : states) {
                 s.definition = definition;
             }
 
             for (int stateIdx = 0; stateIdx < states.length; stateIdx++) {
-                CatBlockState state = states[stateIdx];
-                state.neighbors = new CatBlockState[propCount][];
+                BlockState state = states[stateIdx];
+                state.neighbors = new BlockState[propCount][];
 
                 for (int p = 0; p < propCount; p++) {
                     int valCount = valueCounts[p];
-                    state.neighbors[p] = new CatBlockState[valCount];
+                    state.neighbors[p] = new BlockState[valCount];
 
                     // 解码当前状态在该属性的 counter 值
                     int currentCounter = 0;
@@ -429,7 +429,7 @@ public final class CatStateDefinition<O> {
             }
 
             // 预填常驻表 resolvedByMeta[0..15]
-            definition.resolvedByMeta = new CatBlockState[16];
+            definition.resolvedByMeta = new BlockState[16];
             for (int meta = 0; meta < 16; meta++) {
                 definition.resolvedByMeta[meta] = definition.computeStateFromMeta(meta);
             }

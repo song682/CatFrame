@@ -3,7 +3,7 @@ package decok.dfcdvadstf.catframe.model.impl;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.relauncher.Side;
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.model.CatModels;
+import decok.dfcdvadstf.catframe.model.Models;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
@@ -218,11 +218,11 @@ public class ModernBlock extends Block implements IBlockStateProvider {
     }
 
     /**
-     * 任意 Block 的便捷注册入口：自动 BlockState 继承 + CatModels 声明式管线。
+     * 任意 Block 的便捷注册入口：自动 BlockState 继承 + Models 声明式管线。
      * <p>
      * 非 {@link ModernBlock} 的方块（如直接继承原版 {@code BlockRotatedPillar} 的
      * PillarBlock 扩展）无需实现 {@link IBlockStateProvider}：本方法从注册名推导并登记
-     * blockstate 命名空间，然后走 {@link CatModels#register(Block)} 管线（含继承解析），
+     * blockstate 命名空间，然后走 {@link Models#register(Block)} 管线（含继承解析），
      * blockstate JSON 至迟在下次纹理缝合时加载、物化。
      *
      * @param block 任意方块实例
@@ -232,14 +232,14 @@ public class ModernBlock extends Block implements IBlockStateProvider {
         if (block instanceof ModernBlock) {
             return register((ModernBlock) block);
         }
-        // 推导并登记 blockstate 命名空间（CatModels.materialize 依赖已加载的 blockstates）
+        // 推导并登记 blockstate 命名空间（Models.materialize 依赖已加载的 blockstates）
         String registryName = Block.blockRegistry.getNameForObject(block);
         if (registryName != null) {
             int colon = registryName.indexOf(':');
             String ns = colon > 0 ? registryName.substring(0, colon) : DEFAULT_BLOCKSTATE_NAMESPACE;
             ModelManagerDataLoader.registerNamespace(ns);
         }
-        CatModels.register(block).register();
+        Models.register(block).register();
         return -1;
     }
 

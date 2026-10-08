@@ -12,12 +12,12 @@ import net.minecraft.item.Item;
  * 
  * Usage:
  * <pre>
- * if (CatFrameItemTags.is(item, CatFrameItemTags.TOOLS)) {
+ * if (ItemTags.is(item, ItemTags.TOOLS)) {
  *     // This is a tool
  * }
  * </pre>
  */
-public final class CatFrameItemTags {
+public final class ItemTags {
     
     // ==================== Tool Class Tags ====================
     
@@ -67,7 +67,7 @@ public final class CatFrameItemTags {
     /** Fuel items */
     public static final TagKey<Item> FUELS = create("fuels");
     
-    private CatFrameItemTags() {
+    private ItemTags() {
         // Tool class, do not instantiate
     }
     

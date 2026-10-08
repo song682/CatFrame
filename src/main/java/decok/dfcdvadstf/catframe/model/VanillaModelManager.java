@@ -111,7 +111,7 @@ public class VanillaModelManager {
      * <p>
      * 本类职责：
      * <ul>
-     *   <li>物化 CatModels 声明式 spec（typed {@link BlockStateDefinition} 常驻表）</li>
+     *   <li>物化 Models 声明式 spec（typed {@link BlockStateDefinition} 常驻表）</li>
      *   <li>为 blockstate 创建常驻模型（{@link ResidentStateModel}）</li>
      *   <li>为 model_mappings 创建懒模型（{@link LazySingleBlockModel}、{@link ItemStateModel}）</li>
      *   <li>处理 BlockPane 特殊注册</li>
@@ -142,8 +142,8 @@ public class VanillaModelManager {
             // clear to avoid stale entries surviving re-registration (e.g. after pack removal)
             ModelRegistry.oversizedItems.clear();
 
-            // Step 0: 物化 CatModels 声明式 spec（typed 常驻表 + itemFromBlockstate）
-            CatModels.materialize();
+            // Step 0: 物化 Models 声明式 spec（typed 常驻表 + itemFromBlockstate）
+            Models.materialize();
 
             // Step 2: 处理 blockstates — 注册懒 BlockStateModel
             for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry :
@@ -155,7 +155,7 @@ public class VanillaModelManager {
                     BlockstateJson bs = bsEntry.getValue();
                     Block block = Utilities.findBlock(namespace, blockName);
                     if (block == null) continue;
-                    // 已被 CatModels 物化或先前步骤处理的方块跳过
+                    // 已被 Models 物化或先前步骤处理的方块跳过
                     if (ModelRegistry.registeredBlockModels.containsKey(block)) continue;
 
                     registerResidentBlockModel(block, bs);

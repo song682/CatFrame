@@ -30,7 +30,7 @@ import java.util.*;
  * // Using TagKey
  * new ShapedTagRecipe(new ItemStack(Blocks.chest),
  *     "###", "# #", "###",
- *     '#', CatFrameItemTags.PLANKS
+ *     '#', ItemTags.PLANKS
  * );
  * </pre>
  */

@@ -18,7 +18,7 @@ import java.util.*;
  * <p>
  * 模组开发者（或 CatFrame 内置表）先用 {@link #registerBase(Class)} 为某个方块基类
  * 登记「状态定义片段」（属性 + MetaCodec + 可选 dynamic resolver / redirect）；
- * 之后任何继承该基类的方块在注册时（{@code CatModels.Spec.register()} /
+ * 之后任何继承该基类的方块在注册时（{@code Models.Spec.register()} /
  * {@code ModernBlock.register()}）都会经 {@link #resolve(Block)} 自动合并出完整的
  * {@link BlockStateDefinition}。
  *

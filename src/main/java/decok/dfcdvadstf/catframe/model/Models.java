@@ -25,31 +25,31 @@ import java.util.Map;
  * <h3>Usage</h3>
  * 
  * <pre>{@code
- * CatModels.register(Blocks.wool)
+ * Models.register(Blocks.wool)
  *     .states(StateDefinitions colorDef)   // typed resident table
  *     .itemFromBlockstate()                // export item damage decision tree from 16 static states
  *     .register();
  *
- * CatModels.register(stairsBlock)
+ * Models.register(stairsBlock)
  *     .states(stairsDef)                   // facing/half + dynamic shape
  *     .dynamic(stairsShapeResolver)        // runtime corner shape
  *     .register();
  * }</pre>
  *
  * <h3>Timing</h3>
- * {@link #register()} only registers declarative {@link CatModelSpec}s; actual blockstate JSON
+ * {@link #register()} only registers declarative {@link ModelSpec}s; actual blockstate JSON
  * materialization is deferred to {@link #materialize()} (invoked by
  * {@code VanillaModelManager.Baking.registerAllModels}
  * after blockstate loading completes).
  */
 @SideOnly(Side.CLIENT)
-public final class CatModels {
+public final class Models {
 
-    private CatModels() {
+    private Models() {
     }
 
     /** preInit-registered specs (ordered for materialization traversal). */
-    public static final Map<Block, CatModelSpec> SPECS = new LinkedHashMap<>();
+    public static final Map<Block, ModelSpec> SPECS = new LinkedHashMap<>();
 
     /**
      * Start registering a block's model.
@@ -78,10 +78,10 @@ public final class CatModels {
     // ==================== Chainable configurator ====================
 
     public static final class Spec {
-        private final CatModelSpec spec;
+        private final ModelSpec spec;
 
         private Spec(Block block) {
-            this.spec = new CatModelSpec(block);
+            this.spec = new ModelSpec(block);
         }
 
         /** Set the typed resident state table (property-driven variant matching). */
@@ -167,7 +167,7 @@ public final class CatModels {
      * so use conservative merge: base class enabling multipart / disabling fullModel overrides defaults,
      * reverse direction does not override.
      */
-    private static void applyInherited(CatModelSpec spec, BlockStateInheritance.Inherited inherited) {
+    private static void applyInherited(ModelSpec spec, BlockStateInheritance.Inherited inherited) {
         spec.def = inherited.def;
         if (spec.dynamic == null) {
             spec.dynamic = inherited.dynamic;
@@ -196,7 +196,7 @@ public final class CatModels {
      */
     public static int materialize() {
         int count = 0;
-        for (CatModelSpec spec : SPECS.values()) {
+        for (ModelSpec spec : SPECS.values()) {
             // Fallback inheritance resolution: base fragments may be registered after Spec.register()
             // (e.g. mod preInit earlier than CatFrame's internal base class table), catch up here.
             if (spec.def == null) {
@@ -207,7 +207,7 @@ public final class CatModels {
                     if (spec.redirect != null) {
                         ModelManagerDataLoader.registerBlockstateRedirect(spec.block, spec.redirect);
                     }
-                    CatFrame.logger.info("CatModels: inherited state definition for {} from base class chain",
+                    CatFrame.logger.info("Models: inherited state definition for {} from base class chain",
                             Block.blockRegistry.getNameForObject(spec.block));
                 }
             }
@@ -242,7 +242,7 @@ public final class CatModels {
             }
         }
         if (count > 0) {
-            CatFrame.logger.info("CatModels: materialized {} resident block models", count);
+            CatFrame.logger.info("Models: materialized {} resident block models", count);
         }
         return count;
     }

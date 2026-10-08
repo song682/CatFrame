@@ -10,12 +10,12 @@ import net.minecraft.block.Block;
  * All the tag's namespace are "catframe"<br>
  * Usage:
  * <pre>
- * if (CatFrameBlockTags.is(block, CatFrameBlockTags.MINABLE_WITH_PICKAXE)) {
+ * if (BlockTags.is(block, BlockTags.MINABLE_WITH_PICKAXE)) {
  *    // This block can be mine with pickaxe
  * }
  * </pre>
  */
-public final class CatFrameBlockTags {
+public final class BlockTags {
     
     // ==================== Tag of Minable ====================
     
@@ -74,7 +74,7 @@ public final class CatFrameBlockTags {
     /** Blocks that can be glided through */
     public static final TagKey<Block> CAN_GLIDE_THROUGH = create("can_glide_through");
     
-    private CatFrameBlockTags() {
+    private BlockTags() {
         // Utility class, do not instantiate
     }
     

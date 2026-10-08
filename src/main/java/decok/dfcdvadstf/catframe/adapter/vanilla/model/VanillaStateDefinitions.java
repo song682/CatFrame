@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.adapter.vanilla.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.model.CatModels;
+import decok.dfcdvadstf.catframe.model.Models;
 import decok.dfcdvadstf.catframe.model.state.BlockStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import decok.dfcdvadstf.catframe.model.state.property.StateDefinitions;
@@ -253,7 +253,7 @@ public final class VanillaStateDefinitions {
          * automatically inherit properties and meta decoding along the inheritance chain.
          * <p>
          * Subclasses (such as a mod's {@code PillarBlock} extension) need not declare properties manually: calling
-         * {@code CatModels.register(block).register()} or {@code ModernBlock.register(block)} during preInit
+         * {@code Models.register(block).register()} or {@code ModernBlock.register(block)} during preInit
          * automatically merges the parent fragments (see {@code CatStateInheritance}).
          * <p>
          * Note: the codec must be safe for all 16 meta values (Builder.create() pre-fills
@@ -269,7 +269,7 @@ public final class VanillaStateDefinitions {
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 StateDefinitions.AXIS.getValues().get((meta >> 2) % 3) })
                                 .create();
-                CatModels.registerBase(BlockRotatedPillar.class).states(pillarDef).register();
+                Models.registerBase(BlockRotatedPillar.class).states(pillarDef).register();
 
                 // BlockStairs: facing[meta&3: 0=east,1=west,2=south,3=north] +
                 // half[bit2: 0=bottom,1=top] + shape dynamic (corner computed at runtime by the STAIRS resolver).
@@ -281,7 +281,7 @@ public final class VanillaStateDefinitions {
                                                 STAIR_FACING.getValues().get(meta & 3),
                                                 StateDefinitions.SLAB_HALF.getValues().get((meta & 4) == 0 ? 0 : 1) })
                                 .create();
-                CatModels.registerBase(BlockStairs.class)
+                Models.registerBase(BlockStairs.class)
                                 .states(stairsDef)
                                 .dynamic(VanillaBlockResolvers.STAIRS)
                                 .register();
@@ -292,7 +292,7 @@ public final class VanillaStateDefinitions {
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 StateDefinitions.SLAB_HALF.getValues().get((meta & 8) == 0 ? 0 : 1) })
                                 .create();
-                CatModels.registerBase(BlockSlab.class).states(slabDef).register();
+                Models.registerBase(BlockSlab.class).states(slabDef).register();
         }
 
         // ==================== Pure 16-color blocks (single COLOR, default cartesian decode of meta&15) ====================
@@ -308,7 +308,7 @@ public final class VanillaStateDefinitions {
                 BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<>(block)
                                 .add(StateDefinitions.COLOR)
                                 .create();
-                CatModels.register(block).states(def).register();
+                Models.register(block).states(def).register();
         }
 
         // ==================== Logs (wood+axis) / leaves (wood) ====================
@@ -321,7 +321,7 @@ public final class VanillaStateDefinitions {
                                                 LOG_WOOD.getValues().get(meta & 3),
                                                 StateDefinitions.AXIS.getValues().get((meta >> 2) % 3) })
                                 .create();
-                CatModels.register(Blocks.log).states(logDef).register();
+                Models.register(Blocks.log).states(logDef).register();
 
                 // log2: wood={acacia,dark_oak}[meta&1], axis as above
                 BlockStateDefinition<Block> log2Def = new BlockStateDefinition.Builder<Block>(Blocks.log2)
@@ -330,19 +330,19 @@ public final class VanillaStateDefinitions {
                                                 LOG2_WOOD.getValues().get(meta & 1),
                                                 StateDefinitions.AXIS.getValues().get((meta >> 2) % 3) })
                                 .create();
-                CatModels.register(Blocks.log2).states(log2Def).register();
+                Models.register(Blocks.log2).states(log2Def).register();
 
                 // leaves: wood[meta&3] (single property, default decode meta%4 == meta&3)
                 BlockStateDefinition<Block> leavesDef = new BlockStateDefinition.Builder<Block>(Blocks.leaves)
                                 .add(LOG_WOOD)
                                 .create();
-                CatModels.register(Blocks.leaves).states(leavesDef).register();
+                Models.register(Blocks.leaves).states(leavesDef).register();
 
                 // leaves2: wood[meta&1] (single property, default decode meta%2 == meta&1)
                 BlockStateDefinition<Block> leaves2Def = new BlockStateDefinition.Builder<Block>(Blocks.leaves2)
                                 .add(LOG2_WOOD)
                                 .create();
-                CatModels.register(Blocks.leaves2).states(leaves2Def).register();
+                Models.register(Blocks.leaves2).states(leaves2Def).register();
         }
 
         // ==================== Single variant/wood (clamp / conditional decode) ====================
@@ -372,7 +372,7 @@ public final class VanillaStateDefinitions {
                                 .add(prop)
                                 .metaCodec(codec)
                                 .create();
-                CatModels.register(block).states(def).register();
+                Models.register(block).states(def).register();
         }
 
         /**
@@ -401,7 +401,7 @@ public final class VanillaStateDefinitions {
                                                 StateDefinitions.SLAB_HALF.getValues().get((meta & 8) == 0 ? 0 : 1),
                                                 SLAB_VARIANT.getValues().get(meta & 7) })
                                 .create();
-                CatModels.register(Blocks.stone_slab).states(slabDef).register();
+                Models.register(Blocks.stone_slab).states(slabDef).register();
 
                 // anvil: facing={north,east,south,west}[meta&3],
                 // damage={0,1,2}[min((meta>>2)&3,2)]
@@ -411,7 +411,7 @@ public final class VanillaStateDefinitions {
                                                 ANVIL_FACING.getValues().get(meta & 3),
                                                 ANVIL_DAMAGE.getValues().get(Math.min((meta >> 2) & 3, 2)) })
                                 .create();
-                CatModels.register(Blocks.anvil).states(anvilDef).register();
+                Models.register(Blocks.anvil).states(anvilDef).register();
         }
 
         // ==================== Crops (single age, meta&7; default decode meta%8 == meta&7)
@@ -430,7 +430,7 @@ public final class VanillaStateDefinitions {
                 BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<>(block)
                                 .add(AGE)
                                 .create();
-                CatModels.register(block).states(def).register();
+                Models.register(block).states(def).register();
         }
 
         // ==================== Hopper (facing+powered, custom codec) ====================
@@ -461,7 +461,7 @@ public final class VanillaStateDefinitions {
                                         return new Comparable<?>[] { facing, (meta & 8) != 0 ? "true" : "false" };
                                 })
                                 .create();
-                CatModels.register(Blocks.hopper).states(def).register();
+                Models.register(Blocks.hopper).states(def).register();
         }
 
         // ==================== Quartz block (type[+axis], custom codec) ====================
@@ -485,7 +485,7 @@ public final class VanillaStateDefinitions {
                                         }
                                 })
                                 .create();
-                CatModels.register(Blocks.quartz_block).states(def).register();
+                Models.register(Blocks.quartz_block).states(def).register();
         }
 
         // ==================== Stairs (facing+half static, shape dynamic) ====================
@@ -508,7 +508,7 @@ public final class VanillaStateDefinitions {
                                                         StateDefinitions.SLAB_HALF.getValues()
                                                                         .get((meta & 4) == 0 ? 0 : 1) })
                                         .create();
-                        CatModels.register(stair)
+                        Models.register(stair)
                                         .states(def)
                                         .dynamic(VanillaBlockResolvers.STAIRS)
                                         .register();
@@ -528,7 +528,7 @@ public final class VanillaStateDefinitions {
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 WALL_VARIANT.getValues().get(meta == 0 ? 0 : 1) })
                                 .create();
-                CatModels.register(Blocks.cobblestone_wall)
+                Models.register(Blocks.cobblestone_wall)
                                 .states(wallDef)
                                 .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
@@ -543,7 +543,7 @@ public final class VanillaStateDefinitions {
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .create();
-                CatModels.register(Blocks.glass_pane)
+                Models.register(Blocks.glass_pane)
                                 .states(paneDef)
                                 .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
@@ -555,7 +555,7 @@ public final class VanillaStateDefinitions {
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .create();
-                CatModels.register(Blocks.stained_glass_pane)
+                Models.register(Blocks.stained_glass_pane)
                                 .states(stainedPaneDef)
                                 .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
@@ -568,7 +568,7 @@ public final class VanillaStateDefinitions {
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .create();
-                CatModels.register(Blocks.fence)
+                Models.register(Blocks.fence)
                                 .states(fenceDef)
                                 .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
@@ -580,7 +580,7 @@ public final class VanillaStateDefinitions {
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .create();
-                CatModels.register(Blocks.iron_bars)
+                Models.register(Blocks.iron_bars)
                                 .states(barsDef)
                                 .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
@@ -592,7 +592,7 @@ public final class VanillaStateDefinitions {
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .create();
-                CatModels.register(Blocks.nether_brick_fence)
+                Models.register(Blocks.nether_brick_fence)
                                 .states(nbfDef)
                                 .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
@@ -608,7 +608,7 @@ public final class VanillaStateDefinitions {
                                 .add(SNOWY)
                                 .dynamic(SNOWY)
                                 .create();
-                CatModels.register(Blocks.grass)
+                Models.register(Blocks.grass)
                                 .states(def)
                                 .dynamic(VanillaBlockResolvers.SNOWY)
                                 .register();
@@ -637,7 +637,7 @@ public final class VanillaStateDefinitions {
                                                 DOUBLE_PLANT_VARIANT.getValues().get(Math.min(meta & 7, 5)),
                                                 PLANT_HALF.getValues().get((meta & 8) == 0 ? 0 : 1) })
                                 .create();
-                CatModels.register(Blocks.double_plant).states(doublePlantDef)
+                Models.register(Blocks.double_plant).states(doublePlantDef)
                                 .dynamic(VanillaBlockResolvers.DOUBLE_PLANT).register();
         }
 
@@ -655,7 +655,7 @@ public final class VanillaStateDefinitions {
                                 .metaCodec(meta -> new Comparable<?>[] {
                                                 WOOD_SLAB_VARIANT.getValues().get(Math.min(meta & 7, 5)) })
                                 .create();
-                CatModels.register(Blocks.double_wooden_slab).states(woodDef).register();
+                Models.register(Blocks.double_wooden_slab).states(woodDef).register();
         }
 
         // ==================== Wooden slab (wooden_slab, half+variant) ====================
@@ -669,7 +669,7 @@ public final class VanillaStateDefinitions {
                                                 WOOD_SLAB_VARIANT.getValues().get(Math.min(meta & 7, 5)),
                                                 StateDefinitions.SLAB_HALF.getValues().get((meta & 8) == 0 ? 0 : 1) })
                                 .create();
-                CatModels.register(Blocks.wooden_slab).states(def).register();
+                Models.register(Blocks.wooden_slab).states(def).register();
         }
 
         // ==================== Torches (torch / redstone_torch / unlit_redstone_torch)
@@ -709,7 +709,7 @@ public final class VanillaStateDefinitions {
                                                 StateDefinitions.SLAB_HALF.getValues().get((meta & 8) == 0 ? 0 : 1),
                                                 (meta & 4) != 0 ? "true" : "false" })
                                 .create();
-                CatModels.register(Blocks.trapdoor).states(def).register();
+                Models.register(Blocks.trapdoor).states(def).register();
         }
 
         // ==================== Doors (facing+hinge+open dynamic, half static) ====================
@@ -726,7 +726,7 @@ public final class VanillaStateDefinitions {
                                         .metaCodec(meta -> new Comparable<?>[] {
                                                         DOOR_HALF.getValues().get((meta & 8) == 0 ? 0 : 1) })
                                         .create();
-                        CatModels.register(door)
+                        Models.register(door)
                                         .states(def)
                                         .dynamic(VanillaBlockResolvers.DOOR)
                                         .register();
@@ -756,7 +756,7 @@ public final class VanillaStateDefinitions {
                                                 REDSTONE_UP_WEST)
                                 .metaCodec(meta -> new Comparable<?>[] { POWER.getValues().get(meta & 15) })
                                 .create();
-                CatModels.register(Blocks.redstone_wire)
+                Models.register(Blocks.redstone_wire)
                                 .states(def)
                                 .dynamic(VanillaBlockResolvers.REDSTONE_WIRE)
                                 .connectionMultipart()
@@ -776,14 +776,14 @@ public final class VanillaStateDefinitions {
                                 .add(DIODE_FACING, DELAY)
                                 .metaCodec(repeaterCodec)
                                 .create();
-                CatModels.register(Blocks.powered_repeater).states(poweredDef).register();
+                Models.register(Blocks.powered_repeater).states(poweredDef).register();
 
                 BlockStateDefinition<Block> unpoweredDef = new BlockStateDefinition.Builder<Block>(
                                 Blocks.unpowered_repeater)
                                 .add(DIODE_FACING, DELAY)
                                 .metaCodec(repeaterCodec)
                                 .create();
-                CatModels.register(Blocks.unpowered_repeater).states(unpoweredDef).register();
+                Models.register(Blocks.unpowered_repeater).states(unpoweredDef).register();
         }
 
         // ==================== Comparators (facing+mode+powered) ====================
@@ -807,14 +807,14 @@ public final class VanillaStateDefinitions {
                                 .add(DIODE_FACING, COMPARATOR_MODE, POWERED)
                                 .metaCodec(poweredCodec)
                                 .create();
-                CatModels.register(Blocks.powered_comparator).states(poweredDef).register();
+                Models.register(Blocks.powered_comparator).states(poweredDef).register();
 
                 BlockStateDefinition<Block> unpoweredDef = new BlockStateDefinition.Builder<Block>(
                                 Blocks.unpowered_comparator)
                                 .add(DIODE_FACING, COMPARATOR_MODE, POWERED)
                                 .metaCodec(unpoweredCodec)
                                 .create();
-                CatModels.register(Blocks.unpowered_comparator).states(unpoweredDef).register();
+                Models.register(Blocks.unpowered_comparator).states(unpoweredDef).register();
         }
 
         // ==================== Pistons (facing+extended / piston head facing+sticky)
@@ -835,13 +835,13 @@ public final class VanillaStateDefinitions {
                                 .add(PISTON_FACING, EXTENDED)
                                 .metaCodec(pistonCodec)
                                 .create();
-                CatModels.register(Blocks.piston).states(pistonDef).register();
+                Models.register(Blocks.piston).states(pistonDef).register();
 
                 BlockStateDefinition<Block> stickyDef = new BlockStateDefinition.Builder<Block>(Blocks.sticky_piston)
                                 .add(PISTON_FACING, EXTENDED)
                                 .metaCodec(pistonCodec)
                                 .create();
-                CatModels.register(Blocks.sticky_piston).states(stickyDef).register();
+                Models.register(Blocks.sticky_piston).states(stickyDef).register();
 
                 // piston_head (BlockPistonExtension): facing[meta&7] + sticky[bit3]
                 // the stationary piston head block (piston_extension / BlockPistonMoving during movement is rendered via TileEntity and is not registered)
@@ -849,7 +849,7 @@ public final class VanillaStateDefinitions {
                                 .add(PISTON_FACING, STICKY)
                                 .metaCodec(pistonCodec)
                                 .create();
-                CatModels.register(Blocks.piston_head).states(headDef).register();
+                Models.register(Blocks.piston_head).states(headDef).register();
         }
 
         // ==================== Ladder (single facing, custom decode) ====================
@@ -910,7 +910,7 @@ public final class VanillaStateDefinitions {
                                 .add(LEVER_FACING, POWERED)
                                 .metaCodec(codec)
                                 .create();
-                CatModels.register(Blocks.lever).states(def).register();
+                Models.register(Blocks.lever).states(def).register();
         }
 
         // ==================== Fence gate (facing+open) ====================
@@ -926,7 +926,7 @@ public final class VanillaStateDefinitions {
                                 .add(FENCE_GATE_FACING, OPEN)
                                 .metaCodec(codec)
                                 .create();
-                CatModels.register(Blocks.fence_gate).states(def).register();
+                Models.register(Blocks.fence_gate).states(def).register();
         }
 
         // ==================== Pumpkins / jack o'lanterns (single facing, special decode) ====================
@@ -999,13 +999,13 @@ public final class VanillaStateDefinitions {
                                 .add(BUTTON_FACING, POWERED)
                                 .metaCodec(codec)
                                 .create();
-                CatModels.register(Blocks.stone_button).states(stoneDef).register();
+                Models.register(Blocks.stone_button).states(stoneDef).register();
 
                 BlockStateDefinition<Block> woodDef = new BlockStateDefinition.Builder<Block>(Blocks.wooden_button)
                                 .add(BUTTON_FACING, POWERED)
                                 .metaCodec(codec)
                                 .create();
-                CatModels.register(Blocks.wooden_button).states(woodDef).register();
+                Models.register(Blocks.wooden_button).states(woodDef).register();
         }
 
         // ==================== Furnaces / lit furnaces (single facing, custom decode) ====================

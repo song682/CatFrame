@@ -2,7 +2,7 @@ package decok.dfcdvadstf.catframe.mixin.middle.event;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import decok.dfcdvadstf.catframe.adapter.forge.event.CatFrameGuiEvent;
+import decok.dfcdvadstf.catframe.adapter.forge.event.KeyBoardInputEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraftforge.common.MinecraftForge;
@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Mixin into GuiScreen to fire CatFrame's public {@link CatFrameGuiEvent.KeyboardInputEvent}
+ * Mixin into GuiScreen to fire CatFrame's public {@link KeyBoardInputEvent}
  * Pre/Post events — the backfill of Forge 1.8+'s {@code GuiScreenEvent.KeyboardInputEvent}.
  * <p>
  * This is the <strong>public event bridge</strong>, deliberately separate from
@@ -36,11 +36,11 @@ public abstract class MixinGuiScreenEventBridge {
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/gui/GuiScreen;handleKeyboardInput()V"))
     private void catframe$fireKeyboardInputEvents(GuiScreen screen, Operation<Void> original) {
-        if (!MinecraftForge.EVENT_BUS.post(new CatFrameGuiEvent.KeyboardInputEvent.Pre(screen))) {
+        if (!MinecraftForge.EVENT_BUS.post(new KeyBoardInputEvent.Pre(screen))) {
             original.call(screen);
         }
         if (screen == Minecraft.getMinecraft().currentScreen) {
-            MinecraftForge.EVENT_BUS.post(new CatFrameGuiEvent.KeyboardInputEvent.Post(screen));
+            MinecraftForge.EVENT_BUS.post(new KeyBoardInputEvent.Post(screen));
         }
     }
 }

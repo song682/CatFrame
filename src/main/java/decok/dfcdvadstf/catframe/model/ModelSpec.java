@@ -15,9 +15,9 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * {@link CatModels} registered block model spec (data holder).
+ * {@link Models} registered block model spec (data holder).
  * <p>
- * Collected during preInit by {@link CatModels} chainable API, materialized at runtime
+ * Collected during preInit by {@link Models} chainable API, materialized at runtime
  * ({@code registerAllModels}, after blockstate JSON loaded) via
  * {@link #buildBlockModel(BlockstateJson)} / {@link #buildItemNode(BlockstateJson)}
  * into {@link ResidentStateModel} and item decision tree.
@@ -27,7 +27,7 @@ import java.util.*;
  * to bake registration phase.
  */
 @SideOnly(Side.CLIENT)
-public final class CatModelSpec {
+public final class ModelSpec {
 
     public final Block block;
     @Nullable
@@ -43,7 +43,7 @@ public final class CatModelSpec {
     /** Whether to export item {@code catframe:meta} decision tree from blockstate's 16 static states. */
     public boolean itemFromBlockstate = false;
 
-    public CatModelSpec(Block block) {
+    public ModelSpec(Block block) {
         this.block = block;
     }
 

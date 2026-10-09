@@ -245,6 +245,10 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
                 dt.scale = new float[]{0.68f, 0.68f, 0.68f};
                 break;
             case "thirdperson_righthand":
+            case "thirdperson_lefthand":
+                // 左手第三人称默认值与右手一致（本默认变换 Y/Z 旋转均为 0，左右镜像结果相同）；
+                // 模型 JSON 一旦 authored 了 thirdperson_lefthand（如 handheld.json / stairs.json），
+                // beforePart 会优先读取模型数据而自动接管，本默认值不再生效
                 dt.rotation = new float[]{0, 0, 0};
                 dt.translation = new float[]{0, 3, 1};
                 dt.scale = new float[]{0.55f, 0.55f, 0.55f};

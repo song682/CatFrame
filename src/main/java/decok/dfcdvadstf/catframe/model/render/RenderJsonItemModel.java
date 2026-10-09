@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.entity.RenderSkeleton;
 import net.minecraft.client.renderer.entity.RenderSnowMan;
 import net.minecraft.client.renderer.entity.RenderWitch;
+import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
@@ -272,7 +273,7 @@ public class RenderJsonItemModel implements IItemRenderer {
 
         // ---- Head slot refinement (replace with ITEM_HEAD when EQUIPPED and the head slot test matches) ----
         // In 1.7.10, the three head hosts (player helmet slot / mob head equipment slot / snow golem pumpkin) all
-        // arrive as EQUIPPED; the test uses the host renderer and the heldItem reference (see resolveHeadSlotKind).
+        // arrive as EQUIPPED; the test uses the host renderer and the head slot stack ownership (see resolveHeadSlotKind).
         if (type == ItemRenderType.EQUIPPED && resolveHeadSlotKind(entity, stack) != null) {
             phase = RenderPhase.ITEM_HEAD;
         }
@@ -470,9 +471,12 @@ public class RenderJsonItemModel implements IItemRenderer {
      * player helmet slot ({@code RenderPlayer} L197-211, ItemBlock only), mob head equipment slot
      * ({@code RenderBiped} L203-223, ItemBlock only), snow golem pumpkin ({@code RenderSnowMan}
      * L36-60, always a pumpkin ItemBlock). Head slots and the hand share the same entry point, so they can only be
-     * distinguished by the host renderer and the stack reference: a head slot's stack is always an ItemBlock and is
-     * not the same instance as {@code getHeldItem()} (the mob head slot passes the {@code func_130225_q(3)} slot stack,
-     * the player passes the helmet slot stack, and the snow golem passes a freshly created pumpkin stack). Skulls
+     * distinguished by the host renderer and the stack ownership: a head slot's stack is always an ItemBlock and must
+     * be the very instance owned by the head equipment slot, verified by {@link #isHeadSlotStack} (the mob head slot
+     * passes the {@code func_130225_q(3)} slot stack, the player passes the helmet slot stack, and the snow golem
+     * passes a freshly created pumpkin stack). Comparing against {@code getHeldItem()} instead would misjudge an
+     * off-hand block item in third person - the off-hand renders without switching slots, so {@code getHeldItem()}
+     * still returns the main-hand stack. Skulls
      * (Items.skull) use the separate TileEntitySkullRenderer path and armor uses the equipment model path, neither going
      * through the item render entry, so they are naturally excluded here.
      *
@@ -485,8 +489,32 @@ public class RenderJsonItemModel implements IItemRenderer {
                                                     @javax.annotation.Nullable ItemStack stack) {
         if (entity == null || stack == null || stack.getItem() == null) return null;
         if (getHostRenderer(entity) instanceof RenderSnowMan) return HeadSlotKind.SNOWMAN;
-        if (stack.getItem() instanceof ItemBlock && stack != entity.getHeldItem()) return HeadSlotKind.NORMAL;
+        if (stack.getItem() instanceof ItemBlock && isHeadSlotStack(entity, stack)) return HeadSlotKind.NORMAL;
         return null;
+    }
+
+    /**
+     * Checks whether the rendered stack is the very stack instance owned by the entity's head equipment slot.
+     * <p>
+     * Player: {@code inventory.armorItemInSlot(3)} - the helmet slot stack passed by {@code RenderPlayer} L197-211.
+     * Mobs: {@code func_130225_q(3)} (= {@code equipment[4]}) - the head slot stack passed by {@code RenderBiped}
+     * L203-223. {@code EntityPlayer} is not an {@link EntityLiving} in 1.7.10, so the two branches never overlap.
+     * The reference identity test is deliberate: head hosts pass the slot's own stack instance, while a hand render
+     * (main hand or off hand, even when the off-hand renders without switching slots) passes a stack that is not
+     * owned by the head equipment slot.
+     *
+     * @param entity the entity the item is attached to
+     * @param stack  the item stack being rendered
+     * @return true when {@code stack} is the head slot's own stack instance
+     */
+    private static boolean isHeadSlotStack(EntityLivingBase entity, ItemStack stack) {
+        if (entity instanceof EntityPlayer) {
+            return ((EntityPlayer) entity).inventory.armorItemInSlot(3) == stack;
+        }
+        if (entity instanceof EntityLiving) {
+            return ((EntityLiving) entity).func_130225_q(3) == stack;
+        }
+        return false;
     }
 
     /**

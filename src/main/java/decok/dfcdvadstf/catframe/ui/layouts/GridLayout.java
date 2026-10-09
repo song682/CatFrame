@@ -16,12 +16,6 @@ import java.util.function.Consumer;
  * <p>
  * For simple sequential filling, use {@link #createRowHelper(int)}.
  * </p>
- *
- * <p>
- * GridLayout —— 支持行/列跨越的网格布局。
- * 子元素可以放置在指定的行/列位置，并跨越多个行或列。
- * 对于简单的顺序填充，使用 {@link #createRowHelper(int)}。
- * </p>
  */
 public class GridLayout extends AbstractLayout {
 

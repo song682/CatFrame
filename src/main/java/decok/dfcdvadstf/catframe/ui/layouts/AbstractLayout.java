@@ -16,13 +16,8 @@ import java.util.function.Consumer;
  * Every mutator that affects layout calls {@link #recalculate()} automatically.
  * </p>
  *
- * <p>
- * 所有 {@link Layout} 的抽象基类，实现公共字段、子元素管理和定位。
- * 存储 x/y/width/height/padding/spacing 和一个内部子元素列表。
- * 任何影响布局的变更都会自动调用 {@link #recalculate()}。
- * </p>
  *
- * <h3>每子元素配置 / Per-child configuration</h3>
+ * <h3>Per-child configuration</h3>
  * <p>
  * Subclasses can use {@link AbstractChildWrapper} to store per-child
  * {@link LayoutSettings}.  The wrappers store the child together with its
@@ -58,7 +53,6 @@ public abstract class AbstractLayout implements Layout {
 
     /**
      * Sets the X position and translates all children by the same delta.
-     * <p>设置 X 位置并将所有子元素平移相同偏移量。</p>
      */
     @Override
     public void setX(int x) {
@@ -79,7 +73,6 @@ public abstract class AbstractLayout implements Layout {
 
     /**
      * Sets the Y position and translates all children by the same delta.
-     * <p>设置 Y 位置并将所有子元素平移相同偏移量。</p>
      */
     @Override
     public void setY(int y) {
@@ -143,7 +136,6 @@ public abstract class AbstractLayout implements Layout {
     /**
      * Adds a child with the given layout settings.  Subclasses that support
      * per-child settings (e.g. {@link LinearLayout}) should override this.
-     * <p>添加子元素并指定布局配置。支持每子元素配置的子类（如 {@link LinearLayout}）应覆写此方法。</p>
      */
     public Layout add(ILayout child, LayoutSettings settings) {
         return add(child);
@@ -151,7 +143,6 @@ public abstract class AbstractLayout implements Layout {
 
     /**
      * Adds a child and configures its settings via a consumer lambda.
-     * <p>添加子元素并通过 lambda 配置其设置。</p>
      */
     public Layout add(ILayout child, Consumer<LayoutSettings> configurator) {
         LayoutSettings settings = LayoutSettings.defaults();
@@ -195,7 +186,7 @@ public abstract class AbstractLayout implements Layout {
     // ──── Convenience ────
 
     /**
-     * Add multiple children in one call. / 批量添加子元素。
+     * Add multiple children in one call.
      */
     public Layout addAll(ILayout... children) {
         for (ILayout child : children) {
@@ -221,7 +212,6 @@ public abstract class AbstractLayout implements Layout {
 
     /**
      * A wrapper that pairs an {@link ILayout} child with its {@link LayoutSettings}.
-     * <p>将 {@link ILayout} 子元素与其 {@link LayoutSettings} 配对的包装器。</p>
      */
     protected abstract static class AbstractChildWrapper {
         public final ILayout child;
@@ -234,7 +224,6 @@ public abstract class AbstractLayout implements Layout {
 
         /**
          * Returns the total width this child occupies, including padding.
-         * <p>返回此子元素占用的总宽度，包含内边距。</p>
          */
         public int getWidth() {
             return child.getWidth() + settings.paddingLeft + settings.paddingRight;
@@ -242,7 +231,6 @@ public abstract class AbstractLayout implements Layout {
 
         /**
          * Returns the total height this child occupies, including padding.
-         * <p>返回此子元素占用的总高度，包含内边距。</p>
          */
         public int getHeight() {
             return child.getHeight() + settings.paddingTop + settings.paddingBottom;
@@ -251,7 +239,6 @@ public abstract class AbstractLayout implements Layout {
         /**
          * Position the child along the X axis within the given available space,
          * respecting its horizontal alignment and padding.
-         * <p>在给定的可用空间内沿 X 轴定位子元素，考虑水平对齐和内边距。</p>
          */
         public void setX(int x, int availableSpace) {
             float least = settings.paddingLeft;
@@ -263,7 +250,6 @@ public abstract class AbstractLayout implements Layout {
         /**
          * Position the child along the Y axis within the given available space,
          * respecting its vertical alignment and padding.
-         * <p>在给定的可用空间内沿 Y 轴定位子元素，考虑垂直对齐和内边距。</p>
          */
         public void setY(int y, int availableSpace) {
             float least = settings.paddingTop;

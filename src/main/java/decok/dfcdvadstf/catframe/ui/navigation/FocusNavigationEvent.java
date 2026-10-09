@@ -17,7 +17,7 @@ public abstract class FocusNavigationEvent {
      */
     public abstract ScreenAxis getNavigationAxis();
 
-/**
+    /**
      * Tab / Shift+Tab sequential navigation event.
      */
     public static final class TabNavigation extends FocusNavigationEvent {
@@ -41,7 +41,7 @@ public abstract class FocusNavigationEvent {
         }
     }
 
-/**
+    /**
      * Arrow-key navigation event (up/down/left/right).
      */
     public static final class ArrowNavigation extends FocusNavigationEvent {

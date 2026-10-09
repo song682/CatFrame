@@ -57,8 +57,8 @@ public final class BuiltinGeneratedModel {
         model.display.put("head",            display(0, 13, 7, 0, 180, 0, 1, 1, 1));
         model.display.put("thirdperson_righthand",  display(0, 3, 1, 0, 0, 0, 0.55f, 0.55f, 0.55f));
         model.display.put("firstperson_righthand",  display(1.13f, 3.2f, 1.13f, 0, -90, 25, 0.68f, 0.68f, 0.68f));
-        // left-hand mirror of firstperson_righthand: Y/Z negated per the 26.1 left-hand convention
-        model.display.put("firstperson_lefthand",   display(1.13f, 3.2f, 1.13f, 0, 90, -25, 0.68f, 0.68f, 0.68f));
+        // no firstperson_lefthand entry (matches 26.1 generated.json): a missing left-hand transform
+        // falls back to the right-hand value, then the left-hand fix negates x/y/z at apply time
         return model;
     }
 

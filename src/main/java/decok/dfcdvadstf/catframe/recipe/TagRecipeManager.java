@@ -23,30 +23,30 @@ import java.util.Map;
  * Usage examples:
  * <pre>
  * // Add shaped recipe (using Tag)
- * CatFrameRecipeManager.addShaped(
+ * TagRecipeManager.addShaped(
  *     new ItemStack(Blocks.chest),
  *     "###", "# #", "###",
  *     '#', "catframe:planks"
  * );
  * 
  * // Add shapeless recipe
- * CatFrameRecipeManager.addShapeless(
+ * TagRecipeManager.addShapeless(
  *     new ItemStack(Items.iron_ingot, 9),
  *     "catframe:blockIron"
  * );
  * 
  * // Add smelting recipe
- * CatFrameRecipeManager.addSmelting(Items.iron_ore, new ItemStack(Items.iron_ingot), 0.7F);
+ * TagRecipeManager.addSmelting(Items.iron_ore, new ItemStack(Items.iron_ingot), 0.7F);
  * 
  * // Remove recipes
- * CatFrameRecipeManager.removeRecipesByOutput(Blocks.crafting_table);
+ * TagRecipeManager.removeRecipesByOutput(Blocks.crafting_table);
  * </pre>
  */
-public final class CatFrameRecipeManager {
+public final class TagRecipeManager {
     
-    private static final Logger LOGGER = LogManager.getLogger(CatFrameRecipeManager.class);
+    private static final Logger LOGGER = LogManager.getLogger(TagRecipeManager.class);
     
-    private CatFrameRecipeManager() {
+    private TagRecipeManager() {
         // Utility class, no instantiation
     }
     

@@ -17,6 +17,15 @@
   "commands.catframe.title.actionbar": "Showing new actionbar title for %s",
   "commands.catframe.title.server.usage": "/title <targets> (clear|reset) OR /title <targets> (title|subtitle|actionbar) <text> OR /title <targets> times <fadeIn> <stay> <fadeOut>",
   "commands.catframe.title.noTargets": "No players matched the target selector",
+  "commands.catframe.datapack.usage": "/datapack <list|enable|disable|reload> [pack id]",
+  "commands.catframe.datapack.list.header": "Data packs (%s discovered):",
+  "commands.catframe.datapack.list.empty": "No data packs discovered",
+  "commands.catframe.datapack.list.entry.enabled": "[enabled] %s (source: %s) %s",
+  "commands.catframe.datapack.list.entry.disabled": "[disabled] %s (source: %s) %s",
+  "commands.catframe.datapack.enabled": "Enabled data pack %s",
+  "commands.catframe.datapack.disabled": "Disabled data pack %s",
+  "commands.catframe.datapack.unknown": "Unknown data pack: %s",
+  "commands.catframe.datapack.reload.done": "Data packs reloaded: %s active, %s problem(s)",
   "resourcePack.catframe.builtin.example.name": "CatFrame Example Pack",
   "resourcePack.catframe.builtin.example.description": "A demonstration built-in resource pack shipped by CatFrame"
 }

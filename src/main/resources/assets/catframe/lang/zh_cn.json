@@ -17,6 +17,15 @@
   "commands.catframe.title.actionbar": "正在为 %s 显示新动作栏标题",
   "commands.catframe.title.server.usage": "/title <目标> (clear|reset) 或 /title <目标> (title|subtitle|actionbar) <文本> 或 /title <目标> times <淡入> <停留> <淡出>",
   "commands.catframe.title.noTargets": "没有玩家匹配该目标选择器",
+  "commands.catframe.datapack.usage": "/datapack <list|enable|disable|reload> [数据包 id]",
+  "commands.catframe.datapack.list.header": "数据包（发现 %s 个）：",
+  "commands.catframe.datapack.list.empty": "未发现任何数据包",
+  "commands.catframe.datapack.list.entry.enabled": "[已启用] %s（来源：%s）%s",
+  "commands.catframe.datapack.list.entry.disabled": "[已禁用] %s（来源：%s）%s",
+  "commands.catframe.datapack.enabled": "已启用数据包 %s",
+  "commands.catframe.datapack.disabled": "已禁用数据包 %s",
+  "commands.catframe.datapack.unknown": "未知的数据包：%s",
+  "commands.catframe.datapack.reload.done": "数据包已重载：%s 个生效，%s 个问题",
   "resourcePack.catframe.builtin.example.name": "CatFrame 示例资源包",
   "resourcePack.catframe.builtin.example.description": "CatFrame 自带的演示内置资源包"
 }

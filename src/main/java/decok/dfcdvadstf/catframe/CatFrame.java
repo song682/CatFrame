@@ -1,15 +1,20 @@
 package decok.dfcdvadstf.catframe;
 
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
+import decok.dfcdvadstf.catframe.command.CommandDataPack;
 import decok.dfcdvadstf.catframe.command.CommandTitle;
+import decok.dfcdvadstf.catframe.datapack.DataPackManager;
 import decok.dfcdvadstf.catframe.proxy.CommonProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.io.File;
 
 @Mod(
         modid = Tags.MODID,
@@ -56,5 +61,19 @@ public class CatFrame {
     @EventHandler
     public void onServerStarting(FMLServerStartingEvent event) {
         event.registerServerCommand(new CommandTitle());
+
+        // Data pack pipeline: discover + apply on the first server start, and
+        // reapply when the active world changed (singleplayer world switch).
+        // Failures are logged and must never block world loading.
+        try {
+            File configDir = Loader.instance().getConfigDir();
+            File gameDir = configDir.getParentFile() != null ? configDir.getParentFile() : configDir;
+            File worldDir = event.getServer().getEntityWorld().getSaveHandler().getWorldDirectory();
+            DataPackManager.bootstrap(configDir, gameDir, worldDir);
+        } catch (RuntimeException e) {
+            logger.error("Failed to bootstrap data packs", e);
+        }
+
+        event.registerServerCommand(new CommandDataPack());
     }
 }

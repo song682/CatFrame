@@ -26,9 +26,10 @@ jar {
     manifest {
         attributes (
                 'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
-                'MixinConfigs': "mixins.${modId}.json",
                 'ForceLoadAsMod': 'true',
                 'FMLCorePluginContainsFMLMod': 'true',
+                'MixinConfigs': "mixins.${modId}.json",
+                'FMLAT': 'catframe_at.cfg',
         )
     }
 

@@ -88,6 +88,13 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
         this.title = title;
     }
 
+    /**
+     * Convenience constructor accepting a plain literal string as the screen title.
+     */
+    protected Screen(final String title) {
+        this(Text.literal(title));
+    }
+
     /** @return this screen's title */
     public Text getTitle() {
         return this.title;

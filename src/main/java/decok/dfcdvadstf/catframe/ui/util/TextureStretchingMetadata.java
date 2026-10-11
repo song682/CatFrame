@@ -58,7 +58,7 @@ public final class TextureStretchingMetadata {
 
     private final int tileWidth;
 
-    /** Whether the inner (centre) region of a nine-patch should be stretched instead of tiled. */
+    /** Whether the inner (center) region of a nine-patch should be stretched instead of tiled. */
     private final boolean stretchInner;
 
     private TextureStretchingMetadata(TextureStretching.StretchType type,
@@ -118,8 +118,8 @@ public final class TextureStretchingMetadata {
     }
 
     /**
-     * Whether the inner (centre) region of a nine-patch should be stretched
-     * (single quad covering the entire centre) instead of tiled.
+     * Whether the inner (center) region of a nine-patch should be stretched
+     * (single quad covering the entire center) instead of tiled.
      * <p>Corresponds to {@code "inner": { "will_stretch": true }} in mcmeta.</p>
      */
     public boolean isStretchInner() {

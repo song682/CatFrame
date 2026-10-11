@@ -4,6 +4,7 @@ import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
 
 /**
+ * @deprecated
  * <p>
  * GUI drawing utility — provides common rectangle drawing methods.<br>
  * Centralises GL state management and Tessellator usage patterns.

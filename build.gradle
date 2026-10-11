@@ -32,7 +32,6 @@ apply plugin: 'forge'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
 apply plugin: 'java'
-apply plugin: 'maven-publish'
 
 if (project.enableUsingKotlin.toBoolean()) {
     apply plugin: 'kotlin'
@@ -258,7 +257,7 @@ tasks.register('deobfJar', Jar) {
 tasks.register('sourcesJar', Jar) {
     dependsOn classes
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    classifier 'deobf-sources'
+    classifier 'sources'
 
     from sourceSets.main.allSource
     exclude "methods.bin"
@@ -307,33 +306,4 @@ if (project.include_license.toBoolean()){
     }
 }
 
-tasks.withType(GenerateModuleMetadata) {
-    enabled = false
-}
-
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-            artifact sourcesJar
-            artifact deobfJar
-            groupId = project.group
-            artifactId = project.archivesBaseName
-            version = project.version
-
-            // 过滤掉 forgeBin 这种没有 groupId 的依赖
-            pom.withXml {
-                def depsNode = asNode().get("dependencies")
-                if (depsNode.size() > 0) {
-                    depsNode[0].children().removeAll { dep ->
-                        if (!(dep instanceof Node)) return false
-                        if (dep.name().localPart != "dependency") return false
-                        def groupIdNodes = dep.get("groupId")
-                        // 删除：没有 groupId 节点，或者 groupId 内容为空
-                        return groupIdNodes.isEmpty() || groupIdNodes[0].text().trim().isEmpty()
-                    }
-                }
-            }
-        }
-    }
-}
+apply from: 'publish.gradle'

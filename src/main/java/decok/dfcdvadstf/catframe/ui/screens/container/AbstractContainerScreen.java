@@ -15,7 +15,7 @@ import decok.dfcdvadstf.catframe.ui.components.events.ScreenKeyboardInput;
 import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import decok.dfcdvadstf.catframe.ui.screens.Screen;
-import decok.dfcdvadstf.catframe.ui.tooltip.ClientTooltipComponent;
+import decok.dfcdvadstf.catframe.ui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.inventory.Slot;

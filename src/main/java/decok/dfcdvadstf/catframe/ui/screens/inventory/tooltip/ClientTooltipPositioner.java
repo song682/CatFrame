@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.ui.tooltip;
+package decok.dfcdvadstf.catframe.ui.screens.inventory.tooltip;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

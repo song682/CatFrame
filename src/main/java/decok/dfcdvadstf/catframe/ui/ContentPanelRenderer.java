@@ -16,19 +16,19 @@ public final class ContentPanelRenderer {
      * Header separator (top line), 32x2 tileable.
      */
     public static final ResourceLocation HEADER_SEPARATOR =
-            new ResourceLocation("catframe", "textures/gui/seperator/header_separator.png");
+            new ResourceLocation("catframe", "textures/gui/header_separator.png");
 
     /**
      * Footer separator (bottom line), 32x2 tileable.
      */
     public static final ResourceLocation FOOTER_SEPARATOR =
-            new ResourceLocation("catframe", "textures/gui/seperator/footer_separator.png");
+            new ResourceLocation("catframe", "textures/gui/footer_separator.png");
 
     /**
      * Panel background, 16x16 tileable.
      */
     public static final ResourceLocation PANEL_BACKGROUND =
-            new ResourceLocation("catframe", "textures/gui/seperator/panel_background.png");
+            new ResourceLocation("catframe", "textures/gui/menu_background.png");
 
     /**
      * Separator height in GUI pixels.

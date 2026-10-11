@@ -6,9 +6,12 @@
 #
 # Reference:
 # https://github.com/GTNewHorizons/ExampleMod1.7.10/blob/master/jitpack.yml
+# https://github.com/LegacyModdingMC/UniMixins/blob/0.2.1/jitpack.yml
 
 jdk:
   - openjdk8
 
-before_install:
+
+install:
   - ./gradlew setupCIWorkspace
+  - ./gradlew publishToMavenLocal -xtest

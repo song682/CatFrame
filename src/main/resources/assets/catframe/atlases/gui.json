@@ -2,6 +2,11 @@
     "sources": [
         {
             "type": "minecraft:directory",
+            "source": "gui",
+            "prefix": "gui/"
+        },
+        {
+            "type": "minecraft:directory",
             "source": "gui/seperator",
             "prefix": "gui/seperator/"
         },

@@ -4,7 +4,6 @@ import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
 
 /**
- * @deprecated
  * <p>
  * GUI drawing utility — provides common rectangle drawing methods.<br>
  * Centralises GL state management and Tessellator usage patterns.
@@ -13,7 +12,7 @@ import org.lwjgl.opengl.GL11;
 public final class GuiDrawing {
 
     /**
-     * Draw a filled rectangle with a solid colour.
+     * Draw a filled rectangle with a solid color.
      *
      * @param left   left X coordinate
      * @param top    top Y coordinate

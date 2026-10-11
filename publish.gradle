@@ -1,0 +1,112 @@
+// publish.gradle
+//
+// 发布模型参考 UniMixins（LegacyModdingMC，同样跑 ForgeGradle 1.2 + JitPack，
+// 并被本项目的 mixin.gradle 依赖、久经验证）：
+//   - 不使用 from components.java，改为手动声明 artifact
+//   - 无 component 的 publication 不会生成 .module 元数据
+//   - POM 依赖手动注入，只发布真正的 mod 依赖
+//
+// 为什么放弃 from components.java：
+//   ForgeGradle 1.2 会把 forgeBin（没有 groupId）和整套 Minecraft 依赖
+//   注入 java 组件的 runtimeElements。pom.withXml 只能改 POM，改不到
+//   GenerateModuleMetadata 生成的 .module；而 Gradle 6+ 的消费端会优先
+//   读取 .module（POM 里有 published-with-gradle-metadata 标记），解析
+//   :forgeBin 时直接失败——这就是当初“JitPack 发布的依赖导入不了”、
+//   只能禁用 module 元数据的原因。不用 component 之后 POM 完全可控，
+//   本地 mavenLocal 也不再携带整套 MC 依赖栈，消费者只拿到 mod 依赖。
+//
+// 关于 sha256/md5 校验文件：
+//   Gradle 解析依赖并不要求校验文件，publishToMavenLocal 本来也不生成
+//   它们（JitPack 页面上的 .pom.md5/.pom.sha1 是 JitPack 自己生成的），
+//   所以校验文件从来不是导入失败的原因。不过下面仍把同一份构件额外
+//   发布到 ~/.m2 的一个普通文件仓库——文件仓库发布会为每个文件生成
+//   .sha1/.md5/.sha256/.sha512 校验文件，JitPack 扫描 ~/.m2 时会把它们
+//   一并带走，得到和 GitHub Pages maven 仓库一致的发布效果。
+
+apply plugin: 'maven-publish'
+
+// 只有这些来源的依赖才会进入 POM（前缀匹配）。
+// Minecraft/Forge 依赖由消费方自己的 ForgeGradle 环境提供，一律不发布。
+def publishableGroup = { String g ->
+    g != null && (g.startsWith('maven.modrinth')   // Modrinth Maven
+            || g.startsWith('curse.maven')         // CurseMaven
+            || g.startsWith('com.github')          // JitPack
+            || g.startsWith('org.jetbrains'))      // Kotlin
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = project.group
+            artifactId = project.archivesBaseName
+            version = project.version
+
+            artifact jar
+            artifact deobfJar
+            artifact sourcesJar
+
+            // 无 component 的 publication 生成的 POM 本来没有任何依赖，
+            // 这里从 implementation / runtimeOnly 里挑出 mod 依赖注入回去
+            // （implementation -> compile，runtimeOnly -> runtime）。
+            pom.withXml {
+                def seen = new LinkedHashSet<String>()
+                def toPublish = []
+                [implementation: 'compile', runtimeOnly: 'runtime'].each { cfgName, scope ->
+                    def cfg = project.configurations.findByName(cfgName)
+                    if (cfg == null) return
+                    cfg.dependencies.each { d ->
+                        if (!(d instanceof ExternalDependency)) return
+                        if (d.group == null || d.version == null) return
+                        if (!publishableGroup(d.group)) return
+                        if (!seen.add("${d.group}:${d.name}")) return
+                        // 保留 classifier（如 unimixins 的 dev 分类器）
+                        def art = d.artifacts?.find { it.classifier }
+                        toPublish << [group: d.group, name: d.name, version: d.version,
+                                      scope: scope, classifier: art ? art.classifier : null]
+                    }
+                }
+                if (toPublish) {
+                    def root = asNode()
+                    def depsList = root.get('dependencies')
+                    def depsNode = (depsList != null && !depsList.isEmpty()) ? depsList.get(0)
+                                                                          : root.appendNode('dependencies')
+                    toPublish.each { d ->
+                        def node = depsNode.appendNode('dependency')
+                        node.appendNode('groupId', d.group)
+                        node.appendNode('artifactId', d.name)
+                        node.appendNode('version', d.version)
+                        if (d.classifier) node.appendNode('classifier', d.classifier)
+                        node.appendNode('scope', d.scope)
+                    }
+                }
+            }
+        }
+    }
+
+    repositories {
+        // JitPack 的 Gradle 构建跑 publishToMavenLocal，然后扫描 ~/.m2。
+        // mavenLocal() 发布不写校验文件；这里把同一份构件再发布成一个
+        // 指向 ~/.m2 的普通文件仓库，让 Gradle 生成全套校验文件
+        // （接线见文件末尾的 dependsOn）。
+        maven {
+            name = 'ChecksummedMavenLocal'
+            url = new File(System.getProperty('user.home'), '.m2/repository')
+        }
+    }
+}
+
+// reobf 会原地重写主 jar，发布任务必须排在 reobf 之后，
+// 否则发出去的是未混淆的 jar（UniMixins 同款处理）。
+tasks.matching { it.name.startsWith('publish') && it.name.contains('PublicationTo') }.configureEach {
+    dependsOn reobf
+}
+
+// 让 JitPack 的 publishToMavenLocal 顺带触发上面的校验文件发布；
+// 内建的 mavenLocal 发布目标与它指向同一目录，直接禁用，
+// 避免同一文件写两遍（也消除“published multiple times”告警）。
+tasks.matching { it.name == 'publishMavenJavaPublicationToMavenLocal' }.configureEach {
+    enabled = false
+}
+tasks.matching { it.name == 'publishToMavenLocal' }.configureEach {
+    dependsOn 'publishMavenJavaPublicationToChecksummedMavenLocalRepository'
+}

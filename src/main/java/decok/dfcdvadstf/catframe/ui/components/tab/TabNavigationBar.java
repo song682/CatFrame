@@ -144,11 +144,13 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
     }
 
     /**
-     * 绘制导航栏 —— 双段标题分隔线（按钮排两侧）加所有按钮。<br>
+     * 绘制导航栏 —— 黑色页签头背景、双段标题分隔线（按钮排两侧）加所有按钮。<br>
      * 可见性与悬停状态已由 {@link #extractRenderState} 在调用前处理。
      */
     @Override
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
+        ContentPanelRenderer.drawTabHeaderBackground(0, this.layout.getY(), this.width, HEIGHT);
+
         int separatorY = this.layout.getY() + this.layout.getHeight() - 2;
         ContentPanelRenderer.drawHeaderSeparator(0, separatorY, this.tabButtons.get(0).getX());
         TabButton lastButton = this.tabButtons.get(this.tabButtons.size() - 1);

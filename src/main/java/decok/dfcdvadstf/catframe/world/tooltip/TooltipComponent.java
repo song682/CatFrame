@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.core.tooltip;
+package decok.dfcdvadstf.catframe.world.tooltip;
 
 /**
  * Tooltip component marker interface — structural components attachable to tooltips.

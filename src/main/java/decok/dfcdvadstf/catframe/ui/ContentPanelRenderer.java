@@ -31,6 +31,12 @@ public final class ContentPanelRenderer {
             new ResourceLocation("catframe", "textures/gui/menu_background.png");
 
     /**
+     * Tab header background (black), 16x16 tileable. Sits behind the tab navigation row.
+     */
+    public static final ResourceLocation TAB_HEADER_BACKGROUND =
+            new ResourceLocation("catframe", "textures/gui/tab_header_background.png");
+
+    /**
      * Separator height in GUI pixels.
      */
     public static final int SEPARATOR_HEIGHT = 2;
@@ -92,6 +98,14 @@ public final class ContentPanelRenderer {
     public static void drawPanelBackground(int x, int y, int width, int height) {
         if (width <= 0 || height <= 0) return;
         drawTiledTexture(PANEL_BACKGROUND, x, y, width, height, PANEL_TILE, PANEL_TILE);
+    }
+
+    /**
+     * Draw the tab header background — tiles the 16x16 black texture over the given region.
+     */
+    public static void drawTabHeaderBackground(int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0) return;
+        drawTiledTexture(TAB_HEADER_BACKGROUND, x, y, width, height, PANEL_TILE, PANEL_TILE);
     }
 
     /**

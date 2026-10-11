@@ -2,8 +2,8 @@ package decok.dfcdvadstf.catframe.ui;
 
 import decok.dfcdvadstf.catframe.core.component.DataComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
-import decok.dfcdvadstf.catframe.core.tooltip.ItemTooltipImages;
-import decok.dfcdvadstf.catframe.core.tooltip.TooltipComponent;
+import decok.dfcdvadstf.catframe.world.tooltip.ItemTooltipImages;
+import decok.dfcdvadstf.catframe.world.tooltip.TooltipComponent;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
@@ -651,5 +651,23 @@ public class GuiGraphicsExtractor {
         this.renderState.reset();
         this.deferredPip.clear();
         this.deferredTooltip = null;
+    }
+
+    public static enum HoveredTextEffects {
+        NONE(false, false),
+        TOOLTIP_ONLY(true, false),
+        TOOLTIP_AND_CURSOR(true, true);
+
+        public final boolean allowTooltip;
+        public final boolean allowCursorChanges;
+
+        private HoveredTextEffects(final boolean allowTooltip, final boolean allowCursorChanges) {
+            this.allowTooltip = allowTooltip;
+            this.allowCursorChanges = allowCursorChanges;
+        }
+
+        public static GuiGraphicsExtractor.HoveredTextEffects notClickable(final boolean canTooltip) {
+            return canTooltip ? TOOLTIP_ONLY : NONE;
+        }
     }
 }

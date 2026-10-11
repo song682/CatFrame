@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.core.tooltip;
+package decok.dfcdvadstf.catframe.world.tooltip;
 
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;

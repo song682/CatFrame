@@ -13,6 +13,7 @@ import decok.dfcdvadstf.catframe.adapter.forge.language.LanguageRegister;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.RenderItemInFrameHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.TexturesStitch;
 import decok.dfcdvadstf.catframe.core.RegisteredComponents;
+import decok.dfcdvadstf.catframe.datapack.DataPackSync;
 import decok.dfcdvadstf.catframe.network.OverlayNetwork;
 import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;
 import net.minecraftforge.common.MinecraftForge;
@@ -23,6 +24,9 @@ public class CommonProxy {
 
     public void preInit(FMLPreInitializationEvent event) {
         OverlayNetwork.init();
+
+        // Datapack sync (worklist C5): login trigger + post-apply broadcast.
+        DataPackSync.register();
 
         // Scan CatFrame's own jar/directory for JSON lang files and inject them
         LanguageRegister.load();

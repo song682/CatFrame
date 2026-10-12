@@ -8,6 +8,7 @@ import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.IBlockAccess;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,8 +37,15 @@ import java.util.Map;
  */
 @SideOnly(Side.CLIENT)
 public final class TintRegistry {
-    private static final Map<Block, IBlockTintProvider> BLOCK_PROVIDERS = new HashMap<>();
-    private static final Map<Item, IItemTintProvider> ITEM_PROVIDERS = new HashMap<>();
+    /**
+     * Copy-on-write provider tables. Writes are rare (mod init, datapack sync)
+     * and synchronized; reads happen on the render path from arbitrary threads
+     * and see a stable immutable map snapshot without locking — datapack sync
+     * may install providers from the network thread while the render thread is
+     * already reading.
+     */
+    private static volatile Map<Block, IBlockTintProvider> BLOCK_PROVIDERS = Collections.emptyMap();
+    private static volatile Map<Item, IItemTintProvider> ITEM_PROVIDERS = Collections.emptyMap();
 
     private TintRegistry() {
     }
@@ -60,22 +68,44 @@ public final class TintRegistry {
         if (provider != null) provider.register();
     }
 
-    public static void registerBlockTint(Block block, IBlockTintProvider provider) {
+    public static synchronized void registerBlockTint(Block block, IBlockTintProvider provider) {
         if (block == null || provider == null) return;
-        BLOCK_PROVIDERS.put(block, provider);
+        Map<Block, IBlockTintProvider> copy = new HashMap<>(BLOCK_PROVIDERS);
+        copy.put(block, provider);
+        BLOCK_PROVIDERS = copy;
     }
 
-    public static void registerItemTint(Item item, IItemTintProvider provider) {
+    public static synchronized void registerItemTint(Item item, IItemTintProvider provider) {
         if (item == null || provider == null) return;
-        ITEM_PROVIDERS.put(item, provider);
+        Map<Item, IItemTintProvider> copy = new HashMap<>(ITEM_PROVIDERS);
+        copy.put(item, provider);
+        ITEM_PROVIDERS = copy;
     }
 
-    public static void unregisterBlockTint(Block block) {
-        if (block != null) BLOCK_PROVIDERS.remove(block);
+    public static synchronized void unregisterBlockTint(Block block) {
+        if (block == null || !BLOCK_PROVIDERS.containsKey(block)) return;
+        Map<Block, IBlockTintProvider> copy = new HashMap<>(BLOCK_PROVIDERS);
+        copy.remove(block);
+        BLOCK_PROVIDERS = copy;
     }
 
-    public static void unregisterItemTint(Item item) {
-        if (item != null) ITEM_PROVIDERS.remove(item);
+    public static synchronized void unregisterItemTint(Item item) {
+        if (item == null || !ITEM_PROVIDERS.containsKey(item)) return;
+        Map<Item, IItemTintProvider> copy = new HashMap<>(ITEM_PROVIDERS);
+        copy.remove(item);
+        ITEM_PROVIDERS = copy;
+    }
+
+    // ==================== Provider lookup (datapack sync undo support) ====================
+
+    /** Current block provider, or {@code null} when none is registered. */
+    public static IBlockTintProvider getBlockProvider(Block block) {
+        return block == null ? null : BLOCK_PROVIDERS.get(block);
+    }
+
+    /** Current item provider, or {@code null} when none is registered. */
+    public static IItemTintProvider getItemProvider(Item item) {
+        return item == null ? null : ITEM_PROVIDERS.get(item);
     }
 
     // ==================== 查询 API（供 TintRenderExtension 调用） ====================

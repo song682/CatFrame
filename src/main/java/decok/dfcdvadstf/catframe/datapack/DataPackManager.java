@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.datapack;
 
 import decok.dfcdvadstf.catframe.datapack.content.RecipesContentLoader;
 import decok.dfcdvadstf.catframe.datapack.content.TagsContentLoader;
+import decok.dfcdvadstf.catframe.datapack.content.TintsContentLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,17 +26,23 @@ import java.util.List;
  * one {@link DataPackErrors} report, logged as a whole and exposed to the
  * command layer.
  * </p>
+ * <p>
+ * After every pass the syncable content snapshots are broadcast to online
+ * clients (worklist C5, see {@link DataPackSync}); failures there are logged
+ * and never affect the apply result.
+ * </p>
  */
 public final class DataPackManager {
 
     private static final Logger LOGGER = LogManager.getLogger(DataPackManager.class);
 
-    /** Loader order is significant: tags before recipes. */
+    /** Loader order is significant: tags before recipes. Tints are independent of both. */
     private static final List<DataContentLoader> LOADERS = new ArrayList<>();
 
     static {
         LOADERS.add(new TagsContentLoader());
         LOADERS.add(new RecipesContentLoader());
+        LOADERS.add(new TintsContentLoader());
     }
 
     private static DataPackRepository repository;
@@ -121,6 +128,11 @@ public final class DataPackManager {
         }
         lastErrors = errors;
         errors.logAll();
+        try {
+            DataPackSync.broadcast();
+        } catch (RuntimeException e) {
+            LOGGER.error("Datapack sync broadcast failed", e);
+        }
     }
 
     /** The repository, or {@code null} before the first bootstrap. */

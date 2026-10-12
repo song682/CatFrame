@@ -11,6 +11,7 @@ import decok.dfcdvadstf.catframe.adapter.vanilla.LanguageReloadListener;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.GuiTextureStitchHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.ResourcePackModelDetector;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.VanillaStateDefinitions;
+import decok.dfcdvadstf.catframe.datapack.client.ClientDataSync;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension;
@@ -101,6 +102,9 @@ public class ClientProxy extends CommonProxy {
 
         // Register language reload listener for resource pack translation overrides
         LanguageReloadListener.register();
+        // Datapack sync (worklist C5): dispatch synced snapshots by loader id
+        // and drop them when the client leaves the server.
+        ClientDataSync.register();
         ResourcePackModelDetector.register();
 
         // Client-side /title command — in singleplayer it executes locally;

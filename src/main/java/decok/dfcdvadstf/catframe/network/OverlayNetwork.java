@@ -35,5 +35,13 @@ public final class OverlayNetwork {
                 0,
                 Side.CLIENT
         );
+
+        // Discriminator 1: S2C datapack content sync (worklist C5)
+        INSTANCE.registerMessage(
+                PacketDataPackSyncHandler.class,
+                PacketDataPackSync.class,
+                1,
+                Side.CLIENT
+        );
     }
 }

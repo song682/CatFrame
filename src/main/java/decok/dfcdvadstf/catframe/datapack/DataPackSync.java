@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.datapack;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
-import decok.dfcdvadstf.catframe.datapack.content.TintsContentLoader;
 import decok.dfcdvadstf.catframe.network.OverlayNetwork;
 import decok.dfcdvadstf.catframe.network.PacketDataPackSync;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -15,8 +14,9 @@ import org.apache.logging.log4j.Logger;
  * Server → client datapack sync (worklist C5).
  * <p>
  * The datapack pipeline is server-authoritative (decision E3), so content that
- * must exist on clients — currently tint declarations (C3) — travels through
- * {@link PacketDataPackSync} snapshots: whole snapshots, never increments.
+ * must exist on clients travels through {@link PacketDataPackSync} snapshots:
+ * whole snapshots, never increments. No content type is syncable at present;
+ * future types plug in through {@link #sendTo(EntityPlayerMP)}.
  * </p>
  * <p>
  * Two triggers:
@@ -62,13 +62,22 @@ public final class DataPackSync {
             return;
         }
         try {
-            // Every content type that needs a client-side presence ships its snapshot
-            // here; currently only tints (C3). Future syncable types extend this list.
-            OverlayNetwork.INSTANCE.sendTo(
-                    new PacketDataPackSync(TintsContentLoader.ID, TintsContentLoader.buildPayload()), player);
+            sendSnapshots(player);
         } catch (RuntimeException e) {
             LOGGER.error("Datapack sync to {} failed", player.getCommandSenderName(), e);
         }
+    }
+
+    /**
+     * Sends the snapshot of every content type that must exist on clients.
+     * <p>
+     * Empty at present: tint declarations were the only syncable type and were
+     * removed as resource-layer content. A future type sends its
+     * {@link PacketDataPackSync} snapshot from here.
+     * </p>
+     */
+    private static void sendSnapshots(EntityPlayerMP player) {
+        // (no syncable content types currently)
     }
 
     /** Login trigger: synchronizes the current snapshot to the joining player. */

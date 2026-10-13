@@ -38,11 +38,9 @@ import java.util.Map;
 @SideOnly(Side.CLIENT)
 public final class TintRegistry {
     /**
-     * Copy-on-write provider tables. Writes are rare (mod init, datapack sync)
-     * and synchronized; reads happen on the render path from arbitrary threads
-     * and see a stable immutable map snapshot without locking — datapack sync
-     * may install providers from the network thread while the render thread is
-     * already reading.
+     * Copy-on-write provider tables. Writes are rare (mod init) and synchronized;
+     * reads happen on the render path from arbitrary threads and see a stable
+     * immutable map snapshot without locking.
      */
     private static volatile Map<Block, IBlockTintProvider> BLOCK_PROVIDERS = Collections.emptyMap();
     private static volatile Map<Item, IItemTintProvider> ITEM_PROVIDERS = Collections.emptyMap();
@@ -96,7 +94,7 @@ public final class TintRegistry {
         ITEM_PROVIDERS = copy;
     }
 
-    // ==================== Provider lookup (datapack sync undo support) ====================
+    // ==================== Provider lookup ====================
 
     /** Current block provider, or {@code null} when none is registered. */
     public static IBlockTintProvider getBlockProvider(Block block) {

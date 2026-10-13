@@ -5,7 +5,6 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.network.FMLNetworkEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.datapack.content.TintsContentLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -36,11 +35,8 @@ public final class ClientDataSync {
         void clear();
     }
 
+    /** Appliers keyed by loader id. Empty at present — no content type is syncable. */
     private static final Map<String, Applier> APPLIERS = new LinkedHashMap<>();
-
-    static {
-        APPLIERS.put(TintsContentLoader.ID, new ClientTintSync());
-    }
 
     private ClientDataSync() {
     }

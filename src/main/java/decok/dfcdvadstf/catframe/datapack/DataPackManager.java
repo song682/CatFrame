@@ -2,7 +2,6 @@ package decok.dfcdvadstf.catframe.datapack;
 
 import decok.dfcdvadstf.catframe.datapack.content.RecipesContentLoader;
 import decok.dfcdvadstf.catframe.datapack.content.TagsContentLoader;
-import decok.dfcdvadstf.catframe.datapack.content.TintsContentLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -36,13 +35,12 @@ public final class DataPackManager {
 
     private static final Logger LOGGER = LogManager.getLogger(DataPackManager.class);
 
-    /** Loader order is significant: tags before recipes. Tints are independent of both. */
+    /** Loader order is significant: tags before recipes. */
     private static final List<DataContentLoader> LOADERS = new ArrayList<>();
 
     static {
         LOADERS.add(new TagsContentLoader());
         LOADERS.add(new RecipesContentLoader());
-        LOADERS.add(new TintsContentLoader());
     }
 
     private static DataPackRepository repository;

@@ -32,7 +32,9 @@ import java.util.zip.ZipFile;
  * <ol>
  * <li>{@code builtin} — mod jars and reachable classpath archives that embed a
  *     {@code datapacks/<name>/pack.mcmeta} subtree (this includes the CatFrame
- *     jar itself);</li>
+ *     jar itself), plus the mod's own root pack: a {@code pack.mcmeta} sitting
+ *     beside {@code assets/catframe/} and {@code data/} at the resources root
+ *     (dev) or jar root (production), discovered under the id {@code catframe};</li>
  * <li>{@code config} — {@code config/catframe/datapacks/<name>/} (the
  *     TagLoader-style user-editable location);</li>
  * <li>{@code game} — {@code <gameDir>/datapacks/<name>/};</li>
@@ -67,6 +69,16 @@ public final class DataPackRepository {
     private static final String DATAPACKS_DIR = "datapacks";
     private static final String DATAPACKS_PREFIX = "datapacks/";
     private static final String MCMETA_NAME = "pack.mcmeta";
+
+    /** Id assigned to the mod's own root pack ({@code pack.mcmeta} beside {@code assets/} and {@code data/}). */
+    private static final String OWN_PACK_ID = "catframe";
+    /** Root-layout marker separating our root from foreign archives: the mod's own assets directory. */
+    private static final String OWN_ASSETS_DIR = "assets/" + OWN_PACK_ID;
+    /** Pack-relative data directory of a root pack, checked beside {@link #MCMETA_NAME}. */
+    private static final String DATA_DIR = "data";
+    /** Entry-name prefix of {@link #DATA_DIR} inside archives. */
+    private static final String DATA_PREFIX = DATA_DIR + "/";
+
     private static final String STATE_SUBDIR = "catframe";
     private static final String STATE_FILE = "datapack-state.json";
 
@@ -136,6 +148,7 @@ public final class DataPackRepository {
                 } else if (candidate.isFile()) {
                     discoverArchive(candidate, errors);
                 }
+                discoverOwnRootPack(candidate, errors);
             } catch (RuntimeException e) {
                 errors.warning(null, candidate.getName(), "source scan failed: " + e);
             }
@@ -206,6 +219,78 @@ public final class DataPackRepository {
                 }
             }
         }
+    }
+
+    /**
+     * Recognizes the mod's own root as a pack: {@code pack.mcmeta} residing
+     * beside {@code assets/catframe/} and {@code data/} at the resources root
+     * (dev) or jar root (production). The assets marker keeps foreign archives
+     * that happen to ship a root {@code pack.mcmeta} out of this discovery.
+     */
+    private void discoverOwnRootPack(File candidate, DataPackErrors errors) {
+        PackContent content;
+        if (candidate.isDirectory()) {
+            if (!new File(candidate, MCMETA_NAME).isFile()
+                    || !new File(candidate, DATA_DIR).isDirectory()
+                    || !new File(candidate, OWN_ASSETS_DIR).isDirectory()) {
+                return;
+            }
+            content = PackContents.directory(candidate);
+        } else if (candidate.isFile()) {
+            if (!isOwnRootArchive(candidate)) {
+                return;
+            }
+            content = PackContents.archive(candidate, "");
+        } else {
+            return;
+        }
+        PackMetadata metadata = readMetadata(content, OWN_PACK_ID, errors);
+        if (metadata == null || !metadata.isValid()) {
+            return;
+        }
+        addPack(new DataPack(OWN_PACK_ID, SOURCE_BUILTIN, TIER_BUILTIN, content, metadata), errors);
+    }
+
+    /**
+     * @return true when the archive carries the mod's root layout: a root-level
+     *         {@code pack.mcmeta} plus both {@code data/} and
+     *         {@code assets/catframe/} entries. All three must be present, so a
+     *         stray root {@code pack.mcmeta} in a foreign jar is never captured.
+     */
+    private static boolean isOwnRootArchive(File archive) {
+        ZipFile zip = null;
+        boolean hasMeta = false;
+        boolean hasData = false;
+        boolean hasAssets = false;
+        try {
+            zip = new ZipFile(archive);
+            Enumeration<? extends ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements() && !(hasMeta && hasData && hasAssets)) {
+                ZipEntry entry = entries.nextElement();
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                String name = entry.getName();
+                if (!hasMeta && MCMETA_NAME.equals(name)) {
+                    hasMeta = true;
+                } else if (!hasData && name.startsWith(DATA_PREFIX)) {
+                    hasData = true;
+                } else if (!hasAssets && name.startsWith(OWN_ASSETS_DIR + "/")) {
+                    hasAssets = true;
+                }
+            }
+        } catch (IOException ignored) {
+            // not a readable zip — not our root layout
+        } finally {
+            if (zip != null) {
+                try {
+                    zip.close();
+                } catch (IOException ignored) {
+                    // best-effort close
+                }
+            }
+        }
+        return hasMeta && hasData && hasAssets;
     }
 
     private PackMetadata readMetadata(PackContent content, String packId, DataPackErrors errors) {

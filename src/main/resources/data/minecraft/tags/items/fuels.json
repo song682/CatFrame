@@ -3,7 +3,7 @@
   "values": [
     "minecraft:coal",
     "minecraft:blaze_rod",
-    "#catframe:planks",
-    "#catframe:logs"
+    "#minecraft:planks",
+    "#minecraft:logs"
   ]
 }

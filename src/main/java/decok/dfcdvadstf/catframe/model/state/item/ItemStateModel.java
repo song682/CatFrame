@@ -70,8 +70,8 @@ public class ItemStateModel {
         // 1. 构建运行时属性集
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
 
-        // 2. 递归求值决策树，得到 EvalResult
-        EvalResult result = rootNode.evaluate(props);
+        // 2. 递归求值决策树（携带 stack/phase 上下文，供特殊节点读 NBT 动态追加图层），得到 EvalResult
+        EvalResult result = rootNode.evaluate(props, new EvalContext(stack, phase));
         if (result.isEmpty()) {
             // 决策树未找到任何模型 → fallback 到 builtin/missing
             String cacheKey = BakedModelCache.buildKey("builtin/missing", 0, 0);
@@ -83,8 +83,15 @@ public class ItemStateModel {
             return;
         }
 
-        // 3. 遍历所有选中的模型路径，逐个渲染（composite 时多模型分层）
-        for (String path : result.getModels()) {
+        // 3. 按图层顺序逐个渲染：静态模型图层走本树烘焙部件，动态内容图层递归渲染内容物品自身模型
+        //    （composite 图层顺序即渲染顺序契约，收纳袋"前片-内容物-背片"依赖此保序）
+        for (EvalResult.Layer layer : result.getLayers()) {
+            if (layer.isDynamic()) {
+                renderDynamicLayer(layer.dynamicStack, phase, preTransform);
+                continue;
+            }
+            String path = layer.modelPath;
+            if (path == null) continue;
             String cacheKey = BakedModelCache.buildKey(path, 0, 0);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) continue;
@@ -102,6 +109,17 @@ public class ItemStateModel {
             UniformRenderPipeline.renderItemQuads(part, stack, phase,
                     null, 0, 0, 0, null, preTransform, transformation, props);
         }
+    }
+
+    /**
+     * 递归渲染一个动态内容图层：委托官方入口 {@link UniformRenderPipeline#renderItemStack}，
+     * 以内容物品自身注册的模型渲染。
+     * <p>对齐高版本 {@code SpecialRenderer#appendItemLayers}：特殊节点在求值时从 NBT 取出的
+     * 内容物（如收纳袋选中物品）需递归走它自己的 ItemState 决策树。
+     */
+    private static void renderDynamicLayer(@Nullable ItemStack content, RenderPhase phase,
+                                           @Nullable Matrix4d preTransform) {
+        UniformRenderPipeline.renderItemStack(content, phase, preTransform);
     }
 
     /**
@@ -218,7 +236,7 @@ public class ItemStateModel {
     public int resolveTint(ItemStack stack, RenderPhase phase, int tintIndex) {
         if (tintIndex < 0) return 0xFFFFFF;
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
-        EvalResult result = rootNode.evaluate(props);
+        EvalResult result = rootNode.evaluate(props, new EvalContext(stack, phase));
         if (result.isEmpty()) return 0xFFFFFF;
         for (String path : result.getModels()) {
             List<ItemTint> tints = findTintsForModel(rootNode, path, props);
@@ -283,7 +301,7 @@ public class ItemStateModel {
      */
     public List<BlockStateModelPart> collectGuiModelParts(ItemStack stack) {
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, RenderPhase.ITEM_GUI);
-        EvalResult result = rootNode.evaluate(props);
+        EvalResult result = rootNode.evaluate(props, new EvalContext(stack, RenderPhase.ITEM_GUI));
         if (result.isEmpty()) return java.util.Collections.emptyList();
 
         List<BlockStateModelPart> parts = new java.util.ArrayList<>();

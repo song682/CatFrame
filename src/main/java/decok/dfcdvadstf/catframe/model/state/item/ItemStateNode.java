@@ -49,6 +49,25 @@ public abstract class ItemStateNode {
     public abstract EvalResult evaluate(Map<String, Comparable<?>> properties);
 
     /**
+     * 带求值上下文的重载：沿决策树向下传递当前 {@link ItemStack} 与 {@link RenderPhase}，
+     * 供特殊节点（{@link SpecialNode}）在求值时读取 NBT 动态追加图层。
+     * <p>
+     * 基类默认忽略上下文并委托 {@link #evaluate(Map)}，因此纯数据叶子（{@link ModelLeaf}、
+     * {@link EmptyNode}）无需重写本方法；容器节点重写以将上下文传递至子树。
+     * <p>
+     * Context-carrying overload threaded down the tree so special nodes can read the live
+     * stack at evaluation time. The base default ignores the context and delegates to
+     * {@link #evaluate(Map)}; leaves inherit it, containers override to propagate it.
+     *
+     * @param properties 运行时属性集
+     * @param ctx        求值上下文，可能为 {@code null}（非渲染求值路径）
+     * @return 求值结果，不为 null
+     */
+    public EvalResult evaluate(Map<String, Comparable<?>> properties, @Nullable EvalContext ctx) {
+        return evaluate(properties);
+    }
+
+    /**
      * 收集决策树中所有引用的模型路径（用于纹理收集）。
      *
      * @param out 收集目标集合
@@ -122,14 +141,19 @@ public abstract class ItemStateNode {
 
         @Override
         public EvalResult evaluate(Map<String, Comparable<?>> properties) {
+            return evaluate(properties, null);
+        }
+
+        @Override
+        public EvalResult evaluate(Map<String, Comparable<?>> properties, @Nullable EvalContext ctx) {
             Comparable<?> value = properties.get(property);
             if (value instanceof Boolean) {
                 return ((Boolean) value)
-                        ? (onTrue != null ? onTrue.evaluate(properties) : EvalResult.empty())
-                        : (onFalse != null ? onFalse.evaluate(properties) : EvalResult.empty());
+                        ? (onTrue != null ? onTrue.evaluate(properties, ctx) : EvalResult.empty())
+                        : (onFalse != null ? onFalse.evaluate(properties, ctx) : EvalResult.empty());
             }
             // 属性不存在或非布尔 → 走 on_false
-            return onFalse != null ? onFalse.evaluate(properties) : EvalResult.empty();
+            return onFalse != null ? onFalse.evaluate(properties, ctx) : EvalResult.empty();
         }
 
         @Override
@@ -176,12 +200,17 @@ public abstract class ItemStateNode {
 
         @Override
         public EvalResult evaluate(Map<String, Comparable<?>> properties) {
+            return evaluate(properties, null);
+        }
+
+        @Override
+        public EvalResult evaluate(Map<String, Comparable<?>> properties, @Nullable EvalContext ctx) {
             Comparable<?> raw = properties.get(property);
             float value;
             if (raw instanceof Number) {
                 value = ((Number) raw).floatValue() * scale;
             } else {
-                return fallback != null ? fallback.evaluate(properties) : EvalResult.empty();
+                return fallback != null ? fallback.evaluate(properties, ctx) : EvalResult.empty();
             }
 
             // 找到最后一个 threshold <= value 的条目
@@ -194,8 +223,8 @@ public abstract class ItemStateNode {
                 }
             }
 
-            if (matched != null) return matched.evaluate(properties);
-            return fallback != null ? fallback.evaluate(properties) : EvalResult.empty();
+            if (matched != null) return matched.evaluate(properties, ctx);
+            return fallback != null ? fallback.evaluate(properties, ctx) : EvalResult.empty();
         }
 
         @Override
@@ -265,12 +294,19 @@ public abstract class ItemStateNode {
 
         @Override
         public EvalResult evaluate(Map<String, Comparable<?>> properties) {
-            List<String> allPaths = new ArrayList<>();
+            return evaluate(properties, null);
+        }
+
+        @Override
+        public EvalResult evaluate(Map<String, Comparable<?>> properties, @Nullable EvalContext ctx) {
+            // 合并子树图层（含静态模型与动态内容），composite 求值顺序即渲染顺序契约。
+            // Merge child layers (static models + dynamic content); composite order is the render-order contract.
+            List<EvalResult.Layer> allLayers = new ArrayList<>();
             for (ItemStateNode child : models) {
-                EvalResult childResult = child.evaluate(properties);
-                allPaths.addAll(childResult.getModels());
+                EvalResult childResult = child.evaluate(properties, ctx);
+                allLayers.addAll(childResult.getLayers());
             }
-            return allPaths.isEmpty() ? EvalResult.empty() : EvalResult.composite(allPaths);
+            return allLayers.isEmpty() ? EvalResult.empty() : EvalResult.compositeLayers(allLayers);
         }
 
         @Override
@@ -314,17 +350,22 @@ public abstract class ItemStateNode {
 
         @Override
         public EvalResult evaluate(Map<String, Comparable<?>> properties) {
+            return evaluate(properties, null);
+        }
+
+        @Override
+        public EvalResult evaluate(Map<String, Comparable<?>> properties, @Nullable EvalContext ctx) {
             Comparable<?> value = properties.get(property);
             if (value == null) {
-                return fallback != null ? fallback.evaluate(properties) : EvalResult.empty();
+                return fallback != null ? fallback.evaluate(properties, ctx) : EvalResult.empty();
             }
             String key = value.toString();
             for (SelectCase sc : cases) {
                 if (sc.when.contains(key)) {
-                    return sc.node.evaluate(properties);
+                    return sc.node.evaluate(properties, ctx);
                 }
             }
-            return fallback != null ? fallback.evaluate(properties) : EvalResult.empty();
+            return fallback != null ? fallback.evaluate(properties, ctx) : EvalResult.empty();
         }
 
         @Override
@@ -346,6 +387,42 @@ public abstract class ItemStateNode {
         public SelectCase(Set<String> when, ItemStateNode node) {
             this.when = when;
             this.node = node;
+        }
+    }
+
+    // ==================== 特殊节点（动态图层） ====================
+
+    /**
+     * 特殊节点：求值时读当前 {@link ItemStack}（NBT 等）动态追加模型图层。
+     * <p>
+     * 对齐高版本 {@code SpecialRenderer#appendItemLayers}——决策树里一个可由第三方注册的
+     * 自定义节点类型，在求值阶段根据上下文产出额外图层（如收纳袋 {@code dmod:bundle_selected_item}
+     * 从袋中取选中物品，追加其自身模型图层）。返回的图层可为 {@link EvalResult#dynamic}
+     * （递归渲染内容物品自身模型），也可为 {@link EvalResult#compositeLayers}（混合静态/动态）。
+     * <p>
+     * 注册方式：{@link #registerNodeType(String, NodeTypeDeserializer)} 将一个命名空间 type
+     * （如 {@code "dmod:bundle_selected_item"}）绑定到返回具体 {@code SpecialNode} 子类的工厂；
+     * 反序列化侧经节点类型注册表物化，{@code minecraft:} 内置类型行为不变。
+     * <p>
+     * 无上下文求值（如纹理收集、tint 解析）时 {@link #evaluate(Map)} 返回空——动态图层
+     * 只在持有 {@link EvalContext} 的渲染求值中产出。
+     */
+    public abstract static class SpecialNode extends ItemStateNode {
+
+        /** 无上下文求值不产出动态图层（动态内容依赖当前 {@link ItemStack}）。 */
+        @Override
+        public EvalResult evaluate(Map<String, Comparable<?>> properties) {
+            return EvalResult.empty();
+        }
+
+        /** 子类在此读 {@code ctx.getStack()} 的 NBT 追加图层（对齐 {@code appendItemLayers}）。 */
+        @Override
+        public abstract EvalResult evaluate(Map<String, Comparable<?>> properties, @Nullable EvalContext ctx);
+
+        /** 动态图层在求值时才确定，纹理收集阶段无静态路径可加。 */
+        @Override
+        public void collectModelPaths(Set<String> out) {
+            // 动态内容路径未知，不收集
         }
     }
 

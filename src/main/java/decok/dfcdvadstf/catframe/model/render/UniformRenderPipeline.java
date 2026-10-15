@@ -2,11 +2,14 @@ package decok.dfcdvadstf.catframe.model.render;
 
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.api.RenderTypeKey;
+import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderCommandBuffers;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderTypeRegistry;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import net.minecraft.block.Block;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.IBlockAccess;
 
@@ -129,6 +132,33 @@ public final class UniformRenderPipeline {
     }
 
     // ==================== 物品渲染 ====================
+
+    /**
+     * 官方递归物品渲染入口：按目标物品注册的 {@link ItemStateModel} 求值并渲染其图层。
+     * <p>
+     * 供特殊模型节点（{@link decok.dfcdvadstf.catframe.model.state.item.ItemStateNode.SpecialNode}）
+     * 与 per-Item 完全自绘 provider 绘制内容物，替代第三方直接触碰 {@link #renderItemQuads}
+     * 的搭便车用法（后者需要一个已解析的 {@link BlockStateModelPart}）。
+     * <p>
+     * Official whole-stack render entry: resolves the item's registered model and renders its
+     * layers. Special nodes and self-draw providers should call this to draw contained stacks
+     * instead of touching {@link #renderItemQuads} directly. 未注册 CatFrame 模型的物品不绘制。
+     *
+     * @param stack        待渲染物品栈
+     * @param phase        渲染阶段
+     * @param preTransform 逆变换抵消矩阵，可为 null
+     */
+    public static void renderItemStack(ItemStack stack, RenderPhase phase,
+                                       @Nullable Matrix4d preTransform) {
+        if (stack == null || phase == null) return;
+        Item item = stack.getItem();
+        if (item == null) return;
+        // 只渲染真正注册了 CatFrame 模型的项（getRegisteredItemModel 对未注册项会返回
+        // MISSING_MODEL，导致无模型内容物画出 missingno；此处按注册表命中判断）。
+        ItemStateModel model = ModelRegistry.registeredItemModels.get(item);
+        if (model == null) return;
+        model.render(stack, phase, preTransform);
+    }
 
     /**
      * 渲染物品的 quads（GUI / 手持 / 掉落物 / 展示框）。构建 {@link RenderSubmit} 并提交。

@@ -2,14 +2,10 @@ package decok.dfcdvadstf.catframe.model.impl;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import decok.dfcdvadstf.catframe.model.BakedModelCache;
 import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.VanillaModelManager;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
-import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
-import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
-import decok.dfcdvadstf.catframe.model.state.item.EvalResult;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import decok.dfcdvadstf.catframe.model.state.property.ItemProperties;
 import net.minecraft.client.renderer.texture.IIconRegister;
@@ -18,8 +14,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
 
-import javax.annotation.Nullable;
-import javax.vecmath.Matrix4d;
 import java.util.*;
 
 /**
@@ -286,54 +280,16 @@ public class ModernItem extends Item implements IItemStateProvider {
         return inventoryModelPath != null && handModelPath != null;
     }
 
-    // ==================== IItemState ====================
+    // ==================== IItemStateProvider ====================
 
+    /**
+     * Deliver the code-built decision tree (from {@link #setModels(String, String)}) to
+     * CatFrame. Declaration only — evaluation and rendering belong to the pipeline-side
+     * {@code ItemStateModel}, so this item class carries no render logic.
+     */
     @Override
-    public boolean handles(RenderPhase phase) {
-        return itemStateRoot != null;
-    }
-
-    @Override
-    @SideOnly(Side.CLIENT)
-    public void render(ItemStack stack, RenderPhase phase) {
-        if (itemStateRoot == null)
-            return;
-
-        Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
-        EvalResult result = itemStateRoot.evaluate(props);
-        if (result.isEmpty())
-            return;
-
-        for (String path : result.getModels()) {
-            String cacheKey = BakedModelCache.buildKey(path, 0, 0);
-            BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
-            if (part == null || part.isEmpty())
-                continue;
-            UniformRenderPipeline.renderItemQuads(part, stack, phase,
-                    null, 0, 0, 0, null, null, null, props);
-        }
-    }
-
-    @Override
-    @SideOnly(Side.CLIENT)
-    public void render(ItemStack stack, RenderPhase phase,
-            @Nullable Matrix4d preTransform) {
-        if (itemStateRoot == null)
-            return;
-
-        Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
-        EvalResult result = itemStateRoot.evaluate(props);
-        if (result.isEmpty())
-            return;
-
-        for (String path : result.getModels()) {
-            String cacheKey = BakedModelCache.buildKey(path, 0, 0);
-            BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
-            if (part == null || part.isEmpty())
-                continue;
-            UniformRenderPipeline.renderItemQuads(part, stack, phase,
-                    null, 0, 0, 0, null, preTransform, null, props);
-        }
+    public ItemStateNode getItemStateRoot() {
+        return itemStateRoot;
     }
 
     /**

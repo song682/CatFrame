@@ -4,9 +4,9 @@ import decok.dfcdvadstf.catframe.core.component.DataComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
 import decok.dfcdvadstf.catframe.world.tooltip.ItemTooltipImages;
 import decok.dfcdvadstf.catframe.world.tooltip.TooltipComponent;
-import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.render.pipeline.QuadWriter;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
@@ -44,7 +44,7 @@ import java.util.*;
  * <li>26.1.2's {@code RenderPipelines.GUI_ITEM} implicitly manages all GL state →
  * This class explicitly manages GL in 1.7.10 immediate mode</li>
  * <li>26.1.2's {@code GuiGraphics.item()} extracts render state via {@code GuiItemRenderState} →
- * This class draws items <b>immediately</b> at the call site via {@link IItemStateProvider#render},
+ * This class draws items <b>immediately</b> at the call site via {@link ItemStateModel#render},
  * since the GL modelview matrix is valid at the call point (no matrix snapshot needed)</li>
  * <li>26.1.2's enchantment glint handled by the render pipeline's glint shader →
  * Implemented by this class with {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)},
@@ -179,7 +179,7 @@ public class GuiGraphicsExtractor {
      *   <li>{@code glPushAttrib} saves GL state + sets up item rendering environment</li>
      *   <li>If {@code pose} is non-null, restores the modelview matrix from the snapshot
      *       (needed for deferred PiP rendering where the GL context has changed since capture)</li>
-     *   <li>Delegates to {@link IItemStateProvider#render} for model rendering
+     *   <li>Delegates to {@link ItemStateModel#render} for model rendering
      *       (enchantment glint is driven by the pipeline's {@code FeatureRenderDispatcher}
      *       calling {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)})</li>
      * </ol>
@@ -190,7 +190,7 @@ public class GuiGraphicsExtractor {
     private void drawItemModel(ItemStack stack, @Nullable float[] pose) {
         if (stack == null || stack.getItem() == null) return;
 
-        IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
+        ItemStateModel model = ModelRegistry.getRegisteredItemModel(stack.getItem());
 
         // Save full GL state — no need to manually restore individual bits
         GL11.glPushAttrib(GL_SAVE_MASK);

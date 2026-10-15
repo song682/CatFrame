@@ -156,7 +156,6 @@ public class ModelManagerDataLoader {
         for (Object obj : Item.itemRegistry) {
             if (obj instanceof IItemStateProvider) {
                 IItemStateProvider is = (IItemStateProvider) obj;
-                if (!is.shouldHandle()) continue;  // explicitly opt out
                 Item item = (Item) obj;
                 // Interface-driven texture collection: reruns unconditionally every pass (idempotent sets), late declarations auto-pickup
                 // Interface-driven texture collection: rerun every pass (idempotent sets),
@@ -230,7 +229,7 @@ public class ModelManagerDataLoader {
                 Block block = (Block) obj;
                 if (!registeredStateBlocks.contains(block)) {
                     registeredStateBlocks.add(block);
-// Inheritance as declaration: fall back to block's registry name when namespace not explicit
+                    // Inheritance as declaration: fall back to block's registry name when namespace not explicit
                     // Inheritance as declaration: fall back to the block's registry
                     // name when the namespace is not declared explicitly
                     String[] path = resolveBlockstatePath(block);
@@ -243,7 +242,7 @@ public class ModelManagerDataLoader {
             }
         }
         for (Object obj : Item.itemRegistry) {
-            if (obj instanceof IItemStateProvider && ((IItemStateProvider) obj).shouldHandle()) {
+            if (obj instanceof IItemStateProvider) {
                 IItemStateProvider provider = (IItemStateProvider) obj;
                 // Implementation as declaration: fall back to item's registry name when namespace not explicit
                 // Implementation as declaration: fall back to the item's registry
@@ -524,14 +523,15 @@ public class ModelManagerDataLoader {
      * declared. A declared path that differs from the registry name wins for reading
      * the file (explicit over convention), while the binding key stays the registry
      * name. Failure stays silent for derived paths (an interface item without JSON is
-     * the normal case — the provider itself renders) and warns only when the
+     * the normal case — it may deliver a code-built tree instead) and warns only when the
      * declaration was fully explicit.
      * <p>
      * Path defaults derived from registry name; resolved tree bound by "registry name" —
      * Baking 4a looks up by registry name, so explicitly declared cross-namespace files
      * still land on the correct item (explicit declaration only affects read path,
      * not binding key). Derived path load failure is silent (interface items without JSON
-     * are normal — provider self-renders), warns only when both path segments are explicit.
+     * are normal — they may deliver {@code getItemStateRoot()} instead), warns only when
+     * both path segments are explicit.
      */
     private static void loadStateProviderItem(Item item, IItemStateProvider provider) {
         if (!attemptedStateItems.add(item)) return;

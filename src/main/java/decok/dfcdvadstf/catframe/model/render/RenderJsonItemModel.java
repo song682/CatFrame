@@ -1,9 +1,9 @@
 package decok.dfcdvadstf.catframe.model.render;
 
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
-import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.entity.Render;
@@ -30,7 +30,7 @@ import javax.vecmath.Vector3d;
  * <h3>Core design</h3>
  * <ul>
  *   <li><b>Item models are independent of block models</b> - item rendering only looks up the
- *       {@link IItemStateProvider} explicitly registered in {@code registeredItemModels}
+ *       {@link ItemStateModel} explicitly registered in {@code registeredItemModels}
  *       (items/ItemState) via {@link ModelRegistry#getRegisteredItemModel}.
  *       Historically ItemBlock auto-fell back to {@code registeredBlockModels} and was wrapped as
  *       {@code BlockStateItemState}; that mechanism has been removed - block items that do not
@@ -76,7 +76,7 @@ import javax.vecmath.Vector3d;
  */
 public class RenderJsonItemModel implements IItemRenderer {
 
-    /** Singleton shared by all items (render logic is delegated to each IItemStateProvider). */
+    /** Singleton shared by all items (render logic is delegated to each registered {@link ItemStateModel}). */
     public static final RenderJsonItemModel INSTANCE = new RenderJsonItemModel();
 
     /**
@@ -133,19 +133,12 @@ public class RenderJsonItemModel implements IItemRenderer {
     /**
      * Checks whether CatFrame takes over rendering of this item in the given phase.
      *
-     * <p>All items (including {@link ItemBlock}) uniformly obtain the registered
-     * {@link IItemStateProvider} via
-     * {@link ModelRegistry#getRegisteredItemModel}, then map its
-     * {@link IItemStateProvider#handles(RenderPhase)} to Forge's
-     * {@code handleRenderType} return value. Block items that do not explicitly register
-     * an item model return false and fall back to vanilla rendering.</p>
-     *
-     * <p>This lets an IItemState that implements {@code handles()} finely control
-     * which phases CatFrame takes over and which fall back to vanilla rendering.
-     * For example, a model with {@code handles(ITEM_GUI) = false} uses vanilla 2D in the GUI,
-     * while its hand phases with {@code handles(ITEM_HAND_*) = true} use the custom 3D path.</p>
-     *
-     * <p>FIRST_PERSON_MAP is not handled - the map item has a dedicated path.</p>
+     * <p>Routing is owned by the render pipeline and the registry, not by the model:
+     * Forge only invokes this renderer for items explicitly registered via
+     * {@code MinecraftForgeClient.registerItemRenderer} (driven by
+     * {@code registeredItemModels} / block models), so any phase that maps to a
+     * {@link RenderPhase} is handled here. FIRST_PERSON_MAP has a dedicated vanilla
+     * path and is never handled.</p>
      */
     @Override
     public boolean handleRenderType(ItemStack item, ItemRenderType type) {
@@ -154,13 +147,10 @@ public class RenderJsonItemModel implements IItemRenderer {
 
         // Unified path: obtain the explicitly registered item model via getRegisteredItemModel
         // (block items no longer auto-fallback; unregistered ones fall back to vanilla rendering)
-        IItemStateProvider model = ModelRegistry.getRegisteredItemModel(item.getItem());
+        ItemStateModel model = ModelRegistry.getRegisteredItemModel(item.getItem());
         if (model == null) return false;
 
-        RenderPhase phase = toRenderPhase(type, item);
-        if (phase == null) return false;
-
-        return model.handles(phase);
+        return toRenderPhase(type, item) != null;
     }
 
     // ==================== shouldUseRenderHelper ====================
@@ -289,7 +279,7 @@ public class RenderJsonItemModel implements IItemRenderer {
         EntityLivingBase holderEntity = phase.isAttachedItemPhase() ? entity : null;
 
         // getRegisteredItemModel returns only explicitly registered item models (no block fallback)
-        IItemStateProvider model = ModelRegistry.getRegisteredItemModel(stack.getItem());
+        ItemStateModel model = ModelRegistry.getRegisteredItemModel(stack.getItem());
         if (model == null) return;
 
         if (droppedEntity != null) {

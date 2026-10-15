@@ -24,8 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Responsible for registering BlockStateModels, ItemModels, rotations, and
  * providing the public API for looking up registered models.
  * <p>
- * Item-context rendering (hand / GUI / dropped) is driven exclusively by
- * registered {@link IItemStateProvider}s loaded from {@code items/{name}.json}.
+ * Item-context rendering (hand / GUI / dropped) is driven exclusively
+ * by registered {@link ItemStateModel}s loaded from {@code items/{name}.json}.
  * {@link #getRegisteredItemModel} never returns {@code null}: items without an
  * explicit model receive the {@code builtin/missing} model (purple-black MissingNo),
  * aligning with the modern design where the model system has no "fall back to vanilla"
@@ -40,11 +40,11 @@ public class ModelRegistry {
     // ==================== Registry ====================
 
     /** builtin/missing singleton — mirrors modern BuiltinMissingModel, fallback for any item with no model. */
-    private static final IItemStateProvider MISSING_MODEL = new ItemStateModel("builtin/missing");
+    private static final ItemStateModel MISSING_MODEL = new ItemStateModel("builtin/missing");
 
     public static final Map<Block, BlockStateModel> registeredBlockModels = new ConcurrentHashMap<>();
     public static final Map<Block, Map<Integer, Integer>> registeredBlockRotations = new ConcurrentHashMap<>();
-    public static final Map<Item, IItemStateProvider> registeredItemModels = new ConcurrentHashMap<>();
+    public static final Map<Item, ItemStateModel> registeredItemModels = new ConcurrentHashMap<>();
     public static final Set<Item> persistentItemModels = ConcurrentHashMap.newKeySet();
     /** items with {@code oversized_in_gui=true} — GUI models may overflow slot (goes through PiP channel, no clip/clamp). */
     public static final Set<Item> oversizedItems = ConcurrentHashMap.newKeySet();
@@ -126,14 +126,14 @@ public class ModelRegistry {
         }
 
         /**
-         * Register an IItemState model for an item.
+         * Register an item model for an item.
          * Also immediately registers the Forge IItemRenderer if the model system has been initialized.
          * <p>
          * Manually registered models are marked persistent: they survive
          * {@link VanillaModelManager.Baking#registerItemModels()}, which only clears auto-generated
          * wrappers from {@code model_mappings.json}.
          */
-        public static void registerItemModel(Item item, IItemStateProvider model) {
+        public static void registerItemModel(Item item, ItemStateModel model) {
             registeredItemModels.put(item, model);
             persistentItemModels.add(item);
             // If baking done, immediately register Forge IItemRenderer
@@ -154,9 +154,9 @@ public class ModelRegistry {
      * item model system has no "fall back to vanilla" path; item either has an explicit model
      * or renders MissingNo. Use {@link #hasItemModel} to check if item is in CatFrame pipeline.
      */
-        public static IItemStateProvider getRegisteredItemModel(Item item) {
+        public static ItemStateModel getRegisteredItemModel(Item item) {
             if (item == null) return MISSING_MODEL;
-            IItemStateProvider model = registeredItemModels.get(item);
+            ItemStateModel model = registeredItemModels.get(item);
             return model != null ? model : MISSING_MODEL;
         }
 
@@ -182,7 +182,7 @@ public class ModelRegistry {
      *
      * @return override model; {@code null} if {@code ITEM_MODEL} component not set
      */
-        public static IItemStateProvider resolveItemModelOverride(Item item) {
+        public static ItemStateModel resolveItemModelOverride(Item item) {
             String modelId = getItemModelOverride(item);
             if (modelId == null) return null;
 

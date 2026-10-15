@@ -1,47 +1,51 @@
 package decok.dfcdvadstf.catframe.model;
 
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
-import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
-import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyRegistry;
 import decok.dfcdvadstf.catframe.model.state.property.ItemPropertyProvider;
-import net.minecraft.item.ItemStack;
 
 import javax.annotation.Nullable;
-import javax.vecmath.Matrix4d;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /**
- * 物品状态模型接口 — CatFrame 物品渲染的唯一抽象。
+ * 物品状态声明接口 — CatFrame 物品侧的唯一接入抽象。
  * <p>
- * 本接口统一了原来的“状态发现接口”与“物品模型接口”两层抽象：
+ * 本接口只承担<b>声明与数据供给</b>职责，不含任何渲染行为：
  * <ul>
  *   <li>作为<b>发现标记</b>：外部 {@link net.minecraft.item.Item} 实现此接口后，
  *       CatFrame 在 {@link ModelManagerDataLoader#init()} 阶段自动发现并收集纹理。</li>
- *   <li>作为<b>渲染模型</b>：实现类直接提供 {@link #render(ItemStack, RenderPhase)}
- *       与 {@link #handles(RenderPhase)}，由 {@link RenderJsonItemModel}
- *       在 Forge 渲染管线中调用。</li>
+ *   <li>作为<b>数据供给</b>：实现类交付决策树（{@link #getItemStateRoot()}）
+ *       或 ItemState JSON 定位（{@link #getItemStateNamespace()} /
+ *       {@link #getItemStateName()}）；实际渲染由 {@link RenderJsonItemModel} 驱动
+ *       管线侧的 {@link ItemStateModel} 完成。</li>
  * </ul>
  * <p>
+ * 与方块侧 {@link IBlockStateProvider}（纯声明、零渲染行为）保持对称：
+ * 「该不该由 CatFrame 渲染」是渲染系统与注册表的路由决策，不由本接口回答。
+ * Mirrors the block-side {@link IBlockStateProvider} (pure declaration, no render
+ * behavior): whether CatFrame renders an item is a routing decision owned by the
+ * render pipeline and the registry, never by this interface.
+ * <p>
  * 模型发现由四层体系处理（items/ ItemState → model_mappings → 约定路径），
- * 本接口同时承担发现与渲染职责。
+ * 本接口是其中的代码级声明层。
  *
  * <h3>四层发现优先级</h3>
  * <ol>
  *   <li>{@code items/{item}.json} (ItemState 决策树) — 最高优先</li>
  *   <li>{@code model_mappings.json} items 字段 — 旧扁平映射</li>
- *   <li>Item 实现 {@code IItemState}（本接口）— 代码级注册</li>
+ *   <li>Item 实现 {@code IItemStateProvider}（本接口）— 代码级注册</li>
  *   <li>约定路径 {@code assets/{namespace}/models/item/{name}.json} — 懒发现兜底</li>
  * </ol>
  *
- * <h3>渲染接管控制</h3>
- * <ul>
- *   <li>{@link #shouldHandle()} — 全局开关，{@code false} 时 CatFrame 完全不注册此物品</li>
- *   <li>{@link #handles(RenderPhase)} — 每阶段精细控制，{@code false} 时走原版渲染</li>
- *   <li>{@link #render(ItemStack, RenderPhase)} — 实际渲染逻辑</li>
- * </ul>
+ * <h3>接入即接管 / Implementation as takeover</h3>
+ * 实现本接口即表示该物品交由 CatFrame 渲染域处理；不希望被接管就不要实现本接口
+ * （注册表中无对应模型时，渲染自动回落到原版路径）。
+ * 阶段级差异（GUI / 手持 / 掉落该用哪个模型）属于<b>数据</b>，
+ * 由决策树按 {@code display_context} 属性分支表达，不由接口方法表达。
  * <p>
  * 对标方块侧 {@link IBlockStateProvider#getStateDefinition()} 的可选声明钩子，
  * {@link #getPropertyDefinitions()} 允许实现类就地声明自定义物品属性，
@@ -55,6 +59,7 @@ import java.util.Map;
  * 这个动作本身就是接入声明——
  * <ul>
  *   <li>纹理收集接口化：经 {@link #getDeclaredModelPaths()} 完成，无 instanceof 特判；</li>
+ *   <li>代码建树可就地交付（{@link #getItemStateRoot()}），适用于无 {@code items/} JSON 的物品；</li>
  *   <li>ItemState JSON 路径可显式声明（{@link #getItemStateNamespace()} /
  *       {@link #getItemStateName()}），缺省部分从注册名推导，位于标准路径即被自动加载；</li>
  *   <li>迟到的注册与声明在下一轮纹理缝合自动补票；</li>
@@ -69,65 +74,21 @@ import java.util.Map;
 public interface IItemStateProvider {
 
     /**
-     * Global switch: whether CatFrame takes over this item's rendering.
+     * Deliver the ItemState decision tree root built in code, or {@code null} to let
+     * CatFrame resolve the tree from {@code assets/<namespace>/items/<name>.json}
+     * (located via {@link #getItemStateNamespace()} / {@link #getItemStateName()}).
      * <p>
-     * Returns {@code false} → CatFrame registers no IItemRenderer,
-     * item stays on vanilla render path entirely.
+     * Mirrors the block-side data-delivery hook {@link IBlockStateProvider#getBlockState}:
+     * the interface supplies <b>data</b>; evaluation and quad submission belong to the
+     * pipeline-side {@link ItemStateModel}. The delivered root is consumed at the code-level
+     * discovery tier, so an {@code items/} JSON tree resolved for the same item still wins
+     * (four-tier priority is unchanged).
      *
-     * @return {@code true} to take over (default), {@code false} to leave to vanilla
+     * @return decision tree root node, or {@code null} to fall back to the ItemState JSON
      */
-    default boolean shouldHandle() {
-        return true;
-    }
-
-    /**
-     * Per-phase fine control: whether CatFrame handles the given render phase.
-     * <p>
-     * Only effective when {@link #shouldHandle()} is {@code true}.
-     * Returns {@code false} → that phase uses vanilla rendering.
-     *
-     * @param phase render phase
-     * @return {@code true} to handle, {@code false} to use vanilla
-     */
-    default boolean handles(RenderPhase phase) {
-        return true;
-    }
-
-    /**
-     * Render item.
-     *
-     * @param stack item stack (with NBT, damage, etc.)
-     * @param phase render context (GUI / handheld / dropped / etc.)
-     */
-    void render(ItemStack stack, RenderPhase phase);
-
-    /**
-     * Render item with pre-transform (counter-cancellation).
-     * <p>
-     * Pre-transform applied before pipeline's internal display transform, passed as Matrix4d.
-     * Default impl delegates to {@link #render(ItemStack, RenderPhase)}.
-     *
-     * @param stack        item stack
-     * @param phase        render context
-     * @param preTransform pre-transform matrix (may be null), applied to vertices before display transform
-     */
-    default void render(ItemStack stack, RenderPhase phase,
-                        @Nullable Matrix4d preTransform) {
-        render(stack, phase);
-    }
-
-    /**
-     * Return list of baked model parts this item selects in GUI phase — for GUI overflow detection
-     * (oversized clamp) measuring geometry bounds.
-     * <p>
-     * Default returns empty list (treated as not oversized, no clamping). Decision-tree implementations
-     * should evaluate GUI phase properties, collect {@link BlockStateModelPart} for selected paths.
-     *
-     * @param stack item stack
-     * @return GUI-phase selected model parts (may be empty)
-     */
-    default List<BlockStateModelPart> getGuiModelParts(ItemStack stack) {
-        return Collections.emptyList();
+    @Nullable
+    default ItemStateNode getItemStateRoot() {
+        return null;
     }
 
     /**

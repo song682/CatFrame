@@ -11,6 +11,7 @@ import decok.dfcdvadstf.catframe.model.render.pipeline.RenderCommandBuffers;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderTypeRegistry;
 import decok.dfcdvadstf.catframe.model.state.*;
+import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -345,8 +346,8 @@ public class RenderDispatcher {
         Item item = stack.getItem();
         if (item == null) return;
 
-        // --- Query registered IItemState model (block items without items/{name}.json fall back to builtin/missing) ---
-        IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
+        // --- Query registered item model (block items without items/{name}.json fall back to builtin/missing) ---
+        ItemStateModel itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             // Open render scope: item's multiple sub-models (dual-model/composite/multi-layer) accumulate in scope,
             // batch flush at endScope sorted by registry key (solid→translucent, single texture bind).
@@ -386,8 +387,8 @@ public class RenderDispatcher {
                 ? RenderPhase.ITEM_HAND_FIRST_PERSON
                 : RenderPhase.ITEM_HAND_THIRD_PERSON;
 
-        // --- Query registered IItemState model (block items without items/{name}.json fall back to builtin/missing) ---
-        IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
+        // --- Query registered item model (block items without items/{name}.json fall back to builtin/missing) ---
+        ItemStateModel itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             RenderCommandBuffers.beginScope();
             try {
@@ -429,8 +430,8 @@ public class RenderDispatcher {
                 ? RenderPhase.DROPPED_BLOCK_GROUND
                 : RenderPhase.DROPPED_ITEM_GROUND;
 
-        // --- Check registered IItemState model ---
-        IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
+        // --- Check registered item model ---
+        ItemStateModel itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             RenderCommandBuffers.beginScope();
             try {
@@ -460,8 +461,8 @@ public class RenderDispatcher {
 
         RenderPhase phase = RenderPhase.DROPPED_BLOCK_GROUND;
 
-        // --- Check registered IItemState model ---
-        IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
+        // --- Check registered item model ---
+        ItemStateModel itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             RenderCommandBuffers.beginScope();
             try {
@@ -514,8 +515,8 @@ public class RenderDispatcher {
         s.m00 = 0.5; s.m11 = 0.5; s.m22 = 0.5;
         framePreTransform.mul(s);
 
-        // --- Query registered IItemState model (block items without items/{name}.json fall back to builtin/missing) ---
-        IItemStateProvider itemModel = ModelRegistry.getRegisteredItemModel(item);
+        // --- Query registered item model (block items without items/{name}.json fall back to builtin/missing) ---
+        ItemStateModel itemModel = ModelRegistry.getRegisteredItemModel(item);
         if (itemModel != null) {
             RenderCommandBuffers.beginScope();
             try {

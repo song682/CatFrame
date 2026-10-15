@@ -240,15 +240,20 @@ public class VanillaModelManager {
                 registerMappingItems(entry.getKey(), entry.getValue());
             }
 
-            // 4c: IItemState (Tier 3 接口发现)
+            // 4c: IItemStateProvider (Tier 3 接口发现 — 代码交付的决策树)
+            // Tier 3 interface discovery: only items that deliver a code-built tree are bound;
+            // items without a tree rely on their items/{name}.json (4a) or stay on vanilla path.
             for (Map.Entry<Item, IItemStateProvider> entry : ModelManagerDataLoader.interfaceItemStates.entrySet()) {
                 Item item = entry.getKey();
                 if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
 
+                ItemStateNode root = entry.getValue().getItemStateRoot();
+                if (root == null) continue;
+
                 String registryName = Item.itemRegistry.getNameForObject(item);
                 if (registryName == null) continue;
 
-                ModelRegistry.registeredItemModels.put(item, entry.getValue());
+                ModelRegistry.registeredItemModels.put(item, new ItemStateModel(root));
                 ModelRegistry.persistentItemModels.add(item);
                 CatFrame.logger.debug("[VMM] Registered IItemState: {}", registryName);
             }
@@ -320,15 +325,19 @@ public class VanillaModelManager {
                 registerMappingItems(entry.getKey(), entry.getValue());
             }
 
-            // 重新注册 IItemState items（跳过已有手动注册模型的 persistent 项）
+            // 重新注册接口发现的 items（仅代码交付决策树者；跳过已有手动注册模型的 persistent 项）
+            // Re-register interface-discovered items (code-delivered trees only; skip persistent entries)
             for (Map.Entry<Item, IItemStateProvider> entry : ModelManagerDataLoader.interfaceItemStates.entrySet()) {
                 Item item = entry.getKey();
                 if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
 
+                ItemStateNode root = entry.getValue().getItemStateRoot();
+                if (root == null) continue;
+
                 String registryName = Item.itemRegistry.getNameForObject(item);
                 if (registryName == null) continue;
 
-                ModelRegistry.registeredItemModels.put(item, entry.getValue());
+                ModelRegistry.registeredItemModels.put(item, new ItemStateModel(root));
                 ModelRegistry.persistentItemModels.add(item);
                 MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
             }
@@ -502,7 +511,7 @@ public class VanillaModelManager {
         private static void applyItemModelOverrides(boolean registerRenderer) {
             for (Object obj : Item.itemRegistry) {
                 Item item = (Item) obj;
-                IItemStateProvider override = ModelRegistry.resolveItemModelOverride(item);
+                ItemStateModel override = ModelRegistry.resolveItemModelOverride(item);
                 if (override == null) continue;
                 ModelRegistry.registeredItemModels.put(item, override);
                 ModelRegistry.persistentItemModels.add(item);

@@ -1,7 +1,6 @@
 package decok.dfcdvadstf.catframe.model.state.item;
 
 import decok.dfcdvadstf.catframe.model.BakedModelCache;
-import decok.dfcdvadstf.catframe.model.IItemStateProvider;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
@@ -23,6 +22,11 @@ import java.util.Map;
  *   <li>无抉择时，内部退化为单个 {@link ItemStateNode.ModelLeaf}，等价于原 LazyItemModel</li>
  *   <li>有抉择时，持有完整 {@link ItemStateNode} 决策树，运行时根据 ItemStack 数据求值</li>
  * </ul>
+ * <p>
+ * 本类是管线侧唯一可渲染的物品模型实体：{@link decok.dfcdvadstf.catframe.model.IItemStateProvider}
+ * 仅交付决策树数据，求值与提交 quad 由本类完成。This is the sole renderable item model on the
+ * pipeline side: the provider interface only delivers tree data; evaluation and quad submission
+ * live here.
  *
  * <p>渲染流程：
  * <ol>
@@ -32,7 +36,7 @@ import java.util.Map;
  *   <li>通过 {@link UniformRenderPipeline#renderItemQuads} 渲染</li>
  * </ol>
  */
-public class ItemStateModel implements IItemStateProvider {
+public class ItemStateModel {
 
     private final ItemStateNode rootNode;
 
@@ -57,12 +61,10 @@ public class ItemStateModel implements IItemStateProvider {
         this.rootNode = rootNode;
     }
 
-    @Override
     public void render(ItemStack stack, RenderPhase phase) {
         render(stack, phase, null);
     }
 
-    @Override
     public void render(ItemStack stack, RenderPhase phase,
                        @Nullable Matrix4d preTransform) {
         // 1. 构建运行时属性集
@@ -279,8 +281,7 @@ public class ItemStateModel implements IItemStateProvider {
     /**
      * GUI 阶段求值决策树，收集选中路径对应的烘焙模型部件（供 oversized 溢出检测）。
      */
-    @Override
-    public List<BlockStateModelPart> getGuiModelParts(ItemStack stack) {
+    public List<BlockStateModelPart> collectGuiModelParts(ItemStack stack) {
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, RenderPhase.ITEM_GUI);
         EvalResult result = rootNode.evaluate(props);
         if (result.isEmpty()) return java.util.Collections.emptyList();

@@ -1,6 +1,5 @@
 package decok.dfcdvadstf.catframe.tags.impl;
 
-import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.tags.TagKey;
 import net.minecraft.item.Item;
 
@@ -8,7 +7,7 @@ import net.minecraft.item.Item;
  * CatFrame Item Tags Constants
  * 
  * Similar to 26.1's ItemTags, defining all item tags used by CatFrame
- * All tags have a uniform namespace of "catframe"
+ * All tags have a uniform namespace of "minecraft" — the built-in tag files live under {@code data/minecraft/tags/items}
  * 
  * Usage:
  * <pre>
@@ -18,6 +17,9 @@ import net.minecraft.item.Item;
  * </pre>
  */
 public final class ItemTags {
+    
+    /** Namespace shared by all built-in item tag files (they live under {@code data/minecraft/tags/items}). */
+    private static final String NAMESPACE = "minecraft";
     
     // ==================== Tool Class Tags ====================
     
@@ -75,7 +77,7 @@ public final class ItemTags {
      * Create an item TagKey
      */
     private static TagKey<Item> create(String name) {
-        return TagKey.createItem(Tags.MODID, name);
+        return TagKey.createItem(NAMESPACE, name);
     }
     
     /**

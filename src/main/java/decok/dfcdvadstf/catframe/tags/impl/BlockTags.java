@@ -1,13 +1,12 @@
 package decok.dfcdvadstf.catframe.tags.impl;
 
-import decok.dfcdvadstf.catframe.Tags;
 import decok.dfcdvadstf.catframe.tags.TagKey;
 import net.minecraft.block.Block;
 
 /**
  * CatFrame Block Tag Constants<br>
  * Similar to the modern vanilla's {@code BlockTag}<br>
- * All the tag's namespace are "catframe"<br>
+ * All the tag's namespace are "minecraft" — the built-in tag files live under {@code data/minecraft/tags/blocks}<br>
  * Usage:
  * <pre>
  * if (BlockTags.is(block, BlockTags.MINABLE_WITH_PICKAXE)) {
@@ -16,6 +15,9 @@ import net.minecraft.block.Block;
  * </pre>
  */
 public final class BlockTags {
+    
+    /** Namespace shared by all built-in block tag files (they live under {@code data/minecraft/tags/blocks}). */
+    private static final String NAMESPACE = "minecraft";
     
     // ==================== Tag of Minable ====================
     
@@ -82,7 +84,7 @@ public final class BlockTags {
      * Create a block TagKey
      */
     private static TagKey<Block> create(String name) {
-        return TagKey.createBlock(Tags.MODID, name);
+        return TagKey.createBlock(NAMESPACE, name);
     }
     
     /**

@@ -34,6 +34,19 @@ import org.lwjgl.input.Keyboard;
  * <li>点击音效在释放时播放，对标 vanilla {@code onRelease} 行为。</li>
  * </ul>
  * </p>
+ * <p>
+ * Porting notes:
+ * <ul>
+ * <li>Vanilla narration and {@code CursorTypes} cursor requests have no
+ * 1.7.10 counterpart and are not ported.</li>
+ * <li>Vanilla decides the focus source (mouse / Tab) via {@code InputType};
+ * 1.7.10 lacks that mechanism, so any user-driven focus is treated as
+ * value-changeable (see {@link #setFocused(boolean)}), and Enter still
+ * toggles.</li>
+ * <li>The click sound is played on release, mirroring vanilla
+ * {@code onRelease}.</li>
+ * </ul>
+ * </p>
  */
 public abstract class AbstractSilderButton extends AbstractComponent.WithInactiveMessage {
 
@@ -83,6 +96,12 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
      * {@code extractScrollingStringOverContents} 以 {@code TEXT_MARGIN} 边距
      * 内的居中 + clamp 实现。
      * </p>
+     * <p>
+     * Counterpart of 26.1.2 {@code AbstractSliderButton#extractWidgetRenderState}:
+     * the two blitSprite calls become mcmeta-driven nine-patch stretching, and
+     * {@code extractScrollingStringOverContents} becomes centring plus a clamp
+     * within the {@code TEXT_MARGIN} insets.
+     * </p>
      */
     @Override
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
@@ -117,6 +136,11 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
      * 1.7.10 中点击同时会引发聚焦（{@code dispatchMouseClicked} 随后调用
      * {@code setFocused}），因此不在此处显式开启 {@code canChangeValue}。
      * </p>
+     * <p>
+     * Counterpart of 26.1.2 {@code onClick}. On 1.7.10 a click also triggers
+     * focus ({@code dispatchMouseClicked} calls {@code setFocused} right
+     * after), so {@code canChangeValue} is not enabled explicitly here.
+     * </p>
      */
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
@@ -132,6 +156,10 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
      * <p>
      * 按住拖动时跟随鼠标更新值 —— 对标 26.1.2 {@code onDrag}。
      * </p>
+     * <p>
+     * Updates the value from the mouse while held — counterpart of 26.1.2
+     * {@code onDrag}.
+     * </p>
      */
     @Override
     public void mouseDrag(int mouseX, int mouseY, int mouseButton, long timeSinceLastClick) {
@@ -145,6 +173,10 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
      * <p>
      * 松开时停止拖拽并播放点击音效 —— 对标 26.1.2 {@code onRelease}
      * （vanilla 在 {@code onClick} 抑制音效、到 {@code onRelease} 才播放）。
+     * </p>
+     * <p>
+     * Counterpart of 26.1.2 {@code onRelease}: vanilla suppresses the sound in
+     * {@code onClick} and only plays it once the button is released.
      * </p>
      */
     @Override
@@ -163,6 +195,12 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
      * {@code InputType}（MOUSE / KEYBOARD_TAB）判定聚焦来源，1.7.10 无该机制，
      * 此处将任何聚焦均视为用户驱动、可改值；Enter 键仍可切换该状态。
      * </p>
+     * <p>
+     * Counterpart of 26.1.2 {@code setFocused}. Vanilla gates value-changing on
+     * the focus source ({@code InputType}: MOUSE / KEYBOARD_TAB); 1.7.10 has no
+     * such mechanism, so any focus is treated as user-driven and
+     * value-changeable, and Enter still toggles the state.
+     * </p>
      */
     @Override
     public void setFocused(boolean focused) {
@@ -176,6 +214,11 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
      * 键盘调值 —— 对标 26.1.2 {@code keyPressed}：Enter 切换
      * {@code canChangeValue}；左右方向键按轨宽步进取值。
      * {@code isSelection()} 在 1.7.10 以 {@code KEY_RETURN} 近似。
+     * </p>
+     * <p>
+     * Counterpart of 26.1.2 {@code keyPressed}: Enter toggles
+     * {@code canChangeValue}; left/right arrows step by the track width.
+     * {@code isSelection()} is approximated by {@code KEY_RETURN} on 1.7.10.
      * </p>
      */
     @Override
@@ -201,6 +244,10 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
      * <p>
      * 将鼠标绝对 X 坐标映射为归一化值 —— 对标 {@code setValueFromMouse}。
      * </p>
+     * <p>
+     * Maps an absolute mouse X to the normalized value — counterpart of
+     * {@code setValueFromMouse}.
+     * </p>
      */
     private void setValueFromMouse(int mouseX) {
         this.setValue((mouseX - (this.getX() + HANDLE_HALF_WIDTH)) / (double) (this.width - HANDLE_WIDTH));
@@ -212,6 +259,11 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
      * 设置归一化值并钳制到 {@code [0, 1]}；仅当值实际变化时回调
      * {@link #applyValue()}，随后总是刷新消息 —— 对标 26.1.2
      * {@code setValue}。
+     * </p>
+     * <p>
+     * Clamps the value to {@code [0, 1]}; {@link #applyValue()} fires only when
+     * the value actually changes, while the message is always refreshed —
+     * counterpart of 26.1.2 {@code setValue}.
      * </p>
      */
     protected void setValue(final double newValue) {

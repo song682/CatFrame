@@ -6,10 +6,10 @@ import decok.dfcdvadstf.catframe.ui.components.FontHelper;
 import net.minecraft.client.gui.FontRenderer;
 
 /**
- * 文本工具提示组件——渲染一行文字。
+ * Text tooltip component — renders a single line of text.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.ClientTextTooltip}。
- * 使用 UI 包的 {@link FontHelper} 绘制，与 UI 包样式系统一致。
+ * Mirrors 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.ClientTextTooltip}.
+ * Drawn using the UI package's {@link FontHelper}, consistent with the UI package style system.
  */
 @SideOnly(Side.CLIENT)
 public class ClientTextTooltip implements ClientTooltipComponent {

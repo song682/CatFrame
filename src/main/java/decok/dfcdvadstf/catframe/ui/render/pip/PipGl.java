@@ -7,22 +7,24 @@ import javax.annotation.Nullable;
 import java.nio.FloatBuffer;
 
 /**
- * PiP 通道的 GL 辅助 — 恢复采集点的 modelview 矩阵快照。
+ * GL helpers for the PiP pipeline — restores the modelview matrix snapshot from the capture point.
  * <p>
- * 帧末统一 flush 时 GL 上下文已切换，故 PiP 渲染器绘制前需据快照
- * {@code glLoadMatrix} 重建调用点的变换。与 {@code GuiGraphicsExtractor.MATRIX_BUFFER}
- * 独立以避免跨类可见性耦合（客户端单线程，各自缓冲互不干扰）。
+ * By the time the end-of-frame flush runs, the GL context has already changed, so PiP
+ * renderers must rebuild the capture-point transform from the snapshot via
+ * {@code glLoadMatrix} before drawing. Kept independent of {@code GuiGraphicsExtractor.MATRIX_BUFFER}
+ * to avoid cross-class visibility coupling (the client is single-threaded, so the buffers never interfere).
  */
 public final class PipGl {
 
-    /** modelview 矩阵恢复缓冲（客户端单线程复用）。 */
+    /** Modelview matrix restore buffer (reused on the single client thread). */
     private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
 
     private PipGl() {
     }
 
     /**
-     * 恢复采集时的 modelview 矩阵。{@code pose} 为 null 时不做任何操作（沿用当前 GL 状态）。
+     * Restores the modelview matrix captured at extraction time. Does nothing when
+     * {@code pose} is null (the current GL state is kept).
      */
     public static void restore(@Nullable float[] pose) {
         if (pose == null) return;

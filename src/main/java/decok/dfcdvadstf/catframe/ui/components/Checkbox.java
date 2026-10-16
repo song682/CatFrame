@@ -9,11 +9,6 @@ import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
- * 复选框组件 —— 对标高版本 Minecraft 的 {@code Checkbox}。<br>
- * 继承 {@link AbstractButton}，使用 CatFrame 四态纹理（未选中/选中 × 普通/高亮），
- * 支持 Builder 构建与选中态变更回调。
- * </p>
- * <p>
  * Checkbox component — counterpart of the high-version Minecraft
  * {@code Checkbox}.<br>
  * Extends {@link AbstractButton}, renders the CatFrame four-state textures
@@ -32,9 +27,9 @@ public class Checkbox extends AbstractButton {
     private static final ResourceLocation CHECKBOX_SELECTED_HIGHLIGHTED_TEXTURE = new ResourceLocation("catframe",
             "textures/gui/widgets/checkbox_checked_highlighted.png");
 
-    /** Checkbox box size in screen pixels / 复选框框体尺寸（屏幕像素） */
+    /** Checkbox box size in screen pixels */
     private static final int BOX_SIZE = 16;
-    /** Spacing between the box and the label text / 框体与标签文本的间距 */
+    /** Spacing between the box and the label text */
     private static final int SPACING = 4;
 
     private boolean selected;
@@ -48,9 +43,6 @@ public class Checkbox extends AbstractButton {
 
     /**
      * Creates a new Checkbox builder.
-     * <p>
-     * 创建新的 Checkbox 构建器。
-     * </p>
      */
     public static Builder builder(Text message) {
         return new Builder(message);
@@ -64,9 +56,6 @@ public class Checkbox extends AbstractButton {
 
     /**
      * Returns whether the checkbox is currently selected.
-     * <p>
-     * 返回复选框当前是否处于选中状态。
-     * </p>
      */
     public boolean selected() {
         return this.selected;
@@ -74,9 +63,6 @@ public class Checkbox extends AbstractButton {
 
     /**
      * Sets the selected state programmatically (without firing the callback).
-     * <p>
-     * 以编程方式设置选中状态（不触发回调）。
-     * </p>
      */
     public void setSelected(boolean selected) {
         this.selected = selected;
@@ -91,7 +77,6 @@ public class Checkbox extends AbstractButton {
             texture = (isHovered || focused) ? CHECKBOX_HIGHLIGHTED_TEXTURE : CHECKBOX_TEXTURE;
         }
 
-        // 16×16 独立纹理，1:1 像素绘制 —— drawStatic 强制整数倍拉伸（此处为 1 倍）。
         // 16x16 standalone texture drawn 1:1 — drawStatic enforces integer-multiple
         // upscaling.
         TextureStretching.drawStatic(texture, x, y, BOX_SIZE, BOX_SIZE, BOX_SIZE, BOX_SIZE, this.alpha);
@@ -105,9 +90,6 @@ public class Checkbox extends AbstractButton {
 
     /**
      * Callback invoked when the selected state changes.
-     * <p>
-     * 选中状态变化时调用的回调。
-     * </p>
      */
     public interface OnValueChange {
         OnValueChange NOP = (checkbox, value) -> {
@@ -118,9 +100,6 @@ public class Checkbox extends AbstractButton {
 
     /**
      * Builder for constructing a {@link Checkbox}.
-     * <p>
-     * 用于构建 {@link Checkbox} 的构建器。
-     * </p>
      */
     public static class Builder {
         private final Text message;
@@ -143,9 +122,6 @@ public class Checkbox extends AbstractButton {
 
         /**
          * Caps the total widget width; the label is clamped (not wrapped) to fit.
-         * <p>
-         * 限制组件总宽度；标签被截断（不换行）以适配。
-         * </p>
          */
         public Builder maxWidth(int maxWidth) {
             this.maxWidth = maxWidth;

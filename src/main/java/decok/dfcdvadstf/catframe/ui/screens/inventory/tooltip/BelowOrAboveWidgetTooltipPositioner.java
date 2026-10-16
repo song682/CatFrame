@@ -5,9 +5,9 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 
 /**
- * 工具提示定位器——在 Widget 下方显示，空间不足时翻转到上方。
+ * Tooltip positioner — displays below the widget, flipping above when space is insufficient.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.BelowOrAboveWidgetTooltipPositioner}。
+ * Mirrors 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.BelowOrAboveWidgetTooltipPositioner}.
  */
 @SideOnly(Side.CLIENT)
 public class BelowOrAboveWidgetTooltipPositioner implements ClientTooltipPositioner {
@@ -22,7 +22,7 @@ public class BelowOrAboveWidgetTooltipPositioner implements ClientTooltipPositio
     }
 
     /**
-     * 从 {@link ScreenRectangle} 创建定位器。
+     * Creates a positioner from a {@link ScreenRectangle}.
      */
     public BelowOrAboveWidgetTooltipPositioner(ScreenRectangle rect) {
         this(rect.x, rect.y, rect.width, rect.height);
@@ -33,12 +33,12 @@ public class BelowOrAboveWidgetTooltipPositioner implements ClientTooltipPositio
         int x = widgetX + 3;
         int y = widgetY + widgetHeight + 3 + 1;
 
-        // 下方空间不足时翻转到上方
+        // Flip above when there is insufficient space below
         if (y + tooltipHeight + 3 > screenHeight) {
             y = widgetY - tooltipHeight - 3 - 1;
         }
 
-        // 水平溢出时靠右对齐
+        // Right-align on horizontal overflow
         if (x + tooltipWidth > screenWidth) {
             x = Math.max(widgetX + widgetWidth - tooltipWidth - 3, 4);
         }

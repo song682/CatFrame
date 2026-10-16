@@ -9,9 +9,6 @@ import javax.annotation.Nullable;
 
 /**
  * <p>
- * 组件抽象基类 —— 提供位置、尺寸、可见性等公共字段和默认实现，
- * 并实现 {@link Renderable} 渲染入口（对标高版本
- * {@code AbstractWidget implements Renderable}）。<br>
  * Abstract base class for components — provides position, size, visibility and
  * other
  * common fields with default implementations, and implements the
@@ -33,8 +30,9 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
     protected boolean focused;
 
     /**
-     * 工具提示托管器 —— 对标 26.1.2 {@code AbstractWidget#tooltip}。
-     * 子类继承即得 tooltip 能力，渲染时经 {@link #updateHoverState(int, int)} 泵动延迟显示。
+     * Tooltip holder — counterpart of 26.1.2 {@code AbstractWidget#tooltip}.
+     * Subclasses inherit tooltip capability; the delayed show is pumped during
+     * rendering via {@link #updateHoverState(int, int)}.
      */
     private final WidgetTooltipHolder tooltip = new WidgetTooltipHolder();
 
@@ -129,9 +127,9 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
     // ──── Tooltip ────
 
     /**
-     * 设置该组件的工具提示内容。
+     * Sets this component's tooltip content.
      * <p>
-     * 对标 26.1.2 {@code AbstractWidget#setTooltip(Tooltip)}。
+     * Counterpart of 26.1.2 {@code AbstractWidget#setTooltip(Tooltip)}.
      * </p>
      */
     public void setTooltip(@Nullable Tooltip tooltip) {
@@ -139,7 +137,7 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
     }
 
     /**
-     * 获取该组件当前的工具提示内容。
+     * Gets this component's current tooltip content.
      */
     @Nullable
     public Tooltip getTooltip() {
@@ -147,9 +145,9 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
     }
 
     /**
-     * 设置工具提示的显示延迟（毫秒）。
+     * Sets the tooltip show delay (milliseconds).
      * <p>
-     * 对标 26.1.2 {@code AbstractWidget#setTooltipDelay(Duration)}。
+     * Counterpart of 26.1.2 {@code AbstractWidget#setTooltipDelay(Duration)}.
      * </p>
      */
     public void setTooltipDelay(long delayMs) {
@@ -172,22 +170,18 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
 
     /**
      * Update hover state based on mouse position. Call before rendering.
-     * <p>
-     * 根据鼠标位置更新悬停状态。在渲染前调用。
-     * </p>
      */
     protected void updateHoverState(int mouseX, int mouseY) {
         this.isHovered = isMouseOver(mouseX, mouseY);
-        // 泵动 tooltip 延迟显示 —— 对标 vanilla 在 extractRenderState 内驱动 tooltip。
-        // 实际绘制由帧末 Forge DrawScreenEvent.Post -> extractDeferredElements() 完成。
+        // Pumps the delayed tooltip show — mirrors vanilla driving the tooltip
+        // inside extractRenderState. Actual drawing happens at frame end via the
+        // Forge DrawScreenEvent.Post -> extractDeferredElements() pass.
         this.tooltip.refreshTooltipForNextRenderPass(mouseX, mouseY, this.isHovered, this.focused, getRectangle());
     }
 
     // ──── Rendering (Renderable) ────
 
     /**
-     * 渲染入口 —— 对标高版本 {@code Renderable.extractRenderState}。<br>
-     * 模板方法：不可见时直接跳过；刷新悬停状态后委托 {@link #renderWidget} 完成实际绘制。
      * <p>
      * Render entry point — counterpart of the high-version
      * {@code Renderable.extractRenderState}. Template method: skips when invisible,
@@ -204,18 +198,14 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
     }
 
     /**
-     * 子类绘制钩子 —— 所有组件通过覆盖此方法实现具体绘制。<br>
      * Widget drawing hook — components should override this to draw themselves.
      * <p>
-     * 由 {@link #extractRenderState} 统一驱动：调用时可见性检查与悬停状态
-     * （含 tooltip 延迟泵动）均已完成，默认空实现。
-     * <br>Driven uniformly by {@link #extractRenderState}: by the time this is
+     * Driven uniformly by {@link #extractRenderState}: by the time this is
      * called the visibility check and hover-state refresh (including the tooltip
      * delay pump) have already run. Defaults to a no-op.
      * </p>
      */
-    protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-    }
+    protected abstract void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks);
 
     // ──── Equals / Hash ────
 
@@ -246,8 +236,8 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
         /**
          * Creates the default grayed-out inactive message.
          * <p>
-         * 创建默认的灰化失效消息。对标 26.1.2
-         * {@code AbstractWidget.WithInactiveMessage#defaultInactiveMessage(Component)}。
+         * Counterpart of 26.1.2
+         * {@code AbstractWidget.WithInactiveMessage#defaultInactiveMessage(Component)}.
          * </p>
          */
         public static Text defaultInactiveMessage(final Text activeMessage) {

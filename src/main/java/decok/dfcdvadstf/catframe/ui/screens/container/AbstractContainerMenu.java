@@ -139,7 +139,7 @@ public abstract class AbstractContainerMenu extends net.minecraft.inventory.Cont
     /**
      * Handle a PICKUP click (left/right click to pick up or place).
      *
-     * @return the resulting stack, or {@code null} / 结果物品堆，无则 {@code null}
+     * @return the resulting stack, or {@code null}
      */
     protected ItemStack onPickup(final int slotIndex, final int button, final EntityPlayer player) {
         // Delegate to vanilla's default slotClick for PICKUP (mode 0)

@@ -6,10 +6,11 @@ import net.minecraft.entity.EntityLivingBase;
 import javax.annotation.Nullable;
 
 /**
- * GUI 实体的 PiP 渲染状态（对标接入内容 C）。
+ * PiP render state for a GUI entity (mirrors integration content C).
  * <p>
- * 由 {@code GuiGraphicsExtractor.entity(...)} 采集，帧末交给 {@link EntityPipRenderer}
- * 走移植自 {@code GuiInventory.drawEntityOnScreen} 的实体渲染路径。
+ * Collected by {@code GuiGraphicsExtractor.entity(...)} and handed to
+ * {@link EntityPipRenderer} at frame end, which runs the entity render path
+ * ported from {@code GuiInventory.drawEntityOnScreen}.
  */
 public class GuiEntityRenderState extends AbstractPipRenderState {
 

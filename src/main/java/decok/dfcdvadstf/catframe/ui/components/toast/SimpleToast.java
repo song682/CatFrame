@@ -5,10 +5,6 @@ import net.minecraft.client.gui.FontRenderer;
 
 /**
  * <p>
- * 简单 Toast<br>
- * 用于显示简单的单行或双行通知。
- * </p>
- * <p>
  * Simple Toast — for single or double line notifications.
  * </p>
  */
@@ -31,13 +27,13 @@ public class SimpleToast extends BaseToast {
         this(title, description, DEFAULT_DISPLAY_TIME);
     }
 
-    /** Minimum width when content is short / 内容较少时的最小宽度 */
+    /** Minimum width when content is short */
     private static final int MIN_WIDTH = 80;
 
-    /** Vertical padding (top + bottom) / 垂直内边距(上下合计) */
+    /** Vertical padding (top + bottom) */
     private static final int VERTICAL_PADDING = 10;
 
-    /** Horizontal padding (left + right) / 水平内边距(左右合计) */
+    /** Horizontal padding (left + right) */
     private static final int HORIZONTAL_PADDING = 24;
 
     public SimpleToast(String title, String description, long displayTime) {
@@ -49,7 +45,7 @@ public class SimpleToast extends BaseToast {
         int descWidth = description != null ? mc.fontRenderer.getStringWidth(description) : 0;
         int textWidth = Math.max(titleWidth, descWidth);
 
-        // Adaptive sizing: shrink when content is short / 自适应尺寸：内容少时缩小
+        // Adaptive sizing: shrink when content is short
         this.width = Math.max(MIN_WIDTH, textWidth + HORIZONTAL_PADDING);
 
         if (description != null && !description.isEmpty()) {

@@ -10,10 +10,6 @@ import java.util.List;
 
 /**
  * <p>
- * 系统 Toast<br>
- * 用于显示系统通知、错误信息等。
- * </p>
- * <p>
  * System Toast — for system notifications, error messages, etc.
  * </p>
  */
@@ -22,11 +18,11 @@ public class SystemToast extends BaseToast {
     private static final ResourceLocation SYSTEM_TOAST_TEXTURE =
             new ResourceLocation("catframe", "textures/gui/toast/system.png");
 
-    /** System icon texture / 系统图标纹理 */
+    /** System icon texture */
     private static final ResourceLocation SYSTEM_ICON_TEXTURE =
             new ResourceLocation("catframe", "textures/gui/toast/icons/system.png");
 
-    /** Icon size in pixels / 图标尺寸(像素) */
+    /** Icon size in pixels */
     private static final int ICON_SIZE = 16;
 
     private final SystemToastId id;
@@ -90,7 +86,7 @@ public class SystemToast extends BaseToast {
 
     @Override
     protected void renderContent(FontRenderer fontRenderer, long fullyVisibleForMs) {
-        // Draw icon / 绘制图标
+        // Draw icon
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         mc.getTextureManager().bindTexture(SYSTEM_ICON_TEXTURE);

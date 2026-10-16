@@ -13,10 +13,6 @@ import java.util.Optional;
 
 /**
  * <p>
- * 容器事件处理器 —— 管理子组件的焦点和事件分发。<br>
- * 对标高版本 Minecraft 的 {@code ContainerEventHandler} 接口，适配 CatFrame 的事件签名。
- * </p>
- * <p>
  * Container event handler — manages focus and event dispatch for child components.<br>
  * Counterpart of the high-version Minecraft {@code ContainerEventHandler} interface,
  * adapted to CatFrame's event signatures.
@@ -26,13 +22,11 @@ public interface ContainerEventHandler {
 
     /**
      * Returns the list of child components in this container.
-     * <p>返回此容器中的子组件列表。</p>
      */
     List<? extends GuiEventListener> children();
 
     /**
      * Find the child component at the given mouse position.
-     * <p>查找给定鼠标位置下的子组件。</p>
      */
     default Optional<GuiEventListener> getChildAt(int x, int y) {
         for (GuiEventListener child : children()) {
@@ -46,7 +40,6 @@ public interface ContainerEventHandler {
     /**
      * Handle mouse click — finds the child under the cursor and forwards the event.
      * Automatically sets focus to the clicked child.
-     * <p>处理鼠标点击 —— 找到鼠标下的子组件并转发事件，自动设焦点。</p>
      */
     default void dispatchMouseClicked(int mouseX, int mouseY, int mouseButton) {
         Optional<GuiEventListener> child = getChildAt(mouseX, mouseY);
@@ -63,7 +56,6 @@ public interface ContainerEventHandler {
 
     /**
      * Handle mouse release — forwards to the focused child.
-     * <p>处理鼠标释放 —— 转发给当前焦点子组件。</p>
      */
     default void dispatchMouseReleased(int mouseX, int mouseY, int mouseButton) {
         if (mouseButton == 0 && isDragging()) {
@@ -77,7 +69,6 @@ public interface ContainerEventHandler {
 
     /**
      * Handle mouse drag — forwards to the focused child.
-     * <p>处理鼠标拖动 —— 转发给当前焦点子组件。</p>
      */
     default void dispatchMouseDragged(int mouseX, int mouseY, int mouseButton, long timeSinceLastClick) {
         GuiEventListener focused = getFocused();
@@ -88,7 +79,6 @@ public interface ContainerEventHandler {
 
     /**
      * Handle mouse scroll — forwards to the child under the cursor.
-     * <p>处理鼠标滚轮 —— 转发给鼠标下的子组件。</p>
      */
     default void dispatchMouseScrolled(int mouseX, int mouseY, int delta) {
         Optional<GuiEventListener> child = getChildAt(mouseX, mouseY);
@@ -99,7 +89,6 @@ public interface ContainerEventHandler {
 
     /**
      * Handle key typed — forwards to the focused child.
-     * <p>处理按键 —— 转发给当前焦点子组件。</p>
      */
     default void dispatchKeyTyped(char typedChar, int keyCode) {
         GuiEventListener focused = getFocused();
@@ -110,7 +99,6 @@ public interface ContainerEventHandler {
 
     /**
      * Handle split key-pressed — forwards to the focused child.
-     * <p>处理拆分后的按键按下 —— 转发给当前焦点子组件。</p>
      */
     default boolean dispatchKeyPressed(int keyCode) {
         GuiEventListener focused = getFocused();
@@ -119,7 +107,6 @@ public interface ContainerEventHandler {
 
     /**
      * Handle split key-released — forwards to the focused child.
-     * <p>处理拆分后的按键松开 —— 转发给当前焦点子组件。</p>
      */
     default boolean dispatchKeyReleased(int keyCode) {
         GuiEventListener focused = getFocused();
@@ -128,7 +115,6 @@ public interface ContainerEventHandler {
 
     /**
      * Handle split char-typed — forwards to the focused child.
-     * <p>处理拆分后的字符输入 —— 转发给当前焦点子组件。</p>
      */
     default boolean dispatchCharTyped(char codePoint) {
         GuiEventListener focused = getFocused();
@@ -139,11 +125,13 @@ public interface ContainerEventHandler {
 
     /**
      * Resolve the next focus target inside this container for a navigation event.
-     * <p>为导航事件在本容器内解析下一个焦点目标。</p>
-     * <p>先尝试让当前焦点子组件内部消费导航（嵌套容器）；若子组件交回
-     * {@code null}，则在本层按 Tab 顺序或方向几何继续查找。</p>
+     * <p>
+     * First lets the currently focused child consume the navigation internally
+     * (nested containers); if the child hands back {@code null}, continues the
+     * search at this level by tab order or directional geometry.
+     * </p>
      *
-     * @return a path rooted at this container, or {@code null} if none / 以本容器为根的路径；无则 {@code null}
+     * @return a path rooted at this container, or {@code null} if none
      */
     @Nullable
     default ComponentPath nextFocusPathInContainer(FocusNavigationEvent event) {
@@ -166,8 +154,6 @@ public interface ContainerEventHandler {
     /**
      * Tab / Shift+Tab traversal: step through children (ordered by tab group) from the
      * current focus, returning the first child that accepts focus.
-     * <p>Tab / Shift+Tab 遍历：从当前焦点出发，按 tab 组排序逐个步进，
-     * 返回第一个接受焦点的子组件。</p>
      */
     @Nullable
     default ComponentPath tabNavigate(FocusNavigationEvent event, @Nullable GuiEventListener current, boolean forward) {
@@ -205,8 +191,6 @@ public interface ContainerEventHandler {
     /**
      * Arrow-key traversal: pick the focusable child whose centre is nearest in the
      * requested direction. Basic geometric heuristic (centre distance).
-     * <p>方向键遍历：选中在请求方向上中心最近且可聚焦的子组件。
-     * 基础几何启发式（中心距离）。</p>
      */
     @Nullable
     default ComponentPath arrowNavigate(FocusNavigationEvent.ArrowNavigation event, @Nullable GuiEventListener current) {
@@ -242,7 +226,6 @@ public interface ContainerEventHandler {
 
     /**
      * @return the tab-order group of a component (0 if it is not a {@link TabOrderedElement})
-     *         / 组件的 tab 顺序组（非 {@link TabOrderedElement} 时为 0）
      */
     static int tabOrderOf(GuiEventListener c) {
         return (c instanceof TabOrderedElement) ? ((TabOrderedElement) c).getTabOrderGroup() : 0;
@@ -273,19 +256,18 @@ public interface ContainerEventHandler {
     // ──── Focus management ────
 
     /**
-     * @return the currently focused child, or null / 当前焦点子组件，或 null
+     * @return the currently focused child, or null
      */
     @Nullable
     GuiEventListener getFocused();
 
     /**
      * Set the focused child component.
-     * <p>设置焦点子组件。</p>
      */
     void setFocused(@Nullable GuiEventListener focused);
 
     /**
-     * @return whether this container has focus / 此容器是否有焦点
+     * @return whether this container has focus
      */
     default boolean isFocused() {
         return getFocused() != null;
@@ -293,7 +275,6 @@ public interface ContainerEventHandler {
 
     /**
      * Called when the container itself gains or loses focus.
-     * <p>当容器本身获得或失去焦点时调用。</p>
      */
     default void setFocused(boolean focused) {
         if (!focused) {
@@ -304,13 +285,12 @@ public interface ContainerEventHandler {
     // ──── Dragging state ────
 
     /**
-     * @return whether a drag is in progress / 是否正在进行拖动
+     * @return whether a drag is in progress
      */
     boolean isDragging();
 
     /**
      * Set the dragging state.
-     * <p>设置拖动状态。</p>
      */
     void setDragging(boolean dragging);
 }

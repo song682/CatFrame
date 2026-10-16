@@ -13,18 +13,13 @@ import org.lwjgl.opengl.GL11;
 
 /**
  * <p>
- * 按钮抽象基类 —— 提供悬停检测、按下状态和音效播放等通用按钮功能。<br>
- * 对标高版本 Minecraft 的 {@code AbstractButton}。
- * </p>
- * <p>
  * Abstract button base — provides hover detection, press state, and sound playback.<br>
  * Counterpart of the high-version Minecraft {@code AbstractButton}.
  * </p>
  * <p>
- * 继承 {@link AbstractComponent.WithInactiveMessage}，故按钮文本（message）及其失效灰化
- * 由基类统一托管，对标 26.1.2 {@code AbstractButton extends AbstractWidget.WithInactiveMessage}。<br>
  * Extends {@link AbstractComponent.WithInactiveMessage}, so the button's message and its
- * inactive graying are managed by the base class.
+ * inactive graying are managed by the base class — mirrors 26.1.2
+ * {@code AbstractButton extends AbstractWidget.WithInactiveMessage}.
  * </p>
  */
 public abstract class AbstractButton extends AbstractComponent.WithInactiveMessage {
@@ -32,23 +27,23 @@ public abstract class AbstractButton extends AbstractComponent.WithInactiveMessa
     protected boolean wasHovered;
     protected long lastClickTime;
 
-    /** Default button text colour / 默认按钮文本颜色 */
+    /** Default button text colour */
     protected static final int TEXT_COLOR_ENABLED = 0xE0E0E0;
     protected static final int TEXT_COLOR_DISABLED = 0xA0A0A0;
     protected static final int TEXT_COLOR_HOVER = 0xFFFFA0;
 
-    /** Vanilla button widgets texture / 原版按钮部件纹理 */
+    /** Vanilla button widgets texture */
     protected static final ResourceLocation WIDGETS_TEXTURE = new ResourceLocation("textures/gui/widgets.png");
 
-    /** CatFrame custom button textures / CatFrame 自定义按钮纹理 */
+    /** CatFrame custom button textures */
     protected static final ResourceLocation BUTTON_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/button.png");
+            new ResourceLocation("catframe", "textures/gui/sprites/widgets/button.png");
     protected static final ResourceLocation BUTTON_HIGHLIGHTED_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/button_highlighted.png");
+            new ResourceLocation("catframe", "textures/gui/sprites/widgets/button_highlighted.png");
     protected static final ResourceLocation BUTTON_DISABLED_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/button_disabled.png");
+            new ResourceLocation("catframe", "textures/gui/sprites/widgets/button_disabled.png");
 
-    /** Button default size from mcmeta / 按钮默认尺寸 */
+    /** Button default size from mcmeta */
     protected static final int BUTTON_DEFAULT_W = 200;
     protected static final int BUTTON_DEFAULT_H = 20;
     protected static final int BUTTON_EDGE = 2;
@@ -57,7 +52,6 @@ public abstract class AbstractButton extends AbstractComponent.WithInactiveMessa
 
     /**
      * If true, use vanilla widgets texture instead of CatFrame custom textures.
-     * <p>为 true 时使用原版部件纹理而非 CatFrame 自定义纹理。</p>
      */
     protected boolean useVanillaTexture = false;
 
@@ -77,13 +71,11 @@ public abstract class AbstractButton extends AbstractComponent.WithInactiveMessa
 
     /**
      * Called when the button is pressed.
-     * <p>按钮被按下时调用。</p>
      */
     public abstract void onPress();
 
     /**
      * Plays the button click sound.
-     * <p>播放按钮点击音效。</p>
      */
     protected void playPressSound() {
         Minecraft.getMinecraft().getSoundHandler().playSound(
@@ -92,7 +84,6 @@ public abstract class AbstractButton extends AbstractComponent.WithInactiveMessa
 
     /**
      * Draw the button background.
-     * <p>绘制按钮背景。</p>
      * <p>If {@link #useVanillaTexture} is true, uses vanilla widgets texture.
      * Otherwise uses CatFrame custom textures with three-patch stretching.</p>
      */
@@ -143,8 +134,6 @@ public abstract class AbstractButton extends AbstractComponent.WithInactiveMessa
     }
 
     /**
-     * 新渲染入口 —— 由 {@link #extractRenderState} 统一驱动，可见性与悬停状态
-     * 已在调用前处理，此处仅绘制背景。<br>
      * New render entry — driven uniformly by {@link #extractRenderState}; visibility
      * and hover state are already handled, so only the background is drawn here.
      */
@@ -165,7 +154,6 @@ public abstract class AbstractButton extends AbstractComponent.WithInactiveMessa
 
     /**
      * Helper: draw a filled rectangle.
-     * <p>辅助：绘制填充矩形。</p>
      */
     protected static void drawRect(int left, int top, int right, int bottom, int color) {
         GuiDrawing.drawRect(left, top, right, bottom, color);

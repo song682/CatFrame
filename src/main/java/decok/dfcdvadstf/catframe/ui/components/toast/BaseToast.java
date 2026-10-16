@@ -11,62 +11,55 @@ import org.lwjgl.opengl.GL11;
 
 /**
  * <p>
- * Toast 基础实现类<br>
- * 继承 {@link AbstractComponent}，提供通用的背景渲染和基础功能。
- * </p>
- * <p>
  * Base Toast implementation — extends {@link AbstractComponent} for common background
  * rendering and basic functionality.
  * </p>
  */
 public abstract class BaseToast extends AbstractComponent implements Toast {
 
-    /** Default display time (ms) / 默认显示时间(毫秒) */
+    /** Default display time (ms) */
     protected static final long DEFAULT_DISPLAY_TIME = 5000L;
 
-    /** Background colour / 背景颜色 */
+    /** Background colour */
     protected static final int BACKGROUND_COLOR = 0xCC000000;
 
-    /** Border colour / 边框颜色 */
+    /** Border colour */
     protected static final int BORDER_COLOR = 0xFF555555;
 
-    /** Default toast background texture / 默认 Toast 背景纹理 */
+    /** Default toast background texture */
     protected static final ResourceLocation DEFAULT_TOAST_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/toast/default.png");
+            new ResourceLocation("catframe", "textures/gui/sprites/toast/default.png");
 
     /**
      * Background texture for this toast. Null = use solid colour fallback.
-     * <p>此 Toast 的背景纹理。null = 回退到纯色。</p>
      */
     protected ResourceLocation backgroundTexture = DEFAULT_TOAST_TEXTURE;
 
-    /** Minecraft instance / Minecraft 实例 */
+    /** Minecraft instance */
     protected final Minecraft mc = Minecraft.getMinecraft();
 
-    /** Current wanted visibility / 当前期望的可见性 */
+    /** Current wanted visibility */
     protected Visibility wantedVisibility = Visibility.HIDE;
 
-    /** Slide-in sound, null = silent / 滑入音效，null = 静音 */
+    /** Slide-in sound, null = silent */
     protected ResourceLocation showSound;
 
-    /** Slide-out sound, null = silent / 滑出音效，null = 静音 */
+    /** Slide-out sound, null = silent */
     protected ResourceLocation hideSound;
 
-    /** Slide-in corner / 滑入角落 */
+    /** Slide-in corner */
     protected ToastCorner corner = ToastCorner.TOP_RIGHT;
 
-    /** Last fully-visible duration from update() / 最近一次 update() 的完全可见时长 */
+    /** Last fully-visible duration from update() */
     private long lastFullyVisibleForMs;
 
     // ──── Texture API ────
 
     /**
      * Set the background texture for this Toast.
-     * <p>设置此 Toast 的背景纹理。</p>
      *
      * @param texture background texture ResourceLocation, or null to use solid colour fallback
-     *                / 背景纹理 ResourceLocation，null 则回退到纯色
-     * @return this instance for chaining / 返回自身以支持链式调用
+     * @return this instance for chaining
      */
     public BaseToast setBackgroundTexture(ResourceLocation texture) {
         this.backgroundTexture = texture;
@@ -75,7 +68,6 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
 
     /**
      * Get the current background texture.
-     * <p>获取当前背景纹理。</p>
      */
     public ResourceLocation getBackgroundTexture() {
         return backgroundTexture;
@@ -85,10 +77,9 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
 
     /**
      * Set the sound played when this Toast slides in.
-     * <p>设置此 Toast 滑入时播放的音效。</p>
      *
-     * @param sound sound ResourceLocation, or null for silence / 音效资源位置，null 表示静音
-     * @return this instance for chaining / 返回自身以支持链式调用
+     * @param sound sound ResourceLocation, or null for silence
+     * @return this instance for chaining
      */
     public BaseToast setShowSound(ResourceLocation sound) {
         this.showSound = sound;
@@ -97,10 +88,9 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
 
     /**
      * Set the sound played when this Toast slides out.
-     * <p>设置此 Toast 滑出时播放的音效。</p>
      *
-     * @param sound sound ResourceLocation, or null for silence / 音效资源位置，null 表示静音
-     * @return this instance for chaining / 返回自身以支持链式调用
+     * @param sound sound ResourceLocation, or null for silence
+     * @return this instance for chaining
      */
     public BaseToast setHideSound(ResourceLocation sound) {
         this.hideSound = sound;
@@ -121,11 +111,9 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
 
     /**
      * Set the screen corner this Toast slides in from and stacks at.
-     * <p>设置此 Toast 滑入并堆叠所在的屏幕角落。</p>
      *
      * @param corner the corner; null falls back to {@link ToastCorner#TOP_RIGHT}
-     *               / 角落；null 则回退到 {@link ToastCorner#TOP_RIGHT}
-     * @return this instance for chaining / 返回自身以支持链式调用
+     * @return this instance for chaining
      */
     public BaseToast setCorner(ToastCorner corner) {
         this.corner = corner != null ? corner : ToastCorner.TOP_RIGHT;
@@ -161,8 +149,6 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
     }
 
     /**
-     * 绘制 Toast 背景与内容 —— 可见性检查已由 {@link #extractRenderState}
-     * 在调用前处理。<br>
      * Draws the Toast background and content — the visibility check is already
      * handled by {@link #extractRenderState}.
      */
@@ -177,7 +163,6 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
 
     /**
      * Render the Toast background.
-     * <p>渲染 Toast 背景。</p>
      * <p>Uses texture-based nine-patch when {@link #backgroundTexture} is set,
      * otherwise falls back to solid colour + border.</p>
      */
@@ -201,7 +186,6 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
 
     /**
      * Draw the border lines.
-     * <p>绘制边框。</p>
      */
     protected void drawBorder() {
         int borderColor = BORDER_COLOR;
@@ -213,7 +197,6 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
 
     /**
      * Draw a rectangle using the Tessellator.
-     * <p>使用 Tessellator 绘制矩形。</p>
      */
     protected void drawRect(int left, int top, int right, int bottom, int color) {
         GuiDrawing.drawRect(left, top, right, bottom, color);
@@ -223,10 +206,9 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
 
     /**
      * Render the Toast content (implemented by subclasses).
-     * <p>渲染 Toast 内容(由子类实现)。</p>
      *
-     * @param fontRenderer      font renderer / 字体渲染器
-     * @param fullyVisibleForMs fully visible duration / 完全可见的持续时间
+     * @param fontRenderer      font renderer
+     * @param fullyVisibleForMs fully visible duration
      */
     protected abstract void renderContent(FontRenderer fontRenderer, long fullyVisibleForMs);
 }

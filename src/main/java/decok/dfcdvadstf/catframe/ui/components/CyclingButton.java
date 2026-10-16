@@ -12,18 +12,13 @@ import java.util.List;
 
 /**
  * <p>
- * 泛型循环按钮 — 类似高版本 Minecraft 的 {@code CyclingButtonWidget}。<br>
- * 继承 {@link AbstractButton}，使用统一的纹理背景渲染。
- * 支持通过点击和滚轮在类型化的值列表中循环切换。
- * </p>
- * <p>
  * Generic cycling button — similar to the high-version Minecraft
  * {@code CyclingButtonWidget}. Extends {@link AbstractButton} for unified
  * textured background rendering. Supports click and scroll-wheel cycling
  * through a typed list of values.
  * </p>
  *
- * @param <T> the type of values to cycle through / 循环切换的值类型
+ * @param <T> the type of values to cycle through
  */
 public class CyclingButton<T> extends AbstractButton {
 
@@ -56,7 +51,6 @@ public class CyclingButton<T> extends AbstractButton {
 
     /**
      * Creates a new Builder for a CyclingButton with the given value-to-text function.
-     * <p>使用给定的值到文本函数创建新的 Builder。</p>
      */
     public static <T> Builder<T> builder(ValueToText<T> valueToText) {
         return new Builder<>(valueToText);
@@ -64,7 +58,6 @@ public class CyclingButton<T> extends AbstractButton {
 
     /**
      * Convenience builder for Boolean on/off cycling.
-     * <p>Boolean 开/关循环的便捷构建器。</p>
      */
     public static Builder<Boolean> onOffBuilder() {
         return new Builder<Boolean>((Boolean value) -> value ? "ON" : "OFF")
@@ -87,8 +80,6 @@ public class CyclingButton<T> extends AbstractButton {
     /**
      * Left-click cycles forward (+1). Delegated via {@link #onPress()} from AbstractButton,
      * which also handles sound playback.
-     * <p>左键点击正向切换。通过 AbstractButton 的 {@link #onPress()} 委托，
-     * AbstractButton 还会播放音效。</p>
      */
     @Override
     public void onPress() {
@@ -98,7 +89,6 @@ public class CyclingButton<T> extends AbstractButton {
     /**
      * Handles mouse scroll input.
      * Scroll up (positive delta) cycles backward; scroll down (negative delta) cycles forward.
-     * <p>处理鼠标滚轮输入。向上滚动（正 delta）反向；向下滚动（负 delta）正向。</p>
      */
     @Override
     public void mouseScrolled(int delta) {
@@ -114,7 +104,6 @@ public class CyclingButton<T> extends AbstractButton {
 
     /**
      * Gets the current value.
-     * <p>获取当前值。</p>
      */
     public T getValue() {
         return this.value;
@@ -122,7 +111,6 @@ public class CyclingButton<T> extends AbstractButton {
 
     /**
      * Sets the current value programmatically (syncs index from values list).
-     * <p>以编程方式设置当前值（从值列表同步索引）。</p>
      */
     public void setValue(T value) {
         List<T> list = this.values.getCurrent();
@@ -139,7 +127,6 @@ public class CyclingButton<T> extends AbstractButton {
 
     /**
      * Returns the current display text (label + value).
-     * <p>返回当前显示文本（标签 + 值）。</p>
      */
     public String getDisplayText() {
         if (valueToText != null && value != null) {
@@ -154,8 +141,6 @@ public class CyclingButton<T> extends AbstractButton {
     // ──── Rendering ────
 
     /**
-     * 绘制按钮背景与当前值文本 —— 可见性与悬停状态已由
-     * {@link #extractRenderState} 在调用前处理。<br>
      * Draws the button background and the current value text — visibility and
      * hover state are already handled by {@link #extractRenderState}.
      */
@@ -213,7 +198,6 @@ public class CyclingButton<T> extends AbstractButton {
 
     /**
      * Builder for constructing a {@link CyclingButton}.
-     * <p>用于构建 {@link CyclingButton} 的构建器。</p>
      */
     public static class Builder<T> {
         private final ValueToText<T> valueToText;
@@ -253,7 +237,6 @@ public class CyclingButton<T> extends AbstractButton {
 
         /**
          * Sets the label text (displayed as "label valueText").
-         * <p>设置标签文本（显示为 "label valueText"）。</p>
          */
         public Builder<T> label(Text label) {
             this.label = label;
@@ -262,7 +245,6 @@ public class CyclingButton<T> extends AbstractButton {
 
         /**
          * Sets the label text from a string.
-         * <p>从字符串设置标签文本。</p>
          */
         public Builder<T> label(String label) {
             this.label = Text.literal(label);
@@ -271,7 +253,6 @@ public class CyclingButton<T> extends AbstractButton {
 
         /**
          * If true, uses vanilla widgets texture instead of CatFrame custom textures.
-         * <p>为 true 时使用原版部件纹理而非 CatFrame 自定义纹理。</p>
          */
         public Builder<T> useVanillaTexture(boolean useVanilla) {
             this.useVanillaTexture = useVanilla;
@@ -280,7 +261,6 @@ public class CyclingButton<T> extends AbstractButton {
 
         /**
          * Builds the button.
-         * <p>构建按钮。</p>
          */
         public CyclingButton<T> build(int x, int y, int width, int height,
                                       UpdateCallback<T> callback) {

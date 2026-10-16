@@ -11,17 +11,12 @@ import java.util.function.Consumer;
 
 /**
  * <p>
- * 加载状态标签页 —— 在加载完成之前显示加载动画提示，唯一子件为
- * {@link LoadingDotsWidgets}（居中标题 + 流动 dots 指示）。<br>
- * 对标 26.1.2 {@code net.minecraft.client.gui.components.tabs.LoadingTab}。
- * </p>
- * <p>
  * Loading tab — displays a loading placeholder until content is ready. Its only
  * child is a {@link LoadingDotsWidgets} (centred title plus flowing dots).
  * Counterpart of the high-version {@code LoadingTab}.
  * </p>
  *
- * <p>Usage / 用法:</p>
+ * <p>Usage:</p>
  * <pre>{@code
  * new LoadingTab(
  *     Text.translatable("catframe:tab.loading"),
@@ -36,9 +31,9 @@ public class LoadingTab implements Tab {
     protected final LinearLayout layout = new LinearLayout(LinearLayout.Axis.VERTICAL, LinearLayout.Alignment.CENTER);
 
     /**
-     * @param title        tab button title / 页签按钮标题
+     * @param title        tab button title
      * @param loadingTitle title shown on the loading placeholder (also used as
-     *                     extra narration) / 加载占位页显示的标题（亦作旁白文本）
+     *                     extra narration)
      */
     public LoadingTab(Text title, Text loadingTitle) {
         this.title = title;

@@ -102,7 +102,6 @@ public final class Title {
 
     /**
      * Show a JSON title together with a JSON subtitle.
-     * <p>同时显示 JSON 标题与 JSON 副标题。</p>
      */
     public static void showJson(String titleJson, @Nullable String subtitleJson) {
         show(Text.fromJson(titleJson), subtitleJson != null ? Text.fromJson(subtitleJson) : null);

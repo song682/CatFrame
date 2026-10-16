@@ -7,17 +7,14 @@ import javax.annotation.Nullable;
 
 /**
  * <p>
- * 容器事件处理器抽象基类 —— 为「无滚动」容器提供焦点字段、拖动状态与事件分发。<br>
- * 对标高版本 Minecraft 的 {@code AbstractContainerEventHandler}。
- * </p>
- * <p>
  * Abstract base for container event handling — provides focus fields, dragging state and
  * event dispatch for non-scrolling containers. Counterpart of the high-version Minecraft
  * {@code AbstractContainerEventHandler}.
  * </p>
  * <p>
- * 注：带滚动的容器请使用 {@link decok.dfcdvadstf.catframe.ui.components.AbstractContainerWidget}
- * （它继承 {@code AbstractScrollArea}，无法再继承本类，但同样实现 {@link ContainerEventHandler}）。
+ * Note: for scrolling containers use {@link decok.dfcdvadstf.catframe.ui.components.AbstractContainerWidget},
+ * which extends {@code AbstractScrollArea} and therefore cannot extend this class, but still
+ * implements {@link ContainerEventHandler}.
  * </p>
  */
 public abstract class AbstractContainerEventHandler extends AbstractComponent implements ContainerEventHandler {

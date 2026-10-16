@@ -98,7 +98,6 @@ public class GridLayout extends AbstractLayout {
 
     /**
      * Add a child sequentially (appends to the next available cell).
-     * <p>顺序添加子元素（追加到下一个可用单元格）。</p>
      */
     public <T extends ILayout> T addChild(T child) {
         return addChild(child, newCellSettings());
@@ -106,7 +105,6 @@ public class GridLayout extends AbstractLayout {
 
     /**
      * Add a child sequentially with the given cell settings.
-     * <p>顺序添加子元素并指定单元格设置。</p>
      */
     public <T extends ILayout> T addChild(T child, LayoutSettings settings) {
         int col = this.nextAutoCol++;
@@ -227,7 +225,6 @@ public class GridLayout extends AbstractLayout {
 
     /**
      * Sets the X position and translates all grid children by the same delta.
-     * <p>设置 X 位置并将所有网格子元素平移相同偏移量。</p>
      */
     @Override
     public void setX(int x) {
@@ -242,7 +239,6 @@ public class GridLayout extends AbstractLayout {
 
     /**
      * Sets the Y position and translates all grid children by the same delta.
-     * <p>设置 Y 位置并将所有网格子元素平移相同偏移量。</p>
      */
     @Override
     public void setY(int y) {
@@ -259,7 +255,6 @@ public class GridLayout extends AbstractLayout {
 
     /**
      * Creates a helper that fills cells sequentially left-to-right, top-to-bottom.
-     * <p>创建一个助手，按从左到右、从上到下的顺序填充单元格。</p>
      */
     public RowHelper createRowHelper(int columns) {
         return new RowHelper(columns);

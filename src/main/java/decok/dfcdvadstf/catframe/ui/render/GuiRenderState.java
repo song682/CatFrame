@@ -182,10 +182,10 @@ public class GuiRenderState {
         if (bounds == null) return false;
 
         if (lastElementBounds != null && lastElementBounds.encompasses(bounds)) {
-            // 新元素被上一元素完全包含 → 进入子层
+            // New element fully contained by the previous element → enter the child layer
             up();
         } else {
-            // 从 stratum 根节点搜索与新元素 bounds 相交的最高节点
+            // Search from the stratum root for the highest node intersecting the new element's bounds
             navigateToAboveHighestIntersecting(bounds);
         }
 
@@ -201,7 +201,7 @@ public class GuiRenderState {
      * renders above intersecting elements).
      */
     private void navigateToAboveHighestIntersecting(ScreenRectangle bounds) {
-        // 从 stratum 的最深层开始
+        // Start from the deepest node of the stratum
         Node node = strata.get(strata.size() - 1);
         while (node.up != null) {
             node = node.up;
@@ -443,7 +443,7 @@ public class GuiRenderState {
             this.x = x;
             this.y = y;
             this.poseMatrix = poseMatrix;
-            // 标准 GUI 物品占 16×16 像素
+            // A standard GUI item occupies 16×16 pixels
             this.bounds = new ScreenRectangle(x, y, 16, 16);
         }
 
@@ -451,7 +451,7 @@ public class GuiRenderState {
         public int getX() { return x; }
         public int getY() { return y; }
 
-        /** 收集时的 modelview 矩阵快照，可为 null。 */
+        /** Modelview matrix snapshot at collection time; may be null. */
         @Nullable
         public float[] getPoseMatrix() { return poseMatrix; }
 

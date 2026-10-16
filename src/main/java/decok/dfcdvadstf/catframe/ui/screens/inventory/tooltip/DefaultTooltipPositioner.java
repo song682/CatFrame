@@ -4,9 +4,10 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 /**
- * 默认工具提示定位器——在鼠标光标右下方向偏移，溢出时自动修正。
+ * Default tooltip positioner — offsets to the lower-right of the mouse cursor and
+ * auto-corrects on overflow.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner}。
+ * Mirrors 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner}.
  */
 @SideOnly(Side.CLIENT)
 public class DefaultTooltipPositioner implements ClientTooltipPositioner {
@@ -21,12 +22,12 @@ public class DefaultTooltipPositioner implements ClientTooltipPositioner {
         int x = mouseX + TooltipRenderUtil.MOUSE_OFFSET;
         int y = mouseY - TooltipRenderUtil.MOUSE_OFFSET;
 
-        // 水平溢出：翻转到左侧
+        // Horizontal overflow: flip to the left
         if (x + tooltipWidth > screenWidth) {
             x = Math.max(x - TooltipRenderUtil.MOUSE_OFFSET * 2 - tooltipWidth, 4);
         }
 
-        // 垂直溢出：上移
+        // Vertical overflow: shift up
         int paddedHeight = tooltipHeight + 3;
         if (y + paddedHeight > screenHeight) {
             y = screenHeight - paddedHeight;

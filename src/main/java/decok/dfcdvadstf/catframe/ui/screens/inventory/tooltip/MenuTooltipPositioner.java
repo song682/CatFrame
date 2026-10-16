@@ -5,9 +5,9 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 
 /**
- * 菜单内工具提示定位器——在菜单/容器矩形范围内智能定位。
+ * Menu tooltip positioner — intelligently positions within menu/container rectangle bounds.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.MenuTooltipPositioner}。
+ * Mirrors 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.MenuTooltipPositioner}.
  */
 @SideOnly(Side.CLIENT)
 public class MenuTooltipPositioner implements ClientTooltipPositioner {
@@ -27,7 +27,7 @@ public class MenuTooltipPositioner implements ClientTooltipPositioner {
     }
 
     /**
-     * 从 {@link ScreenRectangle} 创建定位器。
+     * Creates a positioner from a {@link ScreenRectangle}.
      */
     public MenuTooltipPositioner(ScreenRectangle rect) {
         this(rect.x, rect.y, rect.width, rect.height);
@@ -38,12 +38,12 @@ public class MenuTooltipPositioner implements ClientTooltipPositioner {
         int x = mouseX + MOUSE_OFFSET_X;
         int y = mouseY;
 
-        // 水平溢出：靠左显示
+        // Horizontal overflow: align to the left
         if (x + tooltipWidth > screenWidth - MARGIN) {
             x = Math.max(mouseX - MOUSE_OFFSET_X - tooltipWidth, 9);
         }
 
-        // 垂直定位：优先在 widget 下方，否则上方
+        // Vertical positioning: prefer below the widget, otherwise above
         y += MAX_OVERLAP_WITH_WIDGET;
         int paddedHeight = tooltipHeight + MAX_OVERLAP_WITH_WIDGET + MAX_OVERLAP_WITH_WIDGET;
         int lowestPossibleY = widgetY + widgetHeight + MAX_OVERLAP_WITH_WIDGET + getOffset(0, 0, widgetHeight);
@@ -59,8 +59,8 @@ public class MenuTooltipPositioner implements ClientTooltipPositioner {
     }
 
     /**
-     * 计算基于鼠标在 widget 内位置的垂直偏移量。
-     * <p>对标 26.1.2 {@code Mth.lerp((float)distance / widgetHeight, widgetHeight - 3, 5.0F)}。</p>
+     * Computes the vertical offset based on the mouse position within the widget.
+     * <p>Mirrors 26.1.2 {@code Mth.lerp((float)distance / widgetHeight, widgetHeight - 3, 5.0F)}.</p>
      */
     private static int getOffset(int mouseY, int widgetEdgeY, int widgetHeight) {
         int distance = Math.min(Math.abs(mouseY - widgetEdgeY), widgetHeight);

@@ -170,10 +170,9 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     /**
      * Draw the foreground layer (labels, overlays). Called by vanilla.
-     * <p>绘制前景层（标签、覆盖物）。由原版调用。</p>
      *
-     * @param mouseX 鼠标 X
-     * @param mouseY 鼠标 Y
+     * @param mouseX mouse X
+     * @param mouseY mouse Y
      */
     @Override
     protected void drawGuiContainerForegroundLayer(final int mouseX, final int mouseY) {

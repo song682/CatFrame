@@ -79,14 +79,12 @@ public interface LayoutSettings {
 
     /**
      * Returns the underlying implementation for direct field access.
-     * <p>返回底层实现以直接访问字段。</p>
      */
     LayoutSettingsImpl getExposed();
 
     /**
      * Creates a new {@code LayoutSettings} with default values
      * (zero padding, left/top alignment).
-     * <p>使用默认值（零内边距，左/上对齐）创建新实例。</p>
      */
     static LayoutSettings defaults() {
         return new LayoutSettingsImpl();
@@ -96,7 +94,6 @@ public interface LayoutSettings {
 
     /**
      * Default implementation that stores padding and alignment values directly.
-     * <p>直接存储内边距和对齐值的默认实现。</p>
      */
     class LayoutSettingsImpl implements LayoutSettings {
         public int paddingLeft;

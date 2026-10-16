@@ -11,15 +11,11 @@ import org.lwjgl.opengl.GL11;
 
 /**
  * <p>
- * 等待界面组件 —— 在屏幕中央显示一个小面板，带有加载动画和文本。<br>
- * 阻塞所有鼠标和键盘输入。
- * </p>
- * <p>
  * Waiting panel component — displays a small panel in the screen centre with a loading
  * animation and text message. Blocks all mouse and keyboard input.
  * </p>
  *
- * <h3>用法 / Usage</h3>
+ * <h3>Usage</h3>
  * <pre>{@code
  * WaitingPanel waiting = new WaitingPanel(Text.literal("Loading..."));
  * // In drawScreen:
@@ -29,24 +25,23 @@ import org.lwjgl.opengl.GL11;
  */
 public class WaitingPanel extends AbstractComponent {
 
-    /** Panel dimensions / 面板尺寸 */
+    /** Panel dimensions */
     private static final int PANEL_WIDTH = 140;
     private static final int PANEL_HEIGHT = 50;
 
-    /** Colours / 颜色 */
+    /** Colours */
     private static final int OVERLAY_COLOR = 0x80000000;   // semi-transparent black overlay
     private static final int PANEL_BG_COLOR = 0xCC000000;   // panel background
     private static final int PANEL_BORDER_COLOR = 0xFF555555;
     private static final int TEXT_COLOR = 0xFF888888;       // gray text
 
-    /** The message displayed / 显示的消息 */
+    /** The message displayed */
     private Text message;
 
     /**
      * Create a waiting panel with the given message.
-     * <p>创建带有指定消息的等待面板。</p>
      *
-     * @param message the message to display / 要显示的消息
+     * @param message the message to display
      */
     public WaitingPanel(Text message) {
         this.message = message;
@@ -71,8 +66,6 @@ public class WaitingPanel extends AbstractComponent {
     // ──── Rendering ────
 
     /**
-     * 绘制全屏遮罩与居中面板 —— 可见性检查已由 {@link #extractRenderState}
-     * 在调用前处理。<br>
      * Draws the full-screen overlay and centred panel — the visibility check is
      * already handled by {@link #extractRenderState}.
      */
@@ -123,7 +116,6 @@ public class WaitingPanel extends AbstractComponent {
 
     /**
      * Always blocks mouse clicks.
-     * <p>始终拦截鼠标点击。</p>
      */
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
@@ -132,7 +124,6 @@ public class WaitingPanel extends AbstractComponent {
 
     /**
      * Always blocks key input.
-     * <p>始终拦截键盘输入。</p>
      */
     @Override
     public void keyTyped(char typedChar, int keyCode) {
@@ -141,7 +132,6 @@ public class WaitingPanel extends AbstractComponent {
 
     /**
      * Always blocks scroll.
-     * <p>始终拦截滚轮。</p>
      */
     @Override
     public void mouseScrolled(int delta) {
@@ -150,7 +140,6 @@ public class WaitingPanel extends AbstractComponent {
 
     /**
      * Always returns true — covers the full screen.
-     * <p>始终返回 true —— 覆盖整个屏幕。</p>
      */
     @Override
     public boolean isMouseOver(int mouseX, int mouseY) {

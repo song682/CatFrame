@@ -7,18 +7,18 @@ import javax.vecmath.Vector3d;
 import java.util.List;
 
 /**
- * GUI 模型边界工具 — 测量一个 {@link BlockStateModelPart} 的几何是否超出 16x16 槽位。
+ * GUI model bounds utility — measures whether a {@link BlockStateModelPart}'s geometry overflows the 16x16 slot.
  * <p>
- * 槽位在块空间中对应 {@code [0,1]^3}（1.0 == 16px）。模型几何完全落在该盒内时视为
- * "不超大"；否则（考虑 {@code min<0} / {@code max>1} 的双向偏移）计算需要装入槽位的
- * 总跨度作为 {@code maxExtent}，供 {@link decok.dfcdvadstf.catframe.exception.WrongUIOverScaleException}
- * 的捕获方按 {@code 1/maxExtent} 钳制回槽位。
+ * The slot corresponds to {@code [0,1]^3} in block space (1.0 == 16px). Model geometry fully inside that box is
+ * treated as "not oversized"; otherwise (accounting for {@code min<0} / {@code max>1} offsets on both sides) the
+ * total span that must fit into the slot is computed as {@code maxExtent}, so the catcher of
+ * {@link decok.dfcdvadstf.catframe.exception.WrongUIOverScaleException} can clamp back into the slot with {@code 1/maxExtent}.
  */
 public final class GuiModelBounds {
 
     /**
-     * 溢出判定容差：{@code maxExtent > 1.0 + OVERSIZE_TOLERANCE} 才判为超大，
-     * 避免槽位边缘的浮点误差误报（阈值默认 1.05）。
+     * Overflow tolerance: only {@code maxExtent > 1.0 + OVERSIZE_TOLERANCE} counts as oversized,
+     * avoiding false positives from floating-point error at the slot edges (threshold defaults to 1.05).
      */
     public static final float OVERSIZE_TOLERANCE = 0.05f;
 
@@ -26,10 +26,11 @@ public final class GuiModelBounds {
     }
 
     /**
-     * 计算模型在块空间中相对槽位 {@code [0,1]} 的最大轴向跨度。
+     * Computes the model's maximum axis span relative to the slot {@code [0,1]} in block space.
      * <p>
-     * 每个轴取 {@code max(maxCoord, 1.0) - min(minCoord, 0.0)}（把 &lt;0 与 &gt;1 的溢出计入），
-     * 三轴取最大值。模型完全落在槽位内时返回 {@code 1.0}。空模型返回 {@code 1.0}。
+     * Each axis takes {@code max(maxCoord, 1.0) - min(minCoord, 0.0)} (counting the &lt;0 and &gt;1 overflows),
+     * and the largest of the three axes is returned. Returns {@code 1.0} when the model lies entirely inside the
+     * slot. Empty models return {@code 1.0}.
      */
     public static float computeMaxExtent(BlockStateModelPart part) {
         if (part == null) return 1.0f;
@@ -59,7 +60,7 @@ public final class GuiModelBounds {
     }
 
     /**
-     * 模型几何是否超出槽位（带容差）。
+     * Whether the model geometry overflows the slot (with tolerance).
      */
     public static boolean isOversized(BlockStateModelPart part) {
         return computeMaxExtent(part) > 1.0f + OVERSIZE_TOLERANCE;

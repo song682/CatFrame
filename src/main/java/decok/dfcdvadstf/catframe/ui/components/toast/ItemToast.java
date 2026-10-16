@@ -6,10 +6,6 @@ import org.lwjgl.opengl.GL11;
 
 /**
  * <p>
- * 物品 Toast<br>
- * 展示带有物品图标的 Toast 通知。
- * </p>
- * <p>
  * Item Toast — displays Toast notifications with item icons.
  * </p>
  */

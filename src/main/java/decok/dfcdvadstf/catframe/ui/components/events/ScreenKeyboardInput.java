@@ -8,20 +8,6 @@ import javax.annotation.Nullable;
 
 /**
  * <p>
- * 屏幕键盘输入分发器 —— 读取 LWJGL2 的<strong>当前</strong>键盘事件
- * （{@code getEventKey}/{@code getEventKeyState}/{@code getEventCharacter}），
- * 拆分为 {@code keyPressed}/{@code keyReleased}/{@code charTyped} 并派发到根组件，
- * 同时处理 Tab/Shift+Tab 焦点导航。<br>
- * 必须在 {@code GuiScreen.handleKeyboardInput()} 的 {@code while(Keyboard.next())} 循环
- * 上下文中调用（此时 LWJGL 的 {@code current_event} 有效）；本类<strong>不</strong>调用
- * {@code Keyboard.next()}，因此不会「偷走」原版事件。<br>
- * 本类也<strong>不</strong>调用 {@code keyTyped}：原版 {@code handleKeyboardInput()}
- * 自身的 {@code this.keyTyped(char, int)} 调用（对 CatFrame 内建 {@code Screen}
- * 基类即 {@code Screen.keyTyped} → {@code dispatchKeyTyped}）已是只实现
- * {@code keyTyped} 的叶子组件（文本框、按钮等）的唯一输入通道，此处再派发
- * 会造成每个按键到达组件两次（双重输入回归，见 UI-Completity.md C2 第三轮）。
- * </p>
- * <p>
  * Screen keyboard input dispatcher — reads LWJGL2's <strong>current</strong> keyboard
  * event and splits it into {@code keyPressed}/{@code keyReleased}/{@code charTyped},
  * dispatching to the root component and handling Tab/Shift+Tab focus navigation. It must
@@ -42,9 +28,8 @@ public final class ScreenKeyboardInput {
 
     /**
      * Read the current LWJGL keyboard event and dispatch split events to {@code root}.
-     * <p>读取当前 LWJGL 键盘事件并向 {@code root} 派发拆分事件。</p>
      *
-     * @param root the CatFrame root component/container / CatFrame 根组件/容器
+     * @param root the CatFrame root component/container
      */
     public static void handleCurrentEvent(@Nullable GuiEventListener root) {
         if (root == null) {
@@ -85,10 +70,8 @@ public final class ScreenKeyboardInput {
     /**
      * Optional arrow-key navigation entry point for hosts that want directional focus
      * movement. Not triggered automatically (arrow keys are needed by text fields/gameplay).
-     * <p>可选的方向键导航入口，供需要方向性焦点移动的宿主调用。不会自动触发
-     * （方向键通常被文本框/游戏本身使用）。</p>
      *
-     * @return true if focus moved / 若焦点发生移动则返回 true
+     * @return true if focus moved
      */
     public static boolean navigate(@Nullable GuiEventListener root, ScreenDirection direction) {
         if (!(root instanceof ContainerEventHandler)) {
@@ -105,7 +88,6 @@ public final class ScreenKeyboardInput {
     /**
      * @return true if the character is a printable/text character worth delivering to
      *         {@code charTyped} (excludes NUL and control/DEL)
-     *         / 若字符是应交给 {@code charTyped} 的可显示字符则返回 true（排除 NUL 与控制/DEL）
      */
     private static boolean isTextCharacter(char c) {
         return c != 0 && c >= 0x20 && c != 0x7F;

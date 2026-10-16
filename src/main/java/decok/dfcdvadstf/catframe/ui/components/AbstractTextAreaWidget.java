@@ -10,11 +10,6 @@ import org.lwjgl.opengl.GL11;
 
 /**
  * <p>
- * 文本区域基类 —— 提供内边距、背景/装饰开关与滚动裁剪的文本编辑区域骨架，
- * 子类实现 {@link #extractContents} 与 {@link #getInnerHeight} 完成具体文本绘制。<br>
- * 对标高版本 Minecraft 的 {@code AbstractTextAreaWidget}。
- * </p>
- * <p>
  * Text area base — provides inner padding, background/decorations toggles and a
  * scissored, scrollable drawing skeleton; subclasses implement
  * {@link #extractContents} and {@link #getInnerHeight} for the actual text
@@ -24,21 +19,21 @@ import org.lwjgl.opengl.GL11;
  */
 public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
 
-    /** CatFrame custom text field textures / CatFrame 自定义文本框纹理 */
+    /** CatFrame custom text field textures */
     protected static final ResourceLocation TEXT_FIELD_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/widgets/text_field.png");
+            "textures/gui/sprites/widgets/text_field.png");
     protected static final ResourceLocation TEXT_FIELD_HIGHLIGHTED_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/widgets/text_field_highlighted.png");
+            "textures/gui/sprites/widgets/text_field_highlighted.png");
 
-    /** Text field default size from mcmeta / 文本框默认尺寸 */
+    /** Text field default size from mcmeta */
     protected static final int TEXT_FIELD_DEFAULT_W = 200;
     protected static final int TEXT_FIELD_DEFAULT_H = 20;
     protected static final int TEXT_FIELD_BORDER = 1;
 
-    /** Inner padding between content and border / 内容与边框之间的内边距 */
+    /** Inner padding between content and border */
     private static final int INNER_PADDING = 4;
 
-    /** Default total padding (both sides combined) / 默认总内边距（两侧合计） */
+    /** Default total padding (both sides combined) */
     public static final int DEFAULT_TOTAL_PADDING = 8;
 
     private boolean showBackground = true;
@@ -61,7 +56,6 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         // Scrollbar dragging takes priority, then the default focus behaviour.
-        // 滚动条拖拽优先，随后是默认的焦点行为。
         updateScrolling(mouseX, mouseY, mouseButton);
         super.mouseClicked(mouseX, mouseY, mouseButton);
     }
@@ -70,7 +64,6 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     public void keyTyped(char typedChar, int keyCode) {
         // Up/Down scroll the content while focused; consume the key when the scroll
         // moved.
-        // 聚焦时上下键滚动内容；滚动量发生变化时消费该按键。
         if (focused && (keyCode == Keyboard.KEY_UP || keyCode == Keyboard.KEY_DOWN)) {
             double previousScrollAmount = scrollAmount();
             setScrollAmount(scrollAmount() + (keyCode == Keyboard.KEY_UP ? -1 : 1) * scrollRate());
@@ -96,9 +89,6 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
         // scroll offset while drawing — contents are drawn in unscrolled coordinates.
         // Scissor coordinates are in framebuffer pixels, so the GUI-scale-space
         // geometry is multiplied by the GUI scale factor.
-        // 用 scissor 将内容裁剪到内区（边框内缩 1px），绘制期间按滚动量平移，
-        // 子类在未滚动坐标系中直接绘制即可。
-        // scissor 坐标是帧缓冲像素，GUI 缩放坐标系的几何需乘以 GUI 缩放系数。
         Minecraft mc = Minecraft.getMinecraft();
         int scaleFactor = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaleFactor();
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
@@ -113,7 +103,6 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
 
         // Scrollbar appears only when the content actually overflows.
-        // 仅当内容溢出时才显示滚动条。
         if (scrollable()) {
             renderScrollbar(mouseX, mouseY);
         }
@@ -126,9 +115,6 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     /**
      * Hook for drawing decorations on top of the contents (e.g. character limit
      * counters). Called after the scrollbar.
-     * <p>
-     * 内容之上的装饰绘制钩子（如字数统计）。在滚动条之后调用。
-     * </p>
      */
     protected void extractDecorations(GuiGraphicsExtractor graphics) {
     }
@@ -140,22 +126,13 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
      * input: character filtering, length limits and the content refresh all
      * apply. Intended for bulk input such as IME commits.
      * <p>
-     * 在光标处整体插入文本，与手动输入的路径保持一致：字符过滤、长度限制
-     * 与内容刷新全部生效。供 IME 提交等批量输入使用。
-     * </p>
-     * <p>
      * The default feeds characters through {@link #keyTyped(char, int)} so
      * unoverridden subclasses still validate and refresh; editable subclasses
      * with a single-pass insert (e.g. a bulk-insert backing model) should
      * override for one refresh per commit.
      * </p>
-     * <p>
-     * 默认实现将字符逐个送入 {@link #keyTyped(char, int)}，未覆盖的子类
-     * 依然获得校验与刷新；具备一体化插入能力的可编辑子类（如背后有批量
-     * 插入模型）应覆盖以实现每次提交只刷新一次。
-     * </p>
      *
-     * @param text committed text (may be null / 提交文本，可为 null)
+     * @param text committed text (may be null)
      */
     public void insertText(String text) {
         if (text == null) {
@@ -171,9 +148,6 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     /**
      * Inner padding between content and border (single side). Public so
      * external positioning (e.g. the IME candidate-window anchor) can reuse it.
-     * <p>
-     * 内容与边框之间的内边距（单侧）。公开以供外部定位（如 IME 候选窗锚点）复用。
-     * </p>
      */
     public int innerPadding() {
         return INNER_PADDING;
@@ -209,9 +183,6 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
 
     /**
      * Draw the text field border+background, highlighted when active and focused.
-     * <p>
-     * 绘制文本框边框+背景；激活且聚焦时高亮。
-     * </p>
      */
     protected void extractBorder(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
         ResourceLocation tex = (isActive() && isFocused()) ? TEXT_FIELD_HIGHLIGHTED_TEXTURE : TEXT_FIELD_TEXTURE;
@@ -222,9 +193,6 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     /**
      * Whether the given top/bottom line bounds intersect the visible content area,
      * taking the current scroll offset into account.
-     * <p>
-     * 给定的上下行边界是否与可见内容区相交（计入当前滚动量）。
-     * </p>
      */
     protected boolean withinContentAreaTopBottom(int top, int bottom) {
         return bottom - this.scrollAmount() >= this.getY() && top - this.scrollAmount() <= this.getY() + this.height;
@@ -233,7 +201,7 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     // ──── Abstract ────
 
     /**
-     * @return the total height of all content lines / 全部内容行的总高度
+     * @return the total height of all content lines
      */
     protected abstract int getInnerHeight();
 
@@ -241,10 +209,6 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
      * Draw the scrollable contents at
      * {@link #getInnerLeft()}/{@link #getInnerTop()}.
      * Called with the GL matrix already translated by {@code -scrollAmount()}.
-     * <p>
-     * 在 {@link #getInnerLeft()}/{@link #getInnerTop()} 处绘制可滚动内容。
-     * 调用时 GL 矩阵已按 {@code -scrollAmount()} 平移。
-     * </p>
      */
     protected abstract void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks);
 

@@ -11,19 +11,15 @@ import java.util.*;
 
 /**
  * <p>
- * 选择列表抽象基类 —— 带条目选择的可滚动列表。<br>
- * 对标高版本 Minecraft 的 {@code AbstractSelectionList}。
- * </p>
- * <p>
  * Abstract selection list — a scrollable list with entry selection support.<br>
  * Counterpart of the high-version Minecraft {@code AbstractSelectionList}.
  * </p>
  *
- * @param <E> the entry type / 条目类型
+ * @param <E> the entry type
  */
 public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entry<E>> extends AbstractContainerWidget {
 
-    /** Content padding inside each entry / 每个条目的内边距 */
+    /** Content padding inside each entry */
     public static final int CONTENT_PADDING = 2;
 
     protected final Minecraft minecraft;
@@ -247,8 +243,6 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
     // ──── Rendering ────
 
     /**
-     * 新渲染入口 —— 由 {@link #extractRenderState} 统一驱动，可见性检查已在
-     * 调用前处理；刷新悬停条目后依次绘制背景、裁剪区内条目、分隔线与滚动条。<br>
      * New render entry — driven uniformly by {@link #extractRenderState}; the
      * visibility check has already run. Refreshes the hovered entry, then draws
      * the background, the clipped list items, separators and the scrollbar.
@@ -269,9 +263,6 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * Render the list background. Default is a dark fill.
-     * <p>
-     * 渲染列表背景。默认为深色填充。
-     * </p>
      */
     protected void renderBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         GuiDrawing.drawRect(getX(), getY(), getRight(), getBottom(), 0xFF000000);
@@ -279,9 +270,6 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * Render visible list entries within the scissor clip.
-     * <p>
-     * 在裁剪区域内渲染可见的列表条目。
-     * </p>
      */
     protected void renderListItems(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         for (E child : children) {
@@ -293,9 +281,6 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * Render a single entry, including selection highlight.
-     * <p>
-     * 渲染单个条目，包括选中高亮。
-     * </p>
      */
     protected void renderItem(GuiGraphicsExtractor graphics, E entry, int mouseX, int mouseY, float partialTicks) {
         if (entriesCanBeSelected() && selected == entry) {
@@ -308,9 +293,6 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * Render selection highlight around an entry.
-     * <p>
-     * 渲染条目周围的选中高亮边框。
-     * </p>
      */
     protected void renderSelection(E entry, int outlineColor) {
         int x0 = entry.getX();
@@ -325,9 +307,6 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * Render header/footer separators. Default is no-op.
-     * <p>
-     * 渲染头部/底部分隔线。默认为空操作。
-     * </p>
      */
     protected void renderSeparators() {
         // no-op by default; subclasses can override
@@ -353,11 +332,10 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
     /**
      * <p>
-     * 列表条目基类 —— 表示选择列表中的一个可渲染条目。<br>
      * Base class for list entries — a renderable item in a selection list.
      * </p>
      *
-     * @param <E> the entry type / 条目类型
+     * @param <E> the entry type
      */
     public abstract static class Entry<E extends Entry<E>> implements GuiEventListener {
 
@@ -493,14 +471,11 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
 
         /**
          * Render this entry's content. Subclasses must implement this.
-         * <p>
-         * 渲染此条目的内容。子类必须实现。
-         * </p>
          *
-         * @param mouseX       mouse X / 鼠标 X
-         * @param mouseY       mouse Y / 鼠标 Y
-         * @param hovered      whether this entry is hovered / 是否被悬停
-         * @param partialTicks partial ticks / 部分 tick
+         * @param mouseX       mouse X
+         * @param mouseY       mouse Y
+         * @param hovered      whether this entry is hovered
+         * @param partialTicks partial ticks
          */
         public abstract void renderContent(int mouseX, int mouseY, boolean hovered, float partialTicks);
     }

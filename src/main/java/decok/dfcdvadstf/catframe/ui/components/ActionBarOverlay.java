@@ -15,24 +15,12 @@ import java.awt.*;
 
 /**
  * <p>
- * ActionBar 覆盖层 —— 复刻 Minecraft 的物品栏上方浮动文字（{@code /title actionbar}）。<br>
- * 单例状态：一条当前消息 + 60 ticks 倒计时，最后 20 ticks 内线性淡出。
- * </p>
- * <p>
  * ActionBar overlay — a faithful re-implementation of Minecraft's floating text above
  * the hotbar (the {@code /title actionbar} message). Holds a single active message with
  * a 60-tick countdown that fades out over the final 20 ticks.
  * </p>
  *
- * <h3>渲染方式 / How it renders</h3>
- * <p>
- * 本类作为 HUD 上下文（{@link OverlayContext#HUD}）的 {@link Overlay} 注册进
- * {@link OverlayManager}。由 {@code ClientOverlayHandler}（纯 Forge）每 tick 调用
- * {@link OverlayManager#updateAll()} 推进倒计时，并在 {@code RenderGameOverlayEvent.Post}
- * 中调用 {@link OverlayManager#renderHud(float)} 完成绘制。位置由管理器按
- * {@link ScreenAnchor#BOTTOM_CENTER} 解析后写入 {@link #getX()}/{@link #getY()}，
- * 因此 {@link #renderWidget(GuiGraphicsExtractor, int, int, float)} 直接在该坐标绘制。
- * </p>
+ * <h3>How it renders</h3>
  * <p>
  * Registered with {@link OverlayManager} as a {@link OverlayContext#HUD} overlay. The pure-Forge
  * {@code ClientOverlayHandler} advances the countdown via {@link OverlayManager#updateAll()} each
@@ -41,41 +29,41 @@ import java.awt.*;
  * {@link #getY()}, so {@link #renderWidget(GuiGraphicsExtractor, int, int, float)} simply draws at those coordinates.
  * </p>
  *
- * <h3>对照高版本 / Mapping to modern Minecraft</h3>
+ * <h3>Mapping to modern Minecraft</h3>
  * <ul>
  *   <li>{@code Gui.setOverlayMessage()} → {@link #setMessage(Text, boolean)}</li>
  *   <li>{@code overlayMessageTime = 60} → {@link #DISPLAY_TICKS}</li>
- *   <li>淡出 {@code alpha = t * 255 / 20} → {@link #FADE_TICKS}</li>
+ *   <li>fade-out {@code alpha = t * 255 / 20} → {@link #FADE_TICKS}</li>
  *   <li>{@code Gui.extractOverlayMessage()} → {@link #renderWidget(GuiGraphicsExtractor, int, int, float)}</li>
  * </ul>
  */
 public class ActionBarOverlay extends AbstractComponent implements Overlay {
 
-    /** Singleton instance / 单例实例 */
+    /** Singleton instance */
     public static final ActionBarOverlay INSTANCE = new ActionBarOverlay();
 
-    /** Total display duration in ticks (3s) / 总显示时长(ticks，3秒) */
+    /** Total display duration in ticks (3s) */
     public static final int DISPLAY_TICKS = 60;
 
-    /** Fade-out window in ticks (last 1s) / 淡出窗口(ticks，最后1秒) */
+    /** Fade-out window in ticks (last 1s) */
     public static final int FADE_TICKS = 20;
 
-    /** Distance from screen bottom to the text top / 文字顶部距屏幕底部的像素距离 */
+    /** Distance from screen bottom to the text top */
     public static final int BOTTOM_OFFSET = 68;
 
-    /** Minimum visible alpha; below this the frame is skipped (matches vanilla) / 最小可见透明度，低于此跳过绘制（对齐原版） */
+    /** Minimum visible alpha; below this the frame is skipped (matches vanilla) */
     private static final int MIN_ALPHA = 8;
 
-    /** Backdrop opacity as a fraction of text alpha / 背景不透明度（相对文字透明度的比例） */
+    /** Backdrop opacity as a fraction of text alpha */
     private static final float BACKDROP_ALPHA_RATIO = 0.25F;
 
-    /** Current message, or {@code null} when nothing is shown / 当前消息，无则为 {@code null} */
+    /** Current message, or {@code null} when nothing is shown */
     private Text message;
 
-    /** Remaining ticks until the message disappears / 距消息消失的剩余 ticks */
+    /** Remaining ticks until the message disappears */
     private int remainingTicks;
 
-    /** Whether to use the HSV rainbow animation (record-style) / 是否使用 HSV 彩虹动画（唱片风格） */
+    /** Whether to use the HSV rainbow animation (record-style) */
     private boolean animate;
 
     private ActionBarOverlay() {
@@ -86,11 +74,9 @@ public class ActionBarOverlay extends AbstractComponent implements Overlay {
     /**
      * Show a message with the given animation flag, resetting the countdown to
      * {@link #DISPLAY_TICKS}. Mirrors {@code Gui.setOverlayMessage()}.
-     * <p>显示一条消息并将倒计时重置为 {@link #DISPLAY_TICKS}。对标 {@code Gui.setOverlayMessage()}。</p>
      *
-     * @param message the text to display / 要显示的文本
+     * @param message the text to display
      * @param animate {@code true} for the HSV rainbow animation, {@code false} for plain white
-     *                / {@code true} 为 HSV 彩虹动画，{@code false} 为纯白
      */
     public void setMessage(Text message, boolean animate) {
         this.message = message;
@@ -106,7 +92,6 @@ public class ActionBarOverlay extends AbstractComponent implements Overlay {
 
     /**
      * Show a plain white message (equivalent to {@code /title actionbar}).
-     * <p>显示一条纯白消息（等价于 {@code /title actionbar}）。</p>
      */
     public void setMessage(Text message) {
         setMessage(message, false);
@@ -114,7 +99,6 @@ public class ActionBarOverlay extends AbstractComponent implements Overlay {
 
     /**
      * Immediately clear any active message.
-     * <p>立即清除当前消息。</p>
      */
     public void clear() {
         this.message = null;
@@ -123,7 +107,6 @@ public class ActionBarOverlay extends AbstractComponent implements Overlay {
 
     /**
      * Advance the countdown by one tick. Call once per client tick while unpaused.
-     * <p>将倒计时推进一个 tick。未暂停时每客户端 tick 调用一次。</p>
      */
     public void tick() {
         if (remainingTicks > 0) {
@@ -131,7 +114,7 @@ public class ActionBarOverlay extends AbstractComponent implements Overlay {
         }
     }
 
-    /** @return remaining ticks / 剩余 ticks */
+    /** @return remaining ticks */
     public int getRemainingTicks() {
         return remainingTicks;
     }
@@ -175,8 +158,6 @@ public class ActionBarOverlay extends AbstractComponent implements Overlay {
     /**
      * Render the action bar at the manager-assigned position ({@link #getX()}, {@link #getY()}).
      * Computes fade alpha from {@code partialTicks} and picks white or the HSV rainbow colour.
-     * <p>在管理器指定的位置（{@link #getX()}、{@link #getY()}）渲染。根据 {@code partialTicks}
-     * 计算淡出透明度，选择纯白或 HSV 彩虹色。</p>
      */
     @Override
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {

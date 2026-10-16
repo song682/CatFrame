@@ -7,12 +7,6 @@ package decok.dfcdvadstf.catframe.ui.layouts;
  * {@link LinearLayout.Axis#HORIZONTAL} and
  * {@link LinearLayout.Alignment#CENTER} (vertical centering by default).
  * </p>
- *
- * <p>
- * HorizontalLayout —— 从左到右排列子元素的水平线性布局。
- * 是对 {@link LinearLayout} 的便捷封装，默认预设
- * {@link LinearLayout.Axis#HORIZONTAL} + 垂直居中。
- * </p>
  */
 public class HorizontalLayout extends LinearLayout {
 

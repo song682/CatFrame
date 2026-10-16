@@ -13,10 +13,10 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * Widget 级工具提示管理器——为单个 Widget 提供延迟显示与焦点/悬停切换。
+ * Widget-level tooltip manager — provides delayed display and focus/hover switching for a single widget.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.client.gui.components.WidgetTooltipHolder}。
- * 使用 UI 包的 {@link ScreenRectangle} 描述 Widget 区域。
+ * Counterpart of 26.1.2 {@code net.minecraft.client.gui.components.WidgetTooltipHolder}.
+ * Uses the UI package's {@link ScreenRectangle} to describe the widget's area.
  */
 @SideOnly(Side.CLIENT)
 public class WidgetTooltipHolder {
@@ -28,21 +28,21 @@ public class WidgetTooltipHolder {
     private boolean wasDisplayed;
 
     /**
-     * 设置 tooltip 延迟时间（毫秒）。
+     * Sets the tooltip delay (milliseconds).
      */
     public void setDelay(long delayMs) {
         this.delayMs = delayMs;
     }
 
     /**
-     * 设置 tooltip 内容。
+     * Sets the tooltip contents.
      */
     public void set(@Nullable Tooltip tooltip) {
         this.tooltip = tooltip;
     }
 
     /**
-     * 获取当前 tooltip。
+     * Returns the current tooltip.
      */
     @Nullable
     public Tooltip get() {
@@ -50,13 +50,13 @@ public class WidgetTooltipHolder {
     }
 
     /**
-     * 在渲染阶段调用——根据悬停/焦点状态决定是否显示 tooltip。
+     * Called during the render pass — decides whether to show the tooltip based on hover/focus state.
      *
-     * @param mouseX     鼠标 X
-     * @param mouseY     鼠标 Y
-     * @param isHovered  是否悬停
-     * @param isFocused  是否获得焦点
-     * @param widgetRect Widget 的屏幕区域
+     * @param mouseX     mouse X
+     * @param mouseY     mouse Y
+     * @param isHovered  whether hovered
+     * @param isFocused  whether focused
+     * @param widgetRect the widget's screen area
      */
     public void refreshTooltipForNextRenderPass(
             int mouseX,
@@ -71,8 +71,9 @@ public class WidgetTooltipHolder {
         }
 
         Minecraft mc = Minecraft.getMinecraft();
-        // 26.1.2: isHovered || isFocused && lastInputType.isKeyboard()。1.7.10 无输入类型追踪，
-        // 但本 UI 的焦点仅由键盘 Tab 导航产生，故 isFocused 已隐含键盘驱动。
+        // 26.1.2: isHovered || isFocused && lastInputType.isKeyboard(). 1.7.10 has no input-type
+        // tracking, but focus in this UI only comes from keyboard Tab navigation, so isFocused
+        // already implies keyboard-driven.
         boolean shouldDisplay = isHovered || isFocused;
 
         if (shouldDisplay != wasDisplayed) {
@@ -83,7 +84,7 @@ public class WidgetTooltipHolder {
         }
 
         if (shouldDisplay && System.currentTimeMillis() - displayStartTime > delayMs) {
-            // 根据焦点/悬停选择定位器（对标 26.1.2 createTooltipPositioner）
+            // Pick the positioner based on focus/hover (counterpart of 26.1.2 createTooltipPositioner)
             ClientTooltipPositioner positioner;
             if (!isHovered && isFocused) {
                 positioner = new BelowOrAboveWidgetTooltipPositioner(widgetRect);

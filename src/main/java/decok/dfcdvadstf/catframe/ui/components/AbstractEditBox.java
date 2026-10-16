@@ -10,11 +10,6 @@ import net.minecraft.client.gui.GuiScreen;
 
 /**
  * <p>
- * 文本框组件 —— 基于 {@link AbstractTextAreaWidget}，对标高版本 Minecraft 的
- * {@code EditBox}。<br>
- * 支持纹理背景（useVanilla 切换原版黑白框）、原版风格光标（末尾_内部|）或强制竖线光标。
- * </p>
- * <p>
  * Edit box component — based on {@link AbstractTextAreaWidget}, counterpart of
  * the
  * high-version Minecraft {@code EditBox}. Supports textured background
@@ -36,18 +31,12 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
 
     /**
      * If true, use CatFrame texture-based background; if false, solid colour.
-     * <p>
-     * 为 true 时使用 CatFrame 纹理背景；false 时纯色。
-     * </p>
      */
     protected boolean useTextureBackground = true;
 
     /**
      * If true, use vanilla grey/black box instead of CatFrame texture or solid
      * colour.
-     * <p>
-     * 为 true 时使用原版灰/黑框，替代 CatFrame 纹理或纯色。
-     * </p>
      */
     protected boolean useVanillaTexture = false;
 
@@ -55,15 +44,11 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
      * If true, always draw vertical bar cursor (|). If false, match vanilla
      * behaviour:
      * underscore (_) at end of text, vertical bar (|) when editing inside text.
-     * <p>
-     * 为 true 时始终绘制竖线光标(|)。为 false 时匹配原版行为：末尾_，文字内部|。
-     * </p>
      */
     protected boolean forceVerticalCursor = false;
 
     public AbstractEditBox(int x, int y, int width, int height) {
         // Scroll rate 4 mirrors vanilla MultiLineEditBox's (int)(9.0 / 2.0).
-        // 滚动量 4 对齐原版 MultiLineEditBox 的 (int)(9.0 / 2.0)。
         super(x, y, width, height, ScrollbarSettings.defaultSettings(4));
     }
 
@@ -76,9 +61,6 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
 
     /**
      * If true, use vanilla grey/black text field background.
-     * <p>
-     * 为 true 时使用原版灰/黑文本框背景。
-     * </p>
      */
     public AbstractEditBox setUseVanillaTexture(boolean useVanilla) {
         this.useVanillaTexture = useVanilla;
@@ -88,9 +70,6 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
     /**
      * If true, always draw vertical bar cursor instead of vanilla
      * underscore-at-end.
-     * <p>
-     * 为 true 时始终绘制竖线光标，而非原版的末尾下划线。
-     * </p>
      */
     public AbstractEditBox setForceVerticalCursor(boolean force) {
         this.forceVerticalCursor = force;
@@ -113,9 +92,6 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
     /**
      * Current caret position (character index), for external anchoring such as
      * the IME candidate-window anchor.
-     * <p>
-     * 当前光标位置（字符索引），供 IME 候选窗锚点等外部定位使用。
-     * </p>
      */
     public int getCursorPosition() {
         return cursorPosition;
@@ -174,7 +150,6 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
             return;
         }
         // Ctrl+V: paste (whole-insert path, shared with IME commits)
-        // Ctrl+V：粘贴（与 IME 提交共用的整体插入路径）
         if (keyCode == 47 && isCtrlKeyDown()) {
             insertText(getClipboardString());
             return;
@@ -241,12 +216,8 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
      * paste: per-character filtering and the maxLength limit apply, and the
      * content refresh fires exactly once. Bulk input such as IME commits
      * should use this entry.
-     * <p>
-     * 在光标处整体插入文本，与 Ctrl+V 粘贴路径一致：逐字符过滤与 maxLength
-     * 限制保持，内容刷新只触发一次。IME 提交等批量输入应走此入口。
-     * </p>
      *
-     * @param text text to insert (may be null / 待插入文本，可为 null)
+     * @param text text to insert (may be null)
      */
     @Override
     public void insertText(String text) {
@@ -298,9 +269,6 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
 
     /**
      * Called whenever the text content changes. Subclasses can override to react.
-     * <p>
-     * 当文本内容变化时调用。子类可重写以响应变化。
-     * </p>
      */
     protected void onTextChanged() {
     }
@@ -377,16 +345,12 @@ public abstract class AbstractEditBox extends AbstractTextAreaWidget {
     protected int getInnerHeight() {
         // Single-line box: content height equals the visible height, so it never
         // scrolls.
-        // 单行文本框：内容高度等于可视高度，因此永不滚动。
         return height - totalInnerPadding();
     }
 
     /**
      * Draw vanilla-style border + black fill background. When focused the border
      * is highlighted white, matching vanilla {@code EditBox}.
-     * <p>
-     * 绘制原版风格边框 + 黑色填充背景。获得焦点时边框高亮为白色，与原版 {@code EditBox} 一致。
-     * </p>
      */
     private void drawVanillaBackground(boolean focused) {
         int borderColor = focused ? 0xFFFFFFFF : 0xFFA0A0A0;

@@ -11,10 +11,6 @@ import java.util.function.Consumer;
 
 /**
  * <p>
- * 可滚动布局包装器 —— 将一个现有 {@link Layout} 包装为可滚动容器。<br>
- * 对标高版本 Minecraft 的 {@code ScrollableLayout}。
- * </p>
- * <p>
  * Scrollable layout wrapper — wraps an existing {@link Layout} into a
  * scrollable
  * container. Counterpart of the high-version Minecraft
@@ -34,12 +30,9 @@ public class ScrollableLayout implements Layout {
 
     /**
      * Create a scrollable layout wrapping the given content with a maximum height.
-     * <p>
-     * 创建一个可滚动布局，包装给定的内容并限制最大高度。
-     * </p>
      *
-     * @param content   the content layout to make scrollable / 要使其可滚动的内容布局
-     * @param maxHeight maximum visible height / 最大可见高度
+     * @param content   the content layout to make scrollable
+     * @param maxHeight maximum visible height
      */
     public ScrollableLayout(Layout content, int maxHeight) {
         this.content = content;
@@ -168,9 +161,6 @@ public class ScrollableLayout implements Layout {
 
     /**
      * <p>
-     * 内部滚动容器 —— 继承 {@link AbstractContainerWidget}，实际执行裁剪渲染。
-     * </p>
-     * <p>
      * Inner scroll container — extends {@link AbstractContainerWidget}, performs
      * the actual clipped rendering.
      * </p>
@@ -204,9 +194,6 @@ public class ScrollableLayout implements Layout {
         }
 
         /**
-         * 新渲染入口 —— 由 {@link #extractRenderState} 统一驱动，可见性检查已在
-         * 调用前处理；重新收集子件后在裁剪区内逐个委托 Renderable 渲染，
-         * 最后绘制滚动条。<br>
          * New render entry — driven uniformly by {@link #extractRenderState};
          * the visibility check has already run. Re-collects children, delegates
          * each Renderable inside the scissor clip, then draws the scrollbar.

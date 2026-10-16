@@ -33,9 +33,6 @@ public class Button extends AbstractButton {
 
     /**
      * Creates a new Button builder.
-     * <p>
-     * 创建新的 Button 构建器。
-     * </p>
      */
     public static Builder builder(Text message, OnPress onPress) {
         return new Builder(message, onPress);
@@ -49,8 +46,6 @@ public class Button extends AbstractButton {
     }
 
     /**
-     * 绘制按钮背景与居中文本 —— 可见性与悬停状态已由
-     * {@link #extractRenderState} 在调用前处理。<br>
      * Draws the button background and centred text — visibility and hover
      * state are already handled by {@link #extractRenderState}.
      */
@@ -87,9 +82,6 @@ public class Button extends AbstractButton {
 
     /**
      * Builder for constructing a {@link Button}.
-     * <p>
-     * 用于构建 {@link Button} 的构建器。
-     * </p>
      */
     public static class Builder {
         private final Text message;

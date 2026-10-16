@@ -4,11 +4,6 @@ import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
- * 部件状态精灵集合 —— 对标高版本 Minecraft 的 {@code WidgetSprites}。<br>
- * 持有启用 / 禁用 / 高亮 / 高亮禁用四张纹理，按组件的
- * {@code active} 与 {@code hoveredOrFocused} 状态选择对应纹理。
- * </p>
- * <p>
  * Widget state sprites — counterpart of the high-version Minecraft
  * {@code WidgetSprites}. Holds enabled / disabled / highlighted /
  * highlighted-disabled textures and picks one by the widget's
@@ -23,7 +18,6 @@ public class WidgetSprites {
     private final ResourceLocation highlightedDisabled;
 
     /**
-     * 所有状态共用同一纹理。
      * <p>
      * All states share a single texture.
      * </p>
@@ -33,7 +27,6 @@ public class WidgetSprites {
     }
 
     /**
-     * 三态纹理：高亮禁用时回退到高亮纹理。
      * <p>
      * Three-state textures: highlighted-disabled falls back to highlighted.
      * </p>
@@ -43,7 +36,6 @@ public class WidgetSprites {
     }
 
     /**
-     * 完整四态纹理。
      * <p>
      * Full four-state textures.
      * </p>
@@ -57,9 +49,9 @@ public class WidgetSprites {
     }
 
     /**
-     * 按组件状态选择纹理 —— 对标高版本 {@code WidgetSprites#get(boolean, boolean)}。
      * <p>
-     * Selects the texture by widget state.
+     * Selects the texture by widget state — counterpart of the modern Minecraft
+     * {@code WidgetSprites#get(boolean, boolean)}.
      * </p>
      */
     public ResourceLocation get(boolean active, boolean hoveredOrFocused) {

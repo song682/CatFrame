@@ -6,55 +6,45 @@ import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
- * 高版本风格的 Toast 接口<br>
- * 继承 {@link GuiEventListener} 与 {@link Renderable}，融入统一的组件体系。
- * </p>
- * <p>
  * High-version style Toast interface.<br>
  * Extends {@link GuiEventListener} and {@link Renderable}, integrated into the unified component system.
  * </p>
  *
  * <p>
- * <strong>BREAKING CHANGE 注意:</strong>
- * 旧的 {@code render(int, int, float)} 渲染契约已移除，渲染入口统一为
- * {@link Renderable#extractRenderState}（由 {@code ToastManager} 逐帧驱动）；
- * 继承 {@code AbstractComponent} 的实现（如 {@code BaseToast}）应覆写
- * {@code renderWidget} 完成具体绘制。
- * {@code FontRenderer} 需要通过 {@code Minecraft.getMinecraft().fontRenderer} 获取。
+ * <strong>BREAKING CHANGE note:</strong>
+ * The old {@code render(int, int, float)} rendering contract has been
+ * removed; the rendering entry point is unified as
+ * {@link Renderable#extractRenderState} (driven frame by frame by
+ * {@code ToastManager}); implementations extending {@code AbstractComponent}
+ * (such as {@code BaseToast}) should override {@code renderWidget} to perform
+ * the actual drawing.
+ * {@code FontRenderer} must be obtained through
+ * {@code Minecraft.getMinecraft().fontRenderer}.
  * </p>
  */
 public interface Toast extends GuiEventListener, Renderable {
 
-    /** Default Toast width / 默认 Toast 宽度 */
+    /** Default Toast width */
     int DEFAULT_WIDTH = 160;
 
-    /** Default slot height / 默认槽位高度 */
+    /** Default slot height */
     int SLOT_HEIGHT = 32;
 
     /**
      * Get the desired visibility state.
-     * <p>
-     * 获取期望的可见性状态。
-     * </p>
      */
     Visibility getWantedVisibility();
 
     /**
      * Update the Toast state.
-     * <p>
-     * 更新 Toast 状态。
-     * </p>
      *
-     * @param manager           Toast manager / Toast 管理器
-     * @param fullyVisibleForMs fully visible duration in ms / 完全可见的持续时间(毫秒)
+     * @param manager           Toast manager
+     * @param fullyVisibleForMs fully visible duration in ms
      */
     void update(ToastManager manager, long fullyVisibleForMs);
 
     /**
      * Get the unique token for deduplication.
-     * <p>
-     * 获取唯一标识符(用于去重)。
-     * </p>
      */
     default Object getToken() {
         return this;
@@ -66,14 +56,8 @@ public interface Toast extends GuiEventListener, Renderable {
      * Played through the {@code SoundHandler} directly, so it is safe in any render
      * context
      * (GUI, HUD, or the main menu) where {@code thePlayer} may be {@code null}.
-     * <p>
-     * Toast 滑入时播放的音效（可见性切换为 {@link Visibility#SHOW}）。
-     * 通过 {@code SoundHandler} 直接播放，不依赖 {@code thePlayer}，
-     * 因此在任意渲染上下文（GUI / HUD / 主菜单）中都安全。
-     * </p>
      *
-     * @return sound ResourceLocation, or {@code null} for silence /
-     *         音效资源位置，{@code null} 表示静音
+     * @return sound ResourceLocation, or {@code null} for silence
      */
     default ResourceLocation getShowSound() {
         return null;
@@ -82,12 +66,8 @@ public interface Toast extends GuiEventListener, Renderable {
     /**
      * Sound played when this Toast slides out (visibility changes to
      * {@link Visibility#HIDE}).
-     * <p>
-     * Toast 滑出时播放的音效（可见性切换为 {@link Visibility#HIDE}）。
-     * </p>
      *
-     * @return sound ResourceLocation, or {@code null} for silence /
-     *         音效资源位置，{@code null} 表示静音
+     * @return sound ResourceLocation, or {@code null} for silence
      */
     default ResourceLocation getHideSound() {
         return null;
@@ -95,12 +75,8 @@ public interface Toast extends GuiEventListener, Renderable {
 
     /**
      * The screen corner this Toast slides in from and stacks at.
-     * <p>
-     * 此 Toast 滑入并堆叠所在的屏幕角落。
-     * </p>
      *
      * @return the corner, never null; defaults to {@link ToastCorner#TOP_RIGHT}
-     *         / 角落，不为 null；默认 {@link ToastCorner#TOP_RIGHT}
      */
     default ToastCorner getCorner() {
         return ToastCorner.TOP_RIGHT;
@@ -108,9 +84,6 @@ public interface Toast extends GuiEventListener, Renderable {
 
     /**
      * Get the Toast width.
-     * <p>
-     * 获取 Toast 宽度。
-     * </p>
      */
     default int width() {
         return getWidth();
@@ -118,9 +91,6 @@ public interface Toast extends GuiEventListener, Renderable {
 
     /**
      * Get the Toast height.
-     * <p>
-     * 获取 Toast 高度。
-     * </p>
      */
     default int height() {
         return getHeight();
@@ -128,9 +98,6 @@ public interface Toast extends GuiEventListener, Renderable {
 
     /**
      * Get the number of occupied slot count.
-     * <p>
-     * 获取占用的槽位数量。
-     * </p>
      */
     default int occupiedSlotCount() {
         return (int) Math.ceil((double) height() / SLOT_HEIGHT);
@@ -140,13 +107,9 @@ public interface Toast extends GuiEventListener, Renderable {
      * Calculate the X position (with slide-in animation).
      * Right corners slide in from the right edge, left corners from the left edge,
      * as decided by {@link #getCorner()}.
-     * <p>
-     * 计算 X 坐标(考虑滑入动画)。右侧角落从右缘滑入，左侧角落从左缘滑入，
-     * 由 {@link #getCorner()} 决定。
-     * </p>
      *
-     * @param screenWidth    screen width / 屏幕宽度
-     * @param visiblePortion visible portion (0.0-1.0) / 可见比例(0.0-1.0)
+     * @param screenWidth    screen width
+     * @param visiblePortion visible portion (0.0-1.0)
      */
     default float xPos(int screenWidth, float visiblePortion) {
         return getCorner().isRight()
@@ -159,13 +122,9 @@ public interface Toast extends GuiEventListener, Renderable {
      * Top corners stack slots downward from the top edge, bottom corners upward
      * from
      * the bottom edge, as decided by {@link #getCorner()}.
-     * <p>
-     * 计算 Y 坐标。顶部角落的槽位从上缘向下堆叠，底部角落从下缘向上堆叠，
-     * 由 {@link #getCorner()} 决定。
-     * </p>
      *
-     * @param screenHeight   screen height / 屏幕高度
-     * @param firstSlotIndex starting slot index / 起始槽位索引
+     * @param screenHeight   screen height
+     * @param firstSlotIndex starting slot index
      */
     default float yPos(int screenHeight, int firstSlotIndex) {
         float slotOffset = firstSlotIndex * height();
@@ -176,14 +135,11 @@ public interface Toast extends GuiEventListener, Renderable {
 
     /**
      * Callback when rendering is finished.
-     * <p>
-     * 渲染完成时回调。
-     * </p>
      */
     default void onFinishedRendering() {
     }
 
-    /** Toast visibility enum / Toast 可见性枚举 */
+    /** Toast visibility enum */
     enum Visibility {
         SHOW,
         HIDE

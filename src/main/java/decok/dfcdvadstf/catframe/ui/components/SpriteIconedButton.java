@@ -11,13 +11,6 @@ import javax.annotation.Nullable;
 
 /**
  * <p>
- * 精灵图标按钮 —— 对标高版本 Minecraft 的 {@code SpriteIconButton}。<br>
- * 在 {@link Button} 按钮背景（三态）之上叠加一张状态精灵图标：
- * {@link CenteredIcon} 将图标居中于按钮，{@link TextAndIcon} 将文本置于
- * 按钮左侧并将图标置于右侧。图标纹理由 {@link WidgetSprites} 按
- * 启用 / 悬停状态选择。
- * </p>
- * <p>
  * Sprite icon button — counterpart of the high-version Minecraft
  * {@code SpriteIconButton}. Draws a state-aware sprite icon on top of the
  * {@link Button} background (three states): {@link CenteredIcon} centres the
@@ -28,21 +21,19 @@ import javax.annotation.Nullable;
  */
 public abstract class SpriteIconedButton extends Button {
 
-    /** 状态精灵集合 / state sprites */
+    /** State sprites */
     protected final WidgetSprites sprite;
-    /** 图标显示宽度 / icon display width */
+    /** Icon display width */
     protected final int spriteWidth;
-    /** 图标显示高度 / icon display height */
+    /** Icon display height */
     protected final int spriteHeight;
 
     /**
-     * 构造精灵图标按钮（供 {@link Builder} 与子类调用）。
      * <p>
      * Creates a sprite icon button (for the {@link Builder} and subclasses).
      * </p>
      *
-     * @param tooltip 可选的 tooltip 文本，为 null 时不显示 tooltip /
-     *                optional tooltip text, null disables the tooltip
+     * @param tooltip optional tooltip text, null disables the tooltip
      */
     protected SpriteIconedButton(int x, int y, int width, int height, Text message,
             int spriteWidth, int spriteHeight, WidgetSprites sprite, OnPress onPress,
@@ -61,15 +52,16 @@ public abstract class SpriteIconedButton extends Button {
     }
 
     /**
-     * 按当前组件状态绘制精灵图标。
      * <p>
      * Draws the sprite icon for the current widget state.
      * </p>
      * <p>
-     * 对标高版本 {@code SpriteIconButton#extractSprite}；本实现经
-     * {@link TextureStretching#drawStatic} 直接绘制整图纹理，故
-     * spriteWidth/spriteHeight 须为纹理原始尺寸的整数倍。graphics 参数
-     * 预留以对齐高版本 API 形状，当前绘制不依赖它。
+     * Mirrors the modern Minecraft {@code SpriteIconButton#extractSprite}; this
+     * implementation draws the whole texture via
+     * {@link TextureStretching#drawStatic}, so spriteWidth/spriteHeight must be
+     * integer multiples of the texture's original size. The graphics parameter
+     * is kept to align with the modern API shape; current drawing does not rely
+     * on it.
      * </p>
      */
     protected void extractSprite(GuiGraphicsExtractor graphics, int x, int y) {
@@ -79,10 +71,10 @@ public abstract class SpriteIconedButton extends Button {
     }
 
     /**
-     * 创建按钮构建器 —— 对标高版本 {@code SpriteIconButton#builder}。
+     * Creates the button builder — mirrors the modern Minecraft
+     * {@code SpriteIconButton#builder}.
      *
-     * @param iconOnly true 时构建仅图标的 {@link CenteredIcon}，false 时构建
-     *                 {@link TextAndIcon} / true builds {@link CenteredIcon},
+     * @param iconOnly true builds {@link CenteredIcon} (icon only),
      *                 false builds {@link TextAndIcon}
      */
     public static Builder builder(Text message, OnPress onPress, boolean iconOnly) {
@@ -93,9 +85,6 @@ public abstract class SpriteIconedButton extends Button {
 
     /**
      * Builder for constructing a {@link SpriteIconedButton}.
-     * <p>
-     * 用于构建 {@link SpriteIconedButton} 的构建器。
-     * </p>
      */
     public static class Builder {
         private final Text message;
@@ -136,7 +125,6 @@ public abstract class SpriteIconedButton extends Button {
         }
 
         /**
-         * 使用单一纹理精灵（所有状态共用）。
          * <p>
          * Uses a single-texture sprite shared by all states.
          * </p>
@@ -149,7 +137,6 @@ public abstract class SpriteIconedButton extends Button {
         }
 
         /**
-         * 使用状态精灵集合。
          * <p>
          * Uses a state-aware sprite collection.
          * </p>
@@ -162,9 +149,9 @@ public abstract class SpriteIconedButton extends Button {
         }
 
         /**
-         * 使用按钮文本作为 tooltip（对标高版本 {@code withTootip}，修正拼写）。
          * <p>
-         * Uses the button message as the tooltip.
+         * Uses the button message as the tooltip — mirrors the modern Minecraft
+         * {@code withTootip} with the spelling corrected.
          * </p>
          */
         public Builder withTooltip() {
@@ -173,7 +160,6 @@ public abstract class SpriteIconedButton extends Button {
         }
 
         /**
-         * 使用自定义文本作为 tooltip。
          * <p>
          * Uses a custom text as the tooltip.
          * </p>
@@ -184,7 +170,6 @@ public abstract class SpriteIconedButton extends Button {
         }
 
         /**
-         * 构建按钮；未设置 sprite 时抛出 {@link IllegalStateException}。
          * <p>
          * Builds the button; throws {@link IllegalStateException} when no
          * sprite was set.
@@ -202,13 +187,9 @@ public abstract class SpriteIconedButton extends Button {
         }
     }
 
-    // ──── 变体：居中图标 ────
+    // ──── Variant: centred icon ────
 
     /**
-     * <p>
-     * 图标居中于按钮的变体 —— 对标高版本 {@code SpriteIconButton.CenteredIcon}。<br>
-     * 渲染按钮背景后，将图标水平 / 垂直居中于按钮内部。
-     * </p>
      * <p>
      * Icon centred inside the button — counterpart of
      * {@code SpriteIconButton.CenteredIcon}. Renders the button background,
@@ -231,13 +212,9 @@ public abstract class SpriteIconedButton extends Button {
         }
     }
 
-    // ──── 变体：文本 + 图标 ────
+    // ──── Variant: text + icon ────
 
     /**
-     * <p>
-     * 文本居左、图标居右的变体 —— 对标高版本 {@code SpriteIconButton.TextAndIcon}。<br>
-     * 渲染按钮背景后，文本在可用区域（图标左侧）内水平居中，图标垂直居中于右侧。
-     * </p>
      * <p>
      * Text on the left, icon on the right — counterpart of
      * {@code SpriteIconButton.TextAndIcon}. Renders the button background,
@@ -256,9 +233,6 @@ public abstract class SpriteIconedButton extends Button {
         protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
             renderBackground(graphics, mouseX, mouseY, partialTicks);
 
-            // 文本布局：居中于按钮中心，可用区域为 [x+2, x+width-spriteWidth-4]。短文本时
-            // 中心即落在可用区域内（与高版本 acceptScrolling 的静态居中一致）；超宽文本
-            // 退化为按按钮中心对齐（高版本在此滚动显示，1.7.10 省略滚动）。
             // Text layout: centred on the button centre within [x+2,
             // x+width-spriteWidth-4].
             // For short text the centre falls inside the area (matching the high version's
@@ -282,7 +256,7 @@ public abstract class SpriteIconedButton extends Button {
             int textY = y + (height - font.FONT_HEIGHT) / 2;
             font.drawStringWithShadow(text, textX, textY, textColor);
 
-            // 图标垂直居中于按钮右侧
+            // Icon vertically centred on the right side of the button
             int ix = x + width - spriteWidth - 2;
             int iy = y + (height - spriteHeight) / 2;
             extractSprite(graphics, ix, iy);

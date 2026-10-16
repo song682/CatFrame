@@ -9,10 +9,6 @@ import javax.annotation.Nullable;
 
 /**
  * <p>
- * 容器控件 —— 组合滚动能力与焦点管理/事件分发。<br>
- * 对标高版本 Minecraft 的 {@code AbstractContainerWidget}。
- * </p>
- * <p>
  * Container widget — combines scrolling with focus management and event dispatch.<br>
  * Counterpart of the high-version Minecraft {@code AbstractContainerWidget}.
  * </p>

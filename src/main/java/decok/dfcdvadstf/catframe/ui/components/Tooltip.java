@@ -11,30 +11,30 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 工具提示数据持有类——为 Widget 层提供 tooltip 内容缓存与组件支持。
+ * Tooltip data holder — provides tooltip content caching and component support for the widget layer.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.client.gui.components.Tooltip}。
+ * Counterpart of the modern Minecraft {@code net.minecraft.client.gui.components.Tooltip}.
  */
 @SideOnly(Side.CLIENT)
 public class Tooltip {
 
     private static final int MAX_WIDTH = 170;
 
-    /** 原始 tooltip 文本（支持 § 格式化） */
+    /** Raw tooltip text (supports § formatting) */
     private final String message;
 
-    /** 可选的 tooltip 图像/结构组件 */
+    /** Optional tooltip image/structure component */
     private final Optional<TooltipComponent> component;
 
-    /** 可选的 tooltip 样式标识（对标 26.1.2 {@code Tooltip.style()}） */
+    /** Optional tooltip style identifier (counterpart of the modern Minecraft {@code Tooltip.style()}) */
     @Nullable
     private final ResourceLocation style;
 
-    /** 缓存：按当前语言拆分后的文字行 */
+    /** Cache: text lines split for the current language */
     @Nullable
     private List<String> cachedTooltip;
 
-    /** 缓存：上次拆分时的语言标识 */
+    /** Cache: language code used for the last split */
     @Nullable
     private String cachedLanguage;
 
@@ -44,7 +44,7 @@ public class Tooltip {
         this.style = style;
     }
 
-    // ========== 工厂方法 ==========
+    // ========== Factory methods ==========
 
     public static Tooltip create(String message) {
         return new Tooltip(message, Optional.empty(), null);
@@ -54,7 +54,7 @@ public class Tooltip {
         return new Tooltip(message, component, style);
     }
 
-    // ========== 访问器 ==========
+    // ========== Accessors ==========
 
     public Optional<TooltipComponent> getComponent() {
         return component;
@@ -65,10 +65,10 @@ public class Tooltip {
         return style;
     }
 
-    // ========== 工具提示文字 ==========
+    // ========== Tooltip text ==========
 
     /**
-     * 获取拆分后的 tooltip 行（带缓存）。
+     * Gets the split tooltip lines (cached).
      */
     public List<String> getLines(Minecraft mc) {
         String currentLang = mc.getLanguageManager().getCurrentLanguage().getLanguageCode();
@@ -80,7 +80,7 @@ public class Tooltip {
     }
 
     /**
-     * 拆分文本到多行（每行不超过 MAX_WIDTH 像素）。
+     * Splits text into multiple lines (each no wider than MAX_WIDTH pixels).
      */
     @SuppressWarnings("unchecked")
     public static List<String> splitTooltip(Minecraft mc, String message) {

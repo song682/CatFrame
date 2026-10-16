@@ -229,8 +229,6 @@ public class Text {
 
     /**
      * Returns the raw key (same as {@link #getKey()}).
-     * <p>
-     * 返回原始键（同 {@link #getKey()}）。
      */
     public String getRaw() {
         return key;
@@ -293,7 +291,7 @@ public class Text {
         return !siblings.isEmpty();
     }
 
-    // ──── Traversal / 遍历 ────
+    // ──── Traversal ────
 
     /**
      * Return value telling a traversal to stop early — counterpart of the
@@ -424,7 +422,6 @@ public class Text {
         } catch (IllegalArgumentException e) {
             // Degrade to the flat legacy string — e.g. "%d"/"%f" conversions or a
             // malformed template that String.format would reject.
-            // 降级为扁平旧版字符串 —— 例如 "%d"/"%f" 转换符或 String.format 会拒绝的坏模板。
             return Collections.<Object>singletonList(ownFlatText());
         }
     }
@@ -477,13 +474,11 @@ public class Text {
         }
         if (previous[0] != null && previous[0].equals(style)) {
             // Same effective style as the previous segment — keep the run going.
-            // 与上一片段有效样式相同 —— 延续同一段，不重复输出格式码。
             sb.append(contents);
             return;
         }
         if (anyCodes[0]) {
             // Previous segment emitted codes — reset before this segment's own codes.
-            // 前一片段输出过格式码，先重置再输出本片段自身的格式码。
             sb.append('\u00a7').append('r');
         }
         String codes = legacyCodes(style);
@@ -606,7 +601,7 @@ public class Text {
         return result;
     }
 
-    // ──── JSON serialisation / JSON 序列化 ────
+    // ──── JSON serialisation ────
 
     /**
      * Serialises this Text tree back to a raw JSON text component string — the inverse
@@ -689,14 +684,9 @@ public class Text {
      * Raw JSON text components serializer. Support:
      * </p>
      * <ul>
-     *   <li>JSON 字符串 → 字面文本 / JSON string → literal text</li>
-     *   <li>JSON 数组 → 首元素为父节点，其余作为子组件追加 / JSON array → first element
-     *       as parent, rest appended as siblings</li>
-     *   <li>JSON 对象 → {@code text} / {@code translate}+{@code with}+{@code fallback} 内容，搭配样式字段
-     *       （{@code color}、{@code bold}、{@code italic}、{@code underlined}、
-     *       {@code strikethrough}、{@code obfuscated}、{@code insertion}、{@code font}、
-     *       {@code clickEvent}、{@code hoverEvent}）及 {@code extra} 子组件数组 /
-     *       JSON object → {@code text} or {@code translate}+{@code with}+{@code fallback}
+     *   <li>JSON string → literal text</li>
+     *   <li>JSON array → first element as parent, rest appended as siblings</li>
+     *   <li>JSON object → {@code text} or {@code translate}+{@code with}+{@code fallback}
      *       content plus the style fields and the {@code extra} children array</li>
      * </ul>
      * <p>
@@ -752,7 +742,7 @@ public class Text {
             }
             JsonObject obj = element.getAsJsonObject();
 
-            // ── Content / 内容 ──
+            // ── Content ──
             Text result;
             if (obj.has("text")) {
                 result = Text.literal(obj.get("text").getAsString());
@@ -766,7 +756,6 @@ public class Text {
                         JsonElement arg = with.get(i);
                         if (arg.isJsonPrimitive() && !arg.getAsJsonPrimitive().isString()) {
                             // Numbers / booleans pass through as-is for template formatting.
-                            // 数字/布尔直接传给模板格式化。
                             JsonPrimitive prim = arg.getAsJsonPrimitive();
                             withArgs[i] = prim.isNumber() ? (Object) prim.getAsNumber() : (Object) prim.getAsBoolean();
                         } else {
@@ -793,7 +782,7 @@ public class Text {
                 result.setStyle(style);
             }
 
-            // ── Children / 子组件 ──
+            // ── Children ──
             if (obj.has("extra") && obj.get("extra").isJsonArray()) {
                 JsonArray extra = obj.getAsJsonArray("extra");
                 for (int i = 0; i < extra.size(); i++) {

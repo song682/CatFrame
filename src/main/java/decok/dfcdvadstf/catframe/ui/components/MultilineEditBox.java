@@ -10,12 +10,6 @@ import java.util.function.Consumer;
 
 /**
  * <p>
- * 多行文本框组件 —— 基于 {@link AbstractTextAreaWidget}，对标高版本 Minecraft 的
- * {@code MultiLineEditBox}。支持自动换行、滚动、选区高亮与字符/行数限制。<br>
- * 键盘编辑逻辑委托给 {@link MultilineTextField}；滚动由光标监听器
- * {@link #scrollToCursor()} 驱动（上下键不触发父类的整页滚动，与高版本一致）。
- * </p>
- * <p>
  * Multi-line edit box — based on {@link AbstractTextAreaWidget}, counterpart of
  * the
  * high-version Minecraft {@code MultiLineEditBox}. Supports line wrapping,
@@ -30,13 +24,13 @@ import java.util.function.Consumer;
  */
 public class MultilineEditBox extends AbstractTextAreaWidget {
 
-    /** Insert cursor (vertical bar) colour / 插入光标（竖线）颜色 */
+    /** Insert cursor (vertical bar) colour */
     private static final int CURSOR_COLOR = 0xFFD0D0D0;
-    /** Placeholder text colour (white at 80% alpha) / 占位文本颜色（80% 不透明度白色） */
+    /** Placeholder text colour (white at 80% alpha) */
     private static final int PLACEHOLDER_TEXT_COLOR = 0xCCE0E0E0;
-    /** Default text colour / 默认文本颜色 */
+    /** Default text colour */
     private static final int DEFAULT_TEXT_COLOR = 0xFFE0E0E0;
-    /** Selection highlight colour / 选区高亮颜色 */
+    /** Selection highlight colour */
     private static final int HIGHLIGHT_COLOR = 0xFF00008B;
 
     private final FontRenderer font;
@@ -101,13 +95,8 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
      * {@link MultilineTextField} so character filtering, character/line limits
      * and a single valueListener refresh all apply. Bulk input such as IME
      * commits should use this entry.
-     * <p>
-     * 在光标处整体插入文本，委托内部 {@link MultilineTextField}：字符过滤、
-     * 字符/行数限制与一次 valueListener 刷新全部生效。IME 提交等批量输入
-     * 应走此入口。
-     * </p>
      *
-     * @param text text to insert (may be null / 待插入文本，可为 null)
+     * @param text text to insert (may be null)
      */
     @Override
     public void insertText(String text) {
@@ -123,8 +112,6 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
         // Deliberately not calling super: cursor movement and scrolling are both
         // driven by MultilineTextField + scrollToCursor, so Up/Down must not also
         // trigger the parent's page scroll (mirrors MultiLineEditBox.keyPressed).
-        // 刻意不调用 super：光标移动与滚动都由 MultilineTextField + scrollToCursor 驱动，
-        // 上下键不得再触发父类的整页滚动（对齐 MultiLineEditBox.keyPressed）。
         this.textField.keyTyped(typedChar, keyCode);
     }
 
@@ -142,7 +129,6 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
     public void mouseDrag(int mouseX, int mouseY, int mouseButton, long timeSinceLastClick) {
         super.mouseDrag(mouseX, mouseY, mouseButton, timeSinceLastClick);
         // Drag on the scrollbar drags the scroller, not the selection.
-        // 在滚动条上拖动滚动条而非选区。
         if (mouseButton == 0 && !isOverScrollbar(mouseX, mouseY)) {
             this.textField.setSelecting(true);
             this.seekCursorScreen(mouseX, mouseY);
@@ -166,7 +152,6 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
         String value = this.textField.value();
         if (value.isEmpty() && !isFocused()) {
             // Placeholder hint, wrapped like real contents.
-            // 占位提示文本，与真实内容一样换行。
             if (!this.placeholder.isEmpty()) {
                 this.font.drawSplitString(this.placeholder, getInnerLeft(), getInnerTop(),
                         this.width - this.totalInnerPadding(), PLACEHOLDER_TEXT_COLOR);
@@ -198,7 +183,6 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
                     cursorY = drawTop;
                     if (showCursor) {
                         // Insert cursor: vertical bar between characters.
-                        // 插入光标：字符间的竖线。
                         GuiDrawing.drawRect(cursorX, cursorY - 1, cursorX + 1, cursorY + this.font.FONT_HEIGHT,
                                 CURSOR_COLOR);
                     }
@@ -217,12 +201,10 @@ public class MultilineEditBox extends AbstractTextAreaWidget {
 
         if (showCursor && !insertCursor && this.withinContentAreaTopBottom(cursorY, cursorY + this.font.FONT_HEIGHT)) {
             // Append cursor: underscore after the last character.
-            // 追加光标：末字符后的下划线。
             this.font.drawStringWithShadow("_", cursorX, cursorY, CURSOR_COLOR);
         }
 
         // Selection highlight
-        // 选区高亮
         if (this.textField.hasSelection()) {
             MultilineTextField.StringView selection = this.textField.getSelected();
             int drawX = getInnerLeft();

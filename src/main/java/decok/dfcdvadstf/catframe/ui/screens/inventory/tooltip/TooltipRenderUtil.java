@@ -9,65 +9,68 @@ import net.minecraft.util.ResourceLocation;
 import javax.annotation.Nullable;
 
 /**
- * 工具提示背景渲染工具——使用九宫格纹理绘制 tooltip 背景与边框。
+ * Tooltip background rendering utility — draws the tooltip background and frame
+ * using nine-patch textures.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil}。
- * 使用两层纹理：
+ * Mirrors 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil}.
+ * Uses two texture layers:
  * <ul>
- *   <li>{@link #BACKGROUND_TEXTURE background} — 背景填充层</li>
- *   <li>{@link #FRAME_TEXTURE frame} — 边框层</li>
+ *   <li>{@link #BACKGROUND_TEXTURE background} — background fill layer</li>
+ *   <li>{@link #FRAME_TEXTURE frame} — frame layer</li>
  * </ul>
  */
 @SideOnly(Side.CLIENT)
 public class TooltipRenderUtil {
 
-    /** 鼠标偏移量（对标 26.1.2 MOUSE_OFFSET） */
+    /** Mouse offset (mirrors 26.1.2 MOUSE_OFFSET) */
     public static final int MOUSE_OFFSET = 12;
 
-    /** tooltip 内边距（文字到背景边缘）— 对标 26.1.2 PADDING = 3 */
+    /** Tooltip padding (text to background edge) — mirrors 26.1.2 PADDING = 3 */
     public static final int PADDING = 3;
     public static final int PADDING_LEFT = 3;
     public static final int PADDING_RIGHT = 3;
     public static final int PADDING_TOP = 3;
     public static final int PADDING_BOTTOM = 3;
 
-    /** 外边距（背景到纹理边缘）— 对标 26.1.2 MARGIN = 9 */
+    /** Outer margin (background to texture edge) — mirrors 26.1.2 MARGIN = 9 */
     private static final int MARGIN = 9;
 
-    /** 默认背景填充纹理（中心平铺） */
+    /** Default background fill texture (tiled in the center) */
     private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/tooltips/background.png");
-    /** 默认边框纹理（中心拉伸） */
+    /** Default frame texture (stretched in the center) */
     private static final ResourceLocation FRAME_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/tooltips/frame.png");
 
     /**
-     * 渲染 tooltip 背景（无自定义样式）。
+     * Renders the tooltip background (no custom style).
      *
-     * @param x tooltip 文字区域左上 X
-     * @param y tooltip 文字区域左上 Y
-     * @param w 文字区域宽度
-     * @param h 文字区域高度
+     * @param x top-left X of the tooltip text area
+     * @param y top-left Y of the tooltip text area
+     * @param w text area width
+     * @param h text area height
      */
     public static void renderTooltipBackground(int x, int y, int w, int h) {
         renderTooltipBackground(x, y, w, h, null);
     }
 
     /**
-     * 渲染 tooltip 背景（支持自定义样式）。
-     * <p>先绘制背景填充层，再叠加边框层。</p>
-     * <p>对标 26.1.2 {@code TooltipRenderUtil.extractTooltipBackground()}：
-     * 背景区域 = 文字区域向外扩展 PADDING + MARGIN。</p>
-     * <p>[渲染三域架构：阶段 C] 两层九宫格经 {@link TextureStretching#beginBatch()}
-     * 合并为一次 bind + 一次 draw（批量提交）；纹理属于 {@code catframe:gui} 图集
-     * 时自动改走图集查表 UV（TextureStretching 内部分流）。</p>
+     * Renders the tooltip background (supports a custom style).
+     * <p>Draws the background fill layer first, then overlays the frame layer.</p>
+     * <p>Mirrors 26.1.2 {@code TooltipRenderUtil.extractTooltipBackground()}:
+     * background area = text area expanded outward by PADDING + MARGIN.</p>
+     * <p>[Render three-domain architecture: phase C] The two nine-patch layers are
+     * merged by {@link TextureStretching#beginBatch()} into a single bind + single
+     * draw (batched submission); when the texture belongs to the {@code catframe:gui}
+     * atlas it automatically switches to atlas lookup-table UVs instead
+     * (TextureStretching dispatches internally).</p>
      *
-     * @param x     tooltip 文字区域左上 X
-     * @param y     tooltip 文字区域左上 Y
-     * @param w     文字区域宽度
-     * @param h     文字区域高度
-     * @param style 自定义样式 ID（可为 null，null 时使用默认纹理）
+     * @param x     top-left X of the tooltip text area
+     * @param y     top-left Y of the tooltip text area
+     * @param w     text area width
+     * @param h     text area height
+     * @param style custom style ID (may be null; when null the default textures are used)
      */
     public static void renderTooltipBackground(int x, int y, int w, int h, @Nullable ResourceLocation style) {
-        // 对标 26.1.2: x0 = x - PADDING - MARGIN, paddedWidth = w + PADDING*2 + MARGIN*2
+        // Mirrors 26.1.2: x0 = x - PADDING - MARGIN, paddedWidth = w + PADDING*2 + MARGIN*2
         int bgX = x - PADDING - MARGIN;
         int bgY = y - PADDING - MARGIN;
         int bgW = w + PADDING_LEFT + PADDING_RIGHT + MARGIN * 2;
@@ -76,18 +79,18 @@ public class TooltipRenderUtil {
         ResourceLocation bgTexture = getBackgroundTexture(style);
         ResourceLocation frameTexture = getFrameTexture(style);
 
-        // 批量提交：两层九宫格合并一次 bind + 一次 draw（同图集时跨层合并）。
+        // Batched submission: the two nine-patch layers merge into a single bind + single draw (cross-layer merge when they share an atlas).
         TextureStretching.beginBatch();
-        // 第一层：背景填充
+        // Layer 1: background fill
         TextureStretching.drawAutoNinePatch(bgTexture, bgX, bgY, bgW, bgH, 100, 100, PADDING + MARGIN);
-        // 第二层：边框
+        // Layer 2: frame
         TextureStretching.drawAutoNinePatch(frameTexture, bgX, bgY, bgW, bgH, 100, 100, PADDING + MARGIN);
         TextureStretching.endBatch();
     }
 
     /**
-     * 获取背景纹理——支持自定义 style 路径。
-     * <p>对标 26.1.2 {@code getBackgroundSprite(style)}。</p>
+     * Gets the background texture — supports a custom style path.
+     * <p>Mirrors 26.1.2 {@code getBackgroundSprite(style)}.</p>
      */
     private static ResourceLocation getBackgroundTexture(@Nullable ResourceLocation style) {
         if (style == null) return BACKGROUND_TEXTURE;
@@ -96,8 +99,8 @@ public class TooltipRenderUtil {
     }
 
     /**
-     * 获取边框纹理——支持自定义 style 路径。
-     * <p>对标 26.1.2 {@code getFrameSprite(style)}。</p>
+     * Gets the frame texture — supports a custom style path.
+     * <p>Mirrors 26.1.2 {@code getFrameSprite(style)}.</p>
      */
     private static ResourceLocation getFrameTexture(@Nullable ResourceLocation style) {
         if (style == null) return FRAME_TEXTURE;

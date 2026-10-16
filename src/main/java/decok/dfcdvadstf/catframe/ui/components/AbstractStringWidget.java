@@ -9,10 +9,6 @@ import java.util.function.Consumer;
 
 /**
  * <p>
- * 文本组件抽象基类 —— 提供消息持有、字体引用与样式点击回调等公共能力。<br>
- * 对标高版本 Minecraft 的 {@code AbstractStringWidget}。
- * </p>
- * <p>
  * Abstract base class for text widgets — provides message storage, a font
  * reference, and a style-click callback.<br>
  * Counterpart of the high-version Minecraft {@code AbstractStringWidget}.
@@ -32,20 +28,16 @@ public abstract class AbstractStringWidget extends AbstractComponent {
     }
 
     /**
-     * 获取当前消息文本。
-     * <p>
      * Returns the current message.
-     * </p>
      */
     public Text getMessage() {
         return message;
     }
 
     /**
-     * 设置消息文本，并随文本重新测量组件宽度。
      * <p>
      * Sets the message and re-measures the widget width from the text.
-     * 对标高版本 {@code AbstractStringWidget#setMessage}。
+     * Counterpart of the high-version {@code AbstractStringWidget#setMessage}.
      * </p>
      */
     public void setMessage(Text message) {
@@ -54,13 +46,12 @@ public abstract class AbstractStringWidget extends AbstractComponent {
     }
 
     /**
-     * 设置组件点击回调 —— 点击组件时以消息样式调用。
      * <p>
      * Sets the component click handler — invoked with the message style
      * when the widget is clicked.
      * </p>
      *
-     * @param componentClickHandler 点击回调 / click callback（可为 null 表示取消）
+     * @param componentClickHandler click callback (may be null to cancel)
      */
     public AbstractStringWidget setComponentClickHandler(@Nullable Consumer<Style> componentClickHandler) {
         this.componentClickHandler = componentClickHandler;
@@ -68,10 +59,7 @@ public abstract class AbstractStringWidget extends AbstractComponent {
     }
 
     /**
-     * 获取组件点击回调。
-     * <p>
      * Returns the component click handler.
-     * </p>
      */
     @Nullable
     protected Consumer<Style> getComponentClickHandler() {
@@ -79,10 +67,7 @@ public abstract class AbstractStringWidget extends AbstractComponent {
     }
 
     /**
-     * 获取字体渲染器。
-     * <p>
      * Returns the font renderer.
-     * </p>
      */
     protected final FontRenderer getFont() {
         return font;
@@ -94,7 +79,6 @@ public abstract class AbstractStringWidget extends AbstractComponent {
         if (handler == null || mouseButton != 0 || !isMouseOver(mouseX, mouseY)) {
             return;
         }
-        // 1.7.10 无 ActiveTextCollector 逐字符命中检测，简化回调为消息整体样式。
         // No per-character hit detection (no ActiveTextCollector on 1.7.10);
         // the callback receives the message's overall style instead.
         Style style = message != null ? message.getStyle() : Style.EMPTY;

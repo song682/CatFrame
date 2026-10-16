@@ -12,10 +12,6 @@ import java.util.function.Consumer;
 
 /**
  * <p>
- * 多行文本字段 —— 纯逻辑层，管理多行文本的值、光标、选区与自动换行，
- * 不负责渲染；对标高版本 Minecraft 的 {@code MultilineTextField}。
- * </p>
- * <p>
  * Multi-line text field — pure logic layer managing the value, cursor,
  * selection
  * and automatic line wrapping of multi-line text; rendering is left to the
@@ -26,10 +22,10 @@ public class MultilineTextField {
 
     private static final Logger LOG = LogManager.getLogger("CatFrame/MultilineTextField");
 
-    /** No character/line limit sentinel / 无字符/行数限制的哨兵值 */
+    /** No character/line limit sentinel */
     public static final int NO_LIMIT = Integer.MAX_VALUE;
 
-    /** Pixel bias when seeking the cursor line vertically / 垂直寻行时光标的像素偏移 */
+    /** Pixel bias when seeking the cursor line vertically */
     private static final int LINE_SEEK_PIXEL_BIAS = 2;
 
     private final FontRenderer font;
@@ -179,9 +175,6 @@ public class MultilineTextField {
 
     /**
      * Move the cursor absolutely, relatively, or from the end of the value.
-     * <p>
-     * 以绝对、相对或从文本末尾的方式移动光标。
-     * </p>
      */
     public void seekCursor(Whence whence, int cursor) {
         switch (whence) {
@@ -203,9 +196,6 @@ public class MultilineTextField {
 
     /**
      * Move the cursor to the same visual column on an adjacent line.
-     * <p>
-     * 将光标移动到相邻行同一视觉列。
-     * </p>
      */
     public void seekCursorLine(int lineOffset) {
         if (lineOffset != 0) {
@@ -222,9 +212,6 @@ public class MultilineTextField {
     /**
      * Place the cursor at the text position under the given point (widget-local
      * coordinates, unscrolled).
-     * <p>
-     * 将光标定位到给定点（组件局部、未滚动坐标）下的文本位置。
-     * </p>
      */
     public void seekCursorToPoint(double x, double y) {
         int left = (int) Math.floor(x);
@@ -237,9 +224,6 @@ public class MultilineTextField {
 
     /**
      * Select the whole word at the cursor.
-     * <p>
-     * 选中光标处的整个单词。
-     * </p>
      */
     public void selectWordAtCursor() {
         StringView wordView = this.getPreviousWord();
@@ -254,19 +238,14 @@ public class MultilineTextField {
      * Handle a merged key event (legacy CatFrame path). LWJGL2 key codes are
      * mapped to the high-version key semantics of
      * {@code MultilineTextField.keyPressed}.
-     * <p>
-     * 处理合并式按键事件（CatFrame 旧路径）。将 LWJGL2 键码映射为高版本
-     * {@code MultilineTextField.keyPressed} 的按键语义。
-     * </p>
      *
-     * @return true if the event was consumed / 若事件被消费则返回 true
+     * @return true if the event was consumed
      */
     public boolean keyTyped(char typedChar, int keyCode) {
         boolean ctrl = GuiScreen.isCtrlKeyDown();
         this.selecting = GuiScreen.isShiftKeyDown();
 
         // Ctrl+A / C / V / X shortcuts
-        // Ctrl+A / C / V / X 快捷键
         if (ctrl && keyCode == Keyboard.KEY_A) {
             this.cursor = this.value.length();
             this.selectCursor = 0;
@@ -356,7 +335,6 @@ public class MultilineTextField {
         }
 
         // Printable character insertion
-        // 可显示字符插入
         if (typedChar != 0 && typedChar >= 32 && typedChar != 127) {
             this.insertText(String.valueOf(typedChar));
             return true;
@@ -430,9 +408,6 @@ public class MultilineTextField {
     /**
      * Wrap the value into display lines, honouring hard '\n' breaks and soft
      * width-based breaks. Format codes (§x) advance no pen width.
-     * <p>
-     * 将文本按硬换行 '\n' 与宽度软换行拆成显示行。格式码（§x）不计宽度。
-     * </p>
      */
     private void reflowDisplayLines() {
         this.displayLines.clear();
@@ -467,9 +442,6 @@ public class MultilineTextField {
     /**
      * Count the wrapped display lines of the given text (same rules as
      * {@link #reflowDisplayLines()}).
-     * <p>
-     * 统计给定文本的换行显示行数（规则与 {@link #reflowDisplayLines()} 一致）。
-     * </p>
      */
     private int countDisplayLines(String text) {
         if (text.isEmpty()) {
@@ -525,9 +497,6 @@ public class MultilineTextField {
 
     /**
      * Filter out characters not allowed in chat, keeping line breaks.
-     * <p>
-     * 过滤聊天不允许的字符，保留换行符。
-     * </p>
      */
     private static String filterText(String input) {
         StringBuilder filtered = new StringBuilder(input.length());
@@ -549,9 +518,6 @@ public class MultilineTextField {
     /**
      * A view over [beginIndex, endIndex) of the value — counterpart of the
      * high-version {@code StringView} record.
-     * <p>
-     * 对文本值 [beginIndex, endIndex) 区间的视图 —— 对标高版本 {@code StringView} record。
-     * </p>
      */
     public static final class StringView {
 
@@ -568,9 +534,6 @@ public class MultilineTextField {
 
     /**
      * Cursor movement base — counterpart of the high-version {@code Whence} enum.
-     * <p>
-     * 光标移动基准 —— 对标高版本 {@code Whence} 枚举。
-     * </p>
      */
     public enum Whence {
         ABSOLUTE, RELATIVE, END

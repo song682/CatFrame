@@ -6,11 +6,12 @@ import net.minecraft.item.ItemStack;
 import javax.annotation.Nullable;
 
 /**
- * oversized 物品的 PiP 渲染状态（{@code oversized_in_gui=true}）。
+ * PiP render state for oversized items ({@code oversized_in_gui=true}).
  * <p>
- * 物品以其自然模型尺寸渲染（尺寸由 gui display 变换决定），与普通物品一致；
- * 唯一区别是走独立 PiP 通道：<b>不设 scissor</b>，允许模型几何溢出 16x16 槽位并正确叠层，
- * 且不触发溢出保护的钳制。
+ * The item renders at its natural model size (determined by the gui display transform),
+ * just like a normal item; the only difference is that it goes through the dedicated PiP
+ * pipeline: <b>no scissor is set</b>, allowing the model geometry to overflow the 16x16
+ * slot while still layering correctly, and the overflow-guard clamping is not triggered.
  */
 public class OversizedItemRenderState extends AbstractPipRenderState {
 
@@ -19,7 +20,7 @@ public class OversizedItemRenderState extends AbstractPipRenderState {
     public OversizedItemRenderState(ItemStack stack,
                                     @Nullable float[] poseMatrix,
                                     ScreenRectangle bounds) {
-        // oversized 明确不裁剪 → scissorArea 恒为 null
+        // oversized explicitly does not clip → scissorArea is always null
         super(poseMatrix, bounds, null);
         this.stack = stack;
     }

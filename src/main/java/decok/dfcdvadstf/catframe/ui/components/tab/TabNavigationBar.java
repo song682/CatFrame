@@ -20,31 +20,28 @@ import java.util.List;
 
 /**
  * <p>
- * 标签导航栏组件 —— 一排 {@link TabButton} 加双段标题分隔线，负责页签的布局、
- * 点击切换、快捷键切换与焦点管理。<br>
- * 对标 26.1.2 {@code net.minecraft.client.gui.components.tabs.TabNavigationBar}。
- * </p>
- * <p>
  * Tab navigation bar — a row of {@link TabButton}s plus two header-separator
  * segments; owns button layout, click switching, keyboard shortcuts and focus
  * management. Counterpart of the high-version {@code TabNavigationBar}.
  * </p>
  * <p>
- * 焦点即选中：点击链路经容器分发落到 {@link #setFocused(GuiEventListener)}，
- * 焦点落上即可用按钮时切换当前 Tab —— 与高版本行为一致。<br>
- * 快捷键（Ctrl 为前提）：{@code Ctrl+1..9} → 第 1..9 页、{@code Ctrl+0} → 末页、
- * {@code Ctrl+Tab} / {@code Ctrl+Shift+Tab} 环绕循环并跳过失活页。
+ * Focus means selection: the click dispatch chain through containers lands on
+ * {@link #setFocused(GuiEventListener)}, and once focus reaches an active
+ * button the current tab switches — matching high-version behaviour.<br>
+ * Shortcuts (Ctrl required): {@code Ctrl+1..9} → tabs 1..9, {@code Ctrl+0} →
+ * last tab, {@code Ctrl+Tab} / {@code Ctrl+Shift+Tab} cycle with wrap-around
+ * and skip inactive tabs.
  * </p>
  */
 public class TabNavigationBar extends AbstractContainerEventHandler {
 
-    /** Sentinel: no tab resolved / 哨兵值：未解析到任何 Tab */
+    /** Sentinel: no tab resolved */
     private static final int NO_TAB = -1;
-    /** Max width of the button strip / 按钮排最大宽度 */
+    /** Max width of the button strip */
     private static final int MAX_WIDTH = 400;
-    /** Bar height / 导航栏高度 */
+    /** Bar height */
     private static final int HEIGHT = 24;
-    /** Horizontal margin on both sides / 两侧水平边距 */
+    /** Horizontal margin on both sides */
     private static final int MARGIN = 14;
 
     private final LinearLayout layout = new LinearLayout(LinearLayout.Axis.HORIZONTAL, LinearLayout.Alignment.CENTER);
@@ -73,10 +70,9 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
 
     /**
      * Creates a builder for the navigation bar.
-     * <p>创建导航栏构建器。</p>
      *
-     * @param tabManager the content manager / 内容管理器
-     * @param width      initial screen width / 初始屏幕宽度
+     * @param tabManager the content manager
+     * @param width      initial screen width
      */
     public static Builder builder(TabManager tabManager, int width) {
         return new Builder(tabManager, width);
@@ -84,7 +80,6 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
 
     /**
      * Update the bar width (on screen resize) and re-arrange the buttons.
-     * <p>更新导航栏宽度（屏幕尺寸变化时）并重新排布按钮。</p>
      */
     public void updateWidth(int width) {
         this.width = width;
@@ -137,15 +132,18 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
     }
 
     /**
-     * @return the tabs managed by this bar, in button order / 本栏管理的标签页，按按钮顺序
+     * @return the tabs managed by this bar, in button order
      */
     public List<Tab> getTabs() {
         return this.tabs;
     }
 
     /**
-     * 绘制导航栏 —— 黑色页签头背景、双段标题分隔线（按钮排两侧）加所有按钮。<br>
-     * 可见性与悬停状态已由 {@link #extractRenderState} 在调用前处理。
+     * Renders the navigation bar — black tab-header background, two header
+     * separator segments (on both sides of the button strip) and all the
+     * buttons.<br>
+     * Visibility and hover state are already handled by
+     * {@link #extractRenderState} before the call.
      */
     @Override
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
@@ -171,8 +169,6 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
      * Arrange the buttons: strip width capped at {@link #MAX_WIDTH} with
      * {@link #MARGIN} on each side, buttons evenly divided and rounded toward
      * an even number, the strip horizontally centred.
-     * <p>排布按钮：按钮排宽度上限 {@link #MAX_WIDTH} 且两侧各留 {@link #MARGIN}，
-     * 按钮均分并向上取偶，整排水平居中。</p>
      */
     public void arrangeElements() {
         int tabsWidth = Math.min(MAX_WIDTH, this.width) - MARGIN * 2;
@@ -191,8 +187,6 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
      * Select the tab at the given index. When the bar already holds focus the
      * focus is moved to the button instead (focus is the single source of
      * truth); otherwise the tab is switched directly.
-     * <p>选中给定索引的标签页。栏已有焦点时改为移动焦点到对应按钮
-     * （焦点即唯一真源）；否则直接切换标签页。</p>
      */
     public void selectTab(int index, boolean playSound) {
         if (this.isFocused()) {
@@ -204,7 +198,6 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
 
     /**
      * Set the active state of a tab button (bounds-checked).
-     * <p>设置指定页签按钮的可用状态（带边界检查）。</p>
      */
     public void setTabActiveState(int index, boolean active) {
         if (index >= 0 && index < this.tabButtons.size()) {
@@ -214,7 +207,6 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
 
     /**
      * Set the tooltip of a tab button (bounds-checked).
-     * <p>设置指定页签按钮的工具提示（带边界检查）。</p>
      */
     public void setTabTooltip(int index, @Nullable Tooltip tooltip) {
         if (index >= 0 && index < this.tabButtons.size()) {
@@ -267,8 +259,6 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
      * LWJGL digit-key mapping — counterpart of {@code KeyEvent.getDigit()}:
      * {@code KEY_1..KEY_9} → {@code 1..9}, {@code KEY_0} → {@code 0}, anything
      * else → {@link #NO_TAB}.
-     * <p>LWJGL 数字键映射 —— 对标 {@code KeyEvent.getDigit()}：
-     * KEY_1..KEY_9 → 1..9，KEY_0 → 0，其余 → {@link #NO_TAB}。</p>
      */
     private static int digitOf(int keyCode) {
         if (keyCode >= Keyboard.KEY_1 && keyCode <= Keyboard.KEY_9) {
@@ -283,7 +273,6 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
     /**
      * Round a value up to the nearest multiple — counterpart of
      * {@code Mth.roundToward}.
-     * <p>将数值向上取整到最近的倍数 —— 对标 {@code Mth.roundToward}。</p>
      */
     private static int roundToward(int value, int multiple) {
         return -Math.floorDiv(-value, multiple) * multiple;
@@ -291,7 +280,6 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
 
     /**
      * Builder for {@link TabNavigationBar}.
-     * <p>{@link TabNavigationBar} 的构建器。</p>
      */
     public static class Builder {
 
@@ -306,7 +294,6 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
 
         /**
          * Append tabs to the bar, in display order.
-         * <p>按显示顺序向导航栏追加标签页。</p>
          */
         public Builder addTabs(Tab... tabs) {
             Collections.addAll(this.tabs, tabs);
@@ -314,7 +301,7 @@ public class TabNavigationBar extends AbstractContainerEventHandler {
         }
 
         /**
-         * @return the built navigation bar / 构建完成的导航栏
+         * @return the built navigation bar
          */
         public TabNavigationBar build() {
             return new TabNavigationBar(this.width, this.tabManager, this.tabs);

@@ -10,17 +10,12 @@ import java.util.function.Consumer;
 
 /**
  * <p>
- * 基于 {@link GridLayout} 的标签页 —— 子元素按网格排列，整个布局水平居中、
- * 垂直约 1/6 处（{@code 0.16666667F}）对齐。<br>
- * 对标 26.1.2 {@code net.minecraft.client.gui.components.tabs.GridLayoutTab}。
- * </p>
- * <p>
  * A Tab backed by a {@link GridLayout} — children are arranged in a grid and the
  * whole layout is centred horizontally and aligned at ~1/6 from the top.
  * Counterpart of the high-version {@code GridLayoutTab}.
  * </p>
  *
- * <p>Usage / 用法:</p>
+ * <p>Usage:</p>
  * <pre>{@code
  * public class MyTab extends GridLayoutTab {
  *     public MyTab() {

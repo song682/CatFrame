@@ -8,10 +8,11 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
 /**
- * GUI 实体 PiP 渲染器 — 移植自 {@code GuiInventory.drawEntityOnScreen}。
+ * GUI entity PiP renderer — ported from {@code GuiInventory.drawEntityOnScreen}.
  * <p>
- * 恢复采集矩阵后，在独立 3D 视口内按 {@code lookX/lookY} 旋转并用
- * {@link RenderManager} 渲染实体，绘制完成后还原实体朝向字段。
+ * After restoring the captured matrix, rotates by {@code lookX/lookY} within an
+ * independent 3D viewport and renders the entity via {@link RenderManager},
+ * then restores the entity orientation fields once drawing is complete.
  */
 public class EntityPipRenderer implements PictureInPictureRenderer<GuiEntityRenderState> {
 
@@ -35,7 +36,7 @@ public class EntityPipRenderer implements PictureInPictureRenderer<GuiEntityRend
         GL11.glEnable(GL11.GL_COLOR_MATERIAL);
         GL11.glPushMatrix();
         try {
-            // 恢复采集点变换后再叠加 GUI 实体定位（帧末 GL 上下文已切换）
+            // Restore the capture-point transform before applying GUI entity positioning (GL context has switched at frame end)
             PipGl.restore(state.poseMatrix());
 
             GL11.glTranslatef(posX, posY, 50.0F);

@@ -12,11 +12,6 @@ import javax.annotation.Nullable;
 
 /**
  * <p>
- * 加载点指示组件 —— 中心点上方 9px 居中绘制标题、下方 9px 居中绘制流动 dots。<br>
- * 对标 26.1.2 {@code net.minecraft.client.gui.components.LoadingDotsWidget}，
- * 保留既有类名（复数拼写）。
- * </p>
- * <p>
  * Loading-dots indicator widget — draws the message centred 9px above the centre
  * point and the flowing dots 9px below it. Counterpart of the high-version
  * {@code LoadingDotsWidget} (keeps the existing pluralised class name).
@@ -26,15 +21,14 @@ public class LoadingDotsWidgets extends AbstractComponent.WithInactiveMessage {
 
     /**
      * Creates the widget sized to its message ({@code 9 * 3} pixels tall).
-     * <p>按消息宽度与 {@code 9 * 3} 高度创建组件。</p>
      */
     public LoadingDotsWidgets(Text message) {
         super(0, 0, FontHelper.width(message), 9 * 3, message);
     }
 
     /**
-     * 绘制消息与流动 dots —— 可见性与悬停状态已由 {@link #extractRenderState}
-     * 在调用前处理。
+     * Draws the message and the flowing dots — visibility and hover state
+     * are already handled by {@link #extractRenderState} before this is called.
      */
     @Override
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {

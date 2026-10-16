@@ -14,27 +14,22 @@ import java.util.List;
 
 /**
  * <p>
- * 泛型循环选择区域 — 类似高版本 Minecraft 的 {@code CyclingButtonWidget}。<br>
- * 继承 {@link AbstractComponent}，融入统一组件体系。
- * 支持纹理背景（九宫格拉伸）、点击和滚轮循环、标签文本显示。
- * </p>
- * <p>
  * Generic cycling area — similar to high-version Minecraft's
  * {@code CyclingButtonWidget}. Extends {@link AbstractComponent} to integrate
  * into the unified component system. Supports textured backgrounds
  * (nine-patch stretching), click and scroll-wheel cycling, and label display.
  * </p>
  *
- * @param <T> the type of values to cycle through / 循环切换的值类型
+ * @param <T> the type of values to cycle through
  */
 public class CyclingArea<T> extends AbstractComponent {
 
     // ──── Default texture ────
 
-    /** Default button texture for normal state / 默认普通状态按钮纹理 */
+    /** Default button texture for normal state */
     protected static final ResourceLocation DEFAULT_BUTTON_TEXTURE =
             new ResourceLocation("catframe", "textures/gui/widgets/button.png");
-    /** Default button texture for hover state / 默认悬停状态按钮纹理 */
+    /** Default button texture for hover state */
     protected static final ResourceLocation DEFAULT_BUTTON_HOVER_TEXTURE =
             new ResourceLocation("catframe", "textures/gui/widgets/button_hover.png");
     protected static final int BUTTON_DEFAULT_W = 200;
@@ -46,7 +41,6 @@ public class CyclingArea<T> extends AbstractComponent {
     /**
      * Provides the list of values to cycle through.
      * Supports dynamic value lists (e.g. different values when Alt is held).
-     * <p>提供循环值列表的接口。支持动态值列表。</p>
      */
     public interface Values<T> {
         List<T> getCurrent();
@@ -63,7 +57,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Converts a value of type T to its display text.
-     * <p>将类型 T 的值转换为显示文本。</p>
      */
     public interface ValueToText<T> {
         String apply(T value);
@@ -71,7 +64,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Callback invoked when the value changes via cycling.
-     * <p>值通过循环切换变更时调用的回调。</p>
      */
     public interface UpdateCallback<T> {
         void onValueChange(CyclingArea<T> area, T value);
@@ -86,9 +78,9 @@ public class CyclingArea<T> extends AbstractComponent {
     private int index;
     private T value;
 
-    /** Background texture for normal state / 普通状态背景纹理 */
+    /** Background texture for normal state */
     protected ResourceLocation normalTexture = DEFAULT_BUTTON_TEXTURE;
-    /** Background texture for hover state / 悬停状态背景纹理 */
+    /** Background texture for hover state */
     protected ResourceLocation hoverTexture = DEFAULT_BUTTON_HOVER_TEXTURE;
 
     CyclingArea(int x, int y, int width, int height,
@@ -106,7 +98,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Creates a new Builder.
-     * <p>创建新的 Builder。</p>
      */
     public static <T> Builder<T> builder(ValueToText<T> valueToText) {
         return new Builder<>(valueToText);
@@ -114,7 +105,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Convenience builder for Boolean on/off cycling.
-     * <p>Boolean 开/关循环的便捷构建器。</p>
      */
     public static Builder<Boolean> onOffBuilder() {
         return new Builder<Boolean>((Boolean value) -> value ? "ON" : "OFF")
@@ -125,7 +115,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Sets custom background textures.
-     * <p>设置自定义背景纹理。</p>
      */
     public CyclingArea<T> setTextures(ResourceLocation normal, ResourceLocation hover) {
         this.normalTexture = normal;
@@ -135,7 +124,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Sets the normal state background texture.
-     * <p>设置普通状态背景纹理。</p>
      */
     public CyclingArea<T> setNormalTexture(ResourceLocation texture) {
         this.normalTexture = texture;
@@ -144,7 +132,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Sets the hover state background texture.
-     * <p>设置悬停状态背景纹理。</p>
      */
     public CyclingArea<T> setHoverTexture(ResourceLocation texture) {
         this.hoverTexture = texture;
@@ -166,7 +153,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Handles mouse scroll input (scroll up = cycle backward, scroll down = cycle forward).
-     * <p>处理鼠标滚轮输入（向上滚动 = 反向，向下滚动 = 正向）。</p>
      */
     @Override
     public void mouseScrolled(int delta) {
@@ -180,7 +166,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Cycles forward (+1) on left-click.
-     * <p>左键点击时正向切换。</p>
      */
     @Override
     public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
@@ -194,7 +179,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Gets the current value.
-     * <p>获取当前值。</p>
      */
     public T getValue() {
         return this.value;
@@ -202,7 +186,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Sets the current value programmatically (syncs index from values list).
-     * <p>以编程方式设置当前值（从值列表同步索引）。</p>
      */
     public void setValue(T value) {
         List<T> list = this.values.getCurrent();
@@ -219,7 +202,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Returns the current display text (label + value).
-     * <p>返回当前显示文本（标签 + 值）。</p>
      */
     public String getDisplayText() {
         if (valueToText != null && value != null) {
@@ -234,8 +216,6 @@ public class CyclingArea<T> extends AbstractComponent {
     // ──── Rendering ────
 
     /**
-     * 绘制九宫格背景与当前值文本 —— 可见性与悬停状态已由
-     * {@link #extractRenderState} 在调用前处理。<br>
      * Draws the nine-patch background and the current value text — visibility
      * and hover state are already handled by {@link #extractRenderState}.
      */
@@ -260,7 +240,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /**
      * Builder for constructing a {@link CyclingArea}.
-     * <p>用于构建 {@link CyclingArea} 的构建器。</p>
      */
     public static class Builder<T> {
         private final ValueToText<T> valueToText;
@@ -301,7 +280,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
         /**
          * Sets the label text (displayed as "label valueText").
-         * <p>设置标签文本（显示为 "label valueText"）。</p>
          */
         public Builder<T> label(Text label) {
             this.label = label;
@@ -310,7 +288,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
         /**
          * Sets the label text from a string.
-         * <p>从字符串设置标签文本。</p>
          */
         public Builder<T> label(String label) {
             this.label = Text.literal(label);
@@ -319,7 +296,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
         /**
          * Sets custom background textures.
-         * <p>设置自定义背景纹理。</p>
          */
         public Builder<T> textures(ResourceLocation normal, ResourceLocation hover) {
             this.normalTexture = normal;
@@ -329,7 +305,6 @@ public class CyclingArea<T> extends AbstractComponent {
 
         /**
          * Builds the CyclingArea.
-         * <p>构建 CyclingArea。</p>
          */
         public CyclingArea<T> build(int x, int y, int width, int height,
                                     UpdateCallback<T> callback) {

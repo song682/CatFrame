@@ -10,9 +10,9 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * 客户端工具提示组件接口——渲染 tooltip 中的文字或图像行。
+ * Client tooltip component interface — renders the text or image lines of a tooltip.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent}。
+ * Counterpart of 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent}.
  *
  * @see ClientTextTooltip
  */
@@ -20,22 +20,23 @@ import java.util.function.Function;
 public interface ClientTooltipComponent {
 
     /**
-     * 从格式化字符串创建文本组件。
+     * Creates a text component from a formatted string.
      */
     static ClientTooltipComponent create(String text) {
         return new ClientTextTooltip(text);
     }
 
     /**
-     * 从结构化组件创建客户端渲染组件。
+     * Creates a client render component from a structured component.
      * <p>
-     * 对标 26.1.2 {@code ClientTooltipComponent.create(TooltipComponent)}；
-     * 1.7.10 无 sealed 类型体系，改用运行时类型分派表（与 PiP 分派表同策略），
-     * 渲染工厂由 {@link #register} 登记。
+     * Mirrors 26.1.2 {@code ClientTooltipComponent.create(TooltipComponent)};
+     * 1.7.10 has no sealed type hierarchy, so a runtime type dispatch table is
+     * used instead (same strategy as the PiP dispatch table), with render
+     * factories registered via {@link #register}.
      *
-     * @param component 结构化 tooltip 组件
-     * @return 对应的客户端渲染组件
-     * @throws IllegalArgumentException 该组件类型的渲染工厂未注册
+     * @param component the structured tooltip component
+     * @return the corresponding client render component
+     * @throws IllegalArgumentException no render factory registered for that component type
      */
     static ClientTooltipComponent create(TooltipComponent component) {
         final Function<TooltipComponent, ClientTooltipComponent> factory = Dispatch.FACTORIES.get(component.getClass());
@@ -46,10 +47,10 @@ public interface ClientTooltipComponent {
     }
 
     /**
-     * 登记结构化组件类型的渲染工厂（1.7.10 扩展机制）。
+     * Registers the render factory for a structured component type (1.7.10 extension mechanism).
      *
-     * @param type    组件运行时类型
-     * @param factory 由该类型组件创建客户端渲染组件的工厂
+     * @param type    the component's runtime type
+     * @param factory factory creating a client render component from components of that type
      */
     static void register(final Class<? extends TooltipComponent> type,
                          final Function<TooltipComponent, ClientTooltipComponent> factory) {
@@ -57,42 +58,43 @@ public interface ClientTooltipComponent {
     }
 
     /**
-     * 获取文字宽度（用于计算 tooltip 整体宽度）。
+     * Gets the text width (used to compute the tooltip's overall width).
      */
     int getWidth(FontRenderer font);
 
     /**
-     * 获取本行高度（通常为 10）。
+     * Gets this row's height (usually 10).
      */
     int getHeight(FontRenderer font);
 
     /**
-     * 是否在手中有物品时仍显示 tooltip。
+     * Whether to still show the tooltip while an item is held in hand.
      */
     default boolean showTooltipWithItemInHand() {
         return false;
     }
 
     /**
-     * 渲染文字。
+     * Renders the text.
      */
     default void renderText(FontRenderer font, int x, int y) {
     }
 
     /**
-     * 渲染图像组件。
+     * Renders the image component.
      */
     default void renderImage(FontRenderer font, int x, int y, int w, int h) {
     }
 
     /**
-     * 分派表持有者——接口字段隐含 public static final，可变状态收纳于嵌套类。
+     * Dispatch table holder — interface fields are implicitly public static final,
+     * so the mutable state lives in the nested class.
      */
     final class Dispatch {
 
         private Dispatch() {}
 
-        /** TooltipComponent 运行时类型 → 客户端渲染组件工厂。 */
+        /** TooltipComponent runtime type → client render component factory. */
         static final Map<Class<? extends TooltipComponent>, Function<TooltipComponent, ClientTooltipComponent>> FACTORIES =
                 new HashMap<>();
     }

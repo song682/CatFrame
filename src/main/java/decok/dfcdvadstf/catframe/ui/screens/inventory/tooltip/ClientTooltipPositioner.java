@@ -4,9 +4,9 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 /**
- * 工具提示定位器接口——计算 tooltip 在屏幕上的渲染位置。
+ * Tooltip positioner interface — computes the on-screen render position of a tooltip.
  * <p>
- * 对应 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositioner}。
+ * Mirrors 26.1.2 {@code net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositioner}.
  *
  * @see DefaultTooltipPositioner
  * @see MenuTooltipPositioner
@@ -16,15 +16,15 @@ import cpw.mods.fml.relauncher.SideOnly;
 public interface ClientTooltipPositioner {
 
     /**
-     * 计算 tooltip 的位置。
+     * Computes the tooltip position.
      *
-     * @param screenWidth    屏幕宽度（缩放后）
-     * @param screenHeight   屏幕高度（缩放后）
-     * @param mouseX         鼠标 X
-     * @param mouseY         鼠标 Y
-     * @param tooltipWidth   tooltip 内容宽度
-     * @param tooltipHeight  tooltip 内容高度
-     * @return [x, y] 坐标
+     * @param screenWidth    screen width (after scaling)
+     * @param screenHeight   screen height (after scaling)
+     * @param mouseX         mouse X
+     * @param mouseY         mouse Y
+     * @param tooltipWidth   tooltip content width
+     * @param tooltipHeight  tooltip content height
+     * @return the [x, y] coordinates
      */
     int[] positionTooltip(int screenWidth, int screenHeight, int mouseX, int mouseY, int tooltipWidth, int tooltipHeight);
 }

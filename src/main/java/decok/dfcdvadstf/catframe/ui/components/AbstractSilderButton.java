@@ -12,27 +12,11 @@ import org.lwjgl.input.Keyboard;
 
 /**
  * <p>
- * 滑动按钮抽象基类 —— 对标 26.1.2 {@code AbstractSliderButton}。<br>
- * 继承 {@link AbstractComponent.WithInactiveMessage}，由子类实现
- * {@link #updateMessage()} 与 {@link #applyValue()} 两个抽象钩子，
- * 值域归一化为 {@code [0.0, 1.0]}。
- * </p>
- * <p>
  * Abstract slider button — counterpart of the 26.1.2
- * {@code AbstractSliderButton}. Subclasses implement the
- * {@link #updateMessage()} and {@link #applyValue()} hooks; the normalized
+ * {@code AbstractSliderButton}. Extends
+ * {@link AbstractComponent.WithInactiveMessage}; subclasses implement the
+ * {@link #updateMessage()} and {@link #applyValue()} hooks, and the normalized
  * value ranges over {@code [0.0, 1.0]}.
- * </p>
- * <p>
- * 1.7.10 适配说明 / Porting notes:
- * <ul>
- * <li>vanilla 的 narration（语音播报）与 {@code CursorTypes} 光标请求在 1.7.10
- * 无对应设施，未移植。</li>
- * <li>vanilla 依据 {@code InputType} 判定聚焦来源（鼠标 / Tab），1.7.10 无该
- * 机制，改为：任何用户驱动的聚焦均视为可改值（见
- * {@link #setFocused(boolean)}），Enter 仍可切换。</li>
- * <li>点击音效在释放时播放，对标 vanilla {@code onRelease} 行为。</li>
- * </ul>
  * </p>
  * <p>
  * Porting notes:
@@ -59,14 +43,14 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
     protected static final int HANDLE_WIDTH = 8;
     private static final int HANDLE_HALF_WIDTH = 4;
 
-    /** mcmeta fallback sizes / 图集元数据缺失时的回退尺寸（与 .mcmeta 定义一致） */
+    /** Fallback sizes used when the .mcmeta sidecar is missing (must match its definition). */
     private static final int SLIDER_DEFAULT_W = 200;
     private static final int SLIDER_DEFAULT_H = 20;
     private static final int SLIDER_EDGE = 2;
     private static final int HANDLE_DEFAULT_W = 8;
     private static final int HANDLE_DEFAULT_H = 20;
 
-    /** Message colour mirrors the modern-widget default foreground. / 消息文本颜色 */
+    /** Message colour mirrors the modern-widget default foreground. */
     private static final int TEXT_COLOR_ENABLED = 0xE0E0E0;
     private static final int TEXT_COLOR_DISABLED = 0xA0A0A0;
 
@@ -90,13 +74,6 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
     /**
      * Render the track, the handle and the scrolling message.
      * <p>
-     * 绘制滑轨、把手与居中（超宽时滚动截断）的消息文本。<br>
-     * 对标 26.1.2 {@code AbstractSliderButton#extractWidgetRenderState}：
-     * 两次 blitSprite 以 nine-patch 自动拉伸纹理（mcmeta 驱动）替代，
-     * {@code extractScrollingStringOverContents} 以 {@code TEXT_MARGIN} 边距
-     * 内的居中 + clamp 实现。
-     * </p>
-     * <p>
      * Counterpart of 26.1.2 {@code AbstractSliderButton#extractWidgetRenderState}:
      * the two blitSprite calls become mcmeta-driven nine-patch stretching, and
      * {@code extractScrollingStringOverContents} becomes centring plus a clamp
@@ -105,15 +82,15 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
      */
     @Override
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
-        // Track — full widget width / 滑轨：整组件宽度
+        // Track — full widget width
         TextureStretching.drawAutoNinePatch(this.getSprite(), this.x, this.y, this.width, this.height,
                 SLIDER_DEFAULT_W, SLIDER_DEFAULT_H, SLIDER_EDGE);
-        // Handle — clamped by the normalized value / 把手：按归一化值定位
+        // Handle — positioned by the normalized value
         int handleX = this.x + (int) (this.value * (this.width - HANDLE_WIDTH));
         TextureStretching.drawAutoNinePatch(this.getHandleSprite(), handleX, this.y, HANDLE_WIDTH, this.height,
                 HANDLE_DEFAULT_W, HANDLE_DEFAULT_H, SLIDER_EDGE);
 
-        // Scrolling message over contents / 内容区上的滚动文本
+        // Scrolling message over contents
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;
         String text = getMessage() != null ? getMessage().getString() : "";
         int available = this.width - TEXT_MARGIN * 2;
@@ -121,7 +98,6 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
         int offset = (this.width - textWidth) / 2;
         if (textWidth > available) {
             // Too wide: scroll within the margins instead of overflowing.
-            // 过宽时在边距内滚动，避免溢出组件。
             offset = MathHelper.clamp_int(offset, available - textWidth, 0);
         }
         int textY = this.y + (this.height - font.FONT_HEIGHT) / 2;
@@ -131,11 +107,6 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
 
     /**
      * Begin dragging and jump to the clicked position.
-     * <p>
-     * 开始拖拽并跳到点击位置 —— 对标 26.1.2 {@code onClick}。
-     * 1.7.10 中点击同时会引发聚焦（{@code dispatchMouseClicked} 随后调用
-     * {@code setFocused}），因此不在此处显式开启 {@code canChangeValue}。
-     * </p>
      * <p>
      * Counterpart of 26.1.2 {@code onClick}. On 1.7.10 a click also triggers
      * focus ({@code dispatchMouseClicked} calls {@code setFocused} right
@@ -154,9 +125,6 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
     /**
      * Track-following drag while the button is held.
      * <p>
-     * 按住拖动时跟随鼠标更新值 —— 对标 26.1.2 {@code onDrag}。
-     * </p>
-     * <p>
      * Updates the value from the mouse while held — counterpart of 26.1.2
      * {@code onDrag}.
      * </p>
@@ -170,10 +138,6 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
 
     /**
      * Stop dragging and play the click sound on release.
-     * <p>
-     * 松开时停止拖拽并播放点击音效 —— 对标 26.1.2 {@code onRelease}
-     * （vanilla 在 {@code onClick} 抑制音效、到 {@code onRelease} 才播放）。
-     * </p>
      * <p>
      * Counterpart of 26.1.2 {@code onRelease}: vanilla suppresses the sound in
      * {@code onClick} and only plays it once the button is released.
@@ -191,11 +155,6 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
     /**
      * Resolve whether the slider may change its value while focused.
      * <p>
-     * 设定聚焦后的可改值状态 —— 对标 26.1.2 {@code setFocused}。vanilla 通过
-     * {@code InputType}（MOUSE / KEYBOARD_TAB）判定聚焦来源，1.7.10 无该机制，
-     * 此处将任何聚焦均视为用户驱动、可改值；Enter 键仍可切换该状态。
-     * </p>
-     * <p>
      * Counterpart of 26.1.2 {@code setFocused}. Vanilla gates value-changing on
      * the focus source ({@code InputType}: MOUSE / KEYBOARD_TAB); 1.7.10 has no
      * such mechanism, so any focus is treated as user-driven and
@@ -210,11 +169,6 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
 
     /**
      * Keyboard value stepping.
-     * <p>
-     * 键盘调值 —— 对标 26.1.2 {@code keyPressed}：Enter 切换
-     * {@code canChangeValue}；左右方向键按轨宽步进取值。
-     * {@code isSelection()} 在 1.7.10 以 {@code KEY_RETURN} 近似。
-     * </p>
      * <p>
      * Counterpart of 26.1.2 {@code keyPressed}: Enter toggles
      * {@code canChangeValue}; left/right arrows step by the track width.
@@ -240,14 +194,8 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
     }
 
     /**
-     * Map an absolute mouse X to the normalized value.
-     * <p>
-     * 将鼠标绝对 X 坐标映射为归一化值 —— 对标 {@code setValueFromMouse}。
-     * </p>
-     * <p>
-     * Maps an absolute mouse X to the normalized value — counterpart of
+     * Map an absolute mouse X to the normalized value — counterpart of
      * {@code setValueFromMouse}.
-     * </p>
      */
     private void setValueFromMouse(int mouseX) {
         this.setValue((mouseX - (this.getX() + HANDLE_HALF_WIDTH)) / (double) (this.width - HANDLE_WIDTH));
@@ -255,11 +203,6 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
 
     /**
      * Set the normalized value, clamped to {@code [0, 1]}.
-     * <p>
-     * 设置归一化值并钳制到 {@code [0, 1]}；仅当值实际变化时回调
-     * {@link #applyValue()}，随后总是刷新消息 —— 对标 26.1.2
-     * {@code setValue}。
-     * </p>
      * <p>
      * Clamps the value to {@code [0, 1]}; {@link #applyValue()} fires only when
      * the value actually changes, while the message is always refreshed —
@@ -276,15 +219,15 @@ public abstract class AbstractSilderButton extends AbstractComponent.WithInactiv
     }
 
     /**
-     * @return the current normalized value / 当前归一化值
+     * @return the current normalized value
      */
     public double getVal() {
         return this.value;
     }
 
-    /** Rebuild the displayed message from the current value. / 根据当前值重建显示消息 */
+    /** Rebuild the displayed message from the current value. */
     protected abstract void updateMessage();
 
-    /** Push the current value to the backing setting. / 将当前值写回底层配置 */
+    /** Push the current value to the backing setting. */
     protected abstract void applyValue();
 }

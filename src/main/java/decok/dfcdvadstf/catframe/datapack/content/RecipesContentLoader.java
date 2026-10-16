@@ -8,7 +8,7 @@ import decok.dfcdvadstf.catframe.datapack.DataPackErrors;
 import decok.dfcdvadstf.catframe.datapack.DataPackJson;
 import decok.dfcdvadstf.catframe.datapack.DataPackRepository;
 import decok.dfcdvadstf.catframe.recipe.TagRecipeManager;
-import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.CatFrameTags;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.crafting.IRecipe;

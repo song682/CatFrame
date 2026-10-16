@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.tags.impl;
 
+import decok.dfcdvadstf.catframe.tags.CatFrameTags;
 import decok.dfcdvadstf.catframe.tags.TagKey;
 import net.minecraft.block.Block;
 

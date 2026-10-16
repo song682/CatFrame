@@ -15,7 +15,7 @@ import decok.dfcdvadstf.catframe.adapter.vanilla.model.TexturesStitch;
 import decok.dfcdvadstf.catframe.core.RegisteredComponents;
 import decok.dfcdvadstf.catframe.datapack.DataPackSync;
 import decok.dfcdvadstf.catframe.network.OverlayNetwork;
-import decok.dfcdvadstf.catframe.tags.impl.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.CatFrameTags;
 import net.minecraftforge.common.MinecraftForge;
 
 public class CommonProxy {

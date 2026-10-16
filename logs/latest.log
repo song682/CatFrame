@@ -1,2 +1,0 @@
-[22:41:11] [Test worker/WARN]: [ModelJson] element declares both 'shade' and 'shade_direction_override' (duplicate); they are mutually exclusive - 'shade_direction_override' takes precedence and 'shade' is ignored
-[22:41:11] [Test worker/WARN]: [ModelJson] invalid 'shade_direction_override' value 'middle', expected one of up/down/north/south/east/west; ignoring

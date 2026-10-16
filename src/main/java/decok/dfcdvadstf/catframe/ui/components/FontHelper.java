@@ -47,8 +47,8 @@ public final class FontHelper {
         String str = text.getFormattedString(baseStyle);
         if (str.isEmpty()) return 0;
 
-        // The colour parameter only applies until the first § colour code inside
-        // the string; take it from the root node's effective colour.
+        // The color parameter only applies until the first § color code inside
+        // the string; take it from the root node's effective color.
         // 颜色参数只在字符串内首个 § 颜色码之前生效；取根节点的有效颜色。
         Style rootStyle = (text.getStyle() != null) ? text.getStyle().applyTo(baseStyle) : baseStyle;
         int color = resolveColor(rootStyle, 0xFFFFFF);
@@ -90,7 +90,7 @@ public final class FontHelper {
     }
 
     /**
-     * Resolve the ARGB colour from a style, falling back to a default.
+     * Resolve the ARGB color from a style, falling back to a default.
      * <p>从样式解析 ARGB 颜色，默认回退。</p>
      */
     private static int resolveColor(Style style, int defaultColor) {

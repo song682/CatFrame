@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.adapter.forge.tags;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.TagBuilder;
 import decok.dfcdvadstf.catframe.tags.TagLoader;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -47,20 +47,20 @@ public final class OreDict2Tag {
         // Utility class, no instantiation
     }
     
-// ==================== Name conversion ====================
+    // ==================== Name conversion ====================
 
-/// Smart OreDict name to Tag name conversion
-/// Conversion rules (camelCase split + slash):
-/// - oreIron → ore/iron
-/// - ingotIron → ingot/iron
-/// - logWood → log (ignores generic suffix Wood)
-/// - dustRedstone → dust/redstone
-/// - gemDiamond → gem/diamond
-/// - blockGold → block/gold
-/// - treeSapling → tree/sapling
-///
-/// @param oreName OreDict name
-/// @return Tag name (without namespace)
+    /// Smart OreDict name to Tag name conversion
+    /// Conversion rules (camelCase split + slash):
+    /// - oreIron → ore/iron
+    /// - ingotIron → ingot/iron
+    /// - logWood → log (ignores generic suffix Wood)
+    /// - dustRedstone → dust/redstone
+    /// - gemDiamond → gem/diamond
+    /// - blockGold → block/gold
+    /// - treeSapling → tree/sapling
+    ///
+    /// @param oreName OreDict name
+    /// @return Tag name (without namespace)
     public static String convertOreDictNameToTagName(String oreName) {
         if (oreName == null || oreName.isEmpty()) {
             return oreName;
@@ -156,8 +156,8 @@ public final class OreDict2Tag {
         
         // Smart OreDict name to Tag name conversion
         String tagName = convertOreDictNameToTagName(oreName);
-        TagLoader<Item> itemLoader = CatFrameTags.itemLoader();
-        TagLoader<Block> blockLoader = CatFrameTags.blockLoader();
+        TagLoader<Item> itemLoader = TagBuilder.itemLoader();
+        TagLoader<Block> blockLoader = TagBuilder.blockLoader();
         
         ResourceLocation tagLocation = new ResourceLocation(FORGE_NAMESPACE, tagName);
         
@@ -234,8 +234,8 @@ public final class OreDict2Tag {
         
         LOGGER.info("Converting Tag '{}' to OreDict '{}'", tagFullName, oreName);
         
-        TagLoader<Item> itemLoader = CatFrameTags.itemLoader();
-        TagLoader<Block> blockLoader = CatFrameTags.blockLoader();
+        TagLoader<Item> itemLoader = TagBuilder.itemLoader();
+        TagLoader<Block> blockLoader = TagBuilder.blockLoader();
         
         // Get Tag contents
         Set<Item> items = itemLoader.getTagContents(tagLocation);
@@ -288,8 +288,8 @@ public final class OreDict2Tag {
     public static void convertAllForgeTagsToOreDict() {
         LOGGER.info("Converting all forge: Tags to OreDictionary...");
         
-        TagLoader<Item> itemLoader = CatFrameTags.itemLoader();
-        TagLoader<Block> blockLoader = CatFrameTags.blockLoader();
+        TagLoader<Item> itemLoader = TagBuilder.itemLoader();
+        TagLoader<Block> blockLoader = TagBuilder.blockLoader();
         
         Set<ResourceLocation> itemTags = itemLoader.getAllTagNames();
         Set<ResourceLocation> blockTags = blockLoader.getAllTagNames();
@@ -352,7 +352,7 @@ public final class OreDict2Tag {
             return false;
         }
         
-        TagLoader<Item> itemLoader = CatFrameTags.itemLoader();
+        TagLoader<Item> itemLoader = TagBuilder.itemLoader();
         Set<Item> tagItems = itemLoader.getTagContents(tagLocation);
         
         // Simple check: are counts equal?
@@ -404,7 +404,7 @@ public final class OreDict2Tag {
      * @return whether it belongs
      */
     public static boolean isItemInTag(Item item, String tagName) {
-        return CatFrameTags.is(item, tagName);
+        return TagBuilder.is(item, tagName);
     }
     
     /**

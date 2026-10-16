@@ -5,7 +5,7 @@ import decok.dfcdvadstf.catframe.datapack.DataContentLoader;
 import decok.dfcdvadstf.catframe.datapack.DataPackErrors;
 import decok.dfcdvadstf.catframe.datapack.DataPackJson;
 import decok.dfcdvadstf.catframe.datapack.DataPackRepository;
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.TagBuilder;
 import decok.dfcdvadstf.catframe.tags.TagFile;
 import decok.dfcdvadstf.catframe.tags.TagLoader;
 import net.minecraft.block.Block;
@@ -45,14 +45,14 @@ public class TagsContentLoader implements DataContentLoader {
 
     @Override
     public void unload(DataPackErrors errors) {
-        CatFrameTags.itemLoader().clearRawEntries();
-        CatFrameTags.blockLoader().clearRawEntries();
+        TagBuilder.itemLoader().clearRawEntries();
+        TagBuilder.blockLoader().clearRawEntries();
     }
 
     @Override
     public void load(DataPackRepository repository, DataPackErrors errors) {
-        TagLoader<Item> itemLoader = CatFrameTags.itemLoader();
-        TagLoader<Block> blockLoader = CatFrameTags.blockLoader();
+        TagLoader<Item> itemLoader = TagBuilder.itemLoader();
+        TagLoader<Block> blockLoader = TagBuilder.blockLoader();
 
         itemLoader.setProblemSink((error, tagId, message) -> errors.report(
                 error ? DataPackErrors.Severity.ERROR : DataPackErrors.Severity.WARNING,

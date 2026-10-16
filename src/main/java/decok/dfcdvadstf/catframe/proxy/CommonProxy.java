@@ -15,7 +15,7 @@ import decok.dfcdvadstf.catframe.adapter.vanilla.model.TexturesStitch;
 import decok.dfcdvadstf.catframe.core.RegisteredComponents;
 import decok.dfcdvadstf.catframe.datapack.DataPackSync;
 import decok.dfcdvadstf.catframe.network.OverlayNetwork;
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.TagBuilder;
 import net.minecraftforge.common.MinecraftForge;
 
 public class CommonProxy {
@@ -41,8 +41,8 @@ public class CommonProxy {
             bingoPlushy = new BingoPlushyItem();
             GameRegistry.registerItem(blueyPlushy, "bluey_plushy");
             GameRegistry.registerItem(bingoPlushy, "bingo_plushy");
-            CatFrameTags.add(Tags.MODID, "plushy", blueyPlushy);
-            CatFrameTags.add(Tags.MODID, "plushy", bingoPlushy);
+            TagBuilder.add(Tags.MODID, "plushy", blueyPlushy);
+            TagBuilder.add(Tags.MODID, "plushy", bingoPlushy);
         }
     }
 

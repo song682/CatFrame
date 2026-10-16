@@ -15,16 +15,16 @@ import java.util.Set;
  * Usage:
  * <pre>
  * // In preInit or init phase, register tags
- * CatFrameTags.add("wool", Blocks.wool);
- * CatFrameTags.add("wool", Blocks.carpet_white);
+ * TagBuilder.add("wool", Blocks.wool);
+ * TagBuilder.add("wool", Blocks.carpet_white);
  * 
  * // Check if a block/item belongs to a certain tag
- * if (CatFrameTags.is(Blocks.wool, "wool")) {
+ * if (TagBuilder.is(Blocks.wool, "wool")) {
  *     // This is a wool block or item
  * }
  * </pre>
  */
-public final class CatFrameTags {
+public final class TagBuilder {
     
     /** CatFrame namespace */
     public static final String NAMESPACE = Tags.MODID;
@@ -35,7 +35,7 @@ public final class CatFrameTags {
     /** Block tag loader */
     private static final TagLoader<Block> BLOCK_LOADER = new TagLoader<>("block", TagLoader.createBlockLookup());
     
-    private CatFrameTags() {
+    private TagBuilder() {
         // Utility class, do not instantiate
     }
     

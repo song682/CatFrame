@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.tags.impl;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.TagBuilder;
 import decok.dfcdvadstf.catframe.tags.TagKey;
 import net.minecraft.item.Item;
 
@@ -85,6 +85,6 @@ public final class ItemTags {
      * Check if an item belongs to a certain tag
      */
     public static boolean is(Item item, TagKey<Item> tag) {
-        return CatFrameTags.itemLoader().is(item, tag.getLocation());
+        return TagBuilder.itemLoader().is(item, tag.getLocation());
     }
 }

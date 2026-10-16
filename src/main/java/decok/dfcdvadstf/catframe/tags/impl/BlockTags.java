@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.tags.impl;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.TagBuilder;
 import decok.dfcdvadstf.catframe.tags.TagKey;
 import net.minecraft.block.Block;
 
@@ -92,6 +92,6 @@ public final class BlockTags {
      * Check whether a block belongs to a tag
      */
     public static boolean is(Block block, TagKey<Block> tag) {
-        return CatFrameTags.blockLoader().is(block, tag.getLocation());
+        return TagBuilder.blockLoader().is(block, tag.getLocation());
     }
 }

@@ -1,6 +1,6 @@
 package decok.dfcdvadstf.catframe.recipe;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.TagBuilder;
 import decok.dfcdvadstf.catframe.tags.TagKey;
 import net.minecraft.block.Block;
 import net.minecraft.inventory.InventoryCrafting;
@@ -145,7 +145,7 @@ public class ShapedTagRecipe implements IRecipe {
         if (ingredient instanceof TagKey) {
             @SuppressWarnings("unchecked")
             TagKey<Item> tag = (TagKey<Item>) ingredient;
-            Set<Item> tagItems = CatFrameTags.itemLoader().getTagContents(tag.getLocation());
+            Set<Item> tagItems = TagBuilder.itemLoader().getTagContents(tag.getLocation());
             return new ArrayList<Item>(tagItems);
         }
         
@@ -156,7 +156,7 @@ public class ShapedTagRecipe implements IRecipe {
             if (str.contains(":")) {
                 try {
                     ResourceLocation tagLocation = new ResourceLocation(str);
-                    Set<Item> tagItems = CatFrameTags.itemLoader().getTagContents(tagLocation);
+                    Set<Item> tagItems = TagBuilder.itemLoader().getTagContents(tagLocation);
                     if (!tagItems.isEmpty()) {
                         return new ArrayList<Item>(tagItems);
                     }
@@ -174,7 +174,7 @@ public class ShapedTagRecipe implements IRecipe {
             // If OreDict doesn't have it, try as Tag (without namespace)
             try {
                 ResourceLocation tagLocation = new ResourceLocation("catframe", str);
-                Set<Item> tagItems = CatFrameTags.itemLoader().getTagContents(tagLocation);
+                Set<Item> tagItems = TagBuilder.itemLoader().getTagContents(tagLocation);
                 if (!tagItems.isEmpty()) {
                     return new ArrayList<Item>(tagItems);
                 }

@@ -8,7 +8,7 @@ import decok.dfcdvadstf.catframe.datapack.DataPackErrors;
 import decok.dfcdvadstf.catframe.datapack.DataPackJson;
 import decok.dfcdvadstf.catframe.datapack.DataPackRepository;
 import decok.dfcdvadstf.catframe.recipe.TagRecipeManager;
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.TagBuilder;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.crafting.IRecipe;
@@ -348,7 +348,7 @@ public class RecipesContentLoader implements DataContentLoader {
     private List<Item> resolveTag(String tagId, String packId, String path, DataPackErrors errors) {
         try {
             ResourceLocation location = new ResourceLocation(tagId);
-            Set<Item> items = CatFrameTags.itemLoader().getTagContents(location);
+            Set<Item> items = TagBuilder.itemLoader().getTagContents(location);
             if (items.isEmpty()) {
                 errors.warning(packId, path, "tag '" + tagId + "' is empty; the recipe cannot match");
             }

@@ -8,7 +8,7 @@ import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import decok.dfcdvadstf.catframe.tags.CatFrameTags;
+import decok.dfcdvadstf.catframe.tags.TagBuilder;
 
 import java.util.Set;
 
@@ -51,7 +51,7 @@ public final class TagFurnaceRecipe {
             return;
         }
         
-        Set<Item> items = CatFrameTags.itemLoader().getTagContents(tagLocation);
+        Set<Item> items = TagBuilder.itemLoader().getTagContents(tagLocation);
         
         if (items.isEmpty()) {
             LOGGER.warn("Tag '{}' is empty, no smelting recipes added", tagName);
@@ -87,7 +87,7 @@ public final class TagFurnaceRecipe {
             return;
         }
         
-        Set<Block> blocks = CatFrameTags.blockLoader().getTagContents(tagLocation);
+        Set<Block> blocks = TagBuilder.blockLoader().getTagContents(tagLocation);
         
         if (blocks.isEmpty()) {
             LOGGER.warn("Block tag '{}' is empty, no smelting recipes added", tagName);

@@ -23,49 +23,43 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * 常驻状态方块模型——单实现收敛。
+ * Resident state block model — single-implementation convergence.
  * <p>
- * 本类以 {@link Builder} 配置的方式统一了原先四套并行的数据驱动世界方块模型：
+ * This class unifies the four previously parallel data-driven world block models
+ * via {@link Builder} configuration:
  * <ul>
- *   <li>{@code LazyBlockstateModel} — 常规 variants / multipart（typed
- *       {@link BlockStateDefinition} 驱动属性）</li>
- *   <li>{@code LazyRedirectModel} — per-meta 重定向到另一个 blockstate（{@link IMetadataBlockstateRedirect}）</li>
- *   <li>{@code StairsBlockModel} — 运行时转角形状（dynamic 属性 + resolver）</li>
- *   <li>{@code PaneMultipartRedirectModel} — 运行时连接状态（dynamic 属性 + resolver，face-map 合并）</li>
+ *   <li>{@code LazyBlockstateModel} — regular variants / multipart (typed
+ *       {@link BlockStateDefinition} driven properties)</li>
+ *   <li>{@code LazyRedirectModel} — per-meta redirect to another blockstate ({@link IMetadataBlockstateRedirect})</li>
+ *   <li>{@code StairsBlockModel} — runtime corner shape (dynamic properties + resolver)</li>
+ *   <li>{@code PaneMultipartRedirectModel} — runtime connection state (dynamic properties + resolver, face-map merge)</li>
  * </ul>
  *
- * <h3>属性来源（优先级）</h3>
+ * <h3>Property sources (priority)</h3>
  * <ol>
- *   <li>typed {@link BlockStateDefinition}：{@code def.getStateFromMeta(meta)} 解出常驻状态，
- *       再由 {@link DynamicPropertyResolver} 覆盖动态属性</li>
- *   <li>无 typed 定义但实现 {@link IBlockStateProvider}：逐渲染回落调用
- *       {@link IBlockStateProvider#getStateProperties}，返回非空属性表即参与 variant 匹配</li>
- *   <li>都没有：走 blockstate 的 {@code meta=} / 数字键 / {@code normal} 回退</li>
+ *   <li>typed {@link BlockStateDefinition}: {@code def.getStateFromMeta(meta)} resolves the resident state,
+ *       then {@link DynamicPropertyResolver} overrides dynamic properties</li>
+ *   <li>no typed definition but implements {@link IBlockStateProvider}: per-render fallback calls
+ *       {@link IBlockStateProvider#getStateProperties}; a non-empty property table participates in variant matching</li>
+ *   <li>neither: falls back to the blockstate's {@code meta=} / numeric key / {@code normal}</li>
  * </ol>
  *
- * <h3>变体键统一</h3>
- * variant 匹配统一走 {@link RenderDispatcher#buildVariantKey(Map)}（字母序），
- * 与数据驱动路径完全一致。
+ * <h3>Variant key unification</h3>
+ * Variant matching uniformly goes through {@link RenderDispatcher#buildVariantKey(Map)} (alphabetical order),
+ * fully consistent with the data-driven path.
  */
 @SideOnly(Side.CLIENT)
 public final class ResidentStateModel implements BlockStateModel {
 
     /**
-     * 运行时动态属性解析器：把从世界计算得到的属性（如 stairs 的 {@code shape}、
-     * pane 的 {@code north/east/south/west}）写入属性表。
+     * Runtime dynamic property resolver: writes properties computed from the world
+     * (e.g. stairs' {@code shape}, pane's {@code north/east/south/west}) into the property map.
      */
     @FunctionalInterface
     public interface DynamicPropertyResolver {
         void resolve(IBlockAccess world, int x, int y, int z, int meta, Map<String, String> props);
 
         /**
-         * 渲染否决钩子：允许解析器按当前世界状态整体抑制本位置的渲染。
-         * <p>
-         * 返回 false 时 {@link ResidentStateModel#collectPartsWithProps} 直接产出空部件，
-         * 渲染调用方（RenderDispatcher）随即跳过该位置——等价于原版渲染器方法
-         * {@code return false}（如 {@code RenderBlocks#renderBlockDoublePlant} 在上半的
-         * 下方不是同一方块时直接返回 false、不产出任何几何）。
-         * <p>
          * Render veto hook: lets a resolver suppress rendering for the current world state.
          * Returning false makes collectPartsWithProps emit an empty part, which the render
          * caller treats as "nothing to draw" - the vanilla equivalent of a renderer
@@ -88,10 +82,10 @@ public final class ResidentStateModel implements BlockStateModel {
     @Nullable
     private final DynamicPropertyResolver dynamic;
     private final boolean fullModel;
-    /** pane 模式：per-face 合并 + AtlasGuard 烘焙（对齐原 PaneMultipartRedirectModel）。 */
+    /** pane mode: per-face merge + AtlasGuard baking (aligned with the original PaneMultipartRedirectModel). */
     private final boolean connectionMultipart;
 
-    /** redirect 模式下每个 meta 解析出的目标 blockstate 缓存。 */
+    /** Cache of the target blockstate resolved for each meta in redirect mode. */
     private final Map<Integer, BlockstateJson> redirectCache = new HashMap<>();
 
     private ResidentStateModel(Builder b) {
@@ -105,17 +99,16 @@ public final class ResidentStateModel implements BlockStateModel {
         this.connectionMultipart = b.connectionMultipart;
         // Validate variant keys against the typed state definition once at build time;
         // invalid property=value keys are invalidated → builtin/missing (MissingNo).
-        // 构建时用 typed 状态定义一次性校验 variant 键；无效的 属性=属性值 键作废 → builtin/missing（MissingNo）。
         BlockstateKeyValidator.validate(this.bs, this.def, describeOwner());
     }
 
-    /** Human-readable owner for validator logs. 校验日志用的归属描述。 */
+    /** Human-readable owner for validator logs. */
     private String describeOwner() {
         String id = Block.blockRegistry.getNameForObject(block);
         return "blockstate of " + (id != null ? id : String.valueOf(block));
     }
 
-    // ==================== 渲染入口 ====================
+    // ==================== Render entry ====================
 
     @Override
     public BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z, int metadata) {
@@ -127,9 +120,6 @@ public final class ResidentStateModel implements BlockStateModel {
         BlockstateJson target = resolveTarget(metadata);
         if (target == null) return new CollectedPart(BlockStateModelPart.empty(), null);
 
-        // 渲染否决：dynamic 解析器可按世界状态整体抑制渲染（如双层植物上半在下方
-        // 缺失时不出几何——对标原版 renderBlockDoublePlant 的 return false，避免破坏
-        // 下半后的客户端同步窗口期内以上半自身残值 meta 残留"幽灵上半"）。
         // Render veto: a dynamic resolver may suppress rendering for the current world
         // state (double plant upper half with a missing block below - renderBlockDoublePlant
         // parity; avoids the phantom upper half during the post-break sync window).
@@ -154,8 +144,9 @@ public final class ResidentStateModel implements BlockStateModel {
             part = BlockStateModelPart.empty();
         }
 
-        // 匹配完成后包裹只读视图随提交携带（防扩展篡改）；props 为 null 或空
-        // （无 def 且无 dynamic 的普通方块）时保持 null，零额外成本。
+        // After matching, wrap a read-only view carried along with the submission (guards
+        // against extension tampering); stays null when props is null or empty (a plain
+        // block with neither def nor dynamic), at zero extra cost.
         Map<String, String> exposed = (props == null || props.isEmpty())
                 ? null : Collections.unmodifiableMap(props);
         return new CollectedPart(part, exposed);
@@ -166,18 +157,17 @@ public final class ResidentStateModel implements BlockStateModel {
         return fullModel;
     }
 
-    // ==================== 粒子纹理解析（模型驱动） ====================
+    // ==================== Particle icon resolution (model-driven) ====================
 
     /**
-     * 粒子纹理解析（模型驱动，对标 26.1.2 BlockStateModel#particleMaterial）。
+     * Particle icon resolution (model-driven, aligned with 26.1.2 BlockStateModel#particleMaterial).
      * <p>
-     * 与 {@link #collectPartsWithProps} 同一匹配逻辑，但无世界/坐标上下文
-     * （破坏粒子生成时方块可能已被移除）：variants 用 {@code metadata * 31}
-     * 确定种子，解析失败按 collectVariants 同款回退链（meta-0 variant →
-     * builtin/missing）；multipart / 连接 multipart 取**首个可解析 case** 的模型
-     * （对标 26.1.2 首 selector 语义，与属性匹配结果无关）。
-     * Particle resolution mirroring collectPartsWithProps without world context;
-     * multipart takes the first resolvable case (26.1.2 first-selector semantics).
+     * Uses the same matching logic as {@link #collectPartsWithProps} but without world/coordinate
+     * context (the block may already be removed when break particles are generated): variants use
+     * {@code metadata * 31} to determine the seed, and resolution failure follows the same fallback
+     * chain as collectVariants (meta-0 variant → builtin/missing); multipart / connection multipart
+     * take the model of the **first resolvable case** (26.1.2 first-selector semantics, independent
+     * of the property matching result).
      */
     @Override
     public IIcon particleIcon(int metadata) {
@@ -188,7 +178,7 @@ public final class ResidentStateModel implements BlockStateModel {
             return particleFromVariant(metadata, target);
         }
         if (target.multipart != null) {
-            // 26.1.2 首 selector 语义：取首个可解析 case，不做属性匹配筛选
+            // 26.1.2 first-selector semantics: take the first resolvable case, no property matching filter
             for (BlockstateJson.MultipartCase mpc : target.multipart) {
                 if (mpc.apply == null) continue;
                 BlockstateJson.Variant v = mpc.apply.getVariant(metadata * 31);
@@ -203,8 +193,8 @@ public final class ResidentStateModel implements BlockStateModel {
     }
 
     /**
-     * variants 路径：无坐标种子解析 + meta-0 / builtin/missing 回退
-     * （与 {@link #collectVariants} 的回退链一致）。
+     * variants path: coordinate-less seed resolution + meta-0 / builtin/missing fallback
+     * (consistent with the {@link #collectVariants} fallback chain).
      */
     @Nullable
     private IIcon particleFromVariant(int metadata, BlockstateJson target) {
@@ -225,7 +215,7 @@ public final class ResidentStateModel implements BlockStateModel {
         return ParticleIconResolver.fromPart(part);
     }
 
-    // ==================== 目标 blockstate 解析 ====================
+    // ==================== Target blockstate resolution ====================
 
     @Nullable
     private BlockstateJson resolveTarget(int metadata) {
@@ -255,14 +245,13 @@ public final class ResidentStateModel implements BlockStateModel {
         }
         if (target != null) {
             // Redirect targets are resolved lazily → validate their variant keys here as well
-            // 重定向目标为懒解析 → 同样在此校验其 variant 键
             BlockstateKeyValidator.validate(target, def, describeOwner());
             redirectCache.put(metadata, target);
         }
         return target;
     }
 
-    // ==================== 属性来源 ====================
+    // ==================== Property sources ====================
 
     @Nullable
     private Map<String, String> resolveProps(IBlockAccess world, int x, int y, int z, int metadata) {
@@ -270,10 +259,12 @@ public final class ResidentStateModel implements BlockStateModel {
             BlockState state = def.getStateFromMeta(metadata);
             return propsFromState(state);
         }
-        // 无 typed 定义时回落 legacy provider：逐渲染调用 getStateProperties，
-        // 恢复 IBlockStateProvider 的动态属性契约 —— 否则该方块会被无属性来源的
-        // 常驻模型遮蔽，落入 variants 首键回退（所有 metadata 恒渲染首个 variant）。
-        // provider 返回 null / 空表时保持原有 meta= / 数字键 / normal 回退链不变。
+        // Without a typed definition, fall back to the legacy provider: call
+        // getStateProperties per render, restoring IBlockStateProvider's dynamic property
+        // contract — otherwise the block would be shadowed by the resident model with no
+        // property source and fall into the variants first-key fallback (every metadata
+        // always rendering the first variant). When the provider returns null / an empty
+        // table, the existing meta= / numeric key / normal fallback chain stays unchanged.
         if (block instanceof IBlockStateProvider) {
             Map<String, String> providerProps =
                     ((IBlockStateProvider) block).getStateProperties(world, x, y, z, metadata);
@@ -295,16 +286,16 @@ public final class ResidentStateModel implements BlockStateModel {
         return props;
     }
 
-    // ==================== variants 匹配（BakedModelCache 展平） ====================
+    // ==================== variants matching (BakedModelCache flattening) ====================
 
     private BlockStateModelPart collectVariants(IBlockAccess world, int x, int y, int z,
                                                 int metadata, BlockstateJson target,
                                                 @Nullable Map<String, String> props) {
-        // dynamic（如 stairs）随位置产生权重随机；纯 mapper/def 用 meta 种子（保留原有行为）
+        // dynamic (e.g. stairs) produces weighted randomness by position; a pure mapper/def uses the meta seed (preserving prior behavior)
         int seed = (dynamic != null) ? (x * 3129871 ^ z * 116129781 ^ y) : (metadata * 31);
         BlockstateJson.Variant variant = resolveVariant(metadata, target, props, seed);
         if (variant == null || variant.model == null) {
-            // 回退到 meta 0 的变体
+            // Fall back to the meta 0 variant
             variant = resolveVariant(0, target, propsForMeta(0), seed);
         }
 
@@ -352,7 +343,7 @@ public final class ResidentStateModel implements BlockStateModel {
         return entry.getVariant(seed);
     }
 
-    // ==================== 常规 multipart 匹配（展平） ====================
+    // ==================== Regular multipart matching (flattening) ====================
 
     private BlockStateModelPart collectMultipart(IBlockAccess world, int x, int y, int z,
                                                  BlockstateJson target,
@@ -379,7 +370,7 @@ public final class ResidentStateModel implements BlockStateModel {
         return BlockStateModelPart.fromQuads(allQuads);
     }
 
-    // ==================== 连接 multipart（pane，face-map 合并 + AtlasGuard） ====================
+    // ==================== Connection multipart (pane, face-map merge + AtlasGuard) ====================
 
     private BlockStateModelPart collectConnectionMultipart(IBlockAccess world, int x, int y, int z,
                                                            BlockstateJson target,
@@ -421,7 +412,7 @@ public final class ResidentStateModel implements BlockStateModel {
         return BlockStateModelPart.fromFaceMap(mergedFace, mergedGeneral);
     }
 
-    // ==================== 辅助 ====================
+    // ==================== Helpers ====================
 
     private static boolean hasMetaVariantKeys(BlockstateJson target) {
         if (target.variants == null) return false;
@@ -490,7 +481,7 @@ public final class ResidentStateModel implements BlockStateModel {
             return this;
         }
 
-        /** 启用 pane 连接 multipart 模式（face-map 合并 + AtlasGuard，isFullModel=false）。 */
+        /** Enables pane connection multipart mode (face-map merge + AtlasGuard, isFullModel=false). */
         public Builder connectionMultipart() {
             this.connectionMultipart = true;
             this.fullModel = false;

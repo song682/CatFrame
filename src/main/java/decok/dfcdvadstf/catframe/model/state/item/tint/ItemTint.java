@@ -4,22 +4,23 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import net.minecraft.item.ItemStack;
 
 /**
- * 物品 Tint 颜色提供者接口。
+ * Item tint color provider interface.
  * <p>
- * 每个实现根据 {@link ItemStack} 和 {@link RenderPhase} 计算一个 RGB 颜色值。
- * 在 JSON 物品模型映射中，tints 作为高优先级覆盖层应用于 ModelLeaf。
+ * Each implementation computes an RGB color value based on {@link ItemStack} and
+ * {@link RenderPhase}. In JSON item model mappings, tints are applied to the ModelLeaf as a
+ * high-priority overlay.
  * <p>
- * 与现有 {@code TintRegistry}/{@code TintRenderExtension} 系统共存：
- * JSON tints 优先于 TintRegistry 应用。
+ * Works alongside the existing {@code TintRegistry}/{@code TintRenderExtension} system:
+ * JSON tints take precedence over TintRegistry.
  */
 public interface ItemTint {
 
     /**
-     * 计算 tint 颜色。
+     * Computes the tint color.
      *
-     * @param stack 当前渲染的 ItemStack（可能为 null）
-     * @param phase 当前渲染阶段
-     * @return RGB 颜色值（0xRRGGBB），alpha 通道忽略
+     * @param stack the ItemStack being rendered (may be null)
+     * @param phase the current render phase
+     * @return RGB color value (0xRRGGBB); alpha channel is ignored
      */
     int compute(ItemStack stack, RenderPhase phase);
 }

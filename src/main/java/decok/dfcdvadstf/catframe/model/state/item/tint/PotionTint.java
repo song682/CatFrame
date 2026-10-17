@@ -5,16 +5,16 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.potion.PotionHelper;
 
 /**
- * 药水颜色 tint。
- * <p>1.7.10 中通过 {@code PotionHelper} 根据药水 damage 值计算液体颜色，
- * 对应模型中标记 {@code "tintindex"} 的液体层面（layer0，对齐原版：
- * 染色液体 overlay 在底层先画，玻璃瓶 layer1 不染色叠在上层）。
+ * Potion color tint.
+ * <p>In 1.7.10, {@code PotionHelper} computes the liquid color from the potion damage value,
+ * corresponding to the liquid layer marked with {@code "tintindex"} in the model (layer0;
+ * aligned with vanilla: the tinted liquid overlay is drawn first, while the glass bottle
+ * layer1 is drawn on top and is not tinted).
  */
 public class PotionTint implements ItemTint {
     @Override
     public int compute(ItemStack stack, RenderPhase phase) {
         if (stack == null) return 0xFFFFFF;
-        // 按药水 damage 值经 PotionHelper 计算液体颜色（对齐原版 ItemPotion 着色）。
         // Compute the potion liquid color from the damage value via PotionHelper
         // (matches vanilla ItemPotion coloring).
         return PotionHelper.func_77915_a(stack.getItemDamage(), false) & 0xFFFFFF;

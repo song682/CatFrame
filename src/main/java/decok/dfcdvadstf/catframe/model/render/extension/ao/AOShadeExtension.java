@@ -7,41 +7,42 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLighting;
 
 /**
- * 内建渲染扩展：处理 JSON element 中的 {@code "ambientocclusion"}、{@code "shade"}
- * 和 {@code "shade_direction_override"}（26.3+）字段。
+ * Built-in render extension: handles the {@code "ambientocclusion"}, {@code "shade"},
+ * and {@code "shade_direction_override"} (26.3+) fields in a JSON element.
  *
- * <h3>逐顶点 AO 原理（对齐 26.1 {@code BlockModelLighter} 算法）</h3>
- * <p>在 {@link RenderPhase#BLOCK_WORLD} 阶段，
- * {@link AOComputeExtension} 委托
+ * <h3>Per-vertex AO principle (aligned with the 26.1 {@code BlockModelLighter} algorithm)</h3>
+ * <p>During the {@link RenderPhase#BLOCK_WORLD} phase,
+ * {@link AOComputeExtension} delegates to
  * {@link decok.dfcdvadstf.catframe.model.render.extension.ao.light.BlockModelLighter#prepareQuadAmbientOcclusion}
- * 按 26.1 算法预先计算逐顶点数据：
- * 面形状分析（faceCubic / facePartial）、9 位置采样（含透明边角回退）、
- * {@link decok.dfcdvadstf.catframe.model.render.extension.ao.light.LightCoordsUtil#smoothBlend} 平滑混合、
- * 部分面加权混合。方向光照（CardinalLighting）由 {@link RenderContext#shade} 承载。</p>
+ * to precompute per-vertex data using the 26.1 algorithm:
+ * face shape analysis (faceCubic / facePartial), 9-position sampling (including translucent corner fallback),
+ * {@link decok.dfcdvadstf.catframe.model.render.extension.ao.light.LightCoordsUtil#smoothBlend} smooth blending,
+ * and partial-face weighted blending. Directional lighting (CardinalLighting) is carried by {@link RenderContext#shade}.</p>
  *
- * <h3>行为规则</h3>
+ * <h3>Behavior rules</h3>
  * <ul>
- *   <li><strong>默认行为（{@code null}）：AO 生效</strong> — 逐顶点 AO 数据保持不动，
- *     渲染器会按 4 个顶点各自独立发射（每个顶点不同亮度和颜色）。</li>
- *   <li>{@code ambientOcclusion = false}：清除逐顶点数据，退化到 flat 平面光照
- *     （使用方块自身亮度 + CardinalLighting 方向阴影）。对应 26.1 中
- *     {@code BlockModelLighter.prepareQuadFlat} 路径。</li>
- *   <li>{@code shadeEnabled = false}：禁用方向阴影，强制 {@code shade = 1.0f}（均匀照明）。
- *     逐顶点 AO 数据保留，仅方向系数被抹平。</li>
- *   <li>{@code shadeDirectionOverride != null}（26.3+）：不按面实际朝向，改用指定方向查
- *     {@link CardinalLighting} 表计算方向阴影；与 {@code shade} 互斥，同时声明时本字段优先
- *     （解析阶段已按重复告警，见 {@code ModelJson} 的 ElementDeserializer）。</li>
+ *   <li><strong>Default behavior ({@code null}): AO active</strong> — per-vertex AO data is left untouched,
+ *     and the renderer emits each of the 4 vertices independently (each vertex with its own brightness and color).</li>
+ *   <li>{@code ambientOcclusion = false}: clears the per-vertex data, degrading to flat lighting
+ *     (using the block's own brightness + CardinalLighting directional shading). Corresponds to the
+ *     {@code BlockModelLighter.prepareQuadFlat} path in 26.1.</li>
+ *   <li>{@code shadeEnabled = false}: disables directional shading, forcing {@code shade = 1.0f} (uniform lighting).
+ *     Per-vertex AO data is retained; only the directional coefficient is flattened.</li>
+ *   <li>{@code shadeDirectionOverride != null} (26.3+): instead of the face's actual orientation, looks up the
+ *     {@link CardinalLighting} table using the specified direction to compute directional shading; mutually exclusive
+ *     with {@code shade}, and this field takes precedence when both are declared
+ *     (a duplicate warning is already issued during parsing; see the ElementDeserializer in {@code ModelJson}).</li>
  * </ul>
  *
- * <p>本扩展由 {@link ModelRenderRegistry} 在首次使用时自动安装。
+ * <p>This extension is installed automatically by {@link ModelRenderRegistry} on first use.
  */
 public final class AOShadeExtension implements IModelRenderExtension {
     @Override
     public void apply(RenderContext ctx) {
-        // 处理 ambientocclusion
+        // Handle ambientocclusion
         if (ctx.quad.ambientOcclusion != null && !ctx.quad.ambientOcclusion) {
-            // 显式禁用 AO：清除逐顶点数据 → 退化到 flat 平面光照
-            // 26.1 flat 路径使用方块自身亮度（非自发光 0xF000F0）
+            // AO explicitly disabled: clear per-vertex data → degrade to flat lighting
+            // The 26.1 flat path uses the block's own brightness (not the emissive 0xF000F0)
             for (int i = 0; i < 4; i++) {
                 ctx.aoBrightness[i] = -1;
                 ctx.aoColorMul[i] = 1.0f;
@@ -52,11 +53,11 @@ public final class AOShadeExtension implements IModelRenderExtension {
             }
         }
 
-        // 处理 shade_direction_override（26.3+）：按指定方向查表计算方向阴影，优先级高于 shade
+        // Handle shade_direction_override (26.3+): look up the table by the specified direction to compute directional shading; takes precedence over shade
         if (ctx.quad.shadeDirectionOverride != null) {
             ctx.shade = CardinalLighting.DEFAULT.byFace(ctx.quad.shadeDirectionOverride);
         } else if (ctx.quad.shadeEnabled != null && !ctx.quad.shadeEnabled) {
-            // 禁用方向阴影：抹平方向系数，逐顶点 AO 数据保留
+            // Directional shading disabled: flatten the directional coefficient; per-vertex AO data is retained
             ctx.shade = 1.0f;
         }
     }

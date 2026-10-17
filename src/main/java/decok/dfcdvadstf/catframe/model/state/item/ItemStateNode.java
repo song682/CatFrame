@@ -9,23 +9,24 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 /**
- * ItemState 决策树节点。
+ * ItemState decision-tree node.
  * <p>
- * 高版本 MC (1.21.2+) 的 items/ JSON 本质是一棵模型决策树：
- * 运行时每帧根据 ItemStack 的实时属性（使用状态、damage、display context 等）
- * 自顶向下求值，最终选定一个具体模型来渲染。
+ * The items/ JSON of modern Minecraft (1.21.2+) is essentially a model decision tree:
+ * every frame at runtime it is evaluated top-down against the live attributes of the
+ * ItemStack (use state, damage, display context, etc.), ultimately selecting one concrete
+ * model to render.
  * <p>
- * 六种节点类型（可任意嵌套组合）：
+ * Six node types (nestable and composable in any combination):
  * <ul>
- *   <li>{@link ModelLeaf} — 叶子节点，指向具体模型路径</li>
- *   <li>{@link ConditionNode} — 布尔分支，根据 property 的 true/false 走 on_true/on_false 子树</li>
- *   <li>{@link RangeDispatchNode} — 数值阈值分派，根据 property 值落入哪个 threshold 区间选择子树</li>
- *   <li>{@link SelectNode} — 枚举选择（wiki 规范 select），cases 带 when 数组</li>
- *   <li>{@link CompositeNode} — 组合分层，按顺序渲染多个子树</li>
- *   <li>{@link EmptyNode} — 空节点，不渲染任何模型</li>
+ *   <li>{@link ModelLeaf} — leaf node pointing at a concrete model path</li>
+ *   <li>{@link ConditionNode} — boolean branch; follows the on_true/on_false subtree according to the property's true/false</li>
+ *   <li>{@link RangeDispatchNode} — numeric threshold dispatch; selects a subtree by which threshold range the property value falls into</li>
+ *   <li>{@link SelectNode} — enumeration select (wiki-spec select), cases carry a when array</li>
+ *   <li>{@link CompositeNode} — composite layering; renders multiple subtrees in order</li>
+ *   <li>{@link EmptyNode} — empty node; renders no model at all</li>
  * </ul>
  *
- * <p>对齐高版本 JSON 格式：
+ * <p>Aligned with the modern JSON format:
  * <pre>{@code
  * {
  *   "type": "minecraft:condition",
@@ -38,54 +39,49 @@ import java.util.*;
 public abstract class ItemStateNode {
 
     /**
-     * 递归求值决策树，返回求值结果。
+     * Recursively evaluates the decision tree and returns the result.
      * <p>
-     * 结果可能是单模型（{@link EvalResult#single}）、多模型分层（{@link EvalResult#composite}）
-     * 或空结果（{@link EvalResult#empty}）。
+     * The result may be a single model ({@link EvalResult#single}), layered multiple models
+     * ({@link EvalResult#composite}), or an empty result ({@link EvalResult#empty}).
      *
-     * @param properties 运行时属性集（property name → value）
-     * @return 求值结果，不为 null
+     * @param properties runtime property set (property name → value)
+     * @return evaluation result, never null
      */
     public abstract EvalResult evaluate(Map<String, Comparable<?>> properties);
 
     /**
-     * 带求值上下文的重载：沿决策树向下传递当前 {@link ItemStack} 与 {@link RenderPhase}，
-     * 供特殊节点（{@link SpecialNode}）在求值时读取 NBT 动态追加图层。
-     * <p>
-     * 基类默认忽略上下文并委托 {@link #evaluate(Map)}，因此纯数据叶子（{@link ModelLeaf}、
-     * {@link EmptyNode}）无需重写本方法；容器节点重写以将上下文传递至子树。
-     * <p>
      * Context-carrying overload threaded down the tree so special nodes can read the live
      * stack at evaluation time. The base default ignores the context and delegates to
      * {@link #evaluate(Map)}; leaves inherit it, containers override to propagate it.
      *
-     * @param properties 运行时属性集
-     * @param ctx        求值上下文，可能为 {@code null}（非渲染求值路径）
-     * @return 求值结果，不为 null
+     * @param properties runtime property set
+     * @param ctx        evaluation context; may be {@code null} (non-rendering evaluation paths)
+     * @return evaluation result, never null
      */
     public EvalResult evaluate(Map<String, Comparable<?>> properties, @Nullable EvalContext ctx) {
         return evaluate(properties);
     }
 
     /**
-     * 收集决策树中所有引用的模型路径（用于纹理收集）。
+     * Collects all model paths referenced in the decision tree (used for texture collection).
      *
-     * @param out 收集目标集合
+     * @param out target collection to collect into
      */
     public abstract void collectModelPaths(Set<String> out);
 
-    // ==================== 叶子节点 ====================
+    // ==================== Leaf node ====================
 
     /**
-     * 叶子节点：指向具体模型路径，可附带 tints。
+     * Leaf node: points to a concrete model path, may carry tints.
      * <p>JSON: {@code {"type": "minecraft:model", "model": "item/apple", "tints": [...]}}
-     * <p>可选 {@code transformation} 标签（默认为单位变换）：物品模型渲染变换，
-     * 在 display 变换之后逐顶点应用，解析规则见 {@link ItemTransformation}。
+     * <p>Optional {@code transformation} tag (identity transform by default): the item model
+     * render transform, applied per-vertex after the display transform; parsing rules see
+     * {@link ItemTransformation}.
      */
     public static class ModelLeaf extends ItemStateNode {
         public final String model;
         public final List<ItemTint> tints;
-        /** 可选的物品模型渲染变换矩阵（display 之后应用），无变换时为 null / optional post-display transform */
+        /** Optional item model render transform (applied after display), null when there is no transform / optional post-display transform */
         @Nullable
         public final Matrix4d transformation;
 
@@ -114,10 +110,10 @@ public abstract class ItemStateNode {
         }
     }
 
-    // ==================== 条件节点 ====================
+    // ==================== Condition node ====================
 
     /**
-     * 布尔分支节点：根据 property 的布尔值走不同子树。
+     * Boolean branch node: follows different subtrees based on the property's boolean value.
      * <p>JSON:
      * <pre>{@code
      * {
@@ -152,7 +148,7 @@ public abstract class ItemStateNode {
                         ? (onTrue != null ? onTrue.evaluate(properties, ctx) : EvalResult.empty())
                         : (onFalse != null ? onFalse.evaluate(properties, ctx) : EvalResult.empty());
             }
-            // 属性不存在或非布尔 → 走 on_false
+            // Property missing or non-boolean → take on_false
             return onFalse != null ? onFalse.evaluate(properties, ctx) : EvalResult.empty();
         }
 
@@ -163,13 +159,14 @@ public abstract class ItemStateNode {
         }
     }
 
-    // ==================== 数值阈值分派节点 ====================
+    // ==================== Numeric threshold dispatch node ====================
 
     /**
-     * 数值阈值分派节点：根据 property 的数值（乘以 scale 后）落入哪个 threshold 区间选择子树。
+     * Numeric threshold dispatch node: selects a subtree by which threshold range the
+     * property's numeric value (after multiplication by scale) falls into.
      * <p>
-     * entries 按 threshold 升序排列。求值时找到最后一个 threshold &lt;= scaledValue 的条目。
-     * 如果没有条目匹配，使用 fallback。
+     * entries are sorted ascending by threshold. During evaluation, the last entry whose
+     * threshold &lt;= scaledValue is found. If no entry matches, fallback is used.
      * <p>JSON:
      * <pre>{@code
      * {
@@ -213,13 +210,13 @@ public abstract class ItemStateNode {
                 return fallback != null ? fallback.evaluate(properties, ctx) : EvalResult.empty();
             }
 
-            // 找到最后一个 threshold <= value 的条目
+            // Find the last entry with threshold <= value
             ItemStateNode matched = null;
             for (ThresholdEntry entry : entries) {
                 if (value >= entry.threshold) {
                     matched = entry.node;
                 } else {
-                    break; // entries 按 threshold 升序，后续都不会匹配
+                    break; // entries are ascending by threshold, so none of the rest will match
                 }
             }
 
@@ -237,7 +234,7 @@ public abstract class ItemStateNode {
     }
 
     /**
-     * range_dispatch 的阈值条目。
+     * Threshold entry of a range_dispatch.
      */
     public static class ThresholdEntry {
         public final float threshold;
@@ -249,10 +246,10 @@ public abstract class ItemStateNode {
         }
     }
 
-    // ==================== 空节点 ====================
+    // ==================== Empty node ====================
 
     /**
-     * 空节点：不渲染任何模型。
+     * Empty node: renders no model.
      * <p>JSON: {@code {"type": "minecraft:empty"}}
      */
     public static class EmptyNode extends ItemStateNode {
@@ -263,17 +260,18 @@ public abstract class ItemStateNode {
 
         @Override
         public void collectModelPaths(Set<String> out) {
-            // 空节点不引用任何模型
+            // Empty node references no model
         }
     }
 
-    // ==================== 组合分层节点 ====================
+    // ==================== Composite layering node ====================
 
     /**
-     * 组合分层节点：按顺序渲染多个子树。
+     * Composite layering node: renders multiple subtrees in order.
      * <p>
-     * 每个子元素可以是任意节点类型（包括嵌套 composite）。
-     * 求值时递归收集所有子树的模型路径，合并为一个 {@link EvalResult#composite} 结果。
+     * Each child can be any node type (including a nested composite).
+     * During evaluation the model paths of all subtrees are collected recursively and merged
+     * into a single {@link EvalResult#composite} result.
      * <p>JSON:
      * <pre>{@code
      * {
@@ -299,7 +297,6 @@ public abstract class ItemStateNode {
 
         @Override
         public EvalResult evaluate(Map<String, Comparable<?>> properties, @Nullable EvalContext ctx) {
-            // 合并子树图层（含静态模型与动态内容），composite 求值顺序即渲染顺序契约。
             // Merge child layers (static models + dynamic content); composite order is the render-order contract.
             List<EvalResult.Layer> allLayers = new ArrayList<>();
             for (ItemStateNode child : models) {
@@ -317,13 +314,14 @@ public abstract class ItemStateNode {
         }
     }
 
-    // ==================== 枚举选择节点 ====================
+    // ==================== Enumeration select node ====================
 
     /**
-     * 枚举选择节点：根据 property 值匹配 cases 中的 when 集合选择子树。
+     * Enumeration select node: selects a subtree by matching the property value against the
+     * when sets of the cases.
      * <p>
-     * cases 是列表形式，每个 case 的 {@code when}
-     * 可以是字符串数组（匹配多个值）。未匹配时使用 fallback。
+     * cases is expressed as a list, and each case's {@code when} can be a string array
+     * (matching multiple values). fallback is used when nothing matches.
      * <p>JSON:
      * <pre>{@code
      * {
@@ -378,7 +376,7 @@ public abstract class ItemStateNode {
     }
 
     /**
-     * select 节点的单个 case 条目。
+     * A single case entry of a select node.
      */
     public static class SelectCase {
         public final Set<String> when;
@@ -390,39 +388,46 @@ public abstract class ItemStateNode {
         }
     }
 
-    // ==================== 特殊节点（动态图层） ====================
+    // ==================== Special node (dynamic layers) ====================
 
     /**
-     * 特殊节点：求值时读当前 {@link ItemStack}（NBT 等）动态追加模型图层。
+     * Special node: reads the current {@link ItemStack} (NBT etc.) at evaluation time to
+     * dynamically append model layers.
      * <p>
-     * 对齐高版本 {@code SpecialRenderer#appendItemLayers}——决策树里一个可由第三方注册的
-     * 自定义节点类型，在求值阶段根据上下文产出额外图层（如收纳袋 {@code dmod:bundle_selected_item}
-     * 从袋中取选中物品，追加其自身模型图层）。返回的图层可为 {@link EvalResult#dynamic}
-     * （递归渲染内容物品自身模型），也可为 {@link EvalResult#compositeLayers}（混合静态/动态）。
+     * Aligned with the modern {@code SpecialRenderer#appendItemLayers}—a custom node type
+     * in the decision tree that can be registered by third parties, producing extra layers
+     * at evaluation time based on the context (e.g. the bundle's
+     * {@code dmod:bundle_selected_item} takes the selected item out of the bundle and
+     * appends its own model layer). The returned layer may be {@link EvalResult#dynamic}
+     * (recursively rendering the content item's own model) or
+     * {@link EvalResult#compositeLayers} (mixing static/dynamic).
      * <p>
-     * 注册方式：{@link #registerNodeType(String, NodeTypeDeserializer)} 将一个命名空间 type
-     * （如 {@code "dmod:bundle_selected_item"}）绑定到返回具体 {@code SpecialNode} 子类的工厂；
-     * 反序列化侧经节点类型注册表物化，{@code minecraft:} 内置类型行为不变。
+     * Registration: {@link #registerNodeType(String, NodeTypeDeserializer)} binds a
+     * namespaced type (e.g. {@code "dmod:bundle_selected_item"}) to a factory that returns
+     * a concrete {@code SpecialNode} subclass; on the deserialization side it is materialized
+     * through the node type registry, and built-in {@code minecraft:} types keep their
+     * original behavior.
      * <p>
-     * 无上下文求值（如纹理收集、tint 解析）时 {@link #evaluate(Map)} 返回空——动态图层
-     * 只在持有 {@link EvalContext} 的渲染求值中产出。
+     * For context-free evaluation (e.g. texture collection, tint resolution),
+     * {@link #evaluate(Map)} returns empty—dynamic layers are produced only in render
+     * evaluation that carries an {@link EvalContext}.
      */
     public abstract static class SpecialNode extends ItemStateNode {
 
-        /** 无上下文求值不产出动态图层（动态内容依赖当前 {@link ItemStack}）。 */
+        /** Context-free evaluation produces no dynamic layers (dynamic content depends on the current {@link ItemStack}). */
         @Override
         public EvalResult evaluate(Map<String, Comparable<?>> properties) {
             return EvalResult.empty();
         }
 
-        /** 子类在此读 {@code ctx.getStack()} 的 NBT 追加图层（对齐 {@code appendItemLayers}）。 */
+        /** Subclasses read the NBT of {@code ctx.getStack()} here to append layers (aligned with {@code appendItemLayers}). */
         @Override
         public abstract EvalResult evaluate(Map<String, Comparable<?>> properties, @Nullable EvalContext ctx);
 
-        /** 动态图层在求值时才确定，纹理收集阶段无静态路径可加。 */
+        /** Dynamic layers are determined only at evaluation time; texture collection has no static path to add. */
         @Override
         public void collectModelPaths(Set<String> out) {
-            // 动态内容路径未知，不收集
+            // Dynamic content path is unknown; do not collect
         }
     }
 
@@ -434,8 +439,8 @@ public abstract class ItemStateNode {
     /**
      * Register a custom node type for items/ decision tree JSON.
      * <p>
-     * 注册自定义节点类型，扩展 items/ 决策树 JSON 的 {@code "type"} 分发。
-     * 内置类型（{@code minecraft:model}, {@code minecraft:condition} 等）在首次调用时自动注册。
+     * Built-in types ({@code minecraft:model}, {@code minecraft:condition}, etc.) are
+     * registered automatically on first call.
      *
      * @param type         the "type" string (e.g. "{@code mymod:my_node}")
      * @param deserializer factory that parses a JsonObject into an ItemStateNode
@@ -464,8 +469,8 @@ public abstract class ItemStateNode {
     /**
      * Register a custom tint type for items/ decision tree JSON.
      * <p>
-     * 注册自定义 tint 类型，扩展 {@code "tints"} 数组中的 {@code "type"} 分发。
-     * 内置类型（{@code minecraft:constant}, {@code minecraft:grass} 等）在首次调用时自动注册。
+     * Built-in types ({@code minecraft:constant}, {@code minecraft:grass}, etc.) are
+     * registered automatically on first call.
      *
      * @param type         the tint "type" string (e.g. "{@code mymod:my_tint}")
      * @param deserializer factory that parses a tint JsonObject into an ItemTint
@@ -497,7 +502,6 @@ public abstract class ItemStateNode {
     private static ModelLeaf deserializeModel(JsonObject obj) {
         String model = obj.has("model") ? obj.get("model").getAsString() : null;
         List<ItemTint> tints = deserializeTints(obj);
-        // 可选 transformation：16-float 行主序矩阵数组，或分解形式对象
         // Optional transformation: 16-float row-major matrix array or decomposed object
         Matrix4d transformation = ItemTransformation.parse(obj.get("transformation"));
         return new ModelLeaf(model, tints, transformation);
@@ -550,7 +554,7 @@ public abstract class ItemStateNode {
                 entries.add(new ThresholdEntry(threshold, node));
             }
         }
-        // 确保 entries 按 threshold 升序排列
+        // Ensure entries are sorted ascending by threshold
         entries.sort(Comparator.comparingDouble(e -> e.threshold));
 
         return new RangeDispatchNode(property, scale, fallback, entries);
@@ -593,10 +597,10 @@ public abstract class ItemStateNode {
         return new SelectNode(property, cases, fallback);
     }
 
-    // ==================== Gson 反序列化 ====================
+    // ==================== Gson deserialization ====================
 
     /**
-     * 创建能解析 ItemStateNode 决策树 JSON 的 Gson。
+     * Creates a Gson that can parse ItemStateNode decision tree JSON.
      */
     public static Gson createGson() {
         return new GsonBuilder()
@@ -605,13 +609,13 @@ public abstract class ItemStateNode {
     }
 
     /**
-     * 解析单个 ItemState JSON 文件。
+     * Parses a single ItemState JSON file.
      * <p>
-     * 文件格式：{@code {"model": <ItemStateNode>}}
-     * 返回决策树的根节点。
+     * File format: {@code {"model": <ItemStateNode>}}
+     * Returns the root node of the decision tree.
      *
-     * @param json JSON 对象
-     * @return 根节点，或 null 如果解析失败
+     * @param json JSON object
+     * @return the root node, or null if parsing fails
      */
     public static ItemStateNode parseRoot(JsonObject json) {
         if (json == null) return null;
@@ -622,13 +626,13 @@ public abstract class ItemStateNode {
     }
 
     /**
-     * 完整解析 ItemState JSON 文件，包括根级字段。
+     * Fully parses an ItemState JSON file, including root-level fields.
      * <p>
-     * 解析 {@code hand_animation_on_swap}、{@code oversized_in_gui}、
-     * {@code swap_animation_scale} 等根级字段，返回 {@link ItemStateRoot}。
+     * Parses root-level fields such as {@code hand_animation_on_swap}, {@code oversized_in_gui},
+     * and {@code swap_animation_scale}, returning an {@link ItemStateRoot}.
      *
-     * @param json JSON 对象
-     * @return 根级解析结果，或 null 如果解析失败
+     * @param json JSON object
+     * @return root-level parse result, or null if parsing fails
      */
     public static ItemStateRoot parseRootFull(JsonObject json) {
         if (json == null) return null;
@@ -646,7 +650,8 @@ public abstract class ItemStateNode {
     }
 
     /**
-     * 自定义反序列化器：根据 "type" 字段通过注册表分发到不同的节点类型。
+     * Custom deserializer: dispatches to different node types through the registry based on
+     * the "type" field.
      */
     private static class ItemStateNodeDeserializer implements JsonDeserializer<ItemStateNode> {
         @Override

@@ -15,52 +15,52 @@ import javax.vecmath.Vector3d;
 import java.util.List;
 
 /**
- * 内建渲染扩展：处理 JSON model 中的 {@code display} transforms，
- * 语义对齐 26.1 {@code ItemTransform.apply()}。
+ * Built-in extension that handles {@code display} transforms in JSON models,
+ * semantically aligned with 26.1 {@code ItemTransform.apply()}.
  *
- * <h3>变换顺序（顶点空间，向量模式）</h3>
+ * <h3>Transformation order (vertex space, vector form)</h3>
  * <ol>
- *   <li>{@code translate(-0.5, -0.5, -0.5)} — 模型原点从方块角移到中心</li>
- *   <li>{@code scale(sx, sy, sz)} — display 缩放</li>
- *   <li>{@code rotate(rx) → rotate(ry) → rotate(rz)} — X→Y→Z 顺序旋转
- *       （对齐 26.1 Quaternionf.rotationXYZ 语义）</li>
- *   <li>{@code translate(tx, ty, tz)} — display 位移（像素 × 0.0625 = 方块单位）</li>
+ *   <li>{@code translate(-0.5, -0.5, -0.5)} — move model origin from block corner to center</li>
+ *   <li>{@code scale(sx, sy, sz)} — display scale</li>
+ *   <li>{@code rotate(rx) → rotate(ry) → rotate(rz)} — X→Y→Z rotation order
+ *       (aligned with 26.1 {@code Quaternionf.rotationXYZ})</li>
+ *   <li>{@code translate(tx, ty, tz)} — display translation (pixels × 0.0625 = block units)</li>
  * </ol>
  *
- * <h3>字段默认值与范围钳制（对齐高版本 display transform 规范）</h3>
+ * <h3>Field defaults and clamping (aligned with modern display transform spec)</h3>
  * <table border="1">
- *   <caption>display transform 字段规范</caption>
- *   <tr><th>字段</th><th>默认值</th><th>钳制范围</th></tr>
- *   <tr><td>rotation</td><td>[0, 0, 0]</td><td>无限制（角度制）</td></tr>
- *   <tr><td>translation</td><td>[0, 0, 0]</td><td>[-80, 80]（像素单位，1/16 方块）</td></tr>
+ *   <caption>display transform field specification</caption>
+ *   <tr><th>Field</th><th>Default</th><th>Clamp range</th></tr>
+ *   <tr><td>rotation</td><td>[0, 0, 0]</td><td>unlimited (degrees)</td></tr>
+ *   <tr><td>translation</td><td>[0, 0, 0]</td><td>[-80, 80] (pixels, 1/16 block)</td></tr>
  *   <tr><td>scale</td><td>[1, 1, 1]</td><td>[-4, 4]</td></tr>
  * </table>
  *
- * <p>本实现采用向量空间建模：将 display transform 计算为 {@link Matrix4d} 矩阵，
- * 通过 {@link RenderContext#displayTransform} 传递给管线，由管线在提交顶点前
- * 统一执行矩阵乘法变换顶点坐标。不再使用 GL 矩阵栈操作。</p>
+ * <p>This implementation models display transforms as a {@link Matrix4d} and passes it via
+ * {@link RenderContext#displayTransform} to the pipeline, which applies the matrix to vertex
+ * coordinates before submission. No GL matrix stack is used.</p>
  *
- * <h3>生命周期</h3>
+ * <h3>Lifecycle</h3>
  * <ul>
- *   <li>{@code beforePart} — 根据 phase 和 part.getDisplay() 计算变换矩阵</li>
- *   <li>{@code apply} — 将矩阵写入 ctx.displayTransform，管线在顶点提交时消费</li>
- *   <li>{@code afterPart} — 清除矩阵引用</li>
+ *   <li>{@code beforePart} — compute transform matrix based on phase and part.getDisplay()</li>
+ *   <li>{@code apply} — write matrix to ctx.displayTransform for pipeline consumption</li>
+ *   <li>{@code afterPart} — clear matrix reference</li>
  * </ul>
  *
- * <p>本扩展作为内建扩展注册到 {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry}
- * 扩展链中，由管线统一调度。</p>
+ * <p>This extension is registered as a built-in extension in
+ * {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry} and dispatched by the pipeline.</p>
  */
 public final class DisplayTransformExtension implements IModelRenderExtension {
 
     /**
-     * 当前 part 的 display transform 矩阵，由 beforePart 设置、afterPart 清空。
-     * 线程局部：渲染路径可从任意线程进入（如 Beddium 多线程区块编译），
-     * 实例字段跨线程共享会导致矩阵互相覆盖。
+     * Current part's display transform matrix, set in beforePart and cleared in afterPart.
+     * Thread-local: rendering may enter from any thread (e.g. Beddium multithreaded chunk
+     * compilation); sharing instance fields across threads would cause matrix overwrites.
      */
     private final ThreadLocal<Matrix4d> currentMatrix = new ThreadLocal<>();
 
-    // ====== 诊断日志：状态驱动（按 phase/key/dt 签名变更触发，不逐帧打印） ======
-    // 诊断记忆同样 ThreadLocal 化，避免跨线程竞态（各线程独立记忆上次状态）。
+    // ====== Diagnostic logging: state-driven (trigger on phase/key/dt signature changes, not per frame) ======
+    // Diagnostic state is also thread-local to avoid cross-thread races (each thread tracks its own last state).
     private static final Logger LOGGER = LogManager.getLogger(DisplayTransformExtension.class);
     private static final ThreadLocal<RenderPhase> LAST_DISPLAY_PHASE = new ThreadLocal<>();
     private static final ThreadLocal<String> LAST_DISPLAY_KEY = new ThreadLocal<>();
@@ -68,20 +68,20 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
 
     @Override
     public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
-        // 确定当前阶段对应的 display key
+        // Determine display key for current phase
         String displayKey = phase.getDisplayKey();
         if (displayKey == null) {
             currentMatrix.set(null);
             return;
         }
 
-        // 从 part 级别获取 display transforms（不再从 BakedQuad.modelDisplay 读取）
+        // Get display transforms from part level (no longer read from BakedQuad.modelDisplay)
         ModelJson.DisplayTransform dt = null;
         if (part != null && part.getDisplay() != null) {
             dt = part.getDisplay().get(displayKey);
         }
 
-        // ====== 状态驱动诊断：仅 phase/key/dt 签名变更时触发 ======
+        // ====== State-driven diagnostics: trigger only on phase/key/dt signature changes ======
         boolean shouldLog = false;
         if (CatFrameConfig.shouldLogDebug()) {
             String dtSig = dt != null ? String.format("rot=%s t=%s s=%s",
@@ -103,9 +103,9 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
                         phase.name(), displayKey, dtSig));
             }
         }
-        // ====== 诊断结束 ======
+        // ====== End of diagnostics ======
 
-        // 当 dt == null 时，使用基于 display key 的默认变换
+        // Use default transform based on display key when dt is null
         if (dt == null) {
             dt = getDefaultTransform(displayKey);
             if (shouldLog) LOGGER.info(String.format("[DFXDBG] DisplayExt DEFAULT: key=%s dt=rot=%s t=%s s=%s",
@@ -115,7 +115,7 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
                     java.util.Arrays.toString(dt.scale)));
         }
 
-        // 计算 display transform 矩阵（向量空间）
+        // Compute display transform matrix (vector space)
         currentMatrix.set(computeMatrix(dt));
     }
 
@@ -130,40 +130,40 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
     }
 
     /**
-     * translation 各分量钳制范围（像素单位，1/16 方块）。
-     * 对齐高版本 ItemTransform.Deserializer 规范。
+     * Clamp range for translation components (pixels, 1/16 block).
+     * Aligned with modern ItemTransform.Deserializer spec.
      */
     private static final float TRANSLATION_CLAMP = 80.0f;
 
-    /** scale 各分量钳制范围，对齐高版本 ItemTransform.Deserializer 规范。 */
+    /** Clamp range for scale components, aligned with modern ItemTransform.Deserializer spec. */
     private static final float SCALE_CLAMP = 4.0f;
 
     /**
-     * 从 display transform 数据计算 4×4 变换矩阵。
+     * Compute 4×4 transform matrix from display transform data.
      *
-     * <p>顶点变换顺序（作用于顶点 v）：
+     * <p>Vertex transform order (applied to vertex v):
      * {@code v' = T(display) × RX × RY × RZ × S(display) × T(-0.5) × v}
      *
-     * <p>对齐 26.1 ItemTransform.apply() 语义，
-     * 与旧版 GL 即时模式的矩阵计算结果一致。
+     * <p>Aligned with 26.1 ItemTransform.apply() semantics, consistent with legacy GL immediate mode
+     * matrix computation.
      *
-     * <p>在读取字段时同步执行高版本规范约束：
+     * <p>Constraints applied when reading fields (modern spec):
      * <ul>
-     *   <li>null / 长度不足 → 对应默认值顶替（rotation=[0,0,0], translation=[0,0,0], scale=[1,1,1]）</li>
-     *   <li>translation 各分量钳制到 [-80, 80]</li>
-     *   <li>scale 各分量钳制到 [-4, 4]</li>
-     *   <li>rotation 无范围限制（角度制自由范围）</li>
+     *   <li>null/insufficient length → replace with defaults (rotation=[0,0,0], translation=[0,0,0], scale=[1,1,1])</li>
+     *   <li>translation components clamped to [-80, 80]</li>
+     *   <li>scale components clamped to [-4, 4]</li>
+     *   <li>rotation has no range limit (degrees, free range)</li>
      * </ul>
      *
-     * @param dt display transform 数据
-     * @return 4×4 变换矩阵
+     * @param dt display transform data
+     * @return 4×4 transform matrix
      */
     private static Matrix4d computeMatrix(ModelJson.DisplayTransform dt) {
         if (dt == null) return null;
 
-        // ===== 读取字段值，同步执行默认值顶替 + 范围钳制 =====
-        // 默认值：rotation=[0,0,0], translation=[0,0,0], scale=[1,1,1]
-        // 钳制：translation ∈ [-80,80], scale ∈ [-4,4], rotation 无限制
+        // ===== Read fields with defaults + clamping =====
+        // Defaults: rotation=[0,0,0], translation=[0,0,0], scale=[1,1,1]
+        // Clamping: translation ∈ [-80,80], scale ∈ [-4,4], rotation unrestricted
         float rx = (dt.rotation != null && dt.rotation.length > 0) ? dt.rotation[0] : 0f;
         float ry = (dt.rotation != null && dt.rotation.length > 1) ? dt.rotation[1] : 0f;
         float rz = (dt.rotation != null && dt.rotation.length > 2) ? dt.rotation[2] : 0f;
@@ -183,13 +183,13 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
         Matrix4d m = new Matrix4d();
         m.setIdentity();
 
-        // ④ translate(display) — 像素 × 0.0625 = 方块单位
+        // 4) translate(display) — pixels × 0.0625 = block units
         Matrix4d tDisplay = new Matrix4d();
         tDisplay.setIdentity();
         tDisplay.setTranslation(new Vector3d(tx * 0.0625, ty * 0.0625, tz * 0.0625));
         m.mul(tDisplay);
 
-        // ③ rotate XYZ — 对齐 26.1 Quaternionf.rotationXYZ
+        // 3) rotate XYZ — aligned with 26.1 Quaternionf.rotationXYZ
         Matrix4d r = new Matrix4d();
         r.rotX(Math.toRadians(rx));
         m.mul(r);
@@ -198,13 +198,13 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
         r.rotZ(Math.toRadians(rz));
         m.mul(r);
 
-        // ② scale
+        // 2) scale
         Matrix4d s = new Matrix4d();
         s.setIdentity();
         s.m00 = sx; s.m11 = sy; s.m22 = sz;
         m.mul(s);
 
-        // ① translate(-0.5) — 中心偏移，高版本模型原点在方块角上
+        // 1) translate(-0.5) — center offset (model origin at block corner in high-version models)
         Matrix4d tCenter = new Matrix4d();
         tCenter.setIdentity();
         tCenter.setTranslation(new Vector3d(-0.5, -0.5, -0.5));
@@ -213,20 +213,18 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
         return m;
     }
 
-    /**
-     * 将值钳制到 [min, max] 范围。
-     */
+    /** Clamp value to [min, max]. */
     private static float clamp(float val, float min, float max) {
         return Math.max(min, Math.min(max, val));
     }
 
     /**
-     * 返回指定 display key 的默认变换，对齐 26.1.2 ItemTransform Deserializer 默认值。
+     * Return default transform for specified display key, aligned with 26.1.2 ItemTransform Deserializer defaults.
      *
-     * <p>当模型 JSON 缺少某个 display key 的数据时，本方法提供合理的默认值。
+     * <p>Provides reasonable defaults when model JSON lacks data for a given display key.</p>
      *
-     * @param displayKey display 键名
-     * @return 默认的 DisplayTransform 实例
+     * @param displayKey display key name
+     * @return default DisplayTransform instance
      */
     private static ModelJson.DisplayTransform getDefaultTransform(String displayKey) {
         ModelJson.DisplayTransform dt = new ModelJson.DisplayTransform();
@@ -246,9 +244,9 @@ public final class DisplayTransformExtension implements IModelRenderExtension {
                 break;
             case "thirdperson_righthand":
             case "thirdperson_lefthand":
-                // 左手第三人称默认值与右手一致（本默认变换 Y/Z 旋转均为 0，左右镜像结果相同）；
-                // 模型 JSON 一旦 authored 了 thirdperson_lefthand（如 handheld.json / stairs.json），
-                // beforePart 会优先读取模型数据而自动接管，本默认值不再生效
+                // Default thirdperson left hand matches right hand (Y/Z rotations are 0, so mirroring yields same result);
+                // if model JSON explicitly defines thirdperson_lefthand (e.g. handheld.json / stairs.json),
+                // beforePart reads model data first and takes over; this default is not used in that case.
                 dt.rotation = new float[]{0, 0, 0};
                 dt.translation = new float[]{0, 3, 1};
                 dt.scale = new float[]{0.55f, 0.55f, 0.55f};

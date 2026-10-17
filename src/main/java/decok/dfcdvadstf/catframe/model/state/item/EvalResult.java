@@ -8,29 +8,28 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * ItemState 决策树求值结果。
+ * ItemState decision tree evaluation result.
  * <p>
- * 封装三种结果形态：
+ * Encapsulates three result forms:
  * <ul>
- *   <li>{@link #single(String)} — 单模型（{@link ItemStateNode.ModelLeaf} 返回）</li>
- *   <li>{@link #composite(List)} — 多模型分层（{@link ItemStateNode.CompositeNode} 返回）</li>
- *   <li>{@link #empty()} — 空结果（{@link ItemStateNode.EmptyNode} 或 fallback 耗尽）</li>
+ *   <li>{@link #single(String)} — single model (returned by {@link ItemStateNode.ModelLeaf})</li>
+ *   <li>{@link #composite(List)} — layered multiple models (returned by {@link ItemStateNode.CompositeNode})</li>
+ *   <li>{@link #empty()} — empty result ({@link ItemStateNode.EmptyNode} or fallback exhausted)</li>
  * </ul>
  * <p>
- * 内部统一用有序的 {@link Layer} 列表表示：single = 1 图层，composite = 多图层，
- * empty = 空列表。每个图层携带一个静态模型路径（{@link Layer#modelPath}），或一个
- * 动态内容标记（{@link Layer#dynamicStack}，对齐高版本 {@code appendItemLayers}：
- * 特殊节点在求值时读 NBT 追加的"渲染这个物品栈自身模型"图层）。
+ * Internally it is always represented as an ordered {@link Layer} list: single = 1 layer,
+ * composite = multiple layers, empty = empty list. Each layer carries either a static model
+ * path ({@link Layer#modelPath}) or a dynamic content marker ({@link Layer#dynamicStack},
+ * aligned with the modern {@code appendItemLayers}: a "render this item stack's own model"
+ * layer appended by a special node reading NBT during evaluation).
  * <p>
- * 既有 {@link #getModels()} 语义保持不变（返回静态模型路径列表）；动态图层经
- * {@link #getLayers()} 交付给渲染管线递归处理。Existing {@link #getModels()} keeps its
+ * The existing {@link #getModels()} keeps its
  * original meaning (static model paths); dynamic layers surface through {@link #getLayers()}.
  */
 public final class EvalResult {
 
     /**
-     * 单个渲染图层：静态模型路径或动态内容栈（二者取其一）。
-     * <p>A single render layer: either a static model path or a dynamic content stack.
+     * A single render layer: either a static model path or a dynamic content stack.
      */
     public static final class Layer {
         @Nullable
@@ -43,42 +42,42 @@ public final class EvalResult {
             this.dynamicStack = dynamicStack;
         }
 
-        /** 静态模型图层。A static model layer. */
+        /** A static model layer. */
         public static Layer ofModel(String path) {
             return new Layer(path, null);
         }
 
-        /** 动态内容图层：渲染该物品栈自身注册的模型。A dynamic layer rendering the stack's own model. */
+        /** A dynamic layer rendering the stack's own model. */
         public static Layer ofDynamic(ItemStack stack) {
             return new Layer(null, stack);
         }
 
-        /** 是否为动态内容图层。Whether this layer carries a dynamic stack rather than a fixed model. */
+        /** Whether this layer carries a dynamic stack rather than a fixed model. */
         public boolean isDynamic() {
             return dynamicStack != null;
         }
     }
 
-    /** 空结果单例 */
+    /** Empty result singleton */
     private static final EvalResult EMPTY = new EvalResult(Collections.<Layer>emptyList());
 
-    /** 有序图层列表（single=1个, composite=多个, empty=0个） */
+    /** Ordered layer list (single=1, composite=many, empty=0) */
     private final List<Layer> layers;
 
-    /** 静态模型路径列表缓存（惰性从 layers 派生，保持 getModels() 旧语义） */
+    /** Cache of the static model path list (lazily derived from layers, preserving the old getModels() semantics) */
     private List<String> modelsCache;
 
     private EvalResult(List<Layer> layers) {
         this.layers = layers;
     }
 
-    // ==================== 工厂方法 ====================
+    // ==================== Factory methods ====================
 
     /**
-     * 单模型结果。
+     * Single-model result.
      *
-     * @param modelPath 模型路径，null 等价于 empty()
-     * @return 求值结果
+     * @param modelPath model path; null is equivalent to empty()
+     * @return evaluation result
      */
     public static EvalResult single(String modelPath) {
         if (modelPath == null) return EMPTY;
@@ -86,10 +85,10 @@ public final class EvalResult {
     }
 
     /**
-     * 多模型分层结果（composite 节点，全静态模型）。
+     * Layered multiple-models result (composite node, all static models).
      *
-     * @param modelPaths 按渲染顺序排列的模型路径列表
-     * @return 求值结果
+     * @param modelPaths model path list ordered by render order
+     * @return evaluation result
      */
     public static EvalResult composite(List<String> modelPaths) {
         if (modelPaths == null || modelPaths.isEmpty()) return EMPTY;
@@ -99,12 +98,11 @@ public final class EvalResult {
     }
 
     /**
-     * 多图层结果（可混合静态模型与动态内容），供 composite 合并子树保序使用。
-     * <p>Multi-layer result (mixing static models and dynamic content); used by composite
+     * Multi-layer result (mixing static models and dynamic content); used by composite
      * nodes to merge child layers in order.
      *
-     * @param layers 按渲染顺序排列的图层列表
-     * @return 求值结果，空列表等价于 empty()
+     * @param layers layer list ordered by render order
+     * @return evaluation result; an empty list is equivalent to empty()
      */
     public static EvalResult compositeLayers(List<Layer> layers) {
         if (layers == null || layers.isEmpty()) return EMPTY;
@@ -112,11 +110,10 @@ public final class EvalResult {
     }
 
     /**
-     * 动态内容单图层结果（特殊节点追加"渲染该栈自身模型"）。
-     * <p>Single dynamic-content layer (special node appends "render this stack's own model").
+     * Single dynamic-content layer result (a special node appends "render this stack's own model").
      *
-     * @param stack 内容物品栈，null 等价于 empty()
-     * @return 求值结果
+     * @param stack content item stack; null is equivalent to empty()
+     * @return evaluation result
      */
     public static EvalResult dynamic(ItemStack stack) {
         if (stack == null) return EMPTY;
@@ -124,54 +121,55 @@ public final class EvalResult {
     }
 
     /**
-     * 空结果：不渲染任何模型。
+     * Empty result: renders no model.
      *
-     * @return 空结果单例
+     * @return empty result singleton
      */
     public static EvalResult empty() {
         return EMPTY;
     }
 
-    // ==================== 查询方法 ====================
+    // ==================== Query methods ====================
 
     /**
-     * @return true 表示无任何图层可渲染
+     * @return true if there is no layer to render
      */
     public boolean isEmpty() {
         return layers.isEmpty();
     }
 
     /**
-     * @return true 表示单图层结果
+     * @return true for a single-layer result
      */
     public boolean isSingle() {
         return layers.size() == 1;
     }
 
     /**
-     * @return true 表示多图层分层结果
+     * @return true for a layered multiple-layer result
      */
     public boolean isComposite() {
         return layers.size() > 1;
     }
 
     /**
-     * 获取有序图层列表（不可变），含静态模型与动态内容图层。
-     * <p>Ordered layer list (unmodifiable), including both static and dynamic layers.
+     * Gets the ordered layer list (unmodifiable), including both static and dynamic layers.
      *
-     * @return 图层列表
+     * @return layer list
      */
     public List<Layer> getLayers() {
         return layers;
     }
 
     /**
-     * 获取静态模型路径列表（不可变），忽略动态内容图层。
+     * Gets the static model path list (unmodifiable), ignoring dynamic content layers.
      * <p>
-     * single 返回 1 元素列表，composite 返回多元素列表，empty 返回空列表。
-     * 语义与扩展前一致，既有仅关心静态模型的调用点（tint 解析、GUI 溢出部件收集）无需改动。
+     * single returns a 1-element list, composite returns a multi-element list, empty returns an
+     * empty list. The semantics are unchanged from before the extension, so existing call sites
+     * that only care about static models (tint resolution, GUI overflow part collection) need no
+     * changes.
      *
-     * @return 静态模型路径列表（不可变）
+     * @return static model path list (unmodifiable)
      */
     public List<String> getModels() {
         if (modelsCache == null) {
@@ -185,9 +183,9 @@ public final class EvalResult {
     }
 
     /**
-     * 获取第一个静态模型路径（向后兼容单模型场景）。
+     * Gets the first static model path (backward compatibility for single-model scenarios).
      *
-     * @return 第一个静态模型路径，无静态模型时返回 null
+     * @return the first static model path, or null when there is no static model
      */
     @Nullable
     public String getFirstModel() {

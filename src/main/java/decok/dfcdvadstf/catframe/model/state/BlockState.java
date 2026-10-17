@@ -7,14 +7,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 块状态持有者。类似于 1.21.5 的 {@code BlockState}（内部继承自 {@code StateHolder}）。
+ * Blockstate holder. Similar to 1.21.5's {@code BlockState} (which internally extends {@code StateHolder}).
  *
- * <p>每个 CatBlockState 实例对应一组确定的属性值组合，通过 {@link BlockStateDefinition.Builder}
- * 在构建时预创建为单例。运行时的所有状态转换都通过邻居跳表 O(1) 完成，无需分配新对象。
+ * <p>Each CatBlockState instance corresponds to a definite combination of property values,
+ * pre-created as a singleton at build time via {@link BlockStateDefinition.Builder}. All runtime
+ * state transitions are completed in O(1) through the neighbor jump table, with no new object allocation.
  *
- * <p><b>邻居跳表机制</b>：
+ * <p><b>Neighbor jump table mechanism</b>:
  * <pre>
- *              neighbor[0] (TYPE 维度)
+ *              neighbor[0] (TYPE dimension)
  *              ┌────────┬────────┬────────┐
  *              │ BOTTOM │  TOP   │ DOUBLE │
  * neighbor[1]  ┼────────┼────────┼────────┤
@@ -28,33 +29,33 @@ import java.util.Map;
  */
 public final class BlockState {
 
-    // [C2 修复] 去掉 final，由 BlockStateDefinition.Builder.create() 回填
+    // [C2 fix] non-final; back-filled by BlockStateDefinition.Builder.create()
     BlockStateDefinition<?> definition;
 
     /**
-     * 当前状态的属性值数组。索引与 definition 的 properties 数组位置对应。
+     * The property value array of the current state. Indices correspond to positions in definition's properties array.
      */
     final Comparable<?>[] values; // package-private
 
     /**
-     * 邻居跳表。neighbors[p][v] 将属性 p 设置为值 v（内部索引）后得到的目标状态。
+     * Neighbor jump table. neighbors[p][v] is the target state reached by setting property p to value v (internal index).
      */
     BlockState[][] neighbors; // package-private
 
-    // 仅由 BlockStateDefinition.Builder.create() 调用
+    // Called only by BlockStateDefinition.Builder.create()
     BlockState(BlockStateDefinition<?> definition, Comparable<?>[] values) {
         this.definition = definition;
         this.values = values;
     }
 
-    // ==================== 查询 ====================
+    // ==================== Query ====================
 
     /**
-     * 获取指定属性的当前值。
+     * Gets the current value of the specified property.
      *
-     * @param prop 要查询的属性
-     * @param <T>  值的类型
-     * @return 当前属性值
+     * @param prop the property to query
+     * @param <T>  the value type
+     * @return the current property value
      */
     @SuppressWarnings("unchecked")
     public <T extends Comparable<T>> T getValue(Property<T> prop) {
@@ -63,13 +64,13 @@ public final class BlockState {
     }
 
     /**
-     * O(1) 状态转换：将指定属性设置为新值，并通过邻居跳表返回目标状态。
-     * 不修改当前状态实例。
+     * O(1) state transition: sets the specified property to a new value and returns the target
+     * state through the neighbor jump table. The current state instance is not modified.
      *
-     * @param prop  要设置的属性
-     * @param value 新值
-     * @param <T>   值的类型
-     * @return 属性设置后的目标 CatBlockState
+     * @param prop  the property to set
+     * @param value the new value
+     * @param <T>   the value type
+     * @return the target CatBlockState after the property is set
      */
     @SuppressWarnings("unchecked")
     public <T extends Comparable<T>> BlockState setValue(Property<T> prop, T value) {
@@ -79,27 +80,27 @@ public final class BlockState {
     }
 
     /**
-     * 返回此 CatBlockState 的定义。
+     * Returns the definition of this CatBlockState.
      */
     public BlockStateDefinition<?> getDefinition() {
         return definition;
     }
 
-    // ==================== 变体键匹配 ====================
+    // ==================== Variant key matching ====================
 
     /**
-     * 生成变体匹配键（与 blockstate JSON 中的 variant key 格式相同）。
+     * Generates the variant matching key (same format as the variant key in blockstate JSON).
      *
-     * <p>例如，对于属性 "bites=3" → {@code "bites=3"}，
-     * 多属性 "facing=north,half=upper" → {@code "facing=north,half=upper"}（排序后）。
+     * <p>For example, for property "bites=3" → {@code "bites=3"},
+     * and for multiple properties "facing=north,half=upper" → {@code "facing=north,half=upper"} (after sorting).
      *
-     * @return 变体键字符串。无属性时返回 "normal"。
+     * @return the variant key string. Returns "normal" when there are no properties.
      */
     public String toVariantKey() {
         Property<?>[] properties = definition.getProperties();
         if (properties.length == 0) return "normal";
 
-        // 收集非默认属性值
+        // Collect non-default property values
         BlockState anyState = definition.any();
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < properties.length; i++) {
@@ -110,11 +111,13 @@ public final class BlockState {
     }
 
     /**
-     * 检查此状态是否匹配给定的 {@code Map<String, String>} 属性映射（用于 multipart when 条件匹配）。
-     * 映射中的每个键值对必须与此状态对应的属性值一致。此状态可以有映射中未出现的属性。
+     * Checks whether this state matches the given {@code Map<String, String>} property mapping
+     * (used for multipart when-condition matching). Every key-value pair in the mapping must match
+     * the corresponding property value of this state. This state may have properties not present
+     * in the mapping.
      *
-     * @param properties 要匹配的属性映射（key=属性名, value=属性值的字符串表示）
-     * @return 如果所有指定属性值都匹配则返回 true
+     * @param properties the property mapping to match (key = property name, value = string representation of the property value)
+     * @return true if all specified property values match
      */
     public boolean matches(Map<String, String> properties) {
         if (properties == null || properties.isEmpty()) return true;
@@ -129,11 +132,11 @@ public final class BlockState {
     }
 
     /**
-     * 检查此状态是否匹配单个属性的值条件（OR | 管道分隔）。
+     * Checks whether this state matches the value condition of a single property (OR, pipe-separated).
      *
-     * @param propertyName 属性名
-     * @param allowedValues 管道分隔的允许值（如 "north|south"）
-     * @return 如果当前属性值在 allowedValues 中返回 true
+     * @param propertyName the property name
+     * @param allowedValues pipe-separated allowed values (e.g. "north|south")
+     * @return true if the current property value is among allowedValues
      */
     public boolean matchesProperty(String propertyName, String allowedValues) {
         Property<?>[] props = definition.getProperties();
@@ -150,11 +153,11 @@ public final class BlockState {
         return false;
     }
 
-    // ==================== 值访问 ====================
+    // ==================== Value access ====================
 
     /**
-     * 按索引获取当前状态中所有属性值的字符串表示列表。
-     * 用于调试和序列化。
+     * Gets the list of string representations of all property values in the current state,
+     * in index order. Used for debugging and serialization.
      */
     public List<String> getValueNames() {
         List<String> names = new ArrayList<>(values.length);
@@ -165,7 +168,7 @@ public final class BlockState {
     }
 
     /**
-     * 返回此状态的属性值数量。
+     * Returns the number of property values in this state.
      */
     public int getValueCount() {
         return values.length;
@@ -180,7 +183,7 @@ public final class BlockState {
 
     @Override
     public int hashCode() {
-        // 由于所有状态都是单例，直接使用对象引用
+        // Since all states are singletons, use the object reference directly
         return super.hashCode();
     }
 }

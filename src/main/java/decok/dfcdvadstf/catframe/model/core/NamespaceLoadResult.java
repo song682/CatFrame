@@ -8,34 +8,36 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 单个 namespace 并行加载的产出结果。
+ * Result produced by loading a single namespace in parallel.
  * <p>
- * 所有字段都是本地集合，由 {@link NamespaceLoadTask#execute(String)} 填充，
- * 加载完成后由主线程合并到 {@link VanillaModelManager} 的共享静态字段中。
+ * Every field is a local collection, filled in by {@link NamespaceLoadTask#execute(String)};
+ * once loading finishes the main thread merges them into {@link VanillaModelManager}'s shared
+ * static fields.
  * <p>
- * 这种"先局部收集、后合并"的模式避免了多线程写入共享 HashMap 的并发问题。
+ * This "collect locally first, merge afterwards" pattern avoids the concurrency problems of
+ * multiple threads writing to a shared HashMap.
  */
 public class NamespaceLoadResult {
 
-    /** 命名空间名称 */
+    /** The namespace name */
     public final String namespace;
 
-    /** blockstate 数据: blockName → BlockstateJson */
+    /** blockstate data: blockName → BlockstateJson */
     public final Map<String, BlockstateJson> blockstates;
 
-    /** model_mappings 数据（可能为 null，如果该 namespace 没有 model_mappings.json） */
+    /** model_mappings data (may be null if the namespace has no model_mappings.json) */
     public final VanillaModelManager.ModelMappings mappings;
 
-    /** 该 namespace 收集到的方块纹理路径 */
+    /** Block texture paths collected for this namespace */
     public final Set<String> blockTextures;
 
-    /** 该 namespace 收集到的物品纹理路径 */
+    /** Item texture paths collected for this namespace */
     public final Set<String> itemTextures;
 
-    /** items/ ItemState 决策树: itemName → 决策树根节点 */
+    /** items/ ItemState decision trees: itemName → decision tree root node */
     public final Map<String, ItemStateNode> itemStates;
 
-    /** 声明 {@code oversized_in_gui=true} 的物品名集合 */
+    /** Set of item names declaring {@code oversized_in_gui=true} */
     public final Set<String> oversizedItems;
 
     public NamespaceLoadResult(String namespace,

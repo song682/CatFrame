@@ -4,13 +4,14 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import net.minecraft.item.ItemStack;
 
 /**
- * 地图颜色 tint。
- * <p>1.7.10 中地图物品根据世界数据渲染不同颜色。初版占位返回白色。
+ * Map color tint.
+ * <p>In 1.7.10, map items render different colors based on world data. This initial
+ * placeholder returns white.
  */
 public class MapColorTint implements ItemTint {
     @Override
     public int compute(ItemStack stack, RenderPhase phase) {
-        // TODO: 从地图数据读取颜色
+        // TODO: Read color from map data
         return 0xFFFFFF;
     }
 }

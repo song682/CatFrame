@@ -14,52 +14,56 @@ import java.util.Random;
 import java.util.function.Consumer;
 
 /**
- * 方块状态模型接口。类似于 1.21.5 的 BlockStateModel，
- * 负责将方块状态（world + x/y/z + metadata/CatBlockState）解析为一个渲染部件集合。
+ * Blockstate model interface. Similar to 1.21.5's BlockStateModel,
+ * it resolves a blockstate (world + x/y/z + metadata/CatBlockState) into a set of render parts.
  *
- * <p>实现类：
+ * <p>Implementations:
  * <ul>
- *   <li>{@link ResidentStateModel} — 常驻 State 表统一实现（variants / multipart / 动态属性合一）</li>
- *   <li>{@link StateProviderBlockModel} — 委托 IBlockStateProvider（字符串属性映射）</li>
- *   <li>{@link MultipartBlockModel} — multipart 条件组合</li>
+ *   <li>{@link ResidentStateModel} — unified implementation backed by the resident state table (combines variants / multipart / dynamic properties)</li>
+ *   <li>{@link StateProviderBlockModel} — delegates to IBlockStateProvider (string property mapping)</li>
+ *   <li>{@link MultipartBlockModel} — multipart condition combination</li>
  * </ul>
  */
 public interface BlockStateModel {
 
     /**
-     * 通过 metadata 收集渲染部件（旧路径，保留向后兼容）。
+     * Collects render parts via metadata (legacy path, kept for backward compatibility).
      *
-     * @param world    世界（可为 null，物品渲染场景）
-     * @param x        方块 X 坐标
-     * @param y        方块 Y 坐标
-     * @param z        方块 Z 坐标
-     * @param metadata 方块 metadata
-     * @return 渲染部件集合
+     * @param world    world (may be null in item rendering contexts)
+     * @param x        block X coordinate
+     * @param y        block Y coordinate
+     * @param z        block Z coordinate
+     * @param metadata block metadata
+     * @return the render part collection
      */
     BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z, int metadata);
 
     /**
-     * 收集渲染部件的同时带回匹配期构造的方块状态属性（如 pane 的 north/east/south/west）。
+     * Collects render parts while also returning the blockstate properties built during matching
+     * (such as a pane's north/east/south/west).
      * <p>
-     * 默认实现委托 {@link #collectParts(IBlockAccess, int, int, int, int)} 且属性为 null；
-     * 实现类在已计算属性时覆写本方法复用同一 Map，避免二次计算。
-     * 返回的属性 Map 为只读约定（不可修改视图），仅供本次提交携带。
+     * The default implementation delegates to {@link #collectParts(IBlockAccess, int, int, int, int)}
+     * with null properties; implementations that have already computed properties override this
+     * method to reuse the same Map and avoid recomputation.
+     * The returned property Map follows a read-only convention (an unmodifiable view) and is only
+     * carried for this single submission.
      *
-     * @param world    世界（可为 null，物品渲染场景）
-     * @param x        方块 X 坐标
-     * @param y        方块 Y 坐标
-     * @param z        方块 Z 坐标
-     * @param metadata 方块 metadata
-     * @return 部件 + 属性（属性可为 null）
+     * @param world    world (may be null in item rendering contexts)
+     * @param x        block X coordinate
+     * @param y        block Y coordinate
+     * @param z        block Z coordinate
+     * @param metadata block metadata
+     * @return parts + properties (properties may be null)
      */
     default CollectedPart collectPartsWithProps(IBlockAccess world, int x, int y, int z, int metadata) {
         return new CollectedPart(collectParts(world, x, y, z, metadata), null);
     }
 
     /**
-     * 收集结果：渲染部件 + 匹配期构造的方块状态属性（可为 null）。
+     * Collection result: render parts + blockstate properties built during matching (may be null).
      * <p>
-     * 属性 Map 仅存活于单次渲染提交生命周期，调用方不得修改、不得跨帧保留。
+     * The property Map only lives for the duration of a single render submission; callers must not
+     * modify it or retain it across frames.
      */
     final class CollectedPart {
         public final BlockStateModelPart part;
@@ -74,36 +78,37 @@ public interface BlockStateModel {
     }
 
     /**
-     * v0.3.0: 通过 {@link BlockState} 收集渲染部件（新路径）。
-     * 默认实现委托给 metadata 版本，子类可覆盖以获得类型安全的属性匹配。
+     * v0.3.0: collects render parts via {@link BlockState} (new path).
+     * The default implementation delegates to the metadata version; subclasses may override for
+     * type-safe property matching.
      *
-     * @param world 世界（可为 null，物品渲染场景）
-     * @param x     方块 X 坐标
-     * @param y     方块 Y 坐标
-     * @param z     方块 Z 坐标
-     * @param state CatBlockState 实例
-     * @return 渲染部件集合
+     * @param world world (may be null in item rendering contexts)
+     * @param x     block X coordinate
+     * @param y     block Y coordinate
+     * @param z     block Z coordinate
+     * @param state the CatBlockState instance
+     * @return the render part collection
      */
     default BlockStateModelPart collectParts(IBlockAccess world, int x, int y, int z, BlockState state) {
         return collectParts(world, x, y, z, 0);
     }
 
     /**
-     * 此模型是否完全覆盖方块的渲染。
-     * true=替换整个方块渲染, false=叠加层（与 autoOverlay 对应）。
+     * Whether this model fully covers the block's rendering.
+     * true = replaces the entire block render; false = overlay layer (corresponds to autoOverlay).
      */
     default boolean isFullModel() {
         return true;
     }
 
-    // ==================== 新增（对齐 26.1.2） ====================
+    // ==================== Added (aligned with 26.1.2) ====================
 
     /**
-     * 随机源收集部件——支持 WeightedVariants 的随机选择。
-     * 默认实现委托给旧版 collectParts。
+     * Collects parts from a random source — supports the random selection in WeightedVariants.
+     * The default implementation delegates to the legacy collectParts.
      *
-     * @param random 随机源
-     * @param output 收集输出列表
+     * @param random the random source
+     * @param output the output list to collect into
      */
     default void collectParts(Random random, List<BlockStateModelPart> output) {
         BlockStateModelPart part = collectParts(null, 0, 0, 0, 0);
@@ -113,9 +118,9 @@ public interface BlockStateModel {
     }
 
     /**
-     * 粒子纹理材质。默认实现返回 null。
+     * Particle texture material. The default implementation returns null.
      *
-     * @return 粒子用的 IIcon，可为 null
+     * @return the IIcon used for particles, may be null
      */
     @Nullable
     default IIcon particleIcon() {
@@ -123,43 +128,45 @@ public interface BlockStateModel {
     }
 
     /**
-     * 粒子纹理材质（带 metadata 上下文）——供破坏/hit/blockdust 粒子生成时解析。
+     * Particle texture material (with metadata context) — resolved when generating
+     * break/hit/blockdust particles.
      * <p>
-     * 通过对标 26.1.2 的 {@code BlockStateModel#particleMaterial()}：实现类按 metadata
-     * 解析方块状态的主部件（无世界/坐标上下文，粒子生成时方块可能已被移除），
-     * 返回显式 particle 槽的 IIcon；缺失/无法解析时为 null（ParticleIconResolver
-     * 按高版本语义统一映射 missingno）。默认 null = 不支持 metadata 级解析
-     * （调用方放行原版 block.getIcon）。
+     * Mirrors 26.1.2's {@code BlockStateModel#particleMaterial()}: implementations resolve the
+     * main part of the blockstate by metadata (with no world/coordinate context, since the block
+     * may already have been removed at particle-generation time) and return the explicit
+     * particle-slot IIcon; when missing or unresolvable it is null (ParticleIconResolver maps it
+     * to missingno following high-version semantics). A default of null means metadata-level
+     * resolution is unsupported (the caller falls back to vanilla block.getIcon).
      * Metadata-aware particle icon resolution mirroring 26.1.2 particleMaterial();
      * returns the explicit particle-slot icon or null (mapped to missingno upstream).
      *
-     * @param metadata 方块 metadata
-     * @return 粒子用的 IIcon，可为 null
+     * @param metadata block metadata
+     * @return the IIcon used for particles, may be null
      */
     @Nullable
     default IIcon particleIcon(int metadata) {
         return null;
     }
 
-    // ==================== Unbaked 子接口 ====================
+    // ==================== Unbaked sub-interface ====================
 
     /**
-     * Unbaked 模型接口——尚未烘焙的 BlockStateModel 定义。
-     * 对标 26.1.2 的 {@code BlockStateModel.Unbaked}。
+     * Unbaked model interface — a BlockStateModel definition that has not been baked yet.
+     * Mirrors 26.1.2's {@code BlockStateModel.Unbaked}.
      */
     interface Unbaked {
         /**
-         * 烘焙为完整的 BlockStateModel。
+         * Bakes into a complete BlockStateModel.
          *
-         * @param baker ModelBaker 实例
-         * @return 烘焙后的 BlockStateModel
+         * @param baker the ModelBaker instance
+         * @return the baked BlockStateModel
          */
         BlockStateModel bake(ModelBaker baker);
 
         /**
-         * 解析依赖：将依赖的模型路径通知给 consumer。
+         * Resolves dependencies: notifies the consumer of dependency model paths.
          *
-         * @param dependencyConsumer 接收依赖模型路径的 consumer
+         * @param dependencyConsumer the consumer that receives dependency model paths
          */
         void resolveDependencies(Consumer<String> dependencyConsumer);
     }

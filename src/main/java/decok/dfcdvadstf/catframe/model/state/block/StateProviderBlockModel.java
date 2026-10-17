@@ -18,11 +18,11 @@ import java.util.Map;
 
 
 /**
- * 委托 IBlockStateProvider 的动态模型。每次渲染时调用
- * {@link IBlockStateProvider#getStateProperties} 获取属性，
- * 再匹配 blockstate JSON 中的 variant 键。
+ * Dynamic model delegating to IBlockStateProvider. Each render calls
+ * {@link IBlockStateProvider#getStateProperties} to get properties, then matches
+ * the variant keys in the blockstate JSON.
  *
- * <p>对应 1.21.5 的 VariantSelector + IBlockStateProvider 组合。
+ * <p>Corresponds to the 1.21.5 VariantSelector + IBlockStateProvider combination.
  */
 public class StateProviderBlockModel implements BlockStateModel {
     private final IBlockStateProvider provider;
@@ -30,9 +30,9 @@ public class StateProviderBlockModel implements BlockStateModel {
     private final String fallbackModelPath;
 
     /**
-     * @param provider          实现了 IBlockStateProvider 的方块
-     * @param blockstate        已加载的 blockstate JSON
-     * @param fallbackModelPath 兜底 model path（如 "block/stone"）
+     * @param provider          the block implementing IBlockStateProvider
+     * @param blockstate        the loaded blockstate JSON
+     * @param fallbackModelPath fallback model path (e.g. "block/stone")
      */
     public StateProviderBlockModel(IBlockStateProvider provider,
                                    BlockstateJson blockstate,
@@ -65,12 +65,12 @@ public class StateProviderBlockModel implements BlockStateModel {
             BlockstateJson.Variant variant = entry.getVariant(seed);
             if (variant == null || variant.model == null) return new BlockStateModel.CollectedPart(BlockStateModelPart.empty(), null);
 
-            // 直接烘焙（VanillaModelManager 有缓存）
+            // Bake directly (VanillaModelManager has a cache)
             part = AtlasGuard.gate(ModelBaker.bake(variant.model), variant.model);
             if (part == null || part.isEmpty()) return new BlockStateModel.CollectedPart(BlockStateModelPart.empty(), null);
 
         } else if (blockstate.multipart != null) {
-            // Multipart: 合并所有匹配的部件
+            // Multipart: merge all matching parts
             Map<Direction, java.util.List<JsonModelBake.BakedQuad>> mergedFace
                     = new java.util.EnumMap<>(Direction.class);
             java.util.List<JsonModelBake.BakedQuad> mergedGeneral = new java.util.ArrayList<>();
@@ -101,19 +101,19 @@ public class StateProviderBlockModel implements BlockStateModel {
             return new BlockStateModel.CollectedPart(BlockStateModelPart.empty(), null);
         }
 
-        // 匹配完成后包裹只读视图随提交携带（防扩展篡改）；属性为空时保持 null，零额外成本。
+        // After matching, wrap a read-only view carried along with the submission (guards against extension tampering); stays null when properties are empty, at zero extra cost.
         Map<String, String> exposed = properties.isEmpty()
                 ? null : java.util.Collections.unmodifiableMap(properties);
         return new BlockStateModel.CollectedPart(part, exposed);
     }
 
-    // ==================== 粒子纹理解析（模型驱动） ====================
+    // ==================== Particle icon resolution (model-driven) ====================
 
     /**
-     * 粒子纹理解析（模型驱动）。provider 属性以 null world 解析
-     * （collectParts 契约允许物品渲染场景传 null），种子取 {@code metadata * 31}；
-     * multipart 取首个可解析 case（对标 26.1.2 首 selector 语义）。
-     * Particle resolution mirroring collectPartsWithProps without world context.
+     * Particle icon resolution (model-driven). Provider properties are resolved with a
+     * null world (the collectParts contract allows null for item rendering scenarios),
+     * with the seed {@code metadata * 31}; multipart takes the first resolvable case
+     * (26.1.2 first-selector semantics).
      */
     @Override
     public IIcon particleIcon(int metadata) {
@@ -137,7 +137,7 @@ public class StateProviderBlockModel implements BlockStateModel {
         }
 
         if (blockstate.multipart != null) {
-            // 26.1.2 首 selector 语义：取首个可解析 case，不做属性匹配筛选
+            // 26.1.2 first-selector semantics: take the first resolvable case, no property matching filter
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
                 if (mpc.apply == null) continue;
                 BlockstateJson.Variant v = mpc.apply.getVariant(metadata * 31);

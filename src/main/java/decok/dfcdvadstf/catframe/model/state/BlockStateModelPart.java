@@ -9,14 +9,15 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * 按剔除方向分组的烘焙 quad 集合。类似于 1.21.5 的 BlockStateModelPart，
- * 把 BakedQuad 按 cullface 方向索引，加速渲染时的方向查询。
+ * A collection of baked quads grouped by cull direction. Similar to 1.21.5's
+ * BlockStateModelPart, it indexes BakedQuads by cullface direction to speed up
+ * direction queries during rendering.
  *
- * <p>结构：
+ * <p>Structure:
  * <ul>
- *   <li>{@link #getQuads(Direction)} — 返回按该方向剔除的 quad 列表</li>
- *   <li>{@link #getGeneralQuads()} — 返回无剔除方向（总是渲染）的 quad 列表</li>
- *   <li>{@link #getAllQuads()} — 合并所有 quad，用于物品渲染等无需剔除的场景</li>
+ *   <li>{@link #getQuads(Direction)} — returns the quad list culled in that direction</li>
+ *   <li>{@link #getGeneralQuads()} — returns the quad list with no cull direction (always rendered)</li>
+ *   <li>{@link #getAllQuads()} — merges all quads, for item rendering and other no-cull scenarios</li>
  * </ul>
  */
 public class BlockStateModelPart {
@@ -25,19 +26,14 @@ public class BlockStateModelPart {
     private List<BakedQuad> allQuadsCache;
 
     /**
-     * 模型级别的 display transforms（从 ModelJson.display 传播）。
-     * 键为 display 场景（"gui", "firstperson_righthand", "thirdperson_righthand" 等）。
-     * 由 DisplayTransformExtension 在渲染时读取并应用。
+     * Model-level display transforms (propagated from ModelJson.display).
+     * The keys are display scenarios ("gui", "firstperson_righthand", "thirdperson_righthand" etc.).
+     * Read and applied at render time by DisplayTransformExtension.
      */
     @Nullable
     private final Map<String, ModelJson.DisplayTransform> partDisplay;
 
     /**
-     * 模型 JSON textures.particle 槽解析出的粒子纹理（烘焙期捕获）。
-     * <p>
-     * 槽缺失时为 null —— ParticleIconResolver 按高版本语义将其映射为 missingno
-     * （对标 blockMissing）；{@link #particleIcon()}（首 quad）为既有保留项，
-     * 已不接入本语义链。
      * Particle texture captured from the model's textures.particle slot at bake time;
      * null when the slot was absent (26.1.2 semantics: mapped to missingno upstream).
      */
@@ -65,10 +61,10 @@ public class BlockStateModelPart {
         this.particleSlotIcon = particleSlotIcon;
     }
 
-    // ==================== 工厂方法 ====================
+    // ==================== Factory methods ====================
 
     /**
-     * 从 BakedQuad 列表构建 BlockStateModelPart，自动按 cullface 分组。
+     * Builds a BlockStateModelPart from a list of BakedQuads, automatically grouping by cullface.
      */
     public static BlockStateModelPart fromQuads(List<BakedQuad> quads) {
         return fromQuads(quads, null, null);
@@ -80,8 +76,6 @@ public class BlockStateModelPart {
     }
 
     /**
-     * 从 BakedQuad 列表构建 BlockStateModelPart，并携带模型 textures.particle
-     * 槽解析出的粒子纹理（可为 null = 槽缺失）。
      * Builds a part carrying the baked particle-slot icon (null = slot absent).
      */
     public static BlockStateModelPart fromQuads(List<BakedQuad> quads,
@@ -104,7 +98,7 @@ public class BlockStateModelPart {
     }
 
     /**
-     * 从按方向预分组的 map 创建（用于 multipart 合并等场景）。
+     * Creates from a map pre-grouped by direction (for multipart merging and similar scenarios).
      */
     public static BlockStateModelPart fromFaceMap(
             Map<Direction, List<BakedQuad>> faceMap,
@@ -124,14 +118,14 @@ public class BlockStateModelPart {
     }
 
     /**
-     * 空的 BlockStateModelPart。
+     * An empty BlockStateModelPart.
      */
     public static BlockStateModelPart empty() {
         return new BlockStateModelPart(new EnumMap<>(Direction.class), new ArrayList<>(), null);
     }
 
     /**
-     * 获取模型级别的 display transforms。
+     * Gets the model-level display transforms.
      */
     @Nullable
     public Map<String, ModelJson.DisplayTransform> getDisplay() {
@@ -139,8 +133,8 @@ public class BlockStateModelPart {
     }
 
     /**
-     * 创建一个新的 BlockStateModelPart，以给定的 display 替换原有 display。
-     * 如果 display 与当前相同则返回 this（避免不必要分配）。
+     * Creates a new BlockStateModelPart replacing the existing display with the given display.
+     * Returns this when the display is the same as the current one (avoiding unnecessary allocation).
      */
     public BlockStateModelPart withDisplay(@Nullable Map<String, ModelJson.DisplayTransform> display) {
         if (display == this.partDisplay) return this;
@@ -148,11 +142,12 @@ public class BlockStateModelPart {
         return new BlockStateModelPart(faceQuads, generalQuads, display, particleSlotIcon);
     }
 
-    // ==================== 查询 ====================
+    // ==================== Queries ====================
 
     /**
-     * 返回给定剔除方向的所有 quad。若没有该方向的 quad 则返回空列表。
-     * [W4 修复] 返回不可变视图，防止调用方意外修改内部状态。
+     * Returns all quads culled in the given direction. Returns an empty list when there
+     * are no quads for that direction.
+     * [W4 fix] Returns an immutable view to prevent callers from accidentally modifying internal state.
      */
     public List<BakedQuad> getQuads(Direction side) {
         List<BakedQuad> q = faceQuads.get(side);
@@ -160,15 +155,15 @@ public class BlockStateModelPart {
     }
 
     /**
-     * 返回所有无剔除方向的 quad（总是渲染）。
-     * [W4 修复] 返回不可变视图。
+     * Returns all quads with no cull direction (always rendered).
+     * [W4 fix] Returns an immutable view.
      */
     public List<BakedQuad> getGeneralQuads() {
         return Collections.unmodifiableList(generalQuads);
     }
 
     /**
-     * 返回所有 quad（无论方向），用于物品渲染等无需剔除的场景。
+     * Returns all quads (regardless of direction), for item rendering and other no-cull scenarios.
      */
     public List<BakedQuad> getAllQuads() {
         if (allQuadsCache == null) {
@@ -186,7 +181,7 @@ public class BlockStateModelPart {
     }
 
     /**
-     * 是否有任何 quad（包括有方向和没方向的）。
+     * Whether there are any quads (including directional and non-directional ones).
      */
     public boolean isEmpty() {
         if (!generalQuads.isEmpty()) return false;
@@ -196,20 +191,22 @@ public class BlockStateModelPart {
         return true;
     }
 
-    // ==================== 图集拆分（对标 26.1.2 per-quad 图集） ====================
+    // ==================== Atlas splitting (mirroring 26.1.2 per-quad atlas) ====================
 
-    /** 懒缓存：索引 0 = blocks 图集子部件，索引 1 = items 图集子部件，槽位可为 null。 */
+    /** Lazy cache: index 0 = blocks-atlas sub-part, index 1 = items-atlas sub-part, either slot may be null. */
     private BlockStateModelPart[] atlasSplitCache;
 
     /**
-     * 按 quad 的烘焙期图集标记拆分部件（对标 26.1.2
-     * {@code BakedQuad.MaterialInfo} 的 per-quad RenderType）。
+     * Splits parts by each quad's bake-time atlas flag (mirroring 26.1.2
+     * {@code BakedQuad.MaterialInfo}'s per-quad RenderType).
      * <p>
-     * 全同质（常态）时对应槽位直接引用 {@code this}、另一槽位为 null，零分配；
-     * 混合图集时各自构建子部件（携带同一 display），与 26.1.2 分层物品
-     * 跨图集能力对齐。结果缓存，仅渲染线程访问。
+     * When fully homogeneous (the common case), the corresponding slot directly references
+     * {@code this}, the other slot is null, and there is zero allocation; when atlases are
+     * mixed, each builds its own sub-part (carrying the same display), aligning with 26.1.2's
+     * layered-item cross-atlas capability. The result is cached and accessed only by the
+     * render thread.
      *
-     * @return 长度为 2 的数组：[0]=blocks 图集部件，[1]=items 图集部件，槽位可为 null
+     * @return a length-2 array: [0]=blocks-atlas part, [1]=items-atlas part, either slot may be null
      */
     public BlockStateModelPart[] atlasSplit() {
         if (atlasSplitCache == null) {
@@ -219,7 +216,7 @@ public class BlockStateModelPart {
                 if (hasBlock && hasItem) break;
             }
             if (!hasItem) {
-                // 全 blocks（含空部件）
+                // All blocks (including empty parts)
                 atlasSplitCache = new BlockStateModelPart[]{this, null};
             } else if (!hasBlock) {
                 atlasSplitCache = new BlockStateModelPart[]{null, this};
@@ -238,9 +235,9 @@ public class BlockStateModelPart {
     }
 
     /**
-     * 所有 quad 是否均来自 blocks 图集（供方块世界路径门禁
-     * {@code AtlasGuard} 使用，对标 26.1.2 {@code SimpleModelWrapper.bake}
-     * 的 forbiddenSprites 检查）。
+     * Whether all quads come from the blocks atlas (used by the block world-path gate
+     * {@code AtlasGuard}, mirroring 26.1.2 {@code SimpleModelWrapper.bake}'s
+     * forbiddenSprites check).
      */
     public boolean allQuadsInBlockAtlas() {
         for (BakedQuad q : getAllQuads()) {
@@ -250,7 +247,7 @@ public class BlockStateModelPart {
     }
 
     /**
-     * 合并两个 BlockStateModelPart（用于 multipart 组合）。
+     * Merges two BlockStateModelParts (for multipart composition).
      */
     public BlockStateModelPart merge(BlockStateModelPart other) {
         Map<Direction, List<BakedQuad>> mergedFace = new EnumMap<>(Direction.class);
@@ -260,28 +257,27 @@ public class BlockStateModelPart {
         }
         List<BakedQuad> mergedGeneral = new ArrayList<>(this.generalQuads);
         mergedGeneral.addAll(other.generalQuads);
-        // 合并 display：优先使用 this 的，如果 this 没有则使用 other 的
+        // Merge display: prefer this one's, fall back to other's if this has none
         Map<String, ModelJson.DisplayTransform> mergedDisplay = this.partDisplay != null
                 ? this.partDisplay
                 : other.partDisplay;
-        // 粒子槽：this 优先、无则取 other（与 display 合并优先级一致）
         // Particle slot: this-first priority, mirroring the display merge.
         IIcon mergedParticle = this.particleSlotIcon != null ? this.particleSlotIcon : other.particleSlotIcon;
         return new BlockStateModelPart(mergedFace, mergedGeneral, mergedDisplay, mergedParticle);
     }
 
-    // ==================== 新增（对齐 26.1.2） ====================
+    // ==================== Added (mirroring 26.1.2) ====================
 
     /**
-     * 是否启用环境光遮蔽。
+     * Whether ambient occlusion is enabled.
      * <p>
-     * 遍历所有 quad 检查 ambientOcclusion 字段。
-     * 如果任一 quad 的 ambientOcclusion 不为 {@code false}，则认为启用 AO。
+     * Iterates over all quads checking the ambientOcclusion field.
+     * If any quad's ambientOcclusion is not {@code false}, AO is considered enabled.
      *
-     * @return true=启用环境光遮蔽
+     * @return true = ambient occlusion enabled
      */
     public boolean useAmbientOcclusion() {
-        // 检查有方向 quad
+        // Check directional quads
         for (List<BakedQuad> list : faceQuads.values()) {
             for (BakedQuad q : list) {
                 if (q.ambientOcclusion != Boolean.FALSE) {
@@ -289,7 +285,7 @@ public class BlockStateModelPart {
                 }
             }
         }
-        // 检查无方向 quad
+        // Check non-directional quads
         for (BakedQuad q : generalQuads) {
             if (q.ambientOcclusion != Boolean.FALSE) {
                 return true;
@@ -299,11 +295,12 @@ public class BlockStateModelPart {
     }
 
     /**
-     * 模型 JSON textures.particle 槽解析出的粒子纹理（烘焙期捕获）。
+     * Particle texture captured from the model's textures.particle slot at bake time.
      * <p>
-     * 槽缺失时为 null —— 由 ParticleIconResolver 按高版本语义映射 missingno。
+     * Null when the slot was absent — mapped to missingno by ParticleIconResolver under
+     * high-version semantics.
      *
-     * @return 显式 particle 槽的 IIcon，槽缺失时为 null
+     * @return the IIcon of the explicit particle slot, or null when the slot is absent
      */
     @Nullable
     public IIcon particleSlotIcon() {
@@ -311,22 +308,22 @@ public class BlockStateModelPart {
     }
 
     /**
-     * 粒子纹理。
+     * Particle texture.
      * <p>
-     * 返回第一个可用 quad 的 {@link IIcon}。
-     * 如果模型没有 quad 则返回 null。
+     * Returns the {@link IIcon} of the first available quad.
+     * Returns null if the model has no quads.
      *
-     * @return 粒子用的 IIcon，可为 null
+     * @return the IIcon used for particles, may be null
      */
     @Nullable
     public IIcon particleIcon() {
-        // 先查有方向 quad
+        // Check directional quads first
         for (List<BakedQuad> list : faceQuads.values()) {
             for (BakedQuad q : list) {
                 if (q.icon != null) return q.icon;
             }
         }
-        // 再查无方向 quad
+        // Then check non-directional quads
         for (BakedQuad q : generalQuads) {
             if (q.icon != null) return q.icon;
         }

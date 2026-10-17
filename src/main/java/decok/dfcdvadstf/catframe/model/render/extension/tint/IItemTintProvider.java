@@ -4,27 +4,29 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 /**
- * 物品（GUI / 手持）渲染时根据 JSON face 上的 {@code "tintindex"} 决定颜色。
- * 由于参数是 {@link ItemStack}，实现可读取 NBT、损耗、附魔等做精细化染色
- * （例如染色护甲、不同药水）。
+ * Decides the colour when an item (GUI / held) is rendered, based on the
+ * {@code "tintindex"} on the JSON face. Because the argument is an
+ * {@link ItemStack}, implementations can read NBT, damage, enchantments, etc. for
+ * fine-grained tinting (e.g. dyed armour, different potions).
  *
- * <p>实现类应覆写 {@link #register()} 以将自身注册到 {@link TintRegistry}，
- * 替代旧的静态 {@code XxxProvider.register()} 模式。</p>
+ * <p>Implementations should override {@link #register()} to register themselves with
+ * {@link TintRegistry}, replacing the old static {@code XxxProvider.register()}
+ * pattern.</p>
  */
 public interface IItemTintProvider {
     /**
-     * @param stack     正在渲染的物品堆
-     * @param tintIndex JSON face 中的 {@code "tintindex"} 值（≥0）
-     * @return 0xRRGGBB 颜色乘数；返回 {@code 0xFFFFFF} 表示不染色
+     * @param stack     the item stack being rendered
+     * @param tintIndex the {@code "tintindex"} value in the JSON face (≥ 0)
+     * @return 0xRRGGBB colour multiplier; {@code 0xFFFFFF} means no tint
      */
     int getTint(ItemStack stack, int tintIndex);
 
     /**
-     * 将当前实例注册到 {@link TintRegistry}。实现类应在此方法中调用
-     * {@link TintRegistry#registerItemTint(Item, IItemTintProvider)} 等
-     * 完成自身注册。
+     * Registers the current instance with {@link TintRegistry}. Implementations should
+     * call {@link TintRegistry#registerItemTint(Item, IItemTintProvider)} etc. in this
+     * method to perform their own registration.
      */
     default void register() {
-        // 子类覆写以实现注册逻辑
+        // Subclasses override this to implement their registration logic
     }
 }

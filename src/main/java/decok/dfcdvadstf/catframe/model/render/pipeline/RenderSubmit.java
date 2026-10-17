@@ -15,91 +15,94 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 一次渲染提交的不可变数据快照，对标原版 26w+ 管线中的 {@code Submit} 命令 record。
+ * Immutable data snapshot of a single render submission, mirroring the {@code Submit}
+ * command record in the vanilla 26w+ pipeline.
  * <p>
- * 纯数据、无 GPU 逻辑：承载 {@link QuadWriter} 复现"逐顶点写入循环"所需的全部输入。
- * 由 {@link decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline} 构建，
- * 经 {@link RenderCommandBuffers#submit(RenderSubmit)} 进入命令缓冲或即时 flush。
+ * Pure data, no GPU logic: it carries all inputs needed by {@link QuadWriter} to
+ * reproduce the "per-vertex write loop". It is built by
+ * {@link decok.dfcdvadstf.catframe.model.render.UniformRenderPipeline} and enters the
+ * command buffer or an immediate flush via {@link RenderCommandBuffers#submit(RenderSubmit)}.
  * <p>
- * display transform 与 preTransform 已在 Java 侧逐顶点烘焙进坐标（向量空间），
- * 因此 flush 时无需 GL 矩阵快照 —— 作用域的 flush 恒发生在调用方已建立的 GL 矩阵上下文内。
+ * The display transform and preTransform are already baked per-vertex into the
+ * coordinates on the Java side (vector space), so no GL matrix snapshot is needed at
+ * flush time — a scope flush always happens within the GL matrix context already
+ * established by the caller.
  */
 public final class RenderSubmit implements RenderSubmitView {
 
-    /** 渲染阶段（决定 brightness/gui 分支等）。 */
+    /** Render phase (determines brightness/gui branching, etc.). */
     public final RenderPhase phase;
-    /** 待渲染部件（提供 {@code getAllQuads()}）。 */
+    /** The part to render (provides {@code getAllQuads()}). */
     public final BlockStateModelPart part;
-    /** 分组类型（图集 + 混合），直接持注册表条目引用（submit 路径零查找）。 */
+    /** Group type (atlas + blend); holds a direct registry entry reference (zero lookup on the submit path). */
     public final RenderTypeKey type;
 
-    /** 方块坐标（物品阶段通常为 0）。 */
+    /** Block coordinates (usually 0 during the item phase). */
     public final int x, y, z;
-    /** Y 轴旋转角度（方块世界渲染使用，支持任意角度）。 */
+    /** Y-axis rotation angle (used for block world rendering, supports arbitrary angles). */
     public final float rotationDeg;
 
-    /** 方块实例（物品阶段可为 null）。 */
+    /** Block instance (may be null during the item phase). */
     @Nullable
     public final Block block;
-    /** 物品栈（方块阶段为 null）。 */
+    /** Item stack (null during the block phase). */
     @Nullable
     public final ItemStack stack;
-    /** 世界访问（无世界上下文时为 null）。 */
+    /** World access (null when there is no world context). */
     @Nullable
     public final IBlockAccess world;
-    /** 方块 metadata（用于染色等场景）。 */
+    /** Block metadata (used for tinting and similar scenarios). */
     public final int metadata;
 
-    /** 预变换矩阵（反抵消），在 display transform 之后逐顶点应用，可为 null。 */
+    /** Pre-transform matrix (counter-offset), applied per-vertex after the display transform; may be null. */
     @Nullable
     public final Matrix4d preTransform;
 
     /**
-     * 物品模型渲染变换（items JSON {@code minecraft:model} 节点的 {@code transformation} 标签），
-     * 在 display transform 之后、preTransform 之前逐顶点应用，可为 null（单位变换）。
-     * <p>Per-model item transformation (the {@code transformation} tag), applied after
-     * the display transform and before preTransform; null means identity.
+     * Item model render transformation (the {@code transformation} tag of the
+     * {@code minecraft:model} node in items JSON), applied per-vertex after the display
+     * transform and before preTransform; may be null (identity transform).
      */
     @Nullable
     public final Matrix4d transformation;
 
-    /** flush 时是否需要关闭面剔除（物品路径 true，方块路径 false）。 */
+    /** Whether face culling must be disabled at flush time (true for the item path, false for the block path). */
     public final boolean disableCull;
-    /** flush 时是否需要开启混合（与 {@link RenderTypeKey#blend()} 一致）。 */
+    /** Whether blending must be enabled at flush time (consistent with {@link RenderTypeKey#blend()}). */
     public final boolean blend;
 
     /**
-     * 方块状态属性（如 pane 的 north/east/south/west、stairs 的 facing/half/shape），
-     * 由模型解析阶段计算并随提交携带，经 {@link RenderContext#blockstateProps} 暴露给扩展链。
-     * 仅 BLOCK_WORLD / BLOCK_DESTROY 提交非 null。
+     * Block state properties (such as pane's north/east/south/west, stairs' facing/half/shape),
+     * computed during the model parsing phase and carried with the submission, exposed to the
+     * extension chain via {@link RenderContext#blockstateProps}.
+     * Only BLOCK_WORLD / BLOCK_DESTROY submissions are non-null.
      */
     @Nullable
     public final Map<String, String> blockstateProps;
 
     /**
-     * 物品属性（如 damage / using_item / use_duration / display_context），
-     * 由物品属性系统构建并随提交携带，经 {@link RenderContext#itemProps} 暴露给扩展链。
-     * 仅 ITEM_* 提交非 null。
+     * Item properties (such as damage / using_item / use_duration / display_context),
+     * built by the item property system and carried with the submission, exposed to the
+     * extension chain via {@link RenderContext#itemProps}.
+     * Only ITEM_* submissions are non-null.
      */
     @Nullable
     public final Map<String, Comparable<?>> itemProps;
 
     /**
-     * 基础亮度（packed sky<<20 | block<<4 格式；GUI 阶段为 255 屏幕光语义）。
-     * 内建扩展 LightPolicyExtension 就绪后，其 write 期写入的
-     * {@code ctx.brightnessOverride} 优先于本字段（光政策统一居住于扩展链）；
-     * 本字段仅作两类兜底：<b>(a)</b> 直接构造方显式指定（≥ 0）时，QuadWriter 构造
-     * ctx 以其为 baseline；(b) <b>-1 = 未指定</b> —— QuadWriter 回退按 phase 经
-     * RenderPhasePolicy 计算（链缺失时的安全网，fallback 保留）。
-     * <p>
-     * The per-submit brightness baseline. Once the built-in LightPolicyExtension
-     * is installed its write-time override takes precedence; this field remains
-     * a fallback for direct constructors and for chains without the extension.
+     * Baseline brightness (packed sky<<20 | block<<4 format; the GUI phase uses the
+     * 255 screen-light semantics). Once the built-in LightPolicyExtension is ready, the
+     * {@code ctx.brightnessOverride} written during its write phase takes precedence over
+     * this field (light policy lives uniformly in the extension chain); this field serves
+     * only as two kinds of fallback: <b>(a)</b> when a direct constructor explicitly
+     * specifies it (≥ 0), QuadWriter constructs ctx with it as the baseline; (b)
+     * <b>-1 = unspecified</b> — QuadWriter falls back to computing via RenderPhasePolicy
+     * by phase (a safety net for a missing chain; fallback retained).
      */
     public final int baselineBrightness;
 
     /**
-     * 旧签名构造器兼容 shim：blockstateProps / itemProps 均为 null。
+     * Legacy-signature constructor compatibility shim: blockstateProps / itemProps are both null.
      */
     public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
                         int x, int y, int z, float rotationDeg,
@@ -115,9 +118,10 @@ public final class RenderSubmit implements RenderSubmitView {
     }
 
     /**
-     * 兼容重载：未指定基础亮度（-1）—— 正常渲染路径下由内建扩展
-     * LightPolicyExtension 在 write 期决定；QuadWriter 的 -1 回退（按 phase 经
-     * RenderPhasePolicy 计算）仅作链缺失兜底（fallback 保留）。
+     * Compatibility overload: baseline brightness unspecified (-1) — on the normal render
+     * path it is decided by the built-in LightPolicyExtension at write time; QuadWriter's
+     * -1 fallback (computed via RenderPhasePolicy by phase) only acts as a safety net for
+     * a missing chain (fallback retained).
      */
     public RenderSubmit(RenderPhase phase, BlockStateModelPart part, RenderTypeKey type,
                         int x, int y, int z, float rotationDeg,
@@ -164,7 +168,7 @@ public final class RenderSubmit implements RenderSubmitView {
         this.baselineBrightness = baselineBrightness;
     }
 
-    // ==================== RenderSubmitView（只读视图实现） ====================
+    // ==================== RenderSubmitView (read-only view implementation) ====================
 
     @Override
     public RenderPhase phase() {

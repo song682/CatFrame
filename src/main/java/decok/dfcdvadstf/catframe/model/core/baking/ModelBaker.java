@@ -13,28 +13,28 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 /**
- * 烘焙门面。对标 26.1.2 的 {@code ModelBaker}。
+ * Baking facade. Counterpart of {@code ModelBaker} in 26.1.2.
  * <p>
- * 封装从模型路径到烘焙产物的完整管线：
+ * Encapsulates the full pipeline from model path to baked result:
  * {@code modelPath → ModelResolver.resolve() → UnbakedModel → TextureSlots → bake()}
  * <p>
- * <h3>职责</h3>
+ * <h3>Responsibilities</h3>
  * <ul>
- *   <li>提供三种粒度的烘焙入口（路径/已解析JSON/UnbakedModel）</li>
- *   <li>在 {@link TextureSlots#fromModel} 和 {@link ModelJsonUnbakedAdapter#bake} 之间协调</li>
+ *   <li>Provides baking entry points at three granularities (path / resolved JSON / UnbakedModel)</li>
+ *   <li>Coordinates between {@link TextureSlots#fromModel} and {@link ModelJsonUnbakedAdapter#bake}</li>
  * </ul>
  *
- * <p>缓存职责已由 {@link BakedModelCache} 承担（StampedLock + LRU 懒烘焙）。
- * 本类不再维护内部缓存，仅作为烘焙管线门面。
+ * <p>Caching responsibility is already handled by {@link BakedModelCache} (StampedLock + LRU lazy baking).
+ * This class no longer maintains an internal cache; it serves purely as the baking pipeline facade.
  */
 public class ModelBaker {
 
     private ModelBaker() {}
 
-    // ==================== 烘焙入口（含便捷重载） ====================
+    // ==================== Baking entry points (with convenience overloads) ====================
 
     /**
-     * 便捷重载：从模型路径烘焙，无旋转（使用当前 stitch 周期的 iconMap）。
+     * Convenience overload: bake from a model path with no rotation (uses the current stitch cycle's iconMap).
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath) {
@@ -42,7 +42,7 @@ public class ModelBaker {
     }
 
     /**
-     * 便捷重载：从模型路径烘焙，仅 Y 轴旋转（使用当前 stitch 周期的 iconMap）。
+     * Convenience overload: bake from a model path with Y-axis rotation only (uses the current stitch cycle's iconMap).
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, float rotationY) {
@@ -50,16 +50,16 @@ public class ModelBaker {
     }
 
     /**
-     * 从模型路径烘焙为 {@link BlockStateModelPart}（使用当前 stitch 周期的 iconMap）。
+     * Bakes a model path into a {@link BlockStateModelPart} (uses the current stitch cycle's iconMap).
      * <p>
-     * 完整管线：{@code modelPath → ModelResolver.resolve() → ModelJsonUnbakedAdapter → TextureSlots → bake()}
+     * Full pipeline: {@code modelPath → ModelResolver.resolve() → ModelJsonUnbakedAdapter → TextureSlots → bake()}
      * <p>
-     * 注意：本方法不维护缓存。缓存由 {@link BakedModelCache} 统一管理。
+     * Note: this method does not maintain a cache. Caching is managed centrally by {@link BakedModelCache}.
      *
-     * @param modelPath 模型路径（如 {@code "block/stone"}、{@code "builtin/generated"}）
-     * @param rotationX X 轴旋转角度（支持任意角度）
-     * @param rotationY Y 轴旋转角度（支持任意角度）
-     * @return 烘焙后的渲染部件，失败返回 null
+     * @param modelPath model path (e.g. {@code "block/stone"}, {@code "builtin/generated"})
+     * @param rotationX X-axis rotation angle (any angle is supported)
+     * @param rotationY Y-axis rotation angle (any angle is supported)
+     * @return the baked render part, or null on failure
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, float rotationX, float rotationY) {
@@ -67,17 +67,17 @@ public class ModelBaker {
     }
 
     /**
-     * 从模型路径烘焙为 {@link BlockStateModelPart}（使用当前 stitch 周期的 iconMap）。
+     * Bakes a model path into a {@link BlockStateModelPart} (uses the current stitch cycle's iconMap).
      * <p>
-     * 完整管线：{@code modelPath → ModelResolver.resolve() → ModelJsonUnbakedAdapter → TextureSlots → bake()}
+     * Full pipeline: {@code modelPath → ModelResolver.resolve() → ModelJsonUnbakedAdapter → TextureSlots → bake()}
      * <p>
-     * 注意：本方法不维护缓存。缓存由 {@link BakedModelCache} 统一管理。
+     * Note: this method does not maintain a cache. Caching is managed centrally by {@link BakedModelCache}.
      *
-     * @param modelPath 模型路径（如 {@code "block/stone"}、{@code "builtin/generated"}）
-     * @param rotationX X 轴旋转角度（支持任意角度）
-     * @param rotationY Y 轴旋转角度（支持任意角度）
-     * @param rotationZ Z 轴旋转角度（支持任意角度）
-     * @return 烘焙后的渲染部件，失败返回 null
+     * @param modelPath model path (e.g. {@code "block/stone"}, {@code "builtin/generated"})
+     * @param rotationX X-axis rotation angle (any angle is supported)
+     * @param rotationY Y-axis rotation angle (any angle is supported)
+     * @param rotationZ Z-axis rotation angle (any angle is supported)
+     * @return the baked render part, or null on failure
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, float rotationX, float rotationY, float rotationZ) {
@@ -85,36 +85,37 @@ public class ModelBaker {
     }
 
     /**
-     * 从模型路径烘焙为 {@link BlockStateModelPart}，显式指定 iconMap。
+     * Bakes a model path into a {@link BlockStateModelPart} with an explicitly specified iconMap.
      * <p>
-     * 对标高版本 {@code MaterialBaker} 的实例化闭包模式：每次烘焙使用调用方提供的
-     * iconMap（而非全局静态字段），避免多 stitch 周期之间的竞态覆盖。
+     * Follows the instantiation-closure pattern of the modern {@code MaterialBaker}: each bake uses
+     * the caller-supplied iconMap (instead of a global static field), avoiding race-condition
+     * overwrites between stitch cycles.
      *
-     * @param modelPath 模型路径
-     * @param rotationX X 轴旋转角度
-     * @param rotationY Y 轴旋转角度
-     * @param rotationZ Z 轴旋转角度
-     * @param iconMap   当前 stitch 周期的 IIcon 映射
-     * @return 烘焙后的渲染部件，失败返回 null
+     * @param modelPath model path
+     * @param rotationX X-axis rotation angle
+     * @param rotationY Y-axis rotation angle
+     * @param rotationZ Z-axis rotation angle
+     * @param iconMap   IIcon map for the current stitch cycle
+     * @return the baked render part, or null on failure
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, float rotationX, float rotationY, float rotationZ,
                                             @Nullable Map<String, IIcon> iconMap) {
         if (modelPath == null) return null;
 
-        // 1. 解析 JSON
+        // 1. Resolve the JSON
         ModelJson resolved = ModelResolver.resolve(modelPath);
         if (resolved == null) {
             CatFrame.logger.warn("[ModelBaker] ModelResolver.resolve('{}') returned null", modelPath);
             return null;
         }
 
-        // 2. 委托给已解析的重载
+        // 2. Delegate to the resolved overload
         return bake(resolved, rotationX, rotationY, rotationZ, modelPath, iconMap);
     }
 
     /**
-     * 便捷重载：从已解析的 {@link ModelJson} 烘焙，无旋转。
+     * Convenience overload: bake from a resolved {@link ModelJson} with no rotation.
      */
     @Nullable
     public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY) {
@@ -122,7 +123,7 @@ public class ModelBaker {
     }
 
     /**
-     * 便捷重载：从已解析的 {@link ModelJson} 烘焙，无 Z 轴旋转。
+     * Convenience overload: bake from a resolved {@link ModelJson} with no Z-axis rotation.
      */
     @Nullable
     public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, String modelPath) {
@@ -130,13 +131,13 @@ public class ModelBaker {
     }
 
     /**
-     * 从已解析的 {@link ModelJson} 直接烘焙（绕过 JSON 解析和缓存）。
+     * Bakes directly from a resolved {@link ModelJson} (bypassing JSON parsing and caching).
      *
-     * @param resolved  已解析的模型
-     * @param rotationX X 轴旋转角度
-     * @param rotationY Y 轴旋转角度
-     * @param rotationZ Z 轴旋转角度
-     * @return 烘焙后的渲染部件
+     * @param resolved  the resolved model
+     * @param rotationX X-axis rotation angle
+     * @param rotationY Y-axis rotation angle
+     * @param rotationZ Z-axis rotation angle
+     * @return the baked render part
      */
     @Nullable
     public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, float rotationZ) {
@@ -144,14 +145,14 @@ public class ModelBaker {
     }
 
     /**
-     * 从已解析的 {@link ModelJson} 烘焙，带模型路径标签（使用当前 stitch 周期的 iconMap）。
+     * Bakes from a resolved {@link ModelJson}, tagged with the model path (uses the current stitch cycle's iconMap).
      *
-     * @param resolved  已解析的模型
-     * @param rotationX X 轴旋转角度
-     * @param rotationY Y 轴旋转角度
-     * @param rotationZ Z 轴旋转角度
-     * @param modelPath 模型路径（用于日志和标识）
-     * @return 烘焙后的渲染部件
+     * @param resolved  the resolved model
+     * @param rotationX X-axis rotation angle
+     * @param rotationY Y-axis rotation angle
+     * @param rotationZ Z-axis rotation angle
+     * @param modelPath model path (used for logging and identification)
+     * @return the baked render part
      */
     @Nullable
     public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, float rotationZ, String modelPath) {
@@ -159,17 +160,17 @@ public class ModelBaker {
     }
 
     /**
-     * 从已解析的 {@link ModelJson} 烘焙，显式指定 iconMap。
+     * Bakes from a resolved {@link ModelJson} with an explicitly specified iconMap.
      * <p>
-     * 对标高版本 {@code MaterialBaker} 的实例化闭包模式。
+     * Follows the instantiation-closure pattern of the modern {@code MaterialBaker}.
      *
-     * @param resolved  已解析的模型
-     * @param rotationX X 轴旋转角度
-     * @param rotationY Y 轴旋转角度
-     * @param rotationZ Z 轴旋转角度
-     * @param modelPath 模型路径（用于日志和标识）
-     * @param iconMap   当前 stitch 周期的 IIcon 映射
-     * @return 烘焙后的渲染部件
+     * @param resolved  the resolved model
+     * @param rotationX X-axis rotation angle
+     * @param rotationY Y-axis rotation angle
+     * @param rotationZ Z-axis rotation angle
+     * @param modelPath model path (used for logging and identification)
+     * @param iconMap   IIcon map for the current stitch cycle
+     * @return the baked render part
      */
     @Nullable
     public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, float rotationZ,
@@ -182,25 +183,25 @@ public class ModelBaker {
             }
         }
 
-        // 1. 构建 UnbakedModel 适配器
+        // 1. Build the UnbakedModel adapter
         UnbakedModel unbaked = new ModelJsonUnbakedAdapter(resolved, modelPath);
 
-        // 2. 构建 TextureSlots（使用调用方提供的 iconMap，而非全局静态）
+        // 2. Build TextureSlots (using the caller-supplied iconMap rather than the global static one)
         TextureSlots textures = TextureSlots.fromModel(resolved, iconMap, null);
 
-        // 3. 烘焙
+        // 3. Bake
         return unbaked.bake(textures, rotationX, rotationY, rotationZ);
     }
 
     /**
-     * 从 {@link UnbakedModel} 烘焙（最底层入口，适合测试或程序化模型）。
+     * Bakes from an {@link UnbakedModel} (lowest-level entry point, suited to tests or programmatic models).
      *
-     * @param model     UnbakedModel 实例
-     * @param textures  已解析的纹理槽
-     * @param rotationX X 轴旋转角度
-     * @param rotationY Y 轴旋转角度
-     * @param rotationZ Z 轴旋转角度
-     * @return 烘焙后的渲染部件
+     * @param model     the UnbakedModel instance
+     * @param textures  resolved texture slots
+     * @param rotationX X-axis rotation angle
+     * @param rotationY Y-axis rotation angle
+     * @param rotationZ Z-axis rotation angle
+     * @return the baked render part
      */
     @Nullable
     public static BlockStateModelPart bake(UnbakedModel model, TextureSlots textures,

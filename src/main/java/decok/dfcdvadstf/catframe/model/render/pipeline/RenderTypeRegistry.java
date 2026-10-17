@@ -11,59 +11,61 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
- * 渲染分组注册表 —— 运行时 render type 注册中心，对标原版 26w+ 延迟渲染管线中的
- * render type registry。
+ * Render group registry — the runtime render type registry, matching the render type
+ * registry in the vanilla 26w+ deferred rendering pipeline.
  * <p>
- * 取代改造前的 {@code RenderType} enum：内建分组（见 {@link #BLOCK_ATLAS_SOLID} 等静态字段）
- * 与第三方注册的分组统一以 {@link RenderTypeKey} 条目句柄暴露 —— submit 路径直接持
- * 条目引用（O(1) 零查找），flush 路径按<b>显式排序键</b>只读快照迭代。
+ * Replaces the pre-refactor {@code RenderType} enum: built-in groups (see static
+ * fields such as {@link #BLOCK_ATLAS_SOLID}) and third-party registrations are
+ * uniformly exposed as {@link RenderTypeKey} entry handles — the submit path holds the
+ * entry reference directly (O(1), zero lookup), and the flush path iterates a read-only
+ * snapshot in <b>explicit sort-key</b> order.
  * <p>
- * <b>flush 顺序</b>：按 {@link RenderTypeKey#sortKey()} 升序（越小越先 flush），
- * 同键按注册顺序稳定排列 —— 精确复刻改造前 flush 序
- * （BLOCK_SOLID=0 → ITEM_SOLID=1 → BLOCK_TRANSLUCENT=2 → ITEM_TRANSLUCENT=3），
- * 保证半透明正确叠加在不透明之上。
+ * <b>flush order</b>: ascending by {@link RenderTypeKey#sortKey()} (smaller flushes
+ * first), with equal keys stably ordered by registration order — precisely replicating
+ * the pre-refactor flush order (BLOCK_SOLID=0 → ITEM_SOLID=1 → BLOCK_TRANSLUCENT=2 →
+ * ITEM_TRANSLUCENT=3), ensuring translucents blend correctly on top of opaques.
  * <p>
- * <b>关于剔除（cull）</b>：面剔除开关不编码进分组，而是随每个
- * {@link RenderSubmit#disableCull} 携带（物品路径关剔除、方块路径保持），因为
- * 同一图集 + 混合分组下方块 GUI 与方块物品的剔除策略不同。flush 时按分组内提交项的
- * 剔除标志统一设置（作用域内提交项同质）。
+ * <b>About culling</b>: the face-cull switch is not encoded into the group, but
+ * carried per {@link RenderSubmit#disableCull} (the item path disables culling, the
+ * block path keeps it), because block GUI and block items have different cull policies
+ * under the same atlas + blend group. At flush time it is set uniformly from the cull
+ * flag of the submissions within the group (submissions within a scope are
+ * homogeneous).
  * <p>
- * <b>线程安全（v0.5+ 契约）</b>：内部 {@link CopyOnWriteArrayList} 存储条目（注册/更新
- * 可在任意线程执行，复合操作同步于类锁）；每次变更后重排并发布不可变快照
- * （{@code volatile} 数组），flush 路径只读快照、不排序 —— 后台烘焙线程的并发注册
- * 不会破坏渲染线程的迭代。
- * <p>
- * Runtime registry replacing the pre-refactor {@code RenderType} enum. Built-in
- * groups plus third-party registrations share one {@link RenderTypeKey} handle
- * model; flush iterates a volatile immutable snapshot ordered by sort key.
+ * <b>Thread safety (v0.5+ contract)</b>: entries are stored in an internal
+ * {@link CopyOnWriteArrayList} (registration/update may run on any thread, and
+ * compound operations are synchronized on the class lock); after each change it
+ * reorders and publishes an immutable snapshot (a {@code volatile} array), and the
+ * flush path reads the snapshot without sorting — concurrent registration from
+ * background baking threads does not break the render thread's iteration.
  */
 public final class RenderTypeRegistry {
 
-    /** 内建排序键：方块图集 · 不透明（0，最先 flush）。 */
+    /** Built-in sort key: block atlas · opaque (0, flushed first). */
     public static final int SORT_BLOCK_SOLID = 0;
-    /** 内建排序键：物品图集 · 不透明（1）。 */
+    /** Built-in sort key: item atlas · opaque (1). */
     public static final int SORT_ITEM_SOLID = 1;
-    /** 内建排序键：方块图集 · 半透明（2）。 */
+    /** Built-in sort key: block atlas · translucent (2). */
     public static final int SORT_BLOCK_TRANSLUCENT = 2;
-    /** 内建排序键：物品图集 · 半透明（3，最后 flush）。 */
+    /** Built-in sort key: item atlas · translucent (3, flushed last). */
     public static final int SORT_ITEM_TRANSLUCENT = 3;
-    /** 内建排序键：方块图集 · 破坏贴花（4；破坏渲染恒走 flushInline，不参与批处理排序）。 */
+    /** Built-in sort key: block atlas · destroy decal (4; destroy rendering always uses flushInline and does not participate in batch sorting). */
     public static final int SORT_BLOCK_DESTROY = 4;
 
-    /** 内建分组：方块图集 · 不透明（方块世界内联、方块物品手持等）。 */
+    /** Built-in group: block atlas · opaque (block world inline, block item in hand, etc.). */
     public static final RenderTypeKey BLOCK_ATLAS_SOLID;
-    /** 内建分组：物品图集 · 不透明（普通物品手持/展示等无混合场景）。 */
+    /** Built-in group: item atlas · opaque (ordinary items in hand / displayed, etc., no blend needed). */
     public static final RenderTypeKey ITEM_ATLAS_SOLID;
-    /** 内建分组：方块图集 · 半透明（方块 GUI、方块物品 GUI/掉落/展示框）。 */
+    /** Built-in group: block atlas · translucent (block GUI, block item GUI / dropped / item frame). */
     public static final RenderTypeKey BLOCK_ATLAS_TRANSLUCENT;
-    /** 内建分组：物品图集 · 半透明（物品 GUI/掉落/展示框）。 */
+    /** Built-in group: item atlas · translucent (item GUI / dropped / item frame). */
     public static final RenderTypeKey ITEM_ATLAS_TRANSLUCENT;
-    /** 内建分组：方块图集 · 破坏贴花（destroy overlay，对标 26.1.2 DESTROY_TYPES）。 */
+    /** Built-in group: block atlas · destroy decal (destroy overlay, matching 26.1.2 DESTROY_TYPES). */
     public static final RenderTypeKey BLOCK_ATLAS_DESTROY;
 
-    /** 注册条目存储（写路径并发安全；遍历只在重建快照时进行）。 */
+    /** Registration entry storage (write path is concurrency-safe; iteration only happens while rebuilding the snapshot). */
     private static final CopyOnWriteArrayList<Entry> ENTRIES = new CopyOnWriteArrayList<>();
-    /** 排序快照（volatile 发布）：flush 路径只读迭代，注册表变更时重建。 */
+    /** Sorted snapshot (published via volatile): the flush path iterates it read-only, rebuilt when the registry changes. */
     private static volatile RenderTypeKey[] orderedSnapshot = new RenderTypeKey[0];
 
     static {
@@ -75,7 +77,6 @@ public final class RenderTypeRegistry {
                 "block_atlas_translucent", TextureMap.locationBlocksTexture, true, SORT_BLOCK_TRANSLUCENT);
         ITEM_ATLAS_TRANSLUCENT = register(
                 "item_atlas_translucent", TextureMap.locationItemsTexture, true, SORT_ITEM_TRANSLUCENT);
-        // 破坏贴花分组：乘法混合 GL 状态由原版 drawBlockDamageTexture 管理，blend 恒 false
         // Destroy decal group: multiplicative blend state is owned by vanilla
         // drawBlockDamageTexture, so blend stays false here.
         BLOCK_ATLAS_DESTROY = register(
@@ -86,16 +87,18 @@ public final class RenderTypeRegistry {
     }
 
     /**
-     * 注册（或更新）一个渲染分组。
+     * Registers (or updates) a render group.
      * <p>
-     * 重复 id 视为更新：保留原注册序号（排序 tie-break 稳定），字段更新后重排快照。
-     * 第三方模组可在客户端 init 阶段注册新分组（含自定义排序位置）。
+     * A duplicate id is treated as an update: the original registration order is kept
+     * (stable sort tie-break), and the snapshot is rebuilt after the fields are
+     * updated. Third-party mods may register new groups (including custom sort
+     * positions) during client init.
      *
-     * @param id        分组稳定标识（唯一注册键，如 {@code catframe:block_solid}）
-     * @param atlas     绑定的纹理图集（blocks / items atlas）
-     * @param blend     是否需要开启 alpha 混合（半透明）
-     * @param sortKey   显式排序键：越小越先 flush；同键按注册顺序稳定排列
-     * @return 注册表条目句柄（后续可直接用于提交与 flush 分组）
+     * @param id        stable group identifier (unique registration key, e.g. {@code catframe:block_solid})
+     * @param atlas     the texture atlas to bind (blocks / items atlas)
+     * @param blend     whether alpha blending (translucent) must be enabled
+     * @param sortKey   explicit sort key: smaller flushes first; equal keys are stably ordered by registration order
+     * @return the registry entry handle (usable directly afterwards for submitting and flushing the group)
      */
     public static RenderTypeKey register(ResourceLocation id, ResourceLocation atlas,
                                          boolean blend, int sortKey) {
@@ -105,7 +108,7 @@ public final class RenderTypeRegistry {
         synchronized (RenderTypeRegistry.class) {
             for (Entry e : ENTRIES) {
                 if (e.id.equals(id)) {
-                    // 重复 id：更新字段（注册序号不变）→ 重排快照
+                    // Duplicate id: update the fields (registration order unchanged) → rebuild the snapshot
                     e.update(atlas, blend, sortKey);
                     rebuildSnapshot();
                     return e;
@@ -119,8 +122,10 @@ public final class RenderTypeRegistry {
     }
 
     /**
-     * {@link #register(ResourceLocation, ResourceLocation, boolean, int)} 的便捷重载，
-     * id 以 {@code catframe:<name>} 形式构造（与改造前 enum 的 {@code id()} 语义一致）。
+     * Convenience overload of
+     * {@link #register(ResourceLocation, ResourceLocation, boolean, int)} that builds
+     * the id as {@code catframe:<name>} (consistent with the pre-refactor enum's
+     * {@code id()} semantics).
      */
     public static RenderTypeKey register(String id, ResourceLocation atlas,
                                          boolean blend, int sortKey) {
@@ -128,8 +133,9 @@ public final class RenderTypeRegistry {
     }
 
     /**
-     * 按排序键升序遍历当前快照（只读，不排序不拷贝）。
-     * 供 {@link SubmitNodeStorage#groups()} 与 flush 路径消费；快照由注册表在变更时发布。
+     * Iterates the current snapshot in ascending sort-key order (read-only, no sorting
+     * or copying). Consumed by {@link SubmitNodeStorage#groups()} and the flush path;
+     * the snapshot is published by the registry on change.
      */
     public static void forEachInOrder(Consumer<RenderTypeKey> action) {
         RenderTypeKey[] snapshot = orderedSnapshot;
@@ -139,18 +145,20 @@ public final class RenderTypeRegistry {
     }
 
     /**
-     * 当前排序快照数组（只读约定：调用方不得修改数组或元素）。
-     * 供同包槽位仲裁（handler 认领）等需按索引对齐的只读场景使用。
+     * The current sorted snapshot array (read-only convention: callers must not modify
+     * the array or its elements). Used by same-package slot arbitration (handler
+     * claiming) and other read-only scenarios that need index alignment.
      */
     static RenderTypeKey[] orderedSnapshot() {
         return orderedSnapshot;
     }
 
     /**
-     * 依据图集选择与混合需求解析内建分组（行为与改造前 {@code RenderType.of()} 一致）。
+     * Resolves a built-in group from the atlas choice and blend requirement (behavior
+     * identical to the pre-refactor {@code RenderType.of()}).
      *
-     * @param blockAtlas  true=使用 blocks atlas，false=使用 items atlas
-     * @param translucent true=需要混合（半透明），false=不透明
+     * @param blockAtlas  true = use the blocks atlas, false = use the items atlas
+     * @param translucent true = blending needed (translucent), false = opaque
      */
     public static RenderTypeKey of(boolean blockAtlas, boolean translucent) {
         if (blockAtlas) {
@@ -159,7 +167,7 @@ public final class RenderTypeRegistry {
         return translucent ? ITEM_ATLAS_TRANSLUCENT : ITEM_ATLAS_SOLID;
     }
 
-    /** 变更后重排：sortKey 升序 + 注册序号 tie-break，发布为不可变快照。 */
+    /** Reorder after a change: sortKey ascending + registration-order tie-break, published as an immutable snapshot. */
     private static void rebuildSnapshot() {
         List<Entry> sorted = new ArrayList<>(ENTRIES);
         sorted.sort(Comparator.comparingInt(Entry::sortKey)
@@ -168,12 +176,13 @@ public final class RenderTypeRegistry {
     }
 
     /**
-     * 注册表条目：可变（重复 id 注册 = 更新字段并重排快照），
-     * 注册序号一经分配不再变化（同 sortKey 时稳定 tie-break）。
+     * Registry entry: mutable (a duplicate id registration updates the fields and
+     * rebuilds the snapshot), and the registration order never changes once assigned
+     * (stable tie-break for equal sortKeys).
      */
     private static final class Entry implements RenderTypeKey {
         private final ResourceLocation id;
-        /** 首次注册序号：排序 tie-break（同 sortKey 时按注册顺序稳定排列）。 */
+        /** First-registration order: sort tie-break (stably ordered by registration order for equal sortKeys). */
         private final int registrationOrder;
         private volatile ResourceLocation atlas;
         private volatile boolean blend;

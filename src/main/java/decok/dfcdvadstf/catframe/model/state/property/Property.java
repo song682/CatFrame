@@ -5,19 +5,20 @@ import decok.dfcdvadstf.catframe.model.state.BlockState;
 import java.util.*;
 
 /**
- * 类型安全的块状态属性基类。类似于 1.21.5 的 {@code Property<T>}。
+ * Type-safe blockstate property base class. Similar to 1.21.5's {@code Property<T>}.
  *
- * <p>每个属性有一个唯一的名称、一个值类型，以及一个所有可能值的不可变列表。
- * {@link #getInternalIndex} 将值映射为内部索引，用于 {@link BlockState} 的邻居跳表。
+ * <p>Each property has a unique name, a value type, and an immutable list of all possible values.
+ * {@link #getInternalIndex} maps a value to its internal index, used for {@link BlockState}'s
+ * neighbor jump table.
  *
- * <p>预定义子类：
+ * <p>Predefined subclasses:
  * <ul>
- *   <li>{@link BooleanProperty} — 布尔值 (true / false)</li>
- *   <li>{@link IntegerProperty} — 整数范围 (min ~ max)</li>
- *   <li>{@link EnumProperty} — 枚举值</li>
+ *   <li>{@link BooleanProperty} — boolean value (true / false)</li>
+ *   <li>{@link IntegerProperty} — integer range (min ~ max)</li>
+ *   <li>{@link EnumProperty} — enum value</li>
  * </ul>
  *
- * @param <T> 值的类型，必须可比较
+ * @param <T> the value type, must be comparable
  */
 public abstract class Property<T extends Comparable<T>> {
 
@@ -27,9 +28,9 @@ public abstract class Property<T extends Comparable<T>> {
     private final Map<T, Integer> indexMap;
 
     /**
-     * @param name      属性名称（如 "facing", "variant"）
-     * @param valueClass 值类型
-     * @param values    所有可能值的列表（顺序决定内部索引）
+     * @param name       the property name (e.g. "facing", "variant")
+     * @param valueClass the value type
+     * @param values     the list of all possible values (order determines the internal index)
      */
     protected Property(String name, Class<T> valueClass, List<T> values) {
         if (name == null || name.isEmpty()) {
@@ -42,18 +43,19 @@ public abstract class Property<T extends Comparable<T>> {
         this.valueClass = valueClass;
         this.values = Collections.unmodifiableList(new ArrayList<>(values));
 
-        // 构建值→索引映射
+        // Build the value → index mapping
         this.indexMap = new HashMap<>();
         for (int i = 0; i < values.size(); i++) {
             this.indexMap.put(values.get(i), i);
         }
     }
 
-    // ==================== 抽象方法 ====================
+    // ==================== Abstract methods ====================
 
     /**
-     * 返回给定值的内部索引（用于邻居跳表查找）。
-     * 默认实现基于 values 列表的位置，子类可覆盖以获得 O(1) 直接计算。
+     * Returns the internal index of the given value (used for neighbor jump table lookup).
+     * The default implementation is based on the position in the values list; subclasses may
+     * override to compute it directly in O(1).
      */
     public int getInternalIndex(T value) {
         Integer idx = indexMap.get(value);
@@ -63,7 +65,7 @@ public abstract class Property<T extends Comparable<T>> {
         return idx;
     }
 
-    // ==================== 实例方法 ====================
+    // ==================== Instance methods ====================
 
     public String getName() {
         return name;
@@ -74,14 +76,15 @@ public abstract class Property<T extends Comparable<T>> {
     }
 
     /**
-     * 返回所有可能值的不可变列表。列表的索引位置与 {@link #getInternalIndex} 一致。
+     * Returns the immutable list of all possible values. The list index positions are consistent
+     * with {@link #getInternalIndex}.
      */
     public List<T> getValues() {
         return values;
     }
 
     /**
-     * 返回所有值的字符串表示列表。
+     * Returns the list of string representations of all values.
      */
     public List<String> getNames() {
         List<String> names = new ArrayList<>(values.size());
@@ -92,16 +95,16 @@ public abstract class Property<T extends Comparable<T>> {
     }
 
     /**
-     * 返回此属性的值数量。
+     * Returns the number of values of this property.
      */
     public int getValueCount() {
         return values.size();
     }
 
-    // ==================== 静态工厂 ====================
+    // ==================== Static factory ====================
 
     /**
-     * 创建一个简单的自定义 Property（无专用子类时使用）。
+     * Creates a simple custom Property (used when there is no dedicated subclass).
      */
     public static <T extends Comparable<T>> Property<T> create(String name, Class<T> clazz, List<T> values) {
         return new SimpleProperty<>(name, clazz, values);
@@ -127,7 +130,7 @@ public abstract class Property<T extends Comparable<T>> {
         return name.hashCode();
     }
 
-    // 内部实现：通用 Property
+    // Internal implementation: generic Property
     private static class SimpleProperty<T extends Comparable<T>> extends Property<T> {
         SimpleProperty(String name, Class<T> clazz, List<T> values) {
             super(name, clazz, values);

@@ -8,15 +8,16 @@ import net.minecraft.world.ColorizerFoliage;
 import net.minecraft.world.IBlockAccess;
 
 /**
- * 树叶方块染色注册。通过 {@link TintRegistry} 为所有树叶方块注册生物群系着色和固定色。
+ * Leaves block tint registration. Registers biome tinting and fixed colours for all
+ * leaves blocks through {@link TintRegistry}.
  *
- * <p>完全对齐原版 1.7.10 {@link net.minecraft.block.BlockOldLeaf} / {@link net.minecraft.block.BlockNewLeaf} 行为：
+ * <p>Fully matches the behaviour of vanilla 1.7.10 {@link net.minecraft.block.BlockOldLeaf} / {@link net.minecraft.block.BlockNewLeaf}:
  * <ul>
- *   <li>橡木 (meta 0) / 丛林木 (meta 3)：3x3 区域平均生物群系 foliage 色；</li>
- *   <li>云杉 (meta 1)：{@link ColorizerFoliage#getFoliageColorPine()}；</li>
- *   <li>白桦 (meta 2)：{@link ColorizerFoliage#getFoliageColorBirch()}；</li>
- *   <li>金合欢 / 深色橡木 (leaves2)：3x3 区域平均（BlockNewLeaf 未覆写颜色方法）；</li>
- *   <li>物品形态：{@link ColorizerFoliage#getFoliageColorBasic()}。</li>
+ *   <li>Oak (meta 0) / jungle (meta 3): 3x3-area averaged biome foliage colour;</li>
+ *   <li>Spruce (meta 1): {@link ColorizerFoliage#getFoliageColorPine()};</li>
+ *   <li>Birch (meta 2): {@link ColorizerFoliage#getFoliageColorBirch()};</li>
+ *   <li>Acacia / dark oak (leaves2): 3x3-area average (BlockNewLeaf does not override the colour method);</li>
+ *   <li>Item form: {@link ColorizerFoliage#getFoliageColorBasic()}.</li>
  * </ul>
  */
 @SideOnly(Side.CLIENT)
@@ -24,7 +25,7 @@ public final class LeavesTintProvider implements IBlockTintProvider {
 
     @Override
     public int getTint(IBlockAccess world, int x, int y, int z, Block block, int tintIndex) {
-        // leaves2（金合欢/深色橡木）：全部按 3x3 平均 foliage 色
+        // leaves2 (acacia/dark oak): always the 3x3 averaged foliage colour
         if (block == getLeaves2Block()) {
             if (world != null) {
                 return averageFoliageColor(world, x, y, z);
@@ -32,7 +33,7 @@ public final class LeavesTintProvider implements IBlockTintProvider {
             return ColorizerFoliage.getFoliageColorBasic();
         }
 
-        // leaves1（橡木/云杉/白桦/丛林木）：按 metadata 区分
+        // leaves1 (oak/spruce/birch/jungle): differentiated by metadata
         int meta = world.getBlockMetadata(x, y, z) & 3;
         return getBlockColor(block, meta, world, x, y, z);
     }
@@ -43,14 +44,14 @@ public final class LeavesTintProvider implements IBlockTintProvider {
         registerLeaves2();
     }
 
-    // ==================== 注册（Blocks.leaves: oak, spruce, birch, jungle） ====================
+    // ==================== Registration (Blocks.leaves: oak, spruce, birch, jungle) ====================
 
     private void registerLeaves1() {
         if (Blocks.leaves == null) return;
         TintRegistry.registerBlockTint(Blocks.leaves, this);
     }
 
-    // ==================== 注册（Blocks.leaves2: acacia, dark_oak — 可能不存在） ====================
+    // ==================== Registration (Blocks.leaves2: acacia, dark_oak — may not exist) ====================
 
     private void registerLeaves2() {
         Block leaves2 = getLeaves2Block();
@@ -58,20 +59,20 @@ public final class LeavesTintProvider implements IBlockTintProvider {
         TintRegistry.registerBlockTint(leaves2, this);
     }
 
-    // ==================== 颜色查询（对齐原版 BlockOldLeaf / BlockNewLeaf） ====================
+    // ==================== Colour lookup (matching vanilla BlockOldLeaf / BlockNewLeaf) ====================
 
     /**
-     * 根据方块类型、metadata 和世界位置获取树叶颜色。
-     * <p>仅用于 Blocks.leaves（BlockOldLeaf）。
+     * Gets the leaves colour from the block type, metadata and world position.
+     * <p>Only used for Blocks.leaves (BlockOldLeaf).
      *
-     * @param block 方块实例
-     * @param meta  方块 metadata（已 masking & 3）
-     * @param world 世界引用（可为 null，null 时返回默认 foliage 色）
-     * @param x,y,z 方块坐标
-     * @return 0xRRGGBB 颜色
+     * @param block block instance
+     * @param meta  block metadata (already masked with & 3)
+     * @param world world reference (may be null; returns the default foliage colour when null)
+     * @param x,y,z block coordinates
+     * @return 0xRRGGBB colour
      */
     private static int getBlockColor(Block block, int meta, IBlockAccess world, int x, int y, int z) {
-        // BlockOldLeaf.colorMultiplier 逻辑:
+        // BlockOldLeaf.colorMultiplier logic:
         //   meta 1 (spruce) → getFoliageColorPine()
         //   meta 2 (birch)  → getFoliageColorBirch()
         //   meta 0 (oak), 3 (jungle) → super.colorMultiplier (3x3 avg)
@@ -93,8 +94,8 @@ public final class LeavesTintProvider implements IBlockTintProvider {
     }
 
     /**
-     * 原版 3x3 区域平均生物群系 foliage 色。
-     * 直接复制自 {@link net.minecraft.block.BlockLeaves#colorMultiplier}。
+     * Vanilla 3x3-area averaged biome foliage colour.
+     * Copied directly from {@link net.minecraft.block.BlockLeaves#colorMultiplier}.
      */
     private static int averageFoliageColor(IBlockAccess world, int x, int y, int z) {
         int r = 0, g = 0, b = 0;
@@ -111,7 +112,7 @@ public final class LeavesTintProvider implements IBlockTintProvider {
     }
 
     /**
-     * 安全获取 leaves2 方块（1.7.10 可能不存在，返回 null）。
+     * Safely obtains the leaves2 block (may not exist in 1.7.10; returns null).
      */
     public static Block getLeaves2Block() {
         try {

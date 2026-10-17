@@ -18,99 +18,95 @@ import javax.vecmath.Matrix4d;
 import java.util.Map;
 
 /**
- * Uniform Render Pipeline —— 延迟命令管线的<b>提交端</b>。
+ * Uniform Render Pipeline - the <b>submission side</b> of the deferred command pipeline.
  * <p>
- * 参照原版 26w+ 延迟渲染管线（Extract → Submit → Render），本类不再"立即写 Tessellator"，
- * 而是把每次渲染调用<b>构建为不可变 {@link RenderSubmit} 命令</b>并交给
- * {@link RenderCommandBuffers#submit(RenderSubmit)}：
+ * Following the vanilla 26w+ deferred render pipeline (Extract → Submit → Render), this class no longer
+ * "immediately writes to Tessellator"; instead, each render call <b>builds an immutable {@link RenderSubmit} command</b>
+ * and passes it to {@link RenderCommandBuffers#submit(RenderSubmit)}:
  * <ul>
- *   <li>方块<b>世界</b>渲染（{@link RenderPhase#BLOCK_WORLD}）→ [渲染三域架构] 原版后端
- *       唯一路径：经
+ *   <li>Block <b>world</b> rendering ({@link RenderPhase#BLOCK_WORLD}) → the sole path for the vanilla backend
+ *       under the three-domain render architecture: goes through
  *       {@link decok.dfcdvadstf.catframe.model.render.pipeline.FeatureRenderDispatcher#flushInline}
- *       内联写入 vanilla chunk Tessellator（批次绑定原版 blocks 图集，quad 携带
- *       原版 UV，无 GL 调用，兼容 Beddium 多线程区块编译）；</li>
- *   <li>物品 / GUI 独立绘制路径 → 进入渲染作用域命令缓冲，按注册表排序键
- *       （{@link RenderTypeKey#sortKey()}，solid→translucent）批量 flush、单次纹理绑定。</li>
+ *       and writes inline to the vanilla chunk Tessellator (batch binds the vanilla blocks atlas; quads carry
+ *       vanilla UVs; no GL calls; compatible with Beddium multithreaded chunk compilation).</li>
+ *   <li>Item/GUI standalone draw paths → enter the render scope command buffer, batch-flushed by the registry's
+ *       sort key ({@link RenderTypeKey#sortKey()}, solid→translucent), with single texture binding per batch.</li>
  * </ul>
  * <p>
- * 逐顶点写入循环已抽取到
- * {@link decok.dfcdvadstf.catframe.model.render.pipeline.QuadWriter}，
- * 命令执行 / 批量绘制在
- * {@link decok.dfcdvadstf.catframe.model.render.pipeline.FeatureRenderDispatcher}。
+ * The per-vertex write loop has been extracted to
+ * {@link decok.dfcdvadstf.catframe.model.render.pipeline.QuadWriter}; command execution and batch drawing
+ * are handled by {@link decok.dfcdvadstf.catframe.model.render.pipeline.FeatureRenderDispatcher}.
  * <p>
- * <b>所有 public 方法签名保持不变</b>，调用方无需改动。
+ * <b>All public method signatures remain unchanged</b>; callers do not need to be modified.
  */
 public final class UniformRenderPipeline {
 
     private UniformRenderPipeline() {
     }
 
-    // ==================== 方块世界渲染 ====================
+     // ==================== Block world rendering ====================
 
     /**
-     * 渲染方块的 quads（世界 / 破坏贴图）。构建 {@link RenderSubmit} 并提交至命令管线。
+     * Render block quads (world / destroy overlay). Builds a {@link RenderSubmit} and submits it to the command pipeline.
      *
-     * @param part        渲染部件
-     * @param world       世界
-     * @param x           方块 X
-     * @param y           方块 Y
-     * @param z           方块 Z
-     * @param block       方块
-     * @param rotationDeg Y 轴旋转角度（0/90/180/270）
-     * @param phase       渲染阶段（BLOCK_WORLD / BLOCK_DESTROY）
+     * @param part        model part to render
+     * @param world       world access
+     * @param x           block X
+     * @param y           block Y
+     * @param z           block Z
+     * @param block       block instance
+     * @param rotationDeg Y-axis rotation degrees (0/90/180/270)
+     * @param phase       render phase (BLOCK_WORLD / BLOCK_DESTROY)
      */
     public static void renderBlockQuads(BlockStateModelPart part,
-                                        IBlockAccess world, int x, int y, int z,
-                                        Block block, float rotationDeg,
-                                        RenderPhase phase) {
+                                         IBlockAccess world, int x, int y, int z,
+                                         Block block, float rotationDeg,
+                                         RenderPhase phase) {
         renderBlockQuads(part, world, x, y, z, block, rotationDeg, phase, 0);
     }
 
     /**
-     * 渲染方块的 quads（带 metadata 支持，用于染色等场景）。
-     * Display transform 已由 {@link BlockStateModelPart#getDisplay()} 持有，
-     * 由 {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension}
-     * 在扩展链中消费。
+     * Render block quads with metadata support (for tinting etc.). Display transform is held by
+     * {@link BlockStateModelPart#getDisplay()} and consumed by
+     * {@link decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtension} in the extension chain.
      *
-     * @param part     渲染部件
-     * @param metadata 方块 metadata（用于染色）
+     * @param part     model part to render
+     * @param metadata block metadata (for tinting)
      */
     public static void renderBlockQuads(BlockStateModelPart part,
-                                        IBlockAccess world, int x, int y, int z,
-                                        Block block, float rotationDeg,
-                                        RenderPhase phase,
-                                        int metadata) {
+                                         IBlockAccess world, int x, int y, int z,
+                                         Block block, float rotationDeg,
+                                         RenderPhase phase,
+                                         int metadata) {
         renderBlockQuads(part, world, x, y, z, block, rotationDeg, phase, metadata, null);
     }
 
     /**
-     * 渲染方块的 quads（带 metadata + 方块状态属性支持）。
+     * Render block quads with metadata and blockstate property support.
      *
-     * @param part            渲染部件
-     * @param metadata       方块 metadata（用于染色）
-     * @param blockstateProps 匹配期构造的方块状态属性（不可修改视图，可为 null），
-     *                        随提交携带供扩展链经 {@code RenderContext.blockstateProps} 读取
+     * @param part            model part to render
+     * @param metadata       block metadata (for tinting)
+     * @param blockstateProps blockstate properties constructed at match time (unmodifiable view, may be null);
+     *                        carried with the submission and readable by extensions via {@code RenderContext.blockstateProps}
      */
     public static void renderBlockQuads(BlockStateModelPart part,
-                                        IBlockAccess world, int x, int y, int z,
-                                        Block block, float rotationDeg,
-                                        RenderPhase phase,
-                                        int metadata,
-                                        @Nullable Map<String, String> blockstateProps) {
+                                         IBlockAccess world, int x, int y, int z,
+                                         Block block, float rotationDeg,
+                                         RenderPhase phase,
+                                         int metadata,
+                                         @Nullable Map<String, String> blockstateProps) {
         if (part == null) return;
 
-        // 世界渲染绑定 CatAtlas：按半透明性选择渲染组（与 vanilla 分层语义一致）——
-        // getRenderBlockPass()==1 的方块走 TRANSLUCENT 组（混合开启），其余走 SOLID 组
-        // （alpha test 剔除透明像素）。不透明、不关闭面剔除（disableCull=false）。
-        // World rendering binds the CatAtlas: translucent blocks go to the translucent
-        // group (blending on), everything else to the solid group (alpha-test).
+        // World rendering binds the CatAtlas: blocks with getRenderBlockPass()==1 go to the translucent group
+        // (blending enabled), others go to the solid group (alpha test). Not opaque and culling remains enabled (disableCull=false).
         boolean translucent = block != null && block.getRenderBlockPass() == 1;
         RenderTypeKey type = translucent
                 ? RenderTypeRegistry.BLOCK_ATLAS_TRANSLUCENT
                 : RenderTypeRegistry.BLOCK_ATLAS_SOLID;
-        // 亮度政策由内建扩展 LightPolicyExtension 在 write 期决定：BLOCK_WORLD 的逐顶点
-        // AO quad 走 aoBrightness 通道，仅 AO 退化 quad 由它现算默认方块亮度；
-        // 提交端不再解析亮度（-1 语义见 RenderSubmit，QuadWriter 回退仅作链缺失兜底）。
+        // Brightness policy is determined by built-in extension LightPolicyExtension at write time:
+        // per-vertex AO quads in BLOCK_WORLD use the aoBrightness channel; only AO-degraded quads have default
+        // block brightness computed by it. The submission side no longer resolves brightness (-1 semantics
+        // defined in RenderSubmit; QuadWriter fallback is only a safety net if the chain is missing).
         RenderSubmit s = new RenderSubmit(
                 phase, part, type,
                 x, y, z, rotationDeg,
@@ -122,93 +118,91 @@ public final class UniformRenderPipeline {
     }
 
     /**
-     * 渲染方块世界的 quads（向后兼容，默认 BLOCK_WORLD 且无 display）。
+     * Render block quads in world context (backward compatible; defaults to BLOCK_WORLD with no display).
      */
     public static void renderBlockQuads(BlockStateModelPart part,
-                                        IBlockAccess world, int x, int y, int z,
-                                        Block block, float rotationDeg) {
+                                         IBlockAccess world, int x, int y, int z,
+                                         Block block, float rotationDeg) {
         renderBlockQuads(part, world, x, y, z, block, rotationDeg,
                 RenderPhase.BLOCK_WORLD, 0);
     }
 
-    // ==================== 物品渲染 ====================
+    // ==================== Item rendering ====================
 
     /**
-     * 官方递归物品渲染入口：按目标物品注册的 {@link ItemStateModel} 求值并渲染其图层。
+     * Official recursive item render entry: resolves the registered {@link ItemStateModel} for the target item
+     * and renders its layers.
      * <p>
-     * 供特殊模型节点（{@link decok.dfcdvadstf.catframe.model.state.item.ItemStateNode.SpecialNode}）
-     * 与 per-Item 完全自绘 provider 绘制内容物，替代第三方直接触碰 {@link #renderItemQuads}
-     * 的搭便车用法（后者需要一个已解析的 {@link BlockStateModelPart}）。
+     * Intended for special model nodes ({@link decok.dfcdvadstf.catframe.model.state.item.ItemStateNode.SpecialNode})
+     * and per-item fully custom draw providers to draw contained stacks, replacing third-party hijacking of
+     * {@link #renderItemQuads} (which requires a pre-resolved {@link BlockStateModelPart}).
      * <p>
-     * Official whole-stack render entry: resolves the item's registered model and renders its
-     * layers. Special nodes and self-draw providers should call this to draw contained stacks
-     * instead of touching {@link #renderItemQuads} directly. 未注册 CatFrame 模型的物品不绘制。
+     * Items not registered with a CatFrame model are not rendered.
      *
-     * @param stack        待渲染物品栈
-     * @param phase        渲染阶段
-     * @param preTransform 逆变换抵消矩阵，可为 null
+     * @param stack        item stack to render
+     * @param phase        render phase
+     * @param preTransform inverse transform to cancel pre-applied transforms; may be null
      */
     public static void renderItemStack(ItemStack stack, RenderPhase phase,
-                                       @Nullable Matrix4d preTransform) {
+                                        @Nullable Matrix4d preTransform) {
         if (stack == null || phase == null) return;
         Item item = stack.getItem();
         if (item == null) return;
-        // 只渲染真正注册了 CatFrame 模型的项（getRegisteredItemModel 对未注册项会返回
-        // MISSING_MODEL，导致无模型内容物画出 missingno；此处按注册表命中判断）。
+        // Only render items that have a CatFrame model explicitly registered.
         ItemStateModel model = ModelRegistry.registeredItemModels.get(item);
         if (model == null) return;
         model.render(stack, phase, preTransform);
     }
 
     /**
-     * 渲染物品的 quads（GUI / 手持 / 掉落物 / 展示框）。构建 {@link RenderSubmit} 并提交。
+     * Render item quads (GUI / hand / dropped / item frame). Builds a {@link RenderSubmit} and submits it.
      * <p>
-     * Display transform 与 preTransform 已在扩展链 / 管线中以向量空间矩阵形式逐顶点烘焙进坐标，
-     * 因此批量 flush 时无需 GL 矩阵快照。
+     * Display transform and preTransform are baked into vertex coordinates as vector-space matrices in the
+     * extension chain/pipeline, so no GL matrix snapshot is needed during batch flush.
      *
-     * @param part         渲染部件
-     * @param stack        物品栈
-     * @param phase        渲染阶段（ITEM_GUI / ITEM_HAND_* / DROPPED_* / ITEM_FIXED）
-     * @param world        世界上下文（仅 DROPPED_BLOCK_GROUND 等需要方块信息的阶段使用，其他传 null）
-     * @param x            方块 X 坐标（无世界上下文时传 0）
-     * @param y            方块 Y 坐标
-     * @param z            方块 Z 坐标
-     * @param block        方块实例（无时传 null）
-     * @param preTransform 可选的预变换矩阵（反抵消），在 display transform 之后作用于顶点，可为 null
-     * @param transformation 可选的物品模型渲染变换（items JSON {@code transformation} 标签），
-     *                       在 display transform 之后、preTransform 之前作用于顶点，可为 null（单位变换）
+     * @param part         model part to render
+     * @param stack        item stack
+     * @param phase        render phase (ITEM_GUI / ITEM_HAND_* / DROPPED_* / ITEM_FIXED)
+     * @param world        world context (used only for phases like DROPPED_BLOCK_GROUND that need block info; otherwise null)
+     * @param x            block X (0 if no world context)
+     * @param y            block Y
+     * @param z            block Z
+     * @param block        block instance (null if none)
+     * @param preTransform optional pre-transform matrix (inverse cancellation), applied to vertices after display transform; may be null
+     * @param transformation optional item model transformation (items JSON {@code transformation} tag),
+     *                       applied to vertices after display transform and before preTransform; may be null (identity)
      */
     public static void renderItemQuads(BlockStateModelPart part,
-                                       ItemStack stack, RenderPhase phase,
-                                       IBlockAccess world, int x, int y, int z, Block block,
-                                       @Nullable Matrix4d preTransform,
-                                       @Nullable Matrix4d transformation) {
+                                        ItemStack stack, RenderPhase phase,
+                                        IBlockAccess world, int x, int y, int z, Block block,
+                                        @Nullable Matrix4d preTransform,
+                                        @Nullable Matrix4d transformation) {
         renderItemQuads(part, stack, phase, world, x, y, z, block,
                 preTransform, transformation, null);
     }
 
     /**
-     * 无 transformation 时的兼容重载 — 委托给带 transformation 的完整版（传 null 即单位变换）。
+     * Backward-compatible overload without transformation — delegates to the full version (null means identity).
      */
     public static void renderItemQuads(BlockStateModelPart part,
-                                       ItemStack stack, RenderPhase phase,
-                                       IBlockAccess world, int x, int y, int z, Block block,
-                                       @Nullable Matrix4d preTransform) {
+                                        ItemStack stack, RenderPhase phase,
+                                        IBlockAccess world, int x, int y, int z, Block block,
+                                        @Nullable Matrix4d preTransform) {
         renderItemQuads(part, stack, phase, world, x, y, z, block, preTransform, null);
     }
 
     /**
-     * 渲染物品的 quads（带物品属性支持）。
+     * Render item quads with item property support.
      *
-     * @param itemProps 物品属性集（只读惰性 Map，可为 null），由物品属性系统构建，
-     *                  随提交携带供扩展链经 {@code RenderContext.itemProps} 读取
+     * @param itemProps item property set (read-only lazy Map, may be null), built by the item property system;
+     *                  carried with the submission and readable by extensions via {@code RenderContext.itemProps}
      */
     public static void renderItemQuads(BlockStateModelPart part,
-                                       ItemStack stack, RenderPhase phase,
-                                       IBlockAccess world, int x, int y, int z, Block block,
-                                       @Nullable Matrix4d preTransform,
-                                       @Nullable Matrix4d transformation,
-                                       @Nullable Map<String, Comparable<?>> itemProps) {
+                                        ItemStack stack, RenderPhase phase,
+                                        IBlockAccess world, int x, int y, int z, Block block,
+                                        @Nullable Matrix4d preTransform,
+                                        @Nullable Matrix4d transformation,
+                                        @Nullable Map<String, Comparable<?>> itemProps) {
         if (part == null) return;
 
         boolean gui = (phase == RenderPhase.ITEM_GUI);
@@ -216,22 +210,22 @@ public final class UniformRenderPipeline {
                 || phase == RenderPhase.DROPPED_ITEM_GROUND
                 || phase == RenderPhase.DROPPED_BLOCK_GROUND
                 || phase == RenderPhase.ITEM_FIXED);
-        // 亮度政策由内建扩展 LightPolicyExtension 在 write 期决定（GUI 恒 255 / 手持
-        // 取玩家光 / 掉落与展示框取实体光；beforePart 每提交项计算一次，atlasSplit
-        // 两次提交同值）—— 提交不再解析亮度（-1 语义见 RenderSubmit）。
-
-        // 纹理图集选择：以烘焙期写入的 quad 标记为准（ModelJsonUnbakedAdapter →
-        // BakedQuad.blockAtlas），渲染期零猜测。混合图集模型拆分为最多两次提交，
-        // 各自落入正确的注册表分组（对标 26.1.2 per-quad itemRenderType）。
-        // 对标 26.1.2：ITEM_CUTOUT / ITEM_TRANSLUCENT 管线默认启用背面剔除，
-        // builtin/generated 模型已带 north+south 双面（winding 对称），侧面 quad
-        // 绕序对标 emitFaceFromCorners——启用 cull 后所有场景正确。
+        // Brightness policy is determined by built-in extension LightPolicyExtension at write time
+        // (GUI fixed to 255 / hand uses player light / dropped and item frame use entity light;
+        // beforePart computes once per submitted item; atlasSplit produces two submissions with same value).
+        // Submission does not resolve brightness (-1 semantics defined in RenderSubmit).
+        // Texture atlas selection follows quad markers baked in at bake time (ModelJsonUnbakedAdapter →
+        // BakedQuad.blockAtlas), zero guesswork at render time. Mixed-atlas models are split into at most
+        // two submissions, each placed into the correct registry group (matching 26.1.2 per-quad itemRenderType).
+        // Matching 26.1.2: ITEM_CUTOUT / ITEM_TRANSLUCENT pipelines enable backface culling by default;
+        // builtin/generated models have north/south faces as doubles (symmetric winding), and side quad
+        // winding aligns with emitFaceFromCorners — culling works correctly in all cases.
         BlockStateModelPart[] split = part.atlasSplit();
         for (int i = 0; i < split.length; i++) {
             BlockStateModelPart sub = split[i];
             if (sub == null) continue;
             RenderTypeKey type = RenderTypeRegistry.of(i == 0, blendRequired);
-            // 两次提交共享同一 itemProps 引用（零拷贝）
+            // Both submissions share the same itemProps reference (zero copy)
             RenderSubmit s = new RenderSubmit(
                     phase, sub, type,
                     x, y, z, 0,
@@ -245,10 +239,10 @@ public final class UniformRenderPipeline {
     }
 
     /**
-     * 旧版兼容 — 无 preTransform 且无世界上下文时委托给新版。
+     * Backward-compatible overload — delegates to the full version with no preTransform and no world context.
      */
     public static void renderItemQuads(BlockStateModelPart part,
-                                       ItemStack stack, RenderPhase phase) {
+                                        ItemStack stack, RenderPhase phase) {
         renderItemQuads(part, stack, phase, null, 0, 0, 0, null, null, null);
     }
 }

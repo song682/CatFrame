@@ -13,22 +13,22 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 /**
- * 烘焙纯函数。无状态、无静态字段写入，天然线程安全。
+ * Pure baking function. Stateless, writes no static fields, inherently thread-safe.
  * <p>
- * 从 {@link VanillaModelManager.VMMModelBaking#bakeModel} 和 {@link ModelBaker} 提取的核心烘焙逻辑：
+ * Core baking logic extracted from {@link VanillaModelManager.VMMModelBaking#bakeModel} and {@link ModelBaker}:
  * <pre>
  *   modelPath → ModelResolver.resolve() → ModelBaker.bake() → BlockStateModelPart
  * </pre>
  * <p>
- * 本类不维护任何缓存，所有缓存职责由 {@link BakedModelCache} 承担。
- * 这使得本类可以被多线程安全地并发调用（如 Akka BakeWorker 或渲染线程懒烘焙）。
+ * This class maintains no cache; all caching responsibility is handled by {@link BakedModelCache}.
+ * This allows the class to be called concurrently and safely by multiple threads (e.g. the Akka BakeWorker or lazy baking on the render thread).
  */
 public class BakingCore {
 
     private BakingCore() {}
 
     /**
-     * 便捷重载：无 Z 轴旋转。
+     * Convenience overload: no Z-axis rotation.
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, float rotX, float rotY) {
@@ -36,7 +36,7 @@ public class BakingCore {
     }
 
     /**
-     * 便捷重载：无 Z 轴旋转，显式 iconMap。
+     * Convenience overload: no Z-axis rotation, explicit iconMap.
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, float rotX, float rotY,
@@ -45,16 +45,16 @@ public class BakingCore {
     }
 
     /**
-     * 烘焙单个模型为 {@link BlockStateModelPart}（使用当前 stitch 周期的 iconMap）。
+     * Bakes a single model into a {@link BlockStateModelPart} (uses the current stitch cycle's iconMap).
      * <p>
-     * 纯函数语义：相同的 (modelPath, rotX, rotY, rotZ, iconMap) 输入始终产出语义等价的结果。
-     * 不写入任何静态缓存或全局状态。
+     * Pure-function semantics: identical (modelPath, rotX, rotY, rotZ, iconMap) inputs always produce semantically equivalent results.
+     * No static cache or global state is written.
      *
-     * @param modelPath 模型路径（如 "block/stone"、"builtin/generated"）
-     * @param rotX      X 轴旋转角度（支持任意角度）
-     * @param rotY      Y 轴旋转角度（支持任意角度）
-     * @param rotZ      Z 轴旋转角度（支持任意角度）
-     * @return 烘焙后的模型部件，失败返回 null
+     * @param modelPath model path (e.g. "block/stone", "builtin/generated")
+     * @param rotX      X-axis rotation angle (any angle is supported)
+     * @param rotY      Y-axis rotation angle (any angle is supported)
+     * @param rotZ      Z-axis rotation angle (any angle is supported)
+     * @return the baked model part, or null on failure
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, float rotX, float rotY, float rotZ) {
@@ -62,31 +62,31 @@ public class BakingCore {
     }
 
     /**
-     * 烘焙单个模型为 {@link BlockStateModelPart}，显式指定 iconMap。
+     * Bakes a single model into a {@link BlockStateModelPart} with an explicitly specified iconMap.
      * <p>
-     * 对标高版本 {@code MaterialBaker} 的实例化闭包模式：每次烘焙使用调用方提供的
-     * iconMap，避免多 stitch 周期之间的竞态覆盖。
+     * Follows the instantiation-closure pattern of the modern {@code MaterialBaker}: each bake uses
+     * the caller-supplied iconMap, avoiding race-condition overwrites between stitch cycles.
      *
-     * @param modelPath 模型路径
-     * @param rotX      X 轴旋转角度
-     * @param rotY      Y 轴旋转角度
-     * @param rotZ      Z 轴旋转角度
-     * @param iconMap   当前 stitch 周期的 IIcon 映射
-     * @return 烘焙后的模型部件，失败返回 null
+     * @param modelPath model path
+     * @param rotX      X-axis rotation angle
+     * @param rotY      Y-axis rotation angle
+     * @param rotZ      Z-axis rotation angle
+     * @param iconMap   IIcon map for the current stitch cycle
+     * @return the baked model part, or null on failure
      */
     @Nullable
     public static BlockStateModelPart bake(String modelPath, float rotX, float rotY, float rotZ,
                                             @Nullable Map<String, IIcon> iconMap) {
         if (modelPath == null) return null;
 
-        // 1. 解析 JSON（ModelResolver 内部有缓存，线程安全由 ConcurrentHashMap 保证）
+        // 1. Resolve the JSON (ModelResolver caches internally; thread safety is guaranteed by ConcurrentHashMap)
         ModelJson resolved = ModelResolver.resolve(modelPath);
         if (resolved == null) {
             CatFrame.logger.warn("[BakingCore] ModelResolver.resolve('{}') returned null", modelPath);
             return null;
         }
 
-        // 2. 委托给 ModelBaker 执行实际烘焙（传递 iconMap，而非读全局静态）
+        // 2. Delegate the actual baking to ModelBaker (passing iconMap rather than reading the global static one)
         BlockStateModelPart part = ModelBaker.bake(resolved, rotX, rotY, rotZ, modelPath, iconMap);
         if (part == null) {
             CatFrame.logger.debug("[BakingCore] bake returned null for '{}' @ {}@{}@{}", modelPath, rotX, rotY, rotZ);

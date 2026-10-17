@@ -14,26 +14,26 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * ItemState 决策树驱动的物品模型。
+ * Item model driven by the ItemState decision tree.
  * <p>
- * 这是 {@code LazyItemModel}（单模型路径懒烘焙）与
- * {@code ItemStateItemModel}（决策树分派）合并后的统一实现：
+ * This is the unified implementation that merges {@code LazyItemModel} (lazy baking of a
+ * single model path) and {@code ItemStateItemModel} (decision tree dispatch):
  * <ul>
- *   <li>无抉择时，内部退化为单个 {@link ItemStateNode.ModelLeaf}，等价于原 LazyItemModel</li>
- *   <li>有抉择时，持有完整 {@link ItemStateNode} 决策树，运行时根据 ItemStack 数据求值</li>
+ *   <li>Without a decision, it degrades internally to a single {@link ItemStateNode.ModelLeaf}, equivalent to the former LazyItemModel</li>
+ *   <li>With a decision, it holds the full {@link ItemStateNode} decision tree and evaluates it at runtime from ItemStack data</li>
  * </ul>
  * <p>
- * 本类是管线侧唯一可渲染的物品模型实体：{@link decok.dfcdvadstf.catframe.model.IItemStateProvider}
- * 仅交付决策树数据，求值与提交 quad 由本类完成。This is the sole renderable item model on the
- * pipeline side: the provider interface only delivers tree data; evaluation and quad submission
+ * This is the sole renderable item model on the
+ * pipeline side: {@link decok.dfcdvadstf.catframe.model.IItemStateProvider}
+ * only delivers tree data; evaluation and quad submission
  * live here.
  *
- * <p>渲染流程：
+ * <p>Render flow:
  * <ol>
- *   <li>调用 {@link ItemProperties#buildProperties(ItemStack, RenderPhase)} 构建运行时属性集</li>
- *   <li>调用 {@link ItemStateNode#evaluate(Map)} 递归求值，得到最终模型路径</li>
- *   <li>从 {@link BakedModelCache} 懒获取选中模型</li>
- *   <li>通过 {@link UniformRenderPipeline#renderItemQuads} 渲染</li>
+ *   <li>Call {@link ItemProperties#buildProperties(ItemStack, RenderPhase)} to build the runtime property set</li>
+ *   <li>Call {@link ItemStateNode#evaluate(Map)} to evaluate recursively and obtain the final model path</li>
+ *   <li>Lazily fetch the selected model from {@link BakedModelCache}</li>
+ *   <li>Render via {@link UniformRenderPipeline#renderItemQuads}</li>
  * </ol>
  */
 public class ItemStateModel {
@@ -41,18 +41,18 @@ public class ItemStateModel {
     private final ItemStateNode rootNode;
 
     /**
-     * 从单模型路径构造（无抉择，退化为 ModelLeaf）。
+     * Constructs from a single model path (no decision, degrades to a ModelLeaf).
      *
-     * @param modelPath 模型路径
+     * @param modelPath model path
      */
     public ItemStateModel(String modelPath) {
         this(new ItemStateNode.ModelLeaf(modelPath));
     }
 
     /**
-     * 从决策树根节点构造。
+     * Constructs from a decision tree root node.
      *
-     * @param rootNode 决策树根节点（不可为 null）
+     * @param rootNode decision tree root node (must not be null)
      */
     public ItemStateModel(ItemStateNode rootNode) {
         if (rootNode == null) {
@@ -67,13 +67,13 @@ public class ItemStateModel {
 
     public void render(ItemStack stack, RenderPhase phase,
                        @Nullable Matrix4d preTransform) {
-        // 1. 构建运行时属性集
+        // 1. Build the runtime property set
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, phase);
 
-        // 2. 递归求值决策树（携带 stack/phase 上下文，供特殊节点读 NBT 动态追加图层），得到 EvalResult
+        // 2. Recursively evaluate the decision tree (carrying the stack/phase context so special nodes can read NBT and dynamically append layers) to obtain an EvalResult
         EvalResult result = rootNode.evaluate(props, new EvalContext(stack, phase));
         if (result.isEmpty()) {
-            // 决策树未找到任何模型 → fallback 到 builtin/missing
+            // The decision tree found no model → fall back to builtin/missing
             String cacheKey = BakedModelCache.buildKey("builtin/missing", 0, 0);
             BlockStateModelPart missing = BakedModelCache.INSTANCE.get(cacheKey);
             if (missing != null && !missing.isEmpty()) {
@@ -83,8 +83,8 @@ public class ItemStateModel {
             return;
         }
 
-        // 3. 按图层顺序逐个渲染：静态模型图层走本树烘焙部件，动态内容图层递归渲染内容物品自身模型
-        //    （composite 图层顺序即渲染顺序契约，收纳袋"前片-内容物-背片"依赖此保序）
+        // 3. Render layer by layer in order: static model layers use parts baked for this tree, dynamic content layers recursively render the content item's own model
+        //    (composite layer order is the render-order contract; the bundle's "front flap - content - back flap" relies on this ordering)
         for (EvalResult.Layer layer : result.getLayers()) {
             if (layer.isDynamic()) {
                 renderDynamicLayer(layer.dynamicStack, phase, preTransform);
@@ -96,13 +96,9 @@ public class ItemStateModel {
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) continue;
 
-            // tint 已通过 TintRegistry 桥接（ItemStateTintBridge）+ TintRenderExtension
-            // 按 quad 的 tintindex 应用，此处不再直接计算颜色。
-            // preTransform 传递到管线，使反抵消矩阵正确作用于顶点。
             // Tints are applied via the TintRegistry bridge + TintRenderExtension by
             // each quad's tintindex; no direct color computation is needed here.
-            // transformation：命中 ModelLeaf 声明的物品模型渲染变换（可选，默认单位变换），
-            // 由管线在 display 变换之后逐顶点应用。
+            // preTransform is passed to the pipeline so the counter-offset matrix is applied correctly to vertices.
             // The matched ModelLeaf's optional per-model transformation is applied by the
             // pipeline after the display transform (identity when absent).
             Matrix4d transformation = findTransformationForModel(rootNode, path);
@@ -112,10 +108,12 @@ public class ItemStateModel {
     }
 
     /**
-     * 递归渲染一个动态内容图层：委托官方入口 {@link UniformRenderPipeline#renderItemStack}，
-     * 以内容物品自身注册的模型渲染。
-     * <p>对齐高版本 {@code SpecialRenderer#appendItemLayers}：特殊节点在求值时从 NBT 取出的
-     * 内容物（如收纳袋选中物品）需递归走它自己的 ItemState 决策树。
+     * Recursively renders a dynamic content layer: delegates to the official entry
+     * {@link UniformRenderPipeline#renderItemStack}, rendering with the content item's own
+     * registered model.
+     * <p>Aligned with the modern {@code SpecialRenderer#appendItemLayers}: content taken from
+     * NBT by a special node at evaluation time (such as the bundle's selected item) must
+     * recursively go through its own ItemState decision tree.
      */
     private static void renderDynamicLayer(@Nullable ItemStack content, RenderPhase phase,
                                            @Nullable Matrix4d preTransform) {
@@ -123,10 +121,12 @@ public class ItemStateModel {
     }
 
     /**
-     * 在决策树中查找指定模型路径的 ModelLeaf，提取其 transformation 矩阵。
+     * Finds the ModelLeaf with the specified model path in the decision tree and extracts its
+     * transformation matrix.
      * <p>
-     * 遍历策略与 {@link #findTintsForModel} 一致：命中路径且声明了非空变换的
-     * 第一个叶子胜出；未声明时返回 {@code null}（单位变换）。
+     * The traversal strategy matches {@link #findTintsForModel}: the first leaf that matches
+     * the path and declares a non-null transform wins; returns {@code null} (identity) when
+     * none declares one.
      */
     @Nullable
     private static Matrix4d findTransformationForModel(ItemStateNode node, String path) {
@@ -173,7 +173,8 @@ public class ItemStateModel {
     }
 
     /**
-     * 在决策树中查找指定模型路径的 ModelLeaf，提取其 tints。
+     * Finds the ModelLeaf with the specified model path in the decision tree and extracts its
+     * tints.
      */
     private static List<ItemTint> findTintsForModel(ItemStateNode node, String path,
                                                       Map<String, Comparable<?>> props) {
@@ -182,7 +183,7 @@ public class ItemStateModel {
             if (path.equals(leaf.model)) return leaf.tints;
             return java.util.Collections.emptyList();
         }
-        // 递归搜索子节点（对于条件/分派节点，只搜索当前求值路径）
+        // Recursively search child nodes (for condition/dispatch nodes, only search the current evaluation path)
         if (node instanceof ItemStateNode.ConditionNode) {
             ItemStateNode.ConditionNode cn = (ItemStateNode.ConditionNode) node;
             List<ItemTint> r1 = findTintsForModel(cn.onTrue, path, props);
@@ -222,16 +223,12 @@ public class ItemStateModel {
     }
 
     /**
-     * 渲染桥接：解析当前 {@link ItemStack} 命中的 {@link ItemStateNode.ModelLeaf} 的 tints，
-     * 返回指定 {@code tintIndex} 的颜色。数组位置即 tintIndex（per-layer 语义）。
-     * <p>由 {@code ItemStateTintBridge} 转交给渲染侧 {@code TintRegistry} 调用。
-     *
-     * <p>Render bridge: resolves the tint color for a given {@code tintIndex} from the
+     * Render bridge: resolves the tint color for a given {@code tintIndex} from the
      * {@link ItemStateNode.ModelLeaf} matched by the current {@link ItemStack}; the array
-     * position itself is the tintIndex (per-layer semantics). Invoked by
-     * {@code ItemStateTintBridge} through the render-side {@code TintRegistry}.
+     * position itself is the tintIndex (per-layer semantics).
+     * <p>Invoked by {@code ItemStateTintBridge} through the render-side {@code TintRegistry}.
      *
-     * @return 0xRRGGBB 颜色；无对应 tint 时返回 {@code 0xFFFFFF}（不染色）
+     * @return a 0xRRGGBB color; returns {@code 0xFFFFFF} (no tint) when no tint corresponds
      */
     public int resolveTint(ItemStack stack, RenderPhase phase, int tintIndex) {
         if (tintIndex < 0) return 0xFFFFFF;
@@ -248,12 +245,9 @@ public class ItemStateModel {
     }
 
     /**
-     * 决策树是否声明了任何 tints，用于决定是否需要注册渲染桥接（避免为无 tints 的
-     * ItemBlock 注册空 provider，从而遮蔽 {@code TintRegistry} 的默认染色回退）。
-     *
-     * <p>Whether the decision tree declares any tints; gates bridge registration so we
-     * never shadow {@code TintRegistry}'s default ItemBlock color fallback with an
-     * empty provider.
+     * Whether the decision tree declares any tints, used to decide whether a render bridge
+     * needs to be registered (so an empty provider is never registered for a tint-less
+     * ItemBlock, which would shadow {@code TintRegistry}'s default color fallback).
      */
     public boolean hasAnyTint() {
         return nodeHasTint(rootNode);
@@ -290,14 +284,15 @@ public class ItemStateModel {
     }
 
     /**
-     * 返回决策树根节点（用于调试和纹理收集）。
+     * Returns the decision tree root node (used for debugging and texture collection).
      */
     public ItemStateNode getRootNode() {
         return rootNode;
     }
 
     /**
-     * GUI 阶段求值决策树，收集选中路径对应的烘焙模型部件（供 oversized 溢出检测）。
+     * Evaluates the decision tree in the GUI phase and collects the baked model parts for the
+     * selected path (for oversized overflow detection).
      */
     public List<BlockStateModelPart> collectGuiModelParts(ItemStack stack) {
         Map<String, Comparable<?>> props = ItemProperties.buildProperties(stack, RenderPhase.ITEM_GUI);

@@ -3,21 +3,26 @@ package decok.dfcdvadstf.catframe.model.render.pipeline;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 
 /**
- * 渲染作用域门面，对标原版 26w+ 管线中“begin submit → 累积 → end flush”的提交作用域。
+ * Render scope facade, mirroring the "begin submit → accumulate → end flush" submission scope
+ * in the vanilla 26w+ pipeline.
  * <p>
- * 以 {@link ThreadLocal} 持有当前活动的 {@link SubmitNodeStorage}（客户端渲染单线程），
- * 支持可重入嵌套（composite / dual 模型多次进入 render）。
+ * Holds the currently active {@link SubmitNodeStorage} in a {@link ThreadLocal} (client rendering
+ * is single-threaded), and supports reentrant nesting (composite / dual models entering render
+ * multiple times).
  *
- * <h3>三种提交路径</h3>
+ * <h3>Three submission paths</h3>
  * <ul>
- *   <li><b>世界方块</b>（{@link RenderPhase#BLOCK_WORLD}）：[渲染三域架构] 原版后端唯一
- *       路径 —— 经 {@link FeatureRenderDispatcher#flushInline} 内联写入当前 chunk
- *       Tessellator（批次绑定原版 blocks 图集，quad 携带原版 UV，无 GL 调用，
- *       天然兼容 Beddium 多线程区块编译）。</li>
- *   <li><b>作用域内</b>：有活动作用域时累积到 {@link SubmitNodeStorage}，
- *       {@link #endScope()} 计数归零时按注册表排序键批量 flush。</li>
- *   <li><b>无作用域回退</b>：任何未被 {@link #beginScope()} 包裹的调用路径，
- *       即时以“单项作用域”批量 flush —— 与改造前单次 draw 行为完全一致，零回归。</li>
+ *   <li><b>World blocks</b> ({@link RenderPhase#BLOCK_WORLD}): [three-domain render architecture]
+ *       the only path for the vanilla backend — writes inline via
+ *       {@link FeatureRenderDispatcher#flushInline} into the current chunk Tessellator (the batch
+ *       binds the vanilla blocks atlas, quads carry vanilla UVs, no GL calls, and it is naturally
+ *       compatible with Beddium's multithreaded chunk compilation).</li>
+ *   <li><b>Within a scope</b>: when there is an active scope, accumulate into
+ *       {@link SubmitNodeStorage}; when the {@link #endScope()} count reaches zero, flush in
+ *       batches according to the registry sort key.</li>
+ *   <li><b>No-scope fallback</b>: any call path not wrapped by {@link #beginScope()} immediately
+ *       flushes in batches as a "single-item scope" — exactly the same behavior as a single draw
+ *       before the refactor, with zero regression.</li>
  * </ul>
  */
 public final class RenderCommandBuffers {
@@ -25,9 +30,9 @@ public final class RenderCommandBuffers {
     private RenderCommandBuffers() {
     }
 
-    /** 当前线程的活动命令缓冲；null 表示当前无活动作用域。 */
+    /** The current thread's active command buffer; null means there is no active scope. */
     private static final ThreadLocal<SubmitNodeStorage> ACTIVE = new ThreadLocal<>();
-    /** 作用域重入深度（支持嵌套）。 */
+    /** Scope reentrancy depth (supports nesting). */
     private static final ThreadLocal<int[]> DEPTH = new ThreadLocal<int[]>() {
         @Override
         protected int[] initialValue() {
@@ -36,7 +41,8 @@ public final class RenderCommandBuffers {
     };
 
     /**
-     * 进入渲染作用域。首次进入（深度 0→1）时创建活动命令缓冲；嵌套进入仅递增计数。
+     * Enters the render scope. On first entry (depth 0→1) the active command buffer is created;
+     * nested entries only increment the count.
      */
     public static void beginScope() {
         int[] depth = DEPTH.get();
@@ -47,14 +53,16 @@ public final class RenderCommandBuffers {
     }
 
     /**
-     * 退出渲染作用域。计数归零时批量 flush 并清理活动缓冲。
+     * Exits the render scope. When the count reaches zero it flushes in batches and cleans up the
+     * active buffer.
      * <p>
-     * flush 恒发生在调用方已建立的 GL 矩阵上下文内（见 {@link RenderSubmit} 类注释）。
+     * A flush always happens within the GL matrix context already established by the caller
+     * (see the {@link RenderSubmit} class comment).
      */
     public static void endScope() {
         int[] depth = DEPTH.get();
         if (depth[0] == 0) {
-            // 防御：未配对的 endScope
+            // Defensive: unmatched endScope
             return;
         }
         depth[0]--;
@@ -68,15 +76,16 @@ public final class RenderCommandBuffers {
     }
 
     /**
-     * 提交一条渲染命令。
+     * Submits one render command.
      *
-     * @param s 不可变渲染快照
+     * @param s the immutable render snapshot
      */
     public static void submit(RenderSubmit s) {
-        // 世界方块渲染：[渲染三域架构] 原版后端（唯一路径）内联写入当前 chunk
-        // Tessellator —— 不绑纹理（vanilla 已绑 blocks 图集）、不改 GL 状态，quad 携带
-        // 原版图集 UV，天然兼容 Beddium 后台线程（见 FeatureRenderDispatcher.flushInline）。
-        // World blocks are written straight into the current chunk batch.
+        // World block rendering: [three-domain render architecture] the vanilla backend (the only
+        // path) writes inline into the current chunk Tessellator — it does not bind a texture
+        // (vanilla already bound the blocks atlas) and does not change GL state; quads carry the
+        // vanilla atlas UVs and are naturally compatible with Beddium's background thread
+        // (see FeatureRenderDispatcher.flushInline).
         if (s.phase == RenderPhase.BLOCK_WORLD) {
             FeatureRenderDispatcher.flushInline(s);
             return;
@@ -84,10 +93,10 @@ public final class RenderCommandBuffers {
 
         SubmitNodeStorage active = ACTIVE.get();
         if (active != null) {
-            // 作用域内：累积，稍后批量 flush
+            // Within a scope: accumulate, flush in batches later
             active.submit(s);
         } else {
-            // 无活动作用域：即时单项批量 flush（等价改造前单次 draw，零回归）
+            // No active scope: immediate single-item batched flush (equivalent to a single draw before the refactor, zero regression)
             SubmitNodeStorage single = new SubmitNodeStorage();
             single.submit(s);
             FeatureRenderDispatcher.flushBatched(single);

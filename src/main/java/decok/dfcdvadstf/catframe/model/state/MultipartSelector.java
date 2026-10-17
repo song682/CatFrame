@@ -6,47 +6,47 @@ import decok.dfcdvadstf.catframe.model.state.property.Property;
 import java.util.*;
 
 /**
- * Multipart 选择器。对标 26.1.2 的 multipart 条件匹配机制。
+ * Multipart selector. Mirrors 26.1.2's multipart condition matching mechanism.
  * <p>
- * 封装从属性映射到匹配的 Variant 列表的选择逻辑。
- * 根据 {@link BlockstateJson.MultipartCase} 列表和当前块属性，
- * 返回所有条件匹配的 {@link BlockstateJson.Variant}。
+ * Encapsulates the selection logic that maps a property mapping to a matching Variant list.
+ * Based on the {@link BlockstateJson.MultipartCase} list and the current block properties,
+ * it returns all {@link BlockstateJson.Variant} entries whose conditions match.
  * <p>
- * 结果被缓存（以属性映射为键），在属性不变的情况下 O(1) 返回。
+ * Results are cached (keyed by the property mapping), returning in O(1) while the properties stay unchanged.
  *
- * <p>当前多处独立的 multipart 合并逻辑
- * （{@link StateProviderBlockModel}、
- *  VMM PublicRenderAPI）将统一委托于此。
+ * <p>The currently scattered independent multipart merging logic
+ * ({@link StateProviderBlockModel},
+ *  VMM PublicRenderAPI) will all delegate here.
  */
 public class MultipartSelector {
 
     private final List<BlockstateJson.MultipartCase> cases;
 
     /**
-     * 选择结果缓存。key = 属性映射（immutable 拷贝），value = 匹配的 Variant 列表。
+     * Selection result cache. key = property mapping (immutable copy), value = matching Variant list.
      */
     private final Map<Map<String, String>, List<BlockstateJson.Variant>> cache = new HashMap<>();
 
     /**
-     * @param cases multipart 条件列表（来自 {@link BlockstateJson#multipart}）
+     * @param cases the multipart condition list (from {@link BlockstateJson#multipart})
      */
     public MultipartSelector(List<BlockstateJson.MultipartCase> cases) {
         this.cases = cases;
     }
 
-    // ==================== 选择入口 ====================
+    // ==================== Selection entry points ====================
 
     /**
-     * 根据属性映射选择所有匹配的 Variant。
-     * 结果会被缓存（cache hit 时 O(1) 返回）。
+     * Selects all matching Variants based on the property mapping.
+     * Results are cached (returned in O(1) on a cache hit).
      *
-     * @param properties 块属性映射（key=属性名, value=属性值的字符串表示）
-     * @return 匹配的 Variant 列表，可能为空
+     * @param properties the block property mapping (key = property name, value = string representation of the property value)
+     * @return the matching Variant list, possibly empty
      */
     public List<BlockstateJson.Variant> select(Map<String, String> properties) {
         if (properties == null) properties = Collections.emptyMap();
 
-        // 使用不可变 key 进行缓存查找
+        // Use an immutable key for the cache lookup
         Map<String, String> cacheKey = properties.isEmpty()
                 ? Collections.emptyMap()
                 : Collections.unmodifiableMap(new HashMap<>(properties));
@@ -73,11 +73,11 @@ public class MultipartSelector {
     }
 
     /**
-     * 根据 {@link BlockState} 选择所有匹配的 Variant。
-     * 将 CatBlockState 转换为属性映射后委托给 {@link #select(Map)}。
+     * Selects all matching Variants based on a {@link BlockState}.
+     * Converts the CatBlockState into a property mapping and delegates to {@link #select(Map)}.
      *
-     * @param state CatBlockState 实例
-     * @return 匹配的 Variant 列表，可能为空
+     * @param state the CatBlockState instance
+     * @return the matching Variant list, possibly empty
      */
     public List<BlockstateJson.Variant> select(BlockState state) {
         if (state == null) return Collections.emptyList();
@@ -86,19 +86,19 @@ public class MultipartSelector {
         return select(propMap);
     }
 
-    // ==================== 缓存管理 ====================
+    // ==================== Cache management ====================
 
     /**
-     * 清除所有缓存的选择结果。当资源重载时应调用此方法。
+     * Clears all cached selection results. Should be called on resource reload.
      */
     public void clearCache() {
         cache.clear();
     }
 
-    // ==================== 辅助方法 ====================
+    // ==================== Helper methods ====================
 
     /**
-     * 将 CatBlockState 转换为用于 multipart 条件匹配的 Map。
+     * Converts a CatBlockState into a Map used for multipart condition matching.
      */
     private static Map<String, String> buildPropertyMap(BlockState state) {
         BlockStateDefinition<?> def = state.getDefinition();

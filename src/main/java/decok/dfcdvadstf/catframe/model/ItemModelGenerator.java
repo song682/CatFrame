@@ -190,10 +190,9 @@ public class ItemModelGenerator {
         q.guiLight = "front";
         // Force opaque alpha: side faces are solid-color filled in a second untextured
         // pass
-        // 侧面强制不透明：由第二遍无纹理渲染以纯色填充，避免半透明纹素被 blend 冲淡
         q.solidColor = pixelARGB | 0xFF000000;
 
-        // 顶点绕序：对标 BlockJsonModelBake.emitFaceFromCorners
+        // Vertex winding: mirrors BlockJsonModelBake.emitFaceFromCorners
         // UP: v0(idx=010)=MIN_X,MIN_Z v1(idx=011)=MIN_X,MAX_Z v2(idx=111)=MAX_X,MAX_Z
         // v3(idx=110)=MAX_X,MIN_Z
         // DOWN:v0(idx=001)=MIN_X,MAX_Z v1(idx=000)=MIN_X,MIN_Z v2(idx=100)=MAX_X,MIN_Z
@@ -210,7 +209,7 @@ public class ItemModelGenerator {
             q.vertices[2] = new Vector3d(worldX1, worldY, minZ);
             q.vertices[3] = new Vector3d(worldX1, worldY, maxZ);
         }
-        // UV 按顶点分配：v0→MIN_Z 顶点, v1→MAX_Z 顶点；u0→MIN_X, u1→MAX_X
+        // UVs assigned per vertex: v0→MIN_Z vertex, v1→MAX_Z vertex; u0→MIN_X, u1→MAX_X
         q.up[0] = u0;
         q.vp[0] = v0;
         q.up[1] = u0;
@@ -225,22 +224,22 @@ public class ItemModelGenerator {
     }
 
     /**
-     * 生成垂直边缘（左/右）的侧面 quad —— 对标 BlockJsonModelBake.emitFaceFromCorners 的绕序规范。
+     * Generates the vertical edge (left/right) side quads — mirrors the winding spec of
+     * BlockJsonModelBake.emitFaceFromCorners.
      * <p>
-     * quad 是 YZ 平面上的平片：高 = 1px，深 = 1px（Z: 7.5→8.5）。
+     * The quad is a flat slice on the YZ plane: height = 1px, depth = 1px (Z: 7.5→8.5).
      * <p>
-     * 方向映射（刻意偏离 26.1.2 的 LEFT→EAST / RIGHT→WEST）：
-     * LEFT → Direction.WEST (法线 -X，朝向左侧透明像素，从左边可见)
-     * RIGHT → Direction.EAST (法线 +X，朝向右侧透明像素，从右边可见)
+     * Face mapping (deliberately deviating from 26.1.2's LEFT→EAST / RIGHT→WEST):
+     * LEFT → Direction.WEST (normal -X, faces the transparent pixel on the left, visible from the left)
+     * RIGHT → Direction.EAST (normal +X, faces the transparent pixel on the right, visible from the right)
      * <p>
-     * 原版 26.1.2 让东西侧面朝向像素<b>内侧</b>（LEFT→EAST），可见性依赖
-     * cutout 丢弃透明纹素后"从对侧透视看到远端条带"的机制；CatFrame 固定管线
-     * 开启背面剔除且无该 cutout 深度语义，朝内绕序会被整面剔除（表现为东西面
-     * 挤出透明消失）。故此处改为<b>朝外</b>绕序，与 UP/DOWN 的朝外约定对齐，
-     * 剔除语义等同实心几何体。
-     * Deliberate deviation from vanilla: vertical side faces wind OUTWARD
-     * (towards the transparent neighbour) so they survive backface culling
-     * in the 1.7.10 fixed pipeline, matching the UP/DOWN convention.
+     * Vanilla 26.1.2 lets the east/west side faces point towards the pixel's <b>inside</b>
+     * (LEFT→EAST); visibility relies on the mechanism where cutout discards transparent
+     * texels and the far strip is seen through from the opposite side. CatFrame's fixed
+     * pipeline enables backface culling and lacks that cutout depth semantics, so an inward
+     * winding would be culled wholesale (manifesting as the east/west extruded faces turning
+     * transparent). This is therefore changed to an <b>outward</b> winding, aligning with the
+     * UP/DOWN outward convention, with culling semantics equivalent to solid geometry.
      */
     private static void bakeVerticalEdge(
             List<JsonModelBake.BakedQuad> quads,
@@ -248,24 +247,23 @@ public class ItemModelGenerator {
             int x, int y, boolean isLeft,
             float xScale, float yScale, int tintIndex, int pixelARGB) {
 
-        // 世界坐标（block 空间 0-1）—— 对标 26.1.2：
-        // LEFT 边在像素左边界 (x * xScale)，RIGHT 边在像素右边界 ((x+1) * xScale)
+        // World coordinates (block space 0-1) — mirrors 26.1.2:
+        // the LEFT edge is at the pixel's left boundary (x * xScale), the RIGHT edge at the right boundary ((x+1) * xScale)
         float worldX = isLeft
                 ? (x * xScale) / 16.0F
                 : ((x + 1.0F) * xScale) / 16.0F;
 
-        // Y: 像素 y → block 空间（Y 翻转：纹理上方 → 世界上方）
+        // Y: pixel y → block space (Y flipped: texture top → world top)
         float worldY0 = (16.0F - (y + 1.0F) * yScale) / 16.0F;
         float worldY1 = (16.0F - y * yScale) / 16.0F;
 
-        // UV（像素空间）—— 对标 26.1.2：u0/u1 为像素左右边界 + UV_SHRINK（沿 Z 轴跨越挤出深度），
-        // v0/v1 为像素上下边界 + UV_SHRINK（沿世界 Y 轴分配：v0=top, v1=bottom）
+        // UV (pixel space) — mirrors 26.1.2: u0/u1 are the pixel left/right boundaries + UV_SHRINK (spanning the extrusion depth along Z),
+        // v0/v1 are the pixel top/bottom boundaries + UV_SHRINK (assigned along the world Y axis: v0=top, v1=bottom)
         float u0 = (x + UV_SHRINK) * xScale;
         float u1 = (x + 1.0F - UV_SHRINK) * xScale;
         float v0 = (y + UV_SHRINK) * yScale;
         float v1 = (y + 1.0F - UV_SHRINK) * yScale;
 
-        // 朝外绕序：LEFT→WEST（-X）, RIGHT→EAST（+X），偏离 26.1.2（理由见方法 JavaDoc）
         // Outward-facing: LEFT→WEST, RIGHT→EAST (see method JavaDoc for rationale)
         Direction face = isLeft ? Direction.WEST : Direction.EAST;
 
@@ -276,10 +274,9 @@ public class ItemModelGenerator {
         q.guiLight = "front";
         // Force opaque alpha: side faces are solid-color filled in a second untextured
         // pass
-        // 侧面强制不透明：由第二遍无纹理渲染以纯色填充，避免半透明纹素被 blend 冲淡
         q.solidColor = pixelARGB | 0xFF000000;
 
-        // 顶点绕序：对标 BlockJsonModelBake.emitFaceFromCorners
+        // Vertex winding: mirrors BlockJsonModelBake.emitFaceFromCorners
         // EAST: v0(idx=111)=MAX_Y,MAX_Z v1(idx=101)=MIN_Y,MAX_Z v2(idx=100)=MIN_Y,MIN_Z
         // v3(idx=110)=MAX_Y,MIN_Z
         // WEST: v0(idx=010)=MAX_Y,MIN_Z v1(idx=000)=MIN_Y,MIN_Z v2(idx=001)=MIN_Y,MAX_Z
@@ -298,13 +295,13 @@ public class ItemModelGenerator {
             q.vertices[2] = new Vector3d(worldX, worldY0, minZ);
             q.vertices[3] = new Vector3d(worldX, worldY1, minZ);
         }
-        // UV 按顶点分配：V 沿 Y 轴（v0→MAX_Y(top) 顶点, v1→MIN_Y(bottom) 顶点）；
-        // U 沿 Z 轴跨越像素宽度（u0→MIN_Z, u1→MAX_Z，与 bakeHorizontalEdge 的 v0→MIN_Z 约定同构，
-        // 对标 26.1.2 bakeSideFaces 垂直边缘同样给出 u0→u1 完整跨度）。
+        // UVs assigned per vertex: V along the Y axis (v0→MAX_Y(top) vertex, v1→MIN_Y(bottom) vertex);
+        // U along the Z axis spans the pixel width (u0→MIN_Z, u1→MAX_Z, isomorphic to bakeHorizontalEdge's v0→MIN_Z convention;
+        // mirrors 26.1.2 bakeSideFaces, whose vertical edge likewise gives the full u0→u1 span).
         // Full u0→u1 span across the Z-depth axis, matching vanilla 26.1.2 side-face
         // UVs.
         if (isLeft) {
-            // WEST: 顶点 0/1 在 MIN_Z，顶点 2/3 在 MAX_Z
+            // WEST: vertices 0/1 are at MIN_Z, vertices 2/3 at MAX_Z
             q.up[0] = u0;
             q.vp[0] = v0;
             q.up[1] = u0;
@@ -314,7 +311,7 @@ public class ItemModelGenerator {
             q.up[3] = u1;
             q.vp[3] = v0;
         } else {
-            // EAST: 顶点 0/1 在 MAX_Z，顶点 2/3 在 MIN_Z
+            // EAST: vertices 0/1 are at MAX_Z, vertices 2/3 at MIN_Z
             q.up[0] = u1;
             q.vp[0] = v0;
             q.up[1] = u1;
@@ -330,8 +327,9 @@ public class ItemModelGenerator {
     }
 
     /**
-     * 检查扁平像素数组中 (x,y) 是否透明（超出边界视为透明）。
-     * getFrameTextureData(0) 返回 mipmap 层级数组，level 0 是 width*height 扁平数组。
+     * Checks whether (x,y) in the flat pixel array is transparent (out-of-bounds is
+     * treated as transparent). getFrameTextureData(0) returns the mipmap level array;
+     * level 0 is a width*height flat array.
      */
     private static boolean isTransparent(int[] flatPixels, int x, int y, int width) {
         if (x < 0 || y < 0 || x >= width) {

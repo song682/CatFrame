@@ -20,38 +20,39 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * 渲染扩展：当 Minecraft 画质设为"流畅"时，将树叶方块的纹理替换为 {@code _opaque} 版本，
- * 从而消除透明边缘，与原版 BlockLeaves#isOpaqueCube 行为保持一致。
+ * Rendering extension: when Minecraft graphics are set to "Fast", replace leaf block textures
+ * with the {@code _opaque} variant to eliminate transparent edges, matching vanilla
+ * {@code BlockLeaves#isOpaqueCube} behavior.
  *
- * <h3>工作方式</h3>
+ * <h3>How it works</h3>
  * <ol>
- *   <li>在 {@code TextureStitchEvent.Pre} 中注册所有 {@code _opaque} 纹理至图集；</li>
- *   <li>在 {@code TextureStitchEvent.Post} 中解析并缓存 IIcon；</li>
- *   <li>渲染时检测 {@code !Minecraft.isFancyGraphicsEnabled()}，若匹配则设置
- *       {@link RenderContext#iconOverride} 为缓存的 _opaque IIcon。</li>
+ *   <li>Register all {@code _opaque} textures in the atlas during {@code TextureStitchEvent.Pre};</li>
+ *   <li>Resolve and cache {@link IIcon}s during {@code TextureStitchEvent.Post};</li>
+ *   <li>During rendering, if {@code !Minecraft.isFancyGraphicsEnabled()}, set
+ *       {@link RenderContext#iconOverride} to the cached _opaque {@link IIcon}.</li>
  * </ol>
  */
 @SideOnly(Side.CLIENT)
 public final class LeavesGraphicsExtension implements IModelRenderExtension {
 
-    // ==================== 纹理映射：树叶方块 -> _opaque 纹理路径 ====================
-    // key: 正常纹理路径（与模型 JSON 中一致），value: _opaque 纹理路径
+    // ==================== Texture mapping: leaf block -> _opaque texture paths ====================
+    // key: normal texture path (as in model JSON), value: _opaque texture path
     private static final Map<String, String> TEXTURE_MAP = new ConcurrentHashMap<>();
 
-    // 已解析的 _opaque IIcon 缓存：normalTexturePath -> opaqueIicon
+    // Cached resolved _opaque IIcons: normalTexturePath -> opaqueIcon
     private static final Map<String, IIcon> OPAQUE_ICONS = new ConcurrentHashMap<>();
 
-    // 叶子方块集合（可动态扩展）
+    // List of leaf blocks (extensible)
     private static final List<Block> LEAF_BLOCKS = new CopyOnWriteArrayList<>();
 
-    // 已注册标记
+    // Registration flag
     private static boolean texturesRegistered = false;
 
-    // [S5] 模组自定义树叶方块的纹理映射：Block -> (normalPath -> opaquePath)
+    // [S5] Texture mapping for modded custom leaf blocks: Block -> (normalPath -> opaquePath)
     private static final Map<Block, Map<String, String>> CUSTOM_LEAF_TEXTURES = new ConcurrentHashMap<>();
 
     static {
-        // ——— 纹理映射定义 ———
+        // ——— Texture mapping definitions ———
         TEXTURE_MAP.put("minecraft:blocks/leaves_oak", "minecraft:blocks/leaves_oak_opaque");
         TEXTURE_MAP.put("minecraft:blocks/leaves_spruce", "minecraft:blocks/leaves_spruce_opaque");
         TEXTURE_MAP.put("minecraft:blocks/leaves_birch", "minecraft:blocks/leaves_birch_opaque");
@@ -59,12 +60,12 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
         TEXTURE_MAP.put("minecraft:blocks/leaves_acacia", "minecraft:blocks/leaves_acacia_opaque");
         TEXTURE_MAP.put("minecraft:blocks/leaves_big_oak", "minecraft:blocks/leaves_big_oak_opaque");
 
-        // ——— 叶子方块注册 ———
-        // Blocks.leaves (1.7.10 vanilla)：oak=0, spruce=1, birch=2, jungle=3
+        // ——— Leaf block registration ———
+        // Blocks.leaves (1.7.10 vanilla): oak=0, spruce=1, birch=2, jungle=3
         if (Blocks.leaves != null) {
             LEAF_BLOCKS.add(Blocks.leaves);
         }
-        // leaves2（acacia=0, big_oak=1）
+        // leaves2 (acacia=0, big_oak=1)
         Block leaves2 = getLeaves2Block();
         if (leaves2 != null) {
             LEAF_BLOCKS.add(leaves2);
@@ -74,17 +75,18 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
     public LeavesGraphicsExtension() {
     }
 
-    // ==================== 模组树叶 API [S5] ====================
+    // ==================== Modded leaf API [S5] ====================
 
     /**
-     * 注册自定义树叶方块的 _opaque 纹理映射。
+     * Register _opaque texture mapping for a custom leaf block.
      * <p>
-     * 模组可在初始化阶段调用此方法，将自定义树叶方块注册到流畅画质处理系统中。
-     * 注册后，当画质设为“流畅”时，该树叶方块的纹理将被替换为 _opaque 版本。
+     * Mods may call this during initialization to register custom leaf blocks for Fast graphics
+     * handling. After registration, when graphics are set to Fast, the leaf block's textures
+     * are replaced with their _opaque variants.
      *
-     * @param block         树叶方块实例
-     * @param textureMapping normal 纹理路径 → _opaque 纹理路径的映射
-     *                       （如 {@code "mymod:blocks/custom_leaves" → "mymod:blocks/custom_leaves_opaque"}）
+     * @param block texture block instance
+     * @param textureMapping mapping from normal texture path to _opaque texture path
+     *                       (e.g. {@code "mymod:blocks/custom_leaves" → "mymod:blocks/custom_leaves_opaque"})
      */
     public static void registerLeafBlock(Block block, Map<String, String> textureMapping) {
         if (block == null || textureMapping == null) return;
@@ -93,16 +95,16 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
         }
         CUSTOM_LEAF_TEXTURES.put(block, new HashMap<>(textureMapping));
         TEXTURE_MAP.putAll(textureMapping);
-        // 如果纹理已经注册过，需要重新注册新纹理
+        // If textures were already registered, re-register new textures
         if (texturesRegistered) {
             texturesRegistered = false;
         }
     }
 
-    // ==================== 纹理生命周期 ====================
+    // ==================== Texture lifecycle ====================
 
     /**
-     * 在 TextureStitchEvent.Pre 中调用，注册所有 _opaque 纹理。
+     * Called in TextureStitchEvent.Pre to register all _opaque textures.
      */
     public static void registerTextures(TextureMap map) {
         if (texturesRegistered) return;
@@ -116,7 +118,7 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
     }
 
     /**
-     * 在 TextureStitchEvent.Post 中调用，解析并缓存 _opaque IIcon。
+     * Called in TextureStitchEvent.Post to resolve and cache _opaque IIcons.
      */
     public static void onTextureStitchPost(TextureMap map) {
         OPAQUE_ICONS.clear();
@@ -133,19 +135,19 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
     }
 
     /**
-     * 检查当前画质是否应使用 _opaque 纹理。
+     * Check whether to use _opaque textures for current graphics setting.
      */
     private static boolean shouldUseOpaque() {
         return !Minecraft.getMinecraft().gameSettings.fancyGraphics;
     }
 
     /**
-     * 根据叶子方块和 metadata 获取对应的 _opaque IIcon。
+     * Get the corresponding _opaque IIcon for the given leaf block and metadata.
      */
     private static IIcon getOpaqueIcon(Block block, int metadata) {
         if (OPAQUE_ICONS.isEmpty()) return null;
 
-        // 获取该叶子变体的正常纹理路径
+        // Get normal texture path for this leaf variant
         String normalTex = getNormalTexture(block, metadata);
         if (normalTex == null) return null;
 
@@ -153,15 +155,15 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
     }
 
     /**
-     * 根据方块和 metadata 确定正常纹理路径。
-     * 优先检查模组自定义树叶映射，再回退到原版 leaves/leaves2。
+     * Determine normal texture path based on block and metadata.
+     * Prioritizes modded custom leaf mappings, falls back to vanilla leaves/leaves2.
      */
     private static String getNormalTexture(Block block, int metadata) {
         int meta = metadata & 3;
-        // [S5] 检查模组自定义树叶映射
+        // [S5] Check modded custom leaf mappings
         Map<String, String> customMapping = CUSTOM_LEAF_TEXTURES.get(block);
         if (customMapping != null && !customMapping.isEmpty()) {
-            // 返回第一个 normal 纹理路径（自定义树叶通常只有一个变体纹理）
+            // Return the first normal texture path (custom leaves usually have single variant)
             return customMapping.keySet().iterator().next();
         }
         if (block == Blocks.leaves) {
@@ -178,7 +180,7 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
                     return "minecraft:blocks/leaves_oak";
             }
         }
-        // 兼容 leaves2（1.8+ / 模组添加）
+        // Compatible with leaves2 (1.8+ / added by mods)
         Block leaves2 = getLeaves2Block();
         if (leaves2 != null && block == leaves2) {
             switch (meta) {
@@ -194,7 +196,7 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
     }
 
     /**
-     * 安全获取 leaves2 方块（1.7.10 可能不存在，返回 null）。
+     * Safely get leaves2 block (may not exist in 1.7.10; returns null).
      */
     private static Block getLeaves2Block() {
         try {
@@ -208,50 +210,47 @@ public final class LeavesGraphicsExtension implements IModelRenderExtension {
 
     @Override
     public void apply(RenderContext ctx) {
-        // 仅在流畅画质下切换纹理
-        if (!shouldUseOpaque()) return;
+            // Only switch textures in Fast graphics mode
+            if (!shouldUseOpaque()) return;
 
-        Block leafBlock = null;
-        int metadata = 0;
+            Block leafBlock = null;
+            int metadata = 0;
 
-        switch (ctx.phase) {
-            case BLOCK_WORLD:
-                if (ctx.block == null || ctx.world == null) return;
-                leafBlock = ctx.block;
-                metadata = ctx.world.getBlockMetadata(ctx.x, ctx.y, ctx.z);
-                break;
+            switch (ctx.phase) {
+                case BLOCK_WORLD:
+                    if (ctx.block == null || ctx.world == null) return;
+                    leafBlock = ctx.block;
+                    metadata = ctx.world.getBlockMetadata(ctx.x, ctx.y, ctx.z);
+                    break;
 
-            case ITEM_GUI:
-            case ITEM_HAND_FIRST_PERSON:
-            case ITEM_HAND_THIRD_PERSON:
-            case DROPPED_ITEM_GROUND:
-            case DROPPED_BLOCK_GROUND:
-            case ITEM_FIXED:
-                // 物品阶段：从 ItemStack 推导方块和 metadata
-                if (ctx.stack == null || !(ctx.stack.getItem() instanceof ItemBlock)) return;
-                leafBlock = ((ItemBlock) ctx.stack.getItem()).field_150939_a;
-                metadata = ctx.stack.getItemDamage();
-                break;
+                case ITEM_GUI:
+                case ITEM_HAND_FIRST_PERSON:
+                case ITEM_HAND_THIRD_PERSON:
+                case DROPPED_ITEM_GROUND:
+                case DROPPED_BLOCK_GROUND:
+                case ITEM_FIXED:
+                    // Item phase: derive block and metadata from ItemStack
+                    if (ctx.stack == null || !(ctx.stack.getItem() instanceof ItemBlock)) return;
+                    leafBlock = ((ItemBlock) ctx.stack.getItem()).field_150939_a;
+                    metadata = ctx.stack.getItemDamage();
+                    break;
 
-            default:
-                return;
-        }
+                default:
+                    return;
+            }
 
-        // 检查是否是叶子方块
-        if (leafBlock == null || !LEAF_BLOCKS.contains(leafBlock)) return;
+            // Check if it is a leaf block
+            if (leafBlock == null || !LEAF_BLOCKS.contains(leafBlock)) return;
 
-        // 获取 _opaque IIcon
-        IIcon opaqueIcon = getOpaqueIcon(leafBlock, metadata);
-        if (opaqueIcon == null) return;
+            // Get _opaque IIcon
+            IIcon opaqueIcon = getOpaqueIcon(leafBlock, metadata);
+            if (opaqueIcon == null) return;
 
-        if (ctx.phase == RenderPhase.BLOCK_WORLD) {
-            // 世界阶段：绑定原版图集，vanilla _opaque sprite 直接可用（消除透明边缘）。
-            ctx.iconOverride = opaqueIcon;
-        }
-        // [渲染三域架构] CatAtlas 已退役，findSprite 契约已移除：
-        // 物品阶段无 CatSprite 可换绑，直接退回模型正常纹理（原版图集 UV），
-        // 与 flushBatched 绑定的原版图集一致，无采样错位。
-        // CatAtlas retired; item phases skip override and the normal model
-        // texture (vanilla-atlas UV space) drives.
+            if (ctx.phase == RenderPhase.BLOCK_WORLD) {
+                // Block world phase: bind to vanilla atlas; vanilla _opaque sprite is directly usable (eliminates transparent edges).
+                ctx.iconOverride = opaqueIcon;
+            }
+            // CatAtlas retired; findSprite contract removed. For item phases there is no CatSprite to rebind,
+            // so we fall back to the normal model texture in vanilla atlas UV space (consistent with flushBatched).
     }
 }

@@ -25,8 +25,8 @@ public class ModelResolver {
     private static final int MAX_DEPTH = 16;
 
     /**
-     * 循环检测：跟踪当前线程正在解析的模型路径。
-     * 如果 resolve 过程中再次遇到已在集合中的路径，说明存在循环依赖。
+     * Cycle detection: tracks the model paths currently being resolved by this thread.
+     * If a path already in the set is encountered again during resolution, a circular dependency exists.
      */
     private static final ThreadLocal<Set<String>> resolvingStack = new ThreadLocal<Set<String>>() {
         @Override
@@ -36,17 +36,17 @@ public class ModelResolver {
     };
 
     /**
-     * 依赖图：记录每个模型的 parent 依赖关系。
-     * 用于拓扑排序确定烘焙顺序。
-     * key = 模型路径, value = 该模型依赖的 parent 路径集合
+     * Dependency graph: records each model's parent dependency.
+     * Used by topological sorting to determine bake order.
+     * key = model path, value = set of parent paths this model depends on
      */
     private static final Map<String, Set<String>> dependencyGraph = new ConcurrentHashMap<>();
 
     // ==================== Builtin Models ====================
 
     /**
-     * 硬编码的内建模型，优先级高于从 JSON 文件加载。
-     * 模型路径以 "builtin/" 开头的都由这里提供。
+     * Hardcoded built-in models, which take priority over loading from JSON files.
+     * Model paths starting with "builtin/" are all provided here.
      */
     private static final Map<String, ModelJson> builtinModels = new HashMap<>();
 
@@ -60,8 +60,9 @@ public class ModelResolver {
      * Resolve a model by path (e.g., "block/stone") with full parent chain resolution.
      * The resolved model will have all elements and textures merged from parents.
      *
-     * <p>如果模型未找到或加载出错，自动 fallback 到 {@code builtin/missing} 无效模型
-     * （显示紫黑 missingno 纹理），避免因模型缺失导致渲染管线异常。
+     * <p>If the model is not found or fails to load, it automatically falls back to the
+     * {@code builtin/missing} placeholder model (displays the purple/black missingno texture),
+     * preventing render pipeline failures caused by missing models.
      */
     public static ModelJson resolve(String modelPath) {
         if (cache.containsKey(modelPath)) {
@@ -78,7 +79,7 @@ public class ModelResolver {
             resolveTextureVariables(resolved);
             cache.put(modelPath, resolved);
         } else {
-            // [W5] 模型加载失败 → fallback 到 builtin/missing（不缓存，下次重试）
+            // [W5] Model load failed → fallback to builtin/missing (not cached, retried next time)
             CatFrame.logger.warn("[ModelResolver] Model '{}' not found or errored, falling back to builtin/missing", modelPath);
             resolved = deepCopy(builtinModels.get("builtin/missing"));
         }
@@ -91,10 +92,10 @@ public class ModelResolver {
             return null;
         }
 
-        // 循环检测：检查当前路径是否已在解析栈中
+        // Cycle detection: check whether the current path is already in the resolution stack
         Set<String> stack = resolvingStack.get();
         if (!stack.add(modelPath)) {
-            // 已经在栈中 → 循环依赖
+            // Already in the stack → circular dependency
             CatFrame.logger.error("Circular model dependency detected: {} -> ... -> {}",
                     buildCyclePath(stack, modelPath), modelPath);
             return null;
@@ -108,12 +109,12 @@ public class ModelResolver {
     }
 
     /**
-     * 实际的解析逻辑（从原 resolveInternal 提取），
-     * 循环检测和栈管理由外层 resolveInternal 处理。
+     * The actual resolution logic (extracted from the original resolveInternal);
+     * cycle detection and stack management are handled by the outer resolveInternal.
      */
     private static ModelJson resolveInternalChecked(String modelPath, int depth) {
 
-        // 优先检查硬编码的内建模型（路径以 "builtin/" 开头）
+        // Check the hardcoded built-in models first (paths starting with "builtin/")
         if (modelPath.startsWith("builtin/")) {
             ModelJson builtin = builtinModels.get(modelPath);
             if (builtin != null) {
@@ -189,21 +190,21 @@ public class ModelResolver {
         merged.ambientocclusion = (child.ambientocclusion != null)
                 ? child.ambientocclusion : parent.ambientocclusion;
 
-        // raw: 未识别键合并（child 覆盖 parent，与 textures/display 同策略），保证兼容快照不因继承链丢失
+        // raw: merge unrecognized keys (child overrides parent, same policy as textures/display), so compatibility snapshots are not lost through the inheritance chain
         if (parent.raw != null || child.raw != null) {
             merged.raw = new HashMap<>();
             if (parent.raw != null) merged.raw.putAll(parent.raw);
             if (child.raw != null) merged.raw.putAll(child.raw);
         }
 
-        // builtinGenerated: OR 传播 — 只要任一祖先来自 builtin/generated，子模型就继承该标记
+        // builtinGenerated: OR propagation — if any ancestor comes from builtin/generated, the child model inherits this flag
         merged.builtinGenerated = parent.builtinGenerated || child.builtinGenerated;
 
         // texture_size: child overrides parent
         merged.texture_size = (child.texture_size != null) ? child.texture_size : parent.texture_size;
 
-        // builtin/generated 多层扩展：扫描纹理中的 layerN 键，为每层生成独立 element
-        // 默认最多支持 4 层（layer0~layer3），ModernItem 走自己的 N-pass 机制不受此限制
+        // builtin/generated multi-layer expansion: scan the layerN texture keys and generate a separate element per layer
+        // Supports up to 4 layers by default (layer0~layer3); ModernItem uses its own N-pass mechanism and is not subject to this limit
         if (merged.builtinGenerated) {
             expandBuiltinGeneratedLayers(merged);
         }
@@ -212,19 +213,20 @@ public class ModelResolver {
     }
 
     /**
-     * builtin/generated 多层扩展。
+     * Multi-layer expansion for builtin/generated.
      * <p>
-     * 扫描合并后的纹理映射，找出 {@code layer0}~{@code layer3}（最多 4 层）。
-     * 为每个额外层创建一个与原始 element 相同几何体但引用不同纹理的副本，
-     * 并为每层的 north/south 面设置对应的 {@code tintIndex}（layer0→0, layer1→1, …）。
+     * Scans the merged texture map for {@code layer0}~{@code layer3} (at most 4 layers) and
+     * creates, for each extra layer, a copy with the same geometry as the original element but
+     * referencing a different texture, setting the matching {@code tintIndex} on each layer's
+     * north/south faces (layer0→0, layer1→1, …).
      * <p>
-     * 侧面 quad 由 {@link VanillaModelManager} 中的 bakeSideFaces 循环按纹理键名自动处理，
-     * 无需在此处额外生成。
+     * Side quads are handled automatically by the bakeSideFaces loop in
+     * {@link VanillaModelManager} based on texture key names, so none need to be generated here.
      */
     private static void expandBuiltinGeneratedLayers(ModelJson model) {
         if (model.textures == null || model.elements == null || model.elements.isEmpty()) return;
 
-        // 收集存在的 layerN（N >= 1）
+        // Collect the existing layerN entries (N >= 1)
         List<Integer> extraLayers = new ArrayList<>();
         for (int i = 1; i <= 3; i++) {
             if (model.textures.containsKey("layer" + i)) {
@@ -233,15 +235,15 @@ public class ModelResolver {
         }
         if (extraLayers.isEmpty()) return;
 
-        // 安全拷贝 elements 列表，避免污染父模型引用
+        // Copy the elements list defensively to avoid polluting the parent model's reference
         model.elements = new ArrayList<>(model.elements);
 
-        // 深拷贝原始 element，避免修改 tintIndex 时污染静态 builtin 模型
+        // Deep-copy the original element so modifying tintIndex does not affect the static built-in model
         ModelJson.Element original = deepCopyElement(model.elements.get(0));
         model.elements.set(0, original);
         ensureFaceTintIndex(original, 0);
 
-        // 为每个额外层创建 element 副本
+        // Create an element copy for each extra layer
         for (int layer : extraLayers) {
             ModelJson.Element elem = deepCopyElement(original);
             if (elem.faces.north != null) elem.faces.north.texture = "#layer" + layer;
@@ -259,7 +261,7 @@ public class ModelResolver {
     }
 
     /**
-     * 确保 element 的所有面的 tintIndex 与给定层号一致。
+     * Ensures the tintIndex of every face of the element matches the given layer number.
      */
     private static void ensureFaceTintIndex(ModelJson.Element elem, int tintIndex) {
         if (elem.faces == null) return;
@@ -272,7 +274,7 @@ public class ModelResolver {
     }
 
     /**
-     * 深拷贝一个 Element（仅复制几何与面数据，不共享引用）。
+     * Deep-copies an Element (only geometry and face data are copied; no references are shared).
      */
     private static ModelJson.Element deepCopyElement(ModelJson.Element src) {
         ModelJson.Element dst = new ModelJson.Element();
@@ -317,17 +319,12 @@ public class ModelResolver {
     }
 
     /**
-     * 纹理变量不允许循环映射，例如 {@code "particle": "#texture"} 和
-     * {@code "texture": "#particle"} 同时存在。这种情况下这两个纹理变量
-     * 都会被映射到无效纹理（Missingno），在游戏的日志中也会产生警告。
+     * Texture variables may not map in cycles, e.g. {@code "particle": "#texture"} and
+     * {@code "texture": "#particle"} being both present. In that case both texture variables
+     * resolve to the invalid texture (Missingno), and a warning is also logged in-game.
      * <p>
-     * 解析纹理变量引用（例如 #all → 实际纹理路径）。
-     * 以 '#' 开头的纹理值表示引用另一个纹理键。
-     * <p>
-     * 命名空间 fallback：无命名空间的纹理引用（如 {@code "blocks/dirt"}）
-     * 自动补全为 {@code minecraft:blocks/dirt} —— 与 {@link net.minecraft.util.ResourceLocation}
-     * 的默认命名空间语义一致。图集发布表的键是全限定键，若不补全，这类引用
-     * 会因字面未命中而直接落回 missingno。
+     * Resolves texture variable references (e.g. #all → the actual texture path).
+     * A texture value starting with '#' references another texture key.
      * <p>
      * Namespace fallback: unqualified texture references default to the
      * {@code minecraft} namespace (ResourceLocation semantics); without this
@@ -336,7 +333,7 @@ public class ModelResolver {
     public static void resolveTextureVariables(ModelJson model) {
         if (model.textures == null) return;
 
-        // Missingno 纹理的标识符
+        // Identifier of the Missingno texture
         final String MISSINGNO = "minecraft:missingno";
 
         Map<String, String> resolved = new HashMap<>();
@@ -344,18 +341,18 @@ public class ModelResolver {
             String key = entry.getKey();
             String value = entry.getValue();
 
-            // 追踪引用链，用于循环检测
-            // 使用 LinkedHashSet 提供 O(1) contains 查询 + 保持插入序（用于日志链展示）
+            // Track the reference chain for cycle detection
+            // LinkedHashSet provides O(1) contains and preserves insertion order (for logging the chain)
             Set<String> chain = new LinkedHashSet<>();
             chain.add(key);
 
             while (value.startsWith("#")) {
                 String ref = value.substring(1);
 
-                // 循环检测：如果该引用已在链中出现过，说明存在循环
+                // Cycle detection: if this reference already appeared in the chain, a cycle exists
                 if (chain.contains(ref)) {
                     chain.add(ref);
-                    // 构建警告消息：chain -> ref1 -> ref2 -> ... -> cycleKey
+                    // Build the warning message: chain -> ref1 -> ref2 -> ... -> cycleKey
                     StringBuilder chainMsg = new StringBuilder();
                     boolean first = true;
                     for (String elem : chain) {
@@ -374,15 +371,13 @@ public class ModelResolver {
 
                 String refValue = model.textures.get(ref);
                 if (refValue == null) {
-                    // 引用的纹理变量不存在，使用 missingno
+                    // The referenced texture variable does not exist; use missingno
                     value = MISSINGNO;
                     break;
                 }
                 value = refValue;
             }
 
-            // 命名空间 fallback：无 ':' 的纹理路径视为 minecraft 命名空间
-            // （MISSINGNO 等内置值本身带 namespace，不受影响）
             // Unqualified texture path -> default to the minecraft namespace
             if (!value.startsWith("#") && value.indexOf(':') < 0) {
                 CatFrame.logger.debug("[ModelResolver] texture '{}' has no namespace, defaulting to minecraft:{}",
@@ -404,17 +399,17 @@ public class ModelResolver {
      * 2. Classpath fallback (for server-side or pre-init contexts)
      */
     private static ModelJson loadFromResources(String modelPath) {
-        // 优先走 IResourceManager（可访问资源包）
+        // Try IResourceManager first (has access to resource packs)
         ModelJson fromManager = loadFromResourceManager(modelPath);
         if (fromManager != null) return fromManager;
 
-        // 回退到 classpath
+        // Fall back to the classpath
         return loadFromClasspath(modelPath);
     }
 
     /**
-     * 通过 Minecraft IResourceManager 加载模型。
-     * 资源包、原版资源和 mod 资源均可通过此路径访问。
+     * Loads a model through Minecraft's IResourceManager.
+     * Resource packs, vanilla assets, and mod assets are all accessible through this path.
      */
     private static ModelJson loadFromResourceManager(String modelPath) {
         try {
@@ -428,7 +423,7 @@ public class ModelResolver {
                 String path = modelPath.substring(modelPath.indexOf(':') + 1);
                 return tryLoadFromManager(rm, ns, "models/" + path + ".json");
             } else {
-                // 默认先搜 minecraft，再搜已注册的命名空间
+                // Search minecraft first by default, then the other registered namespaces
                 ModelJson result = tryLoadFromManager(rm, "minecraft", "models/" + modelPath + ".json");
                 if (result != null) return result;
 
@@ -463,8 +458,8 @@ public class ModelResolver {
     }
 
     /**
-     * 从 classpath 加载模型（回退路径）。
-     * 用于 IResourceManager 不可用的场景（服务端 / 早期初始化）。
+     * Loads a model from the classpath (fallback path).
+     * Used when IResourceManager is unavailable (server side / early initialization).
      */
     private static ModelJson loadFromClasspath(String modelPath) {
         List<String> searchPaths = new ArrayList<>();
@@ -542,23 +537,23 @@ public class ModelResolver {
     }
 
     /**
-     * 获取依赖图快照。用于拓扑排序确定烘焙顺序。
+     * Returns a snapshot of the dependency graph, used by topological sorting to determine bake order.
      */
     public static Map<String, Set<String>> getDependencyGraph() {
         return Collections.unmodifiableMap(dependencyGraph);
     }
 
     /**
-     * 拓扑排序：返回按依赖顺序排列的模型路径列表。
-     * 先烘焙无依赖的模型（叶子节点），再烘焙依赖它们的模型。
+     * Topological sort: returns model paths ordered by dependency.
+     * Models with no dependencies (leaf nodes) are baked first, then the models that depend on them.
      * <p>
-     * 使用 Kahn 算法（BFS 拓扑排序）。
+     * Uses Kahn's algorithm (BFS topological sort).
      *
-     * @param modelPaths 需要排序的模型路径集合
-     * @return 按拓扑顺序排列的模型路径列表
+     * @param modelPaths the set of model paths to sort
+     * @return the model paths in topological order
      */
     public static List<String> topologicalSort(Set<String> modelPaths) {
-        // 构建入度表和邻接表（只考虑 modelPaths 范围内的模型）
+        // Build the in-degree table and adjacency list (only models within modelPaths are considered)
         Map<String, Set<String>> adj = new HashMap<>();  // parent → children
         Map<String, Integer> inDegree = new HashMap<>();
 
@@ -573,7 +568,7 @@ public class ModelResolver {
             }
         }
 
-        // BFS：从入度为 0 的节点开始
+        // BFS: start from nodes with in-degree 0
         Queue<String> queue = new LinkedList<>();
         for (Map.Entry<String, Integer> entry : inDegree.entrySet()) {
             if (entry.getValue() == 0) {
@@ -593,13 +588,13 @@ public class ModelResolver {
             }
         }
 
-        // 如果排序结果少于输入，说明有环（不应发生，因为 resolve 已经检测了）
+        // If the result is smaller than the input, a cycle exists (should not happen, since resolve already detects cycles)
         if (sorted.size() < modelPaths.size()) {
             Set<String> unsorted = new LinkedHashSet<>(modelPaths);
             unsorted.removeAll(sorted);
             CatFrame.logger.warn("[ModelResolver] topologicalSort: {} models in cycle: {}",
                     unsorted.size(), unsorted);
-            // 将剩余的追加到末尾（降级处理）
+            // Append the remainder to the end (graceful degradation)
             sorted.addAll(unsorted);
         }
 
@@ -607,7 +602,7 @@ public class ModelResolver {
     }
 
     /**
-     * 构建循环依赖路径字符串，用于错误日志。
+     * Builds the circular-dependency path string for the error log.
      */
     private static String buildCyclePath(Set<String> stack, String cycleTarget) {
         StringBuilder sb = new StringBuilder();

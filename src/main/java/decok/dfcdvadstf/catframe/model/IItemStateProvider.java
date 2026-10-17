@@ -12,59 +12,49 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 物品状态声明接口 — CatFrame 物品侧的唯一接入抽象。
+ * Item state declaration interface — the single access abstraction on the CatFrame item side.
  * <p>
- * 本接口只承担<b>声明与数据供给</b>职责，不含任何渲染行为：
+ * This interface only carries the <b>declaration and data-supply</b> responsibility and
+ * contains no rendering behavior:
  * <ul>
- *   <li>作为<b>发现标记</b>：外部 {@link net.minecraft.item.Item} 实现此接口后，
- *       CatFrame 在 {@link ModelManagerDataLoader#init()} 阶段自动发现并收集纹理。</li>
- *   <li>作为<b>数据供给</b>：实现类交付决策树（{@link #getItemStateRoot()}）
- *       或 ItemState JSON 定位（{@link #getItemStateNamespace()} /
- *       {@link #getItemStateName()}）；实际渲染由 {@link RenderJsonItemModel} 驱动
- *       管线侧的 {@link ItemStateModel} 完成。</li>
+ *   <li><b>Discovery marker</b>: once an external {@link net.minecraft.item.Item} implements
+ *       this interface, CatFrame automatically discovers it and collects its textures during
+ *       {@link ModelManagerDataLoader#init()}.</li>
+ *   <li><b>Data supply</b>: the implementation delivers a decision tree
+ *       ({@link #getItemStateRoot()}) or locates the ItemState JSON
+ *       ({@link #getItemStateNamespace()} / {@link #getItemStateName()}); actual rendering
+ *       is completed by the pipeline-side {@link ItemStateModel} driven by
+ *       {@link RenderJsonItemModel}.</li>
  * </ul>
  * <p>
- * 与方块侧 {@link IBlockStateProvider}（纯声明、零渲染行为）保持对称：
- * 「该不该由 CatFrame 渲染」是渲染系统与注册表的路由决策，不由本接口回答。
  * Mirrors the block-side {@link IBlockStateProvider} (pure declaration, no render
  * behavior): whether CatFrame renders an item is a routing decision owned by the
  * render pipeline and the registry, never by this interface.
  * <p>
- * 模型发现由四层体系处理（items/ ItemState → model_mappings → 约定路径），
- * 本接口是其中的代码级声明层。
+ * Model discovery is handled by a four-tier system (items/ ItemState → model_mappings →
+ * convention path); this interface is the code-level declaration tier within it.
  *
- * <h3>四层发现优先级</h3>
+ * <h3>Four-tier discovery priority</h3>
  * <ol>
- *   <li>{@code items/{item}.json} (ItemState 决策树) — 最高优先</li>
- *   <li>{@code model_mappings.json} items 字段 — 旧扁平映射</li>
- *   <li>Item 实现 {@code IItemStateProvider}（本接口）— 代码级注册</li>
- *   <li>约定路径 {@code assets/{namespace}/models/item/{name}.json} — 懒发现兜底</li>
+ *   <li>{@code items/{item}.json} (ItemState decision tree) — highest priority</li>
+ *   <li>{@code model_mappings.json} items field — legacy flat mapping</li>
+ *   <li>Item implements {@code IItemStateProvider} (this interface) — code-level registration</li>
+ *   <li>convention path {@code assets/{namespace}/models/item/{name}.json} — lazy-discovery fallback</li>
  * </ol>
  *
- * <h3>接入即接管 / Implementation as takeover</h3>
- * 实现本接口即表示该物品交由 CatFrame 渲染域处理；不希望被接管就不要实现本接口
- * （注册表中无对应模型时，渲染自动回落到原版路径）。
- * 阶段级差异（GUI / 手持 / 掉落该用哪个模型）属于<b>数据</b>，
- * 由决策树按 {@code display_context} 属性分支表达，不由接口方法表达。
+ * <h3>Implementation as takeover</h3>
+ * Implementing this interface means the item is handed over to the CatFrame rendering
+ * domain; if you do not want it taken over, do not implement this interface (when the
+ * registry has no matching model, rendering automatically falls back to the vanilla path).
+ * Stage-level differences (which model to use for GUI / hand / dropped) are <b>data</b>,
+ * expressed by the decision tree via {@code display_context} property branches, not by
+ * interface methods.
  * <p>
- * 对标方块侧 {@link IBlockStateProvider#getStateDefinition()} 的可选声明钩子，
- * {@link #getPropertyDefinitions()} 允许实现类就地声明自定义物品属性，
- * 由发现阶段自动注册（见下方方法说明）。
  * <br>Mirroring the optional declaration hook {@link IBlockStateProvider#getStateDefinition()}
  * on the block side, {@link #getPropertyDefinitions()} lets implementations declare
  * custom item properties in place, auto-registered during discovery.
  *
- * <h3>实现即接入 / Implementation as declaration</h3>
- * 与方块侧「实现即接入」哲学对齐：物品注册到 {@code Item.itemRegistry} 且实现本接口，
- * 这个动作本身就是接入声明——
- * <ul>
- *   <li>纹理收集接口化：经 {@link #getDeclaredModelPaths()} 完成，无 instanceof 特判；</li>
- *   <li>代码建树可就地交付（{@link #getItemStateRoot()}），适用于无 {@code items/} JSON 的物品；</li>
- *   <li>ItemState JSON 路径可显式声明（{@link #getItemStateNamespace()} /
- *       {@link #getItemStateName()}），缺省部分从注册名推导，位于标准路径即被自动加载；</li>
- *   <li>迟到的注册与声明在下一轮纹理缝合自动补票；</li>
- *   <li>显式注册入口仍然保留，但不再是接入的前提。</li>
- * </ul>
+ * <h3>Implementation as declaration</h3>
  * Aligned with the block-side philosophy: a registered item implementing this interface
  * IS the declaration — texture collection is interface-driven
  * ({@link #getDeclaredModelPaths()}), the ItemState JSON path may be declared explicitly

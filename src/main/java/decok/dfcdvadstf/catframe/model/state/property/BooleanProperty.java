@@ -5,11 +5,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 布尔属性。值域为 {@code true} / {@code false}。
+ * Boolean property. The value domain is {@code true} / {@code false}.
  *
- * <p>内部索引：{@code true → 0, false → 1}。
+ * <p>Internal index: {@code true → 0, false → 1}.
  *
- * <p>用法：
+ * <p>Usage:
  * <pre>{@code
  * public static final Property<Boolean> LIT = BooleanProperty.create("lit");
  * }</pre>
@@ -28,10 +28,10 @@ public final class BooleanProperty extends Property<Boolean> {
     }
 
     /**
-     * 创建一个布尔属性。
+     * Creates a boolean property.
      *
-     * @param name 属性名称（如 "lit", "waterlogged"）
-     * @return 新的 BooleanProperty 实例
+     * @param name the property name (e.g. "lit", "waterlogged")
+     * @return a new BooleanProperty instance
      */
     public static BooleanProperty create(String name) {
         return new BooleanProperty(name);

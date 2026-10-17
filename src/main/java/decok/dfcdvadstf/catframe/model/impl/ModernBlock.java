@@ -24,18 +24,24 @@ import java.util.Map;
 /**
  * ModernBlock — CatFrame Mod Blocks Base class
  *
- * <p>类似 {@link ModernItem}，为方块提供一键接入 CatFrame blockstate JSON 模型管线的能力：
+ * <p>Similar to {@link ModernItem}, it gives blocks one-step access to the CatFrame
+ * blockstate JSON model pipeline:
  * <ul>
- *   <li>通过 {@link #setBlockstate(String, String)} 或 {@link #setBlockstate(String)} 指定 blockstate JSON 路径；
- *       未显式设置时从方块注册名推导</li>
- *   <li>继承即接入：注册到游戏注册表后在纹理缝合时被自动发现 —— 加载 blockstate、
- *       收集纹理、沿继承链自动登记 typed 状态定义（见 {@link BlockStateInheritance}），
- *       无需手动调用 {@link #register(ModernBlock)}</li>
- *   <li>{@link #register(ModernBlock)} 为可选显式入口：立即接入 + 在客户端分配 ISBRH renderType</li>
- *   <li>默认按 "normal" variant 渲染；子类可覆盖 {@link #getStateProperties} 实现动态属性匹配</li>
+ *   <li>Specify the blockstate JSON path via {@link #setBlockstate(String, String)} or
+ *       {@link #setBlockstate(String)}; when not set explicitly, it is derived from the
+ *       block registry name</li>
+ *   <li>Inheritance as access: once registered in the game registry it is discovered
+ *       automatically during texture stitching — loading the blockstate, collecting
+ *       textures, and registering a typed state definition along the inheritance chain
+ *       (see {@link BlockStateInheritance}), with no manual call to
+ *       {@link #register(ModernBlock)}</li>
+ *   <li>{@link #register(ModernBlock)} is an optional explicit entry: immediate access +
+ *       allocation of an ISBRH renderType on the client</li>
+ *   <li>Renders the "normal" variant by default; subclasses may override
+ *       {@link #getStateProperties} for dynamic property matching</li>
  * </ul>
  *
- * <p>使用示例：
+ * <p>Usage example:
  * <pre>{@code
  * public class MyBlock extends ModernBlock {
  *     public MyBlock() {
@@ -46,31 +52,34 @@ import java.util.Map;
  *     }
  * }
  *
- * // 在 preInit 中注册到游戏注册表即完成接入（自动发现接管）：
+ * // Registering to the game registry in preInit completes access (auto-discovery takes over):
  * GameRegistry.registerBlock(myBlock, "my_block");
  * }</pre>
  */
 public class ModernBlock extends Block implements IBlockStateProvider {
 
-    /** 默认 blockstate 命名空间，与原版资源包目录一致。 */
+    /** Default blockstate namespace, consistent with the vanilla resource pack directory. */
     public static final String DEFAULT_BLOCKSTATE_NAMESPACE = "minecraft";
 
-    /** 显式指定的 blockstate 命名空间。空字符串表示未设置，注册时尝试从注册名推导。 */
+    /** Explicitly specified blockstate namespace. An empty string means unset; registration then tries to derive it from the registry name. */
     protected String blockstateNamespace = "";
 
-    /** 显式指定的 blockstate 文件名（不含 .json）。空字符串表示未设置，注册时尝试从注册名推导。 */
+    /** Explicitly specified blockstate file name (without .json). An empty string means unset; registration then tries to derive it from the registry name. */
     protected String blockstateName = "";
 
-    /** ISBRH renderType ID，由 {@link #register(ModernBlock)} 在客户端分配。 */
+    /** ISBRH renderType ID, allocated by {@link #register(ModernBlock)} on the client. */
     protected int modernRenderType = 0;
 
     /**
-     * v0.3.0+ 自动继承解析得到的 typed 状态定义（{@link #register(ModernBlock)} 时填充）。
+     * v0.3.0+ typed state definition obtained from automatic inheritance resolution
+     * (populated during {@link #register(ModernBlock)}).
      * <p>
-     * 子类无需手动赋值：未显式配置时沿继承链合并基类片段（见
-     * {@link BlockStateInheritance}），供渲染管线与 blockstate 键校验使用。
-     * 未调用 register() 时本字段保持 {@code null}，管线侧解析结果登记在
-     * {@link ModelRegistry} 全局表中，并由 {@link #getStateDefinition()} 一并读取。
+     * Subclasses need not assign it manually: when not configured explicitly, base-class
+     * fragments are merged along the inheritance chain (see {@link BlockStateInheritance})
+     * for use by the render pipeline and blockstate key validation. When register() is not
+     * called this field stays {@code null}; the pipeline-side resolution result is recorded
+     * in the global {@link ModelRegistry} table and read together by
+     * {@link #getStateDefinition()}.
      */
     private BlockStateDefinition<?> stateDefinition;
 
@@ -79,10 +88,10 @@ public class ModernBlock extends Block implements IBlockStateProvider {
     }
 
     /**
-     * 设置 blockstate JSON 的命名空间与文件名。
+     * Sets the namespace and file name of the blockstate JSON.
      *
-     * @param namespace 资源包命名空间，如 "catframe"
-     * @param name      blockstate 文件名（不含 .json），如 "my_block"
+     * @param namespace resource pack namespace, e.g. "catframe"
+     * @param name      blockstate file name (without .json), e.g. "my_block"
      * @return this
      */
     public ModernBlock setBlockstate(String namespace, String name) {
@@ -92,9 +101,9 @@ public class ModernBlock extends Block implements IBlockStateProvider {
     }
 
     /**
-     * 使用默认命名空间 {@link #DEFAULT_BLOCKSTATE_NAMESPACE} 设置 blockstate 文件名。
+     * Sets the blockstate file name using the default namespace {@link #DEFAULT_BLOCKSTATE_NAMESPACE}.
      *
-     * @param name blockstate 文件名（不含 .json）
+     * @param name blockstate file name (without .json)
      * @return this
      */
     public ModernBlock setBlockstate(String name) {
@@ -131,16 +140,17 @@ public class ModernBlock extends Block implements IBlockStateProvider {
 
     @Override
     public BlockStateDefinition<?> getStateDefinition() {
-        // 未走显式 register() 时，typed 定义由管线自动解析并登记在全局表中
         // When register() was not called, the pipeline auto-resolves the typed
         // definition into the global registry — read it as the fallback source.
         return stateDefinition != null ? stateDefinition : ModelRegistry.getStateDefinition(this);
     }
 
     /**
-     * 动态属性映射。默认返回空 map（匹配 blockstate JSON 中的 "normal" variant）。
+     * Dynamic property mapping. Returns an empty map by default (matches the "normal"
+     * variant in the blockstate JSON).
      * <p>
-     * 子类可覆盖此方法，根据世界状态 / metadata 返回属性键值对，例如：
+     * Subclasses may override this method to return property key-value pairs based on the
+     * world state / metadata, for example:
      * <pre>{@code
      * Map<String, String> props = new HashMap<>();
      * props.put("facing", EnumFacing.getFront(metadata).name());
@@ -158,27 +168,28 @@ public class ModernBlock extends Block implements IBlockStateProvider {
     }
 
     /**
-     * 注册 ModernBlock 到 CatFrame 管线。
+     * Registers a ModernBlock into the CatFrame pipeline.
      * <p>
-     * 本方法会：
+     * This method will:
      * <ol>
-     *   <li>若未显式设置 blockstate 路径，尝试从方块注册名推导</li>
-     *   <li>通过 {@link ModelManagerDataLoader#registerBlock(Block)} 加载 blockstate JSON</li>
-     *   <li>注册 {@link BlockStateModel}，使 ItemBlock 在物品栏/手持中也能使用同一模型</li>
-     *   <li>在客户端注册 ISBRH，获取并设置 renderType ID</li>
+     *   <li>try to derive the blockstate path from the block registry name if not set explicitly</li>
+     *   <li>load the blockstate JSON via {@link ModelManagerDataLoader#registerBlock(Block)}</li>
+     *   <li>register a {@link BlockStateModel} so ItemBlock can use the same model in the
+     *       inventory/hand</li>
+     *   <li>register the ISBRH on the client and obtain/set the renderType ID</li>
      * </ol>
      *
-     * <p>注册时机已放开：发现流程由纹理缝合驱动（每次 {@code TextureStitchEvent.Pre} 增量执行），
-     * 实现了 IBlockStateProvider 的注册表方块也会被自动发现；blockstate 至迟在下一次缝合时加载
-     * （首轮发现完成后调用则立即加载）。renderType 只能在客户端获取。
+     * <p>Registration timing is relaxed: discovery is driven by texture stitching (executed
+     * incrementally on each {@code TextureStitchEvent.Pre}), and registry blocks implementing
+     * IBlockStateProvider are also discovered automatically; the blockstate loads at the next
+     * stitch at the latest (calling after the first discovery pass completes loads it
+     * immediately). The renderType can only be obtained on the client.
      *
-     * <p>本方法为可选入口：不调用时自动发现同样完成数据加载与 typed 解析；调用它的额外收益
-     * 是立即登记（首轮发现完成后调用即刻生效）与 ISBRH renderType 分配。
      * <p>Optional: discovery covers the same data loading and typed resolution without it;
      * calling it additionally front-loads registration and assigns an ISBRH renderType.
      *
-     * @param block 要注册的 ModernBlock 实例
-     * @return 分配的 ISBRH renderType ID；服务端返回 -1
+     * @param block the ModernBlock instance to register
+     * @return the allocated ISBRH renderType ID; -1 on the server
      */
     public static int register(ModernBlock block) {
         resolveBlockstateFromRegistry(block);
@@ -192,8 +203,6 @@ public class ModernBlock extends Block implements IBlockStateProvider {
 
         ModelManagerDataLoader.registerBlock(block);
 
-        // 自动 BlockState 继承：未显式 typed def 时沿继承链合并基类片段（如
-        // PillarBlock 的 axis），子类无需手动覆盖 getStateProperties 或声明 .states(...)。
         // Auto inheritance: merge base fragments (e.g. PillarBlock's axis) along the
         // class hierarchy when no explicit typed def exists.
         if (block.stateDefinition == null && !ModelRegistry.hasStateDefinition(block)) {
@@ -206,7 +215,7 @@ public class ModernBlock extends Block implements IBlockStateProvider {
             }
         }
 
-        // 注册 BlockStateModel，供 ItemBlock 渲染 fallback 使用
+        // Register a BlockStateModel for ItemBlock rendering fallback
         ModelRegistry.registerBlockModel(block, new LazyStateProviderBlockModel(block));
 
         if (FMLCommonHandler.instance().getSide() == Side.CLIENT) {
@@ -218,21 +227,24 @@ public class ModernBlock extends Block implements IBlockStateProvider {
     }
 
     /**
-     * 任意 Block 的便捷注册入口：自动 BlockState 继承 + Models 声明式管线。
+     * Convenience registration entry for any Block: automatic BlockState inheritance +
+     * the declarative Models pipeline.
      * <p>
-     * 非 {@link ModernBlock} 的方块（如直接继承原版 {@code BlockRotatedPillar} 的
-     * PillarBlock 扩展）无需实现 {@link IBlockStateProvider}：本方法从注册名推导并登记
-     * blockstate 命名空间，然后走 {@link Models#register(Block)} 管线（含继承解析），
-     * blockstate JSON 至迟在下次纹理缝合时加载、物化。
+     * Blocks that are not {@link ModernBlock} (e.g. a PillarBlock extension directly
+     * inheriting vanilla {@code BlockRotatedPillar}) need not implement
+     * {@link IBlockStateProvider}: this method derives and registers the blockstate
+     * namespace from the registry name, then runs the {@link Models#register(Block)}
+     * pipeline (including inheritance resolution); the blockstate JSON is loaded and
+     * materialized at the next texture stitch at the latest.
      *
-     * @param block 任意方块实例
-     * @return 客户端分配的 ISBRH renderType ID；非 {@link ModernBlock} 返回 -1
+     * @param block any block instance
+     * @return the client-allocated ISBRH renderType ID; -1 for non-{@link ModernBlock}
      */
     public static int register(Block block) {
         if (block instanceof ModernBlock) {
             return register((ModernBlock) block);
         }
-        // 推导并登记 blockstate 命名空间（Models.materialize 依赖已加载的 blockstates）
+        // Derive and register the blockstate namespace (Models.materialize depends on loaded blockstates)
         String registryName = Block.blockRegistry.getNameForObject(block);
         if (registryName != null) {
             int colon = registryName.indexOf(':');
@@ -244,8 +256,9 @@ public class ModernBlock extends Block implements IBlockStateProvider {
     }
 
     /**
-     * 若未显式设置 blockstate 路径，从方块注册名推导命名空间和名称。
-     * 注册名格式为 "namespace:name"，无命名空间时回退到 {@link #DEFAULT_BLOCKSTATE_NAMESPACE}。
+     * Derives the namespace and name from the block registry name if the blockstate path
+     * is not set explicitly. The registry name format is "namespace:name"; without a
+     * namespace it falls back to {@link #DEFAULT_BLOCKSTATE_NAMESPACE}.
      */
     private static void resolveBlockstateFromRegistry(ModernBlock block) {
         if (block.blockstateName.isEmpty()) {
@@ -264,10 +277,11 @@ public class ModernBlock extends Block implements IBlockStateProvider {
     }
 
     /**
-     * 延迟解析 blockstate 的 BlockStateModel。
+     * BlockStateModel that resolves the blockstate lazily.
      * <p>
-     * 允许 {@link #register(ModernBlock)} 在 blockstate JSON 尚未加载时也能预先注册模型；
-     * 首次渲染时从 {@link ModelManagerDataLoader#getBlockstateData(Block)} 懒加载。
+     * Lets {@link #register(ModernBlock)} pre-register a model even when the blockstate
+     * JSON is not yet loaded; lazy-loads from
+     * {@link ModelManagerDataLoader#getBlockstateData(Block)} on first render.
      */
     private static class LazyStateProviderBlockModel implements BlockStateModel {
         private final IBlockStateProvider provider;
@@ -282,8 +296,9 @@ public class ModernBlock extends Block implements IBlockStateProvider {
                 Block block = (Block) provider;
                 BlockstateJson bs = ModelManagerDataLoader.getBlockstateData(block);
                 if (bs != null) {
-                    // typed 状态定义存在时（显式 .states(...) 或继承解析得到），
-                    // 走 ResidentStateModel 属性驱动匹配；否则回退到 provider 动态属性。
+                    // When a typed state definition exists (explicit .states(...) or obtained
+                    // via inheritance resolution), use ResidentStateModel's property-driven
+                    // matching; otherwise fall back to the provider's dynamic properties.
                     BlockStateDefinition<?> def = ModelRegistry.getStateDefinition(block);
                     if (def != null) {
                         delegate = ResidentStateModel.builder(block)
@@ -307,10 +322,10 @@ public class ModernBlock extends Block implements IBlockStateProvider {
         }
 
         /**
-         * 粒子纹理解析：委托给懒加载的 delegate（与 collectParts 同构），
-         * delegate 未就绪（blockstate 未加载）时返回 null，由 ParticleIconResolver
-         * 按高版本语义映射 missingno。
-         * Particle resolution delegating to the lazily built delegate model.
+         * Particle icon resolution: delegates to the lazily built delegate (isomorphic to
+         * collectParts); when the delegate is not ready (blockstate not loaded) returns
+         * null, which ParticleIconResolver maps to missingno following high-version
+         * semantics.
          */
         @Override
         public IIcon particleIcon(int metadata) {

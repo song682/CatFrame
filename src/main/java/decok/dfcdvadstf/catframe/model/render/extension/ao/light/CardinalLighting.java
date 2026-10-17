@@ -3,27 +3,27 @@ package decok.dfcdvadstf.catframe.model.render.extension.ao.light;
 import decok.dfcdvadstf.catframe.core.Direction;
 
 /**
- * 方向亮度表 — 定义每个面接收的方向光照系数。
+ * Directional brightness table — defines the directional lighting coefficient each face receives.
  *
- * <p>对齐 26.1.2 {@code net.minecraft.world.level.CardinalLighting}。
- * 用于替代原 {@code UniformRenderPipeline.shadeByNormal()} 的硬编码 3 档阴影。
+ * <p>Aligned with 26.1.2 {@code net.minecraft.world.level.CardinalLighting}.
+ * Replaces the hardcoded 3-level shading of the former {@code UniformRenderPipeline.shadeByNormal()}.
  *
- * <p>每组值代表 6 个方向的亮度系数（0.0~1.0），在最终顶点颜色上作为乘数应用：
+ * <p>Each set of values represents the brightness coefficient (0.0~1.0) for the 6 directions, applied as a multiplier on the final vertex color:
  * <pre>finalColor *= cardinalLighting.byFace(face)</pre>
  *
- * <p>支持不同维度的差异化光照：
+ * <p>Supports differentiated lighting for different dimensions:
  * <ul>
- *   <li>{@link #DEFAULT} — 主世界/末地标准光照（对齐 1.7.10 原版 RenderBlocks）</li>
- *   <li>{@link #NETHER} — 下界光照（顶底面均匀，无方向差异）</li>
+ *   <li>{@link #DEFAULT} — overworld/end standard lighting (aligned with vanilla 1.7.10 RenderBlocks)</li>
+ *   <li>{@link #NETHER} — nether lighting (top/bottom faces uniform, no directional difference)</li>
  * </ul>
  */
 public final class CardinalLighting {
 
-    /** 主世界/末地标准光照（对齐 1.7.10 原版 shade 值）。 */
+    /** Overworld/end standard lighting (aligned with vanilla 1.7.10 shade values). */
     public static final CardinalLighting DEFAULT =
             new CardinalLighting(0.5F, 1.0F, 0.8F, 0.8F, 0.6F, 0.6F);
 
-    /** 下界光照（顶底面均匀 0.9，侧面与 DEFAULT 一致）。 */
+    /** Nether lighting (top/bottom faces uniform at 0.9; side faces match DEFAULT). */
     public static final CardinalLighting NETHER =
             new CardinalLighting(0.9F, 0.9F, 0.8F, 0.8F, 0.6F, 0.6F);
 
@@ -44,10 +44,10 @@ public final class CardinalLighting {
     }
 
     /**
-     * 按面方向获取亮度系数。
+     * Gets the brightness coefficient for a face direction.
      *
-     * @param face 面方向（Direction）
-     * @return 该方向的光照系数（0.0~1.0）
+     * @param face the face direction (Direction)
+     * @return the lighting coefficient for that direction (0.0~1.0)
      */
     public float byFace(Direction face) {
         if (face == null) return up;

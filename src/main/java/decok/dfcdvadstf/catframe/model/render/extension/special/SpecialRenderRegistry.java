@@ -11,14 +11,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * per-Item 完全自绘 provider 注册表（对称 {@code TintRegistry}）。
+ * Per-item full self-draw provider registry (symmetric to {@code TintRegistry}).
  * <p>
- * Copy-on-write provider table：写入稀少（mod init）且加锁；读取发生在渲染路径且从任意
- * 线程看到一个稳定的不可变快照，无需加锁。
+ * Copy-on-write provider table: writes are rare (mod init) and synchronized; reads
+ * happen on the render path and see a stable immutable snapshot from any thread,
+ * without locking.
  * <p>
- * {@link #registerItem(Item, IItemRenderSpecialProvider)} 除了登记 provider，还会把该
- * item 路由到 {@link RenderJsonItemModel}（{@code MinecraftForgeClient.registerItemRenderer}），
- * 否则一个纯自绘、未注册通用模型的 item 不会进入 CatFrame 物品渲染入口。
+ * Besides registering the provider, {@link #registerItem(Item, IItemRenderSpecialProvider)}
+ * also routes that item to {@link RenderJsonItemModel}
+ * ({@code MinecraftForgeClient.registerItemRenderer}); otherwise a pure self-draw item
+ * with no general model registered would not enter the CatFrame item rendering entry point.
  */
 @SideOnly(Side.CLIENT)
 public final class SpecialRenderRegistry {
@@ -33,27 +35,29 @@ public final class SpecialRenderRegistry {
     private SpecialRenderRegistry() {
     }
 
-    // ==================== 注册 API ====================
+    // ==================== Registration API ====================
 
     /**
-     * 注册一个 per-Item 完全自绘 provider，并确保该 item 路由到 CatFrame 物品渲染入口。
+     * Registers a per-item full self-draw provider and ensures the item is routed to the
+     * CatFrame item rendering entry point.
      *
-     * @param item     目标物品
-     * @param provider 自绘 provider
+     * @param item     the target item
+     * @param provider the self-draw provider
      */
     public static synchronized void registerItem(Item item, IItemRenderSpecialProvider provider) {
         if (item == null || provider == null) return;
         Map<Item, IItemRenderSpecialProvider> copy = new HashMap<>(ITEM_PROVIDERS);
         copy.put(item, provider);
         ITEM_PROVIDERS = copy;
-        // 纯自绘 item 可能不在 registeredItemModels 中，需显式接管 Forge 渲染路由
+        // A pure self-draw item may not be in registeredItemModels, so explicitly take over the Forge render route
         MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
     }
 
     /**
-     * 注销 provider（不回收 Forge 渲染路由，交由通用注册流程管理）。
+     * Unregisters a provider (does not reclaim the Forge render route; that is managed by
+     * the general registration process).
      *
-     * @param item 目标物品
+     * @param item the target item
      */
     public static synchronized void unregisterItem(Item item) {
         if (item == null || !ITEM_PROVIDERS.containsKey(item)) return;
@@ -64,7 +68,7 @@ public final class SpecialRenderRegistry {
 
     // ==================== Provider lookup ====================
 
-    /** 当前 item 的自绘 provider，未注册时为 {@code null}。 */
+    /** The current item's self-draw provider, or {@code null} when none is registered. */
     public static IItemRenderSpecialProvider getProvider(Item item) {
         return item == null ? null : ITEM_PROVIDERS.get(item);
     }

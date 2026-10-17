@@ -15,16 +15,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 将 {@link ModelJson} 包装为 {@link UnbakedModel} 接口的适配器。
+ * Adapter that wraps {@link ModelJson} as the {@link UnbakedModel} interface.
  * <p>
- * 当前 {@link VanillaModelManager.ModelBaking#bakeModel} 中的元素烘焙逻辑
- * 被移入此适配器的 {@link #bake(TextureSlots, int, int)} 方法中。
+ * The element baking logic currently in {@link VanillaModelManager.ModelBaking#bakeModel}
+ * has been moved into this adapter's {@link #bake(TextureSlots, int, int)} method.
  * <p>
- * 这样实现了：
+ * This achieves:
  * <ul>
- *   <li>烘焙逻辑与 VMM 解耦——VMM 只需委托给 {@link ModelBaker}</li>
- *   <li>Unbaked 抽象层——未来可加入其他 UnbakedModel 实现（如程序化生成的几何体）</li>
- *   <li>测试性——可在不初始化 Minecraft 环境的情况下测试烘焙逻辑</li>
+ *   <li>Decoupling of baking logic from VMM — VMM only needs to delegate to {@link ModelBaker}</li>
+ *   <li>An Unbaked abstraction layer — other UnbakedModel implementations (e.g. procedurally generated geometry) can be added later</li>
+ *   <li>Testability — baking logic can be tested without initializing a Minecraft environment</li>
  * </ul>
  */
 public class ModelJsonUnbakedAdapter implements UnbakedModel {
@@ -37,7 +37,7 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         this.modelPath = modelPath;
     }
 
-    // ==================== UnbakedModel 接口 ====================
+    // ==================== UnbakedModel interface ====================
 
     @Nullable
     @Override
@@ -81,36 +81,36 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         return json.texture_size;
     }
 
-    // ==================== 烘焙入口 ====================
+    // ==================== Baking entry point ====================
 
     /**
-     * 烘焙此模型为 {@link BlockStateModelPart}。
+     * Bakes this model into a {@link BlockStateModelPart}.
      * <p>
-     * 逻辑来源于当前 {@code VanillaModelManager.ModelBaking.bakeModel()} 第 1204-1299 行，
-     * 移入此处以实现 Unbaked→Baked 的阶段分离。
+     * The logic originates from lines 1204-1299 of the current {@code VanillaModelManager.ModelBaking.bakeModel()},
+     * moved here to achieve separation of the Unbaked→Baked stages.
      *
-     * @param textures  已解析的纹理槽（TextureSlots 已处理好 IIcon 查找）
-     * @param rotationX X 轴旋转角度（支持任意角度，如 22.5°）
-     * @param rotationY Y 轴旋转角度（支持任意角度，如 22.5°）
-     * @param rotationZ Z 轴旋转角度（支持任意角度，如 22.5°）
-     * @return 烘焙后的渲染部件
+     * @param textures  resolved texture slots (TextureSlots already handles IIcon lookup)
+     * @param rotationX X-axis rotation angle (any angle is supported, e.g. 22.5°)
+     * @param rotationY Y-axis rotation angle (any angle is supported, e.g. 22.5°)
+     * @param rotationZ Z-axis rotation angle (any angle is supported, e.g. 22.5°)
+     * @return the baked render part
      */
     @Override
     public BlockStateModelPart bake(TextureSlots textures, float rotationX, float rotationY, float rotationZ) {
-        // 1. 获取 texture_size
+        // 1. Fetch texture_size
         int[] texSize = json.texture_size;
 
-        // 2. 构建 iconMap（向后兼容 BlockJsonModelBake.bakeElement 的 Map<String, IIcon> 参数）
+        // 2. Build iconMap (backward compatible with BlockJsonModelBake.bakeElement's Map<String, IIcon> parameter)
         Map<String, IIcon> iconMap = textures.toIconMap();
 
-        // 3. 检查 elements（对标 26.1.2：particleMaterial 独立于几何烘焙 —— 无 elements
-        //    仍要捕获 particle 槽，否则空几何模型会丢失已声明的粒子纹理）
+        // 3. Check elements (aligned with 26.1.2: particleMaterial is independent of geometry baking —
+        //    the particle slot must still be captured, otherwise an empty-geometry model loses its declared particle texture)
         if (json.elements == null || json.elements.isEmpty()) {
             CatFrame.logger.warn("[ModelJsonUnbakedAdapter] bake: model '{}' has no elements", modelPath);
             return BlockStateModelPart.fromQuads(null, null, textures.getIcon("particle"));
         }
 
-        // 4. 遍历 elements 烘焙为 BakedQuad
+        // 4. Iterate elements and bake them into BakedQuads
         List<BakedQuad> quads = new ArrayList<>();
         for (ModelJson.Element element : json.elements) {
             List<BakedQuad> elementQuads = JsonModelBake.bakeElement(element, iconMap, texSize);
@@ -119,11 +119,11 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
             }
         }
 
-        // 5. 为 builtin/generated 模型生成侧面 quad（像素级边缘挤出着色）
+        // 5. Generate side quads for builtin/generated models (pixel-level edge extrusion shading)
         if (json.builtinGenerated && !iconMap.isEmpty()) {
             int totalSideQuads = 0;
             for (Map.Entry<String, IIcon> texEntry : iconMap.entrySet()) {
-                // 从纹理键名推导 tintIndex（layer0→0, layer1→1, ... 其他→-1）
+                // Derive tintIndex from the texture key name (layer0→0, layer1→1, ... others→-1)
                 int layerTint = -1;
                 String texKey = texEntry.getKey();
                 if (texKey.startsWith("layer")) {
@@ -144,14 +144,14 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
             }
         }
 
-        // 6. 传播模型级别的 guiLight 到所有 quad
+        // 6. Propagate the model-level guiLight to all quads
         if (json.guiLight != null) {
             for (BakedQuad q : quads) {
                 q.guiLight = json.guiLight;
             }
         }
 
-        // 6.1 传播模型级别的 ambientocclusion 到 element 未单独声明的 quad。
+        // 6.1 Propagate the model-level ambientocclusion to quads whose element did not declare it individually.
         // Aligned with 26.1.2 SimpleModelWrapper.useAmbientOcclusion: the model-level flag drives
         // the AO/flat dispatch. Element-level "ambientocclusion" is a CatFrame extension and keeps
         // precedence (child overrides model default).
@@ -163,13 +163,13 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
             }
         }
 
-        // 7. display transforms 已通过 BlockStateModelPart 的 partDisplay 字段传播，
-        //    不再需要逐个设置到 BakedQuad 上
+        // 7. display transforms are already propagated via BlockStateModelPart's partDisplay field,
+        //    so they no longer need to be set on each BakedQuad
 
-        // 8. 应用旋转（深拷贝，不污染基础缓存）
-        //    顺序必须与 Minecraft blockstate 一致：先绕 X 轴、再绕 Y 轴、最后绕 Z 轴。
-        //    3D 旋转不可交换，若先 Y 后 X 会导致 axis=x 原木被摆成 Z 轴、
-        //    以及 x:180 顶部楼梯朝向错误（180° 翻转会对 Y 旋转做共轭取反）。
+        // 8. Apply rotations (deep copy, does not pollute the base cache)
+        //    The order must match Minecraft blockstate: X axis first, then Y, then Z.
+        //    3D rotations do not commute; applying Y before X would place axis=x logs along the Z axis,
+        //    and orient x:180 top stairs incorrectly (a 180° flip conjugates and negates the Y rotation).
         if (rotationX != 0) {
             quads = JsonModelBake.applyXRotation(quads, rotationX);
         }
@@ -180,9 +180,9 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
             quads = JsonModelBake.applyZRotation(quads, rotationZ);
         }
 
-        // 8.5 图集归属后置扫描（对标 26.1.2 BakedQuad.MaterialInfo.of 按
-        //     sprite.atlasLocation() 定 RenderType）：在旋转深拷贝之后执行，
-        //     天然覆盖拷贝产物；elements quad 与侧面 quad 一并覆盖。
+        // 8.5 Post-pass atlas membership scan (aligned with 26.1.2 BakedQuad.MaterialInfo.of, which
+        //     determines RenderType from sprite.atlasLocation()): executed after the rotation deep copy,
+        //     so it naturally covers the copies; covers both element quads and side quads.
         for (BakedQuad q : quads) {
             q.blockAtlas = TextureSlots.isBlockAtlas(q.icon);
         }
@@ -190,13 +190,12 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         CatFrame.logger.debug("[ModelJsonUnbakedAdapter] bake: '{}' | elements={} | quads={} | rotX={} rotY={} rotZ={}",
                 modelPath, json.elements.size(), quads.size(), rotationX, rotationY, rotationZ);
 
-        // 9. 捕获 textures.particle 槽（烘焙期唯一保留点；槽缺失为 null ——
-        //    ParticleIconResolver 按高版本语义映射 missingno）。
-        //    引用链（"#texture"）已由 ModelResolver 展开、TextureSlots 已解析为 IIcon。
-        //    Capture the textures.particle slot — the single bake-time retention point.
+        // 9. Capture the textures.particle slot (the only bake-time retention point; the slot is null when missing —
+        //    ParticleIconResolver maps missingno per high-version semantics).
+        //    Reference chains ("#texture") have already been expanded by ModelResolver, and TextureSlots have been resolved to IIcon.
         IIcon particleIcon = textures.getIcon("particle");
 
-        // 10. 包装为 BlockStateModelPart（携带 display transforms + 粒子槽）
+        // 10. Wrap as BlockStateModelPart (carrying display transforms + the particle slot)
         return BlockStateModelPart.fromQuads(quads, json.display, particleIcon);
     }
 }

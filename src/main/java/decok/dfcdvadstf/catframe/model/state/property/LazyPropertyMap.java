@@ -9,31 +9,34 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 惰性属性 Map：只在决策树实际 {@link #get(Object)} 时才调用 provider 计算值。
+ * Lazy property Map: calls the provider to compute a value only when the decision tree actually
+ * {@link #get(Object)}s it.
  * <p>
- * 大多数决策树每帧只访问 1-3 个属性，惰性求值避免了无谓的 NBT 读取和玩家状态查询。
- * 已计算的值缓存在内部 {@link HashMap} 中，同一帧内重复访问零开销。
+ * Most decision trees access only 1-3 properties per frame; lazy evaluation avoids unnecessary
+ * NBT reads and player state queries. Computed values are cached in the internal {@link HashMap},
+ * making repeated access within the same frame zero-cost.
  * <p>
- * 此 Map 是只读的——不支持 {@link #put}、{@link #remove} 等修改操作。
+ * This Map is read-only — it does not support modifying operations such as {@link #put} and
+ * {@link #remove}.
  */
 public class LazyPropertyMap implements Map<String, Comparable<?>> {
 
-    /** 属性提供者注册表（key → provider） */
+    /** Property provider registry (key → provider) */
     private final Map<String, ItemPropertyProvider> providers;
 
-    /** 绑定的 ItemStack */
+    /** The bound ItemStack */
     private final ItemStack stack;
 
-    /** 绑定的 RenderPhase */
+    /** The bound RenderPhase */
     private final RenderPhase phase;
 
-    /** 已计算值的缓存 */
+    /** Cache of computed values */
     private final Map<String, Comparable<?>> cache = new HashMap<>();
 
     /**
-     * @param providers 属性提供者注册表
-     * @param stack     当前渲染的 ItemStack
-     * @param phase     当前渲染阶段
+     * @param providers the property provider registry
+     * @param stack     the ItemStack currently being rendered
+     * @param phase     the current render phase
      */
     public LazyPropertyMap(Map<String, ItemPropertyProvider> providers, ItemStack stack, RenderPhase phase) {
         this.providers = providers;
@@ -46,14 +49,14 @@ public class LazyPropertyMap implements Map<String, Comparable<?>> {
         if (!(key instanceof String)) return null;
         String name = (String) key;
 
-        // 先查缓存
+        // Check the cache first
         if (cache.containsKey(name)) return cache.get(name);
 
-        // 查提供者
+        // Look up the provider
         ItemPropertyProvider provider = providers.get(name);
         if (provider == null) return null;
 
-        // 计算并缓存
+        // Compute and cache
         Comparable<?> value = provider.compute(stack, phase);
         cache.put(name, value);
         return value;
@@ -81,7 +84,7 @@ public class LazyPropertyMap implements Map<String, Comparable<?>> {
 
     @Override
     public Collection<Comparable<?>> values() {
-        // 惰性求值所有值（仅在调试/遍历时触发）
+        // Lazily evaluate all values (only triggered during debugging/iteration)
         Map<String, Comparable<?>> all = new HashMap<>();
         for (String key : providers.keySet()) {
             all.put(key, get(key));
@@ -98,7 +101,7 @@ public class LazyPropertyMap implements Map<String, Comparable<?>> {
         return all.entrySet();
     }
 
-    // ==================== 不支持的修改操作 ====================
+    // ==================== Unsupported modifying operations ====================
 
     @Override
     public Comparable<?> put(String key, Comparable<?> value) {

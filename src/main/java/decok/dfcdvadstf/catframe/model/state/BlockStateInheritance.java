@@ -13,31 +13,39 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * 自动 BlockState 继承 —— 把方块类的继承链映射到 {@link BlockStateDefinition} 片段，
- * 子类无需手动重复声明父类的属性与 meta 解码。
+ * Automatic BlockState inheritance — maps a block class's inheritance chain to a
+ * {@link BlockStateDefinition} fragment, so subclasses need not manually redeclare
+ * their superclass's properties and meta decoding.
  * <p>
- * 模组开发者（或 CatFrame 内置表）先用 {@link #registerBase(Class)} 为某个方块基类
- * 登记「状态定义片段」（属性 + MetaCodec + 可选 dynamic resolver / redirect）；
- * 之后任何继承该基类的方块在注册时（{@code Models.Spec.register()} /
- * {@code ModernBlock.register()}）都会经 {@link #resolve(Block)} 自动合并出完整的
- * {@link BlockStateDefinition}。
+ * A mod developer (or CatFrame's built-in table) first uses {@link #registerBase(Class)}
+ * to register a "state definition fragment" (properties + MetaCodec + optional dynamic
+ * resolver / redirect) for some block base class; afterwards any block extending that
+ * base class will, at registration time ({@code Models.Spec.register()} /
+ * {@code ModernBlock.register()}), automatically merge into a complete
+ * {@link BlockStateDefinition} via {@link #resolve(Block)}.
  *
- * <h3>合并语义</h3>
+ * <h3>Merge semantics</h3>
  * <ul>
- *   <li>沿 {@code block.getClass()} 向上收集片段（到 {@link Object} 为止），
- *       按「父类在前、子类在后」拼接属性；同名属性保留首次出现位置、定义以子类为准。</li>
- *   <li>MetaCodec 按片段拼接输出值数组，并按最终静态属性顺序重排（同名覆盖时重映射）。</li>
- *   <li>动态属性标记取并集；dynamic resolver / redirect / multipart 等附加配置
- *       由子类片段覆盖父类片段。</li>
- *   <li>多片段合并时每个片段都必须携带 MetaCodec（否则无法表达各自的 meta 位域），
- *       缺失时 {@link #resolve} 返回 {@code null} 并告警，由调用方回退到显式
- *       {@code .states(...)}。</li>
+ *   <li>Collect fragments upward along {@code block.getClass()} (up to {@link Object}),
+ *       concatenating properties with "superclass first, subclass last"; a property with
+ *       the same name keeps its first-appearance position, while its definition is taken
+ *       from the subclass.</li>
+ *   <li>MetaCodec concatenates the output value arrays by fragment, then reorders by the
+ *       final static property order (remapping on same-name overrides).</li>
+ *   <li>Dynamic property flags are unioned; additional configuration such as dynamic
+ *       resolver / redirect / multipart is overridden from superclass fragment by
+ *       subclass fragment.</li>
+ *   <li>When merging multiple fragments each fragment must carry a MetaCodec (otherwise
+ *       their respective meta bit fields cannot be expressed); if one is missing,
+ *       {@link #resolve} returns {@code null} and warns, and the caller falls back to an
+ *       explicit {@code .states(...)}.</li>
  * </ul>
  *
- * <p>参考场景：模组方块 {@code MyLogBlock extends BlockRotatedPillar}（原版柱形基类，
- * axis 编码于 meta bit2-3，低 2 位留给子类）。CatFrame 内置表为
- * {@code BlockRotatedPillar} 登记 {@code [axis]} 片段后，MyLogBlock 自动获得
- * {@code axis} 属性及其 meta 解码，无需重复声明。
+ * <p>Reference scenario: a mod block {@code MyLogBlock extends BlockRotatedPillar}
+ * (the vanilla pillar base class, with axis encoded in meta bits 2-3 and the low 2 bits
+ * left to the subclass). After CatFrame's built-in table registers a {@code [axis]}
+ * fragment for {@code BlockRotatedPillar}, MyLogBlock automatically gains the
+ * {@code axis} property and its meta decoding, with no redeclaration.
  */
 @SideOnly(Side.CLIENT)
 public final class BlockStateInheritance {
@@ -45,22 +53,22 @@ public final class BlockStateInheritance {
     private BlockStateInheritance() {
     }
 
-    /** 基类片段注册表：方块类 → 状态定义片段（保序，供继承链遍历）。 */
+    /** Base-class fragment registry: block class → state definition fragment (order-preserving, for inheritance-chain traversal). */
     private static final Map<Class<? extends Block>, Fragment> BASE_FRAGMENTS = new LinkedHashMap<>();
 
-    // ==================== 登记 API ====================
+    // ==================== Registration API ====================
 
     /**
-     * 开始登记一个方块基类的状态定义片段。
+     * Begins registering a state definition fragment for a block base class.
      *
-     * @param clazz 基类类型（如 {@code BlockRotatedPillar.class}）
-     * @return 链式配置器
+     * @param clazz the base class type (e.g. {@code BlockRotatedPillar.class})
+     * @return a chainable configurator
      */
     public static BaseSpec registerBase(Class<? extends Block> clazz) {
         return new BaseSpec(clazz);
     }
 
-    // ==================== 链式配置器 ====================
+    // ==================== Chainable Configurators ====================
 
     public static final class BaseSpec {
         private final Class<? extends Block> clazz;
@@ -78,39 +86,39 @@ public final class BlockStateInheritance {
             this.clazz = clazz;
         }
 
-        /** 设置该基类的 typed 状态定义片段（属性 + 可选 MetaCodec + 可选动态属性）。 */
+        /** Sets the typed state definition fragment for this base class (properties + optional MetaCodec + optional dynamic properties). */
         public BaseSpec states(BlockStateDefinition<?> def) {
             this.def = def;
             return this;
         }
 
-        /** 设置该基类自带的 per-meta blockstate 重定向（如按颜色拆分的多文件块）。 */
+        /** Sets this base class's own per-meta blockstate redirect (e.g. multi-file blocks split by color). */
         public BaseSpec redirect(IMetadataBlockstateRedirect redirect, String namespace) {
             this.redirect = redirect;
             this.redirectNamespace = namespace;
             return this;
         }
 
-        /** 设置该基类的运行时动态属性解析器（stairs shape / pane 连接等）。 */
+        /** Sets this base class's runtime dynamic property resolver (stairs shape / pane connections etc.). */
         public BaseSpec dynamic(ResidentStateModel.DynamicPropertyResolver dynamic) {
             this.dynamic = dynamic;
             return this;
         }
 
-        /** 启用 pane 连接 multipart 模式（per-face 合并烘焙，isFullModel=false）。 */
+        /** Enables pane connection multipart mode (per-face merged baking, isFullModel=false). */
         public BaseSpec connectionMultipart() {
             this.connectionMultipart = true;
             this.fullModel = false;
             return this;
         }
 
-        /** 覆盖 isFullModel（默认 true；multipart 装饰件可设为 false）。 */
+        /** Overrides isFullModel (defaults to true; multipart decorations may set it to false). */
         public BaseSpec fullModel(boolean fullModel) {
             this.fullModel = fullModel;
             return this;
         }
 
-        /** 完成登记：存入 {@link #BASE_FRAGMENTS}，供继承链解析。 */
+        /** Completes registration: stores into {@link #BASE_FRAGMENTS} for inheritance-chain resolution. */
         public void register() {
             if (def == null) {
                 throw new IllegalStateException(
@@ -121,21 +129,24 @@ public final class BlockStateInheritance {
         }
     }
 
-    // ==================== 继承解析 ====================
+    // ==================== Inheritance Resolution ====================
 
     /**
-     * 沿方块继承链解析合并后的状态定义与附加配置。
+     * Resolves the merged state definition and additional configuration along a block's
+     * inheritance chain.
      * <p>
-     * 从 {@code block.getClass()} 向上遍历（不含 {@link Object}），收集所有已登记的
-     * 基类片段，按「父类在前、子类在后」合并属性 / MetaCodec / 动态标记 / 附加配置，
-     * 构建一个 owner 为该方块的 {@link BlockStateDefinition}。
+     * Traverses upward from {@code block.getClass()} (excluding {@link Object}), collects
+     * all registered base-class fragments, and merges properties / MetaCodec / dynamic
+     * flags / additional configuration with "superclass first, subclass last", building a
+     * {@link BlockStateDefinition} whose owner is the block.
      *
-     * @param block 目标方块实例
-     * @return 合并结果；继承链上没有任何基类片段（或多片段组合缺少 MetaCodec）时返回 {@code null}
+     * @param block the target block instance
+     * @return the merge result; {@code null} when there is no base-class fragment on the
+     *         inheritance chain (or a multi-fragment combination lacks a MetaCodec)
      */
     @Nullable
     public static Inherited resolve(Block block) {
-        // 1. 收集继承链上的片段（子→父），反转成父→子
+        // 1. Collect fragments along the inheritance chain (child→parent), reverse to parent→child
         List<Fragment> fragments = new ArrayList<>();
         for (Class<?> c = block.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
             Fragment f = BASE_FRAGMENTS.get(c);
@@ -144,7 +155,7 @@ public final class BlockStateInheritance {
         if (fragments.isEmpty()) return null;
         Collections.reverse(fragments);
 
-        // 2. 合并属性：LinkedHashMap 按名去重 —— 保留首次出现位置，定义以子类（后 put）为准
+        // 2. Merge properties: LinkedHashMap dedupes by name — keeps the first-appearance position, definition taken from the subclass (put later)
         LinkedHashMap<String, Property<?>> propMap = new LinkedHashMap<>();
         LinkedHashSet<String> dynamicNames = new LinkedHashSet<>();
         for (Fragment f : fragments) {
@@ -157,8 +168,8 @@ public final class BlockStateInheritance {
         }
         List<Property<?>> mergedProps = new ArrayList<>(propMap.values());
 
-        // 3. 合并 meta 解码：拼接各片段输出 + 按最终静态属性顺序重排
-        //    多片段且任一片段缺 codec 时无法表达位域 → 返回 null 由调用方回退
+        // 3. Merge meta decoding: concatenate each fragment's output + reorder by the final static property order
+        //    With multiple fragments and any fragment missing a codec, the bit fields cannot be expressed → return null and let the caller fall back
         BlockStateDefinition.MetaCodec mergedCodec = mergeCodecs(fragments, mergedProps, dynamicNames);
         if (mergedCodec == null && fragments.size() > 1) {
             CatFrame.logger.warn(
@@ -169,7 +180,7 @@ public final class BlockStateInheritance {
             return null;
         }
 
-        // 4. 构建合并后的 BlockStateDefinition（owner = 方块实例）
+        // 4. Build the merged BlockStateDefinition (owner = block instance)
         BlockStateDefinition.Builder<Block> builder = new BlockStateDefinition.Builder<>(block);
         for (Property<?> p : mergedProps) {
             builder.add(p);
@@ -183,7 +194,7 @@ public final class BlockStateInheritance {
             builder.metaCodec(mergedCodec);
         }
 
-        // 5. 附加配置：子类片段覆盖父类片段（fragments 已为父→子序）
+        // 5. Additional configuration: subclass fragments override superclass fragments (fragments are already in parent→child order)
         IMetadataBlockstateRedirect redirect = null;
         String redirectNamespace = null;
         ResidentStateModel.DynamicPropertyResolver dynamicResolver = null;
@@ -209,26 +220,20 @@ public final class BlockStateInheritance {
     }
 
     /**
-     * 解析继承链并把 typed 状态定义登记进全局表（幂等）—— 继承即接入的物化步骤：
-     * 全局表中已有登记时直接返回；provider 显式覆写的
-     * {@link IBlockStateProvider#getStateDefinition()} 优先；否则沿继承链合并基类片段。
-     * 供发现流程与常驻模型重建共用；无任何来源时返回 {@code null}，调用方保持原有
-     * 无 typed 行为。
-     * <p>
      * Materializes inheritance as declaration: returns the existing global-table entry
      * when present, honors an explicit {@link IBlockStateProvider#getStateDefinition()}
      * override, otherwise merges base-class fragments along the class hierarchy.
      * Idempotent; returns {@code null} when no source applies.
      *
-     * @param block 目标方块实例
-     * @return 已登记（或本次登记）的 typed 状态定义；无来源时返回 {@code null}
+     * @param block the target block instance
+     * @return the registered (or just-registered) typed state definition; {@code null} when no source applies
      */
     @Nullable
     public static BlockStateDefinition<?> resolveAndRegister(Block block) {
         BlockStateDefinition<?> existing = ModelRegistry.getStateDefinition(block);
         if (existing != null) return existing;
 
-        // provider 显式覆写 getStateDefinition() 时优先采用（接口声明的 typed 钩子）
+        // Prefer an explicit provider override of getStateDefinition() (the interface-declared typed hook)
         if (block instanceof IBlockStateProvider) {
             BlockStateDefinition<?> declared = ((IBlockStateProvider) block).getStateDefinition();
             if (declared != null) {
@@ -246,14 +251,16 @@ public final class BlockStateInheritance {
     }
 
     /**
-     * 合并各片段的 MetaCodec：输出按片段顺序拼接的静态属性值，再按最终静态属性顺序重排。
-     * 任一片段缺 codec 时返回 {@code null}（单片段缺 codec 表示该片段整体走默认笛卡尔积解码）。
+     * Merges the MetaCodec of each fragment: outputs the static property values
+     * concatenated in fragment order, then reorders by the final static property order.
+     * Returns {@code null} when any fragment lacks a codec (a single fragment lacking a
+     * codec means that fragment as a whole uses the default cartesian-product decoding).
      */
     @Nullable
     private static BlockStateDefinition.MetaCodec mergeCodecs(List<Fragment> fragments,
                                                               List<Property<?>> mergedProps,
                                                               Set<String> dynamicNames) {
-        // 计算拼接偏移，并收集全部 codec
+        // Compute concatenation offsets and collect all codecs
         int spliceLen = 0;
         int[] offsets = new int[fragments.size()];
         BlockStateDefinition.MetaCodec[] codecs = new BlockStateDefinition.MetaCodec[fragments.size()];
@@ -265,7 +272,7 @@ public final class BlockStateInheritance {
             spliceLen += fragments.get(i).staticProps.length;
         }
 
-        // 最终静态属性顺序（排除动态属性）
+        // Final static property order (excluding dynamic properties)
         List<Property<?>> mergedStatic = new ArrayList<>();
         for (Property<?> p : mergedProps) {
             if (!dynamicNames.contains(p.getName())) {
@@ -273,8 +280,8 @@ public final class BlockStateInheritance {
             }
         }
 
-        // 重排映射：最终静态索引 → 拼接输出索引。
-        // 同名属性被多个片段声明时，后遍历的片段（子类）覆盖前面的映射。
+        // Remap: final static index → concatenated output index.
+        // When a same-name property is declared by multiple fragments, the later-traversed fragment (subclass) overrides the earlier mapping.
         int[] remap = new int[mergedStatic.size()];
         for (int fi = 0; fi < fragments.size(); fi++) {
             Fragment f = fragments.get(fi);
@@ -305,11 +312,12 @@ public final class BlockStateInheritance {
         };
     }
 
-    // ==================== 片段 / 结果 ====================
+    // ==================== Fragments / Results ====================
 
     /**
-     * 不可变基类片段：从 {@link BlockStateDefinition} 提取属性 / MetaCodec / 动态标记，
-     * 附加模型行为配置（redirect / dynamic resolver / multipart）。
+     * Immutable base-class fragment: extracts properties / MetaCodec / dynamic flags from a
+     * {@link BlockStateDefinition}, plus additional model-behavior configuration
+     * (redirect / dynamic resolver / multipart).
      */
     private static final class Fragment {
         final Property<?>[] properties;
@@ -354,13 +362,15 @@ public final class BlockStateInheritance {
     }
 
     /**
-     * 继承解析结果：合并后的 {@link BlockStateDefinition} 与附加模型行为配置。
+     * Inheritance resolution result: the merged {@link BlockStateDefinition} plus additional
+     * model-behavior configuration.
      * <p>
-     * 由 {@link CatModels.Spec} / {@code ModernBlock.register} 消费：未显式配置的
-     * 字段用继承结果填充，显式配置的字段保持优先。
+     * Consumed by {@link CatModels.Spec} / {@code ModernBlock.register}: fields not
+     * explicitly configured are filled from the inheritance result, while explicitly
+     * configured fields keep priority.
      */
     public static final class Inherited {
-        /** 合并后的 typed 状态定义（owner = 方块实例，非空）。 */
+        /** The merged typed state definition (owner = block instance, non-null). */
         public final BlockStateDefinition<?> def;
         @Nullable
         public final IMetadataBlockstateRedirect redirect;

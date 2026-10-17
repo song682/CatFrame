@@ -1,28 +1,28 @@
 package decok.dfcdvadstf.catframe.model.state.item;
 
 /**
- * ItemState JSON 根级解析结果。
+ * ItemState JSON root-level parse result.
  * <p>
- * 封装决策树根节点及 wiki 规范定义的根级 JSON 字段：
+ * Encapsulates the decision tree root node and the wiki-spec root-level JSON fields:
  * <ul>
- *   <li>{@code model} — 决策树根节点（必填）</li>
- *   <li>{@code hand_animation_on_swap} — 切换物品时是否播放手持动画（默认 true）</li>
- *   <li>{@code oversized_in_gui} — GUI 中是否超大渲染（默认 false）</li>
- *   <li>{@code swap_animation_scale} — 切换动画缩放系数（默认 1.0）</li>
+ *   <li>{@code model} — decision tree root node (required)</li>
+ *   <li>{@code hand_animation_on_swap} — whether to play the hand animation when swapping items (default true)</li>
+ *   <li>{@code oversized_in_gui} — whether to render oversized in the GUI (default false)</li>
+ *   <li>{@code swap_animation_scale} — swap animation scale factor (default 1.0)</li>
  * </ul>
  */
 public class ItemStateRoot {
 
-    /** 决策树根节点 */
+    /** Decision tree root node */
     public final ItemStateNode model;
 
-    /** 切换物品时是否播放手持动画。默认 true。 */
+    /** Whether to play the hand animation when swapping items. Default true. */
     public final boolean handAnimationOnSwap;
 
-    /** GUI 中是否超大渲染。默认 false。 */
+    /** Whether to render oversized in the GUI. Default false. */
     public final boolean oversizedInGui;
 
-    /** 切换动画缩放系数。默认 1.0。 */
+    /** Swap animation scale factor. Default 1.0. */
     public final float swapAnimationScale;
 
     public ItemStateRoot(ItemStateNode model, boolean handAnimationOnSwap,
@@ -34,7 +34,8 @@ public class ItemStateRoot {
     }
 
     /**
-     * 便捷构造：仅指定决策树根节点，其余字段使用默认值。
+     * Convenience constructor: specifies only the decision tree root node, using defaults for
+     * the remaining fields.
      */
     public ItemStateRoot(ItemStateNode model) {
         this(model, true, false, 1.0f);

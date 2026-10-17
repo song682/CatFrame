@@ -10,37 +10,38 @@ import org.lwjgl.opengl.GL11;
 import java.util.List;
 
 /**
- * 内建渲染扩展：处理 JSON model 中的 {@code "gui_light"} 字段。
+ * Built-in extension that handles the JSON model {@code "gui_light"} field.
  *
- * <p>根据 JSON model 的 {@code gui_light} 设置来控制方向阴影和 OpenGL GL_LIGHTING 状态：
+ * <p>Controls directional shading and OpenGL {@code GL_LIGHTING} based on the model's {@code gui_light} setting:
  * <ul>
- *   <li>{@code "front"} — 正面光照，无方向阴影（{@link RenderContext#shade} = 1.0），
- *       关闭 GL_LIGHTING（平面光照，如物品）。{@code afterPart} 自动恢复。</li>
- *   <li>{@code "side"} — 侧面光照，保留默认方向阴影（{@code shade} 由法线决定），
- *       不修改 GL_LIGHTING 状态。</li>
- *   <li>未设置 — 默认 {@code "side"} 行为。</li>
+ *   <li>{@code "front"} — front lighting, no directional shading ({@link RenderContext#shade} = 1.0),
+ *       disables {@code GL_LIGHTING} (flat lighting, e.g. items). Automatically restored by {@code afterPart}.</li>
+ *   <li>{@code "side"} — side lighting, preserves default directional shading (shade determined by normals),
+ *       does not modify {@code GL_LIGHTING}.</li>
+ *   <li>unset — defaults to {@code "side"} behavior.</li>
  * </ul>
  *
- * <h3>与原版对齐</h3>
- * <p>原版 {@code RenderBlocks} 在 {@code renderStandardBlockWithColorMultiplier}
- * 和 {@code renderStandardBlockWithAmbientOcclusion} 中均不管理 GL_LIGHTING 状态，
- * GL_LIGHTING 由外层 {@code RenderGlobal/EntityRenderer} 统一管理。
- * 本扩展仅模拟原版 {@code RenderItem} 中为 gui_light="front" 物品关闭 GL_LIGHTING 的行为，
- * 绝不主动开启 GL_LIGHTING，避免破坏外层已设定的 OpenGL 光照状态。</p>
+ * <h3>Alignment with vanilla</h3>
+ * <p>Vanilla {@code RenderBlocks} does not manage {@code GL_LIGHTING} state in
+ * {@code renderStandardBlockWithColorMultiplier} or {@code renderStandardBlockWithAmbientOcclusion};
+ * {@code GL_LIGHTING} is managed by {@code RenderGlobal/EntityRenderer} at a higher level.
+ * This extension only mimics vanilla {@code RenderItem}'s behavior of disabling {@code GL_LIGHTING}
+ * for items with {@code gui_light="front"}. It never enables {@code GL_LIGHTING} itself to avoid
+ * interfering with externally managed OpenGL lighting state.</p>
  *
- * <h3>生命周期</h3>
- * <p>本扩展通过 {@link IModelRenderExtension#beforePart(List, RenderPhase)} 和
- * {@link IModelRenderExtension#afterPart()} 生命周期回调管理 GL_LIGHTING 状态，
- * 由 {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry} 统一调度。
+ * <h3>Lifecycle</h3>
+ * <p>This extension manages {@code GL_LIGHTING} state via {@link IModelRenderExtension#beforePart(List, RenderPhase)}
+ * and {@link IModelRenderExtension#afterPart()}, dispatched by
+ * {@link decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry}.</p>
  */
 public final class GuiLightExtension implements IModelRenderExtension {
 
     /**
-     * 当前线程的 GL_LIGHTING 变更标记：{@code true} 表示 {@code beforePart} 修改了
-     * GL_LIGHTING 状态，{@code afterPart} 需要恢复。
+     * Flag indicating whether {@code GL_LIGHTING} was changed by {@code beforePart} on current thread:
+     * {@code true} means {@code afterPart} must restore it.
      *
-     * <p>线程局部（ThreadLocal）：渲染路径可从任意线程进入（如 Beddium 多线程区块编译），
-     * 实例字段跨线程共享会导致各线程的 beforePart/afterPart 状态互相覆盖。
+     * <p>Thread-local: rendering may enter from any thread (e.g. Beddium multithreaded chunk compilation);
+     * sharing instance fields across threads would cause beforePart/afterPart state interference.</p>
      */
     private final ThreadLocal<Boolean> changedLighting = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
@@ -48,27 +49,24 @@ public final class GuiLightExtension implements IModelRenderExtension {
     @SuppressWarnings("deprecation")
     public void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
 
-        // 破坏贴花阶段不管理 GL_LIGHTING：原版破坏批次（drawBlockDamageTexture）
-        // 的 GL 状态由外层统一管理，gui_light 对破坏贴图无意义。
-        // Destroy-texture pass: GL_LIGHTING is owned by the vanilla destroy batch,
-        // gui_light does not apply to the crack overlay.
+        // Block destroy phase does not manage GL_LIGHTING: vanilla destroy batch (drawBlockDamageTexture)
+        // owns GL state; gui_light is irrelevant to crack overlay.
         if (phase == RenderPhase.BLOCK_DESTROY) {
             changedLighting.set(Boolean.FALSE);
             return;
         }
 
-        // 附着阶段（手持 / 头部槽）不应用 GL_LIGHTING（对标 1.7.10 RenderItem 物品路径的
-        // glDisable(GL_LIGHTING) 语义）：物品恒定亮度、不随外部光源变化，
-        // 即使 gui_light="side" 也强制关闭，避免附着物品受场景方向光照影响。
-        // Attached item phases (hand / head slot) always disable GL_LIGHTING
-        // so items ignore scene lighting.
+        // Attached item phases (hand/head slot) always disable GL_LIGHTING (matching 1.7.10 RenderItem
+        // glDisable(GL_LIGHTING) semantics): items use constant lighting independent of scene lights;
+        // even if gui_light="side", force disable to prevent attached items from being affected by
+        // directional scene lighting.
         if (phase.isAttachedItemPhase()) {
             changedLighting.set(Boolean.TRUE);
             GL11.glDisable(GL11.GL_LIGHTING);
             return;
         }
 
-        // 方块渲染：按模型 gui_light 字段决定
+        // Block rendering: decide based on model's gui_light field
         boolean frontLight = needsFrontLighting(allQuads);
         if (frontLight) {
             changedLighting.set(Boolean.TRUE);
@@ -82,14 +80,14 @@ public final class GuiLightExtension implements IModelRenderExtension {
     public void apply(RenderContext ctx) {
         String guiLight = ctx.quad.guiLight;
 
-        // "front" 光照模式：无方向阴影，所有面均匀受光
+        // "front" lighting: no directional shading, all faces receive uniform lighting
         if ("front".equals(guiLight)) {
             ctx.shade = 1.0f;
             return;
         }
 
-        // "side" 或 null：保留默认方向阴影（由 CardinalLighting.byFace 计算）
-        // 注意：不修改 ctx.quad.guiLight，避免副作用影响其他渲染通道
+        // "side" or null: preserve default directional shading (computed by CardinalLighting.byFace)
+        // Note: do not modify ctx.quad.guiLight to avoid side effects on other rendering paths
     }
 
     @Override
@@ -101,8 +99,9 @@ public final class GuiLightExtension implements IModelRenderExtension {
     }
 
     /**
-     * 检查模型的 quads 是否需要正面光照（{@code gui_light = "front"}）。
-     * 根据原版惯例，只需检查第一个 quad 的 guiLight 即可判定整个模型的光照模式。
+     * Check if quads of the model need front lighting ({@code gui_light = "front"}).
+     * Following vanilla convention, checking the first quad's guiLight is sufficient to determine
+     * the lighting mode for the entire model.
      */
     private static boolean needsFrontLighting(List<BakedQuad> quads) {
         if (quads == null || quads.isEmpty()) return false;

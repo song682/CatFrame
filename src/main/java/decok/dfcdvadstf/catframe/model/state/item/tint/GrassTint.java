@@ -4,16 +4,17 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import net.minecraft.item.ItemStack;
 
 /**
- * 生物群系植物颜色 tint（草、树叶等）。
+ * Biome grass color tint (grass, leaves, etc.).
  * <p>
- * 1.7.10 中通过 {@code net.minecraft.world.biome.BiomeGenBase#getBiomeGrassColor}
- * 获取。初版返回默认草色 {@code 0x7CBD6B}。
+ * In 1.7.10, the color is obtained from
+ * {@code net.minecraft.world.biome.BiomeGenBase#getBiomeGrassColor}. This initial version
+ * returns the default grass color {@code 0x7CBD6B}.
  */
 public class GrassTint implements ItemTint {
 
     @Override
     public int compute(ItemStack stack, RenderPhase phase) {
-        // TODO: 根据玩家位置查询生物群系草色
+        // TODO: Query the biome grass color based on the player's position
         return 0x7CBD6B;
     }
 }

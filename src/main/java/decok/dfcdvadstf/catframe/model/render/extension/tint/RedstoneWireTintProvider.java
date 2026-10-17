@@ -7,13 +7,15 @@ import net.minecraft.init.Blocks;
 import net.minecraft.world.IBlockAccess;
 
 /**
- * 红石线方块染色：复刻 1.7.10 {@code RenderBlocks#renderBlockRedstoneWire} 的
- * {@code setColorOpaque_F(f1, f2, f3)} 颜色计算，使信号强度（power）变化时
- * 红石线从深红（power=0，f1=0.3）渐变到亮红（power=15，f1=1.0）。
+ * Redstone wire block tinting: replicates the {@code setColorOpaque_F(f1, f2, f3)}
+ * colour computation of 1.7.10 {@code RenderBlocks#renderBlockRedstoneWire}, so that
+ * as the signal strength (power) changes, the redstone wire fades from dark red
+ * (power=0, f1=0.3) to bright red (power=15, f1=1.0).
  * <p>
- * 1.7.10 的红石线纹理（redstone_dust_cross/line）本身是白色灰度，
- * 颜色完全由顶点色提供；模型 face 上的 {@code "tintindex": 0} 经本 provider
- * 注入该顶点色，实现与原版一致的亮度渐变。
+ * The 1.7.10 redstone wire textures (redstone_dust_cross/line) are white greyscale
+ * themselves, and the colour is provided entirely by the vertex colour; the
+ * {@code "tintindex": 0} on the model face injects that vertex colour through this
+ * provider, reproducing the same brightness gradient as vanilla.
  */
 @SideOnly(Side.CLIENT)
 public final class RedstoneWireTintProvider implements IBlockTintProvider {
@@ -21,7 +23,7 @@ public final class RedstoneWireTintProvider implements IBlockTintProvider {
     @Override
     public int getTint(IBlockAccess world, int x, int y, int z, Block block, int tintIndex) {
         if (world == null || block != Blocks.redstone_wire) {
-            // 无世界上下文：按 power=0 的深红兜底
+            // No world context: fall back to the power=0 dark red
             return 0x4D0000;
         }
         int meta = world.getBlockMetadata(x, y, z);

@@ -7,30 +7,31 @@ import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import javax.annotation.Nullable;
 
 /**
- * 方块世界路径的图集门禁（对标 26.1.2 {@code SimpleModelWrapper.bake}
- * 的 forbiddenSprites 拒收）。
+ * Atlas gate for the block world path (aligned with the forbiddenSprites rejection in
+ * 26.1.2 {@code SimpleModelWrapper.bake}).
  * <p>
- * blockstate 包装层的模型若含非 blocks 图集的 sprite，整个模型拒收、
- * 记录警告并替换为 {@code builtin/missing}（missingno）——世界渲染路径
- * 恒绑 blocks 图集，跨图集 quad 的 UV 会采样到错误区域。
- * 物品路径（ItemStateModel 直连烘焙）不受限，允许任意图集。
+ * If a model in the blockstate wrapper layer contains a sprite from an atlas other than blocks,
+ * the entire model is rejected, a warning is logged, and it is replaced with {@code builtin/missing}
+ * (missingno) — the world render path is always bound to the blocks atlas, so the UVs of a
+ * cross-atlas quad would sample the wrong region.
+ * The item path (ItemStateModel, baked directly) is not restricted and may use any atlas.
  */
 public final class AtlasGuard {
 
     private AtlasGuard() {
     }
 
-    /** 懒烘焙缓存的 builtin/missing 替换部件。 */
+    /** Lazily baked cache of the builtin/missing replacement part. */
     @Nullable
     private static BlockStateModelPart missingPart;
 
     /**
-     * 门禁检查：部件全部 quad 均来自 blocks 图集时原样放行，
-     * 否则拒收并返回 missing 部件。
+     * Gate check: passes the part through unchanged when all of its quads come from the blocks atlas;
+     * otherwise rejects it and returns the missing part.
      *
-     * @param part      待检部件（可为 null，原样返回）
-     * @param modelPath 模型路径（仅用于警告日志）
-     * @return 放行的原部件，或替换用的 missing 部件
+     * @param part      the part to check (may be null, returned as-is)
+     * @param modelPath model path (used only for the warning log)
+     * @return the original part passed through, or the replacement missing part
      */
     @Nullable
     public static BlockStateModelPart gate(@Nullable BlockStateModelPart part, String modelPath) {

@@ -4,14 +4,15 @@ import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 
 /**
- * 模型渲染扩展注册门面 —— 外部模组注册 {@link IModelRenderExtension} 的<b>唯一对外入口</b>。
+ * Model render extension registration facade — the <b>single external entry point</b>
+ * through which external mods register an {@link IModelRenderExtension}.
  * <p>
- * 委托给内部 {@link ModelRenderRegistry}（该类的注册面标注为内部实现）。
- * 注册契约与 v0.5+ 一致：优先级越小越先执行（默认 {@code 0}，内建扩展基址
- * {@code -1000} 位于链头），同优先级按注册顺序稳定排列，重复注册 = 更新优先级。
- * <p>
- * Facade for registering render extensions; the single external entry point
- * delegating to the internal registry.
+ * Delegates to the internal {@link ModelRenderRegistry} (that class's registration
+ * surface is marked as an internal implementation). The registration contract matches
+ * v0.5+: a lower priority executes first (default {@code 0}; the built-in extension
+ * base {@code -1000} sits at the head of the chain), equal priorities are ordered
+ * stably by registration order, and re-registering the same instance = updating its
+ * priority.
  */
 public final class ModelRenderExtensions {
 
@@ -19,33 +20,35 @@ public final class ModelRenderExtensions {
     }
 
     /**
-     * 注册一个自定义渲染扩展（默认优先级 0，追加到同组链尾）。模组应在客户端 init 阶段调用。
-     * 同一实例重复注册 = 以最后一次调用的优先级重新定位。
+     * Registers a custom render extension (default priority 0, appended to the tail of
+     * its group). Mods should call this during the client init stage. Re-registering
+     * the same instance = relocating it with the priority of the last call.
      */
     public static void register(IModelRenderExtension ext) {
         ModelRenderRegistry.register(ext);
     }
 
     /**
-     * 以显式优先级注册渲染扩展。优先级越小越先执行，同优先级按注册顺序稳定排列。
-     * 同一实例重复注册 = 更新优先级并重新定位。
+     * Registers a render extension with an explicit priority. A lower priority executes
+     * first; equal priorities are ordered stably by registration order. Re-registering
+     * the same instance = updating its priority and relocating it.
      *
-     * @param ext      渲染扩展（null 忽略）
-     * @param priority 优先级（负值可插入内建扩展之前）
+     * @param ext      render extension (null is ignored)
+     * @param priority priority (a negative value can insert before built-in extensions)
      */
     public static void register(IModelRenderExtension ext, int priority) {
         ModelRenderRegistry.register(ext, priority);
     }
 
     /**
-     * 取消注册一个扩展。
+     * Unregisters an extension.
      */
     public static void unregister(IModelRenderExtension ext) {
         ModelRenderRegistry.unregister(ext);
     }
 
     /**
-     * 当前已注册的扩展数（含内建）。
+     * Number of currently registered extensions (including built-in ones).
      */
     public static int size() {
         return ModelRenderRegistry.size();

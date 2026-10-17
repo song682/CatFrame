@@ -8,29 +8,31 @@ import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import java.util.List;
 
 /**
- * 模组可注册的渲染扩展接口。每个被烘焙的 quad 在送进 Tessellator 之前，
- * 都会按优先级（同优先级按注册顺序）遍历所有扩展，每个扩展通过修改 {@link RenderContext} 字段
- * 来影响最终渲染（着色、亮度、是否剔除等）。
+ * Render extension interface that mods can register. Before each baked quad is sent to Tessellator,
+ * all extensions are traversed in priority order (extensions with equal priority are traversed in
+ * registration order). Each extension affects the final render (coloring, brightness, culling, etc.)
+ * by modifying fields in {@link RenderContext}.
  * <p>
- * <b>线程安全约定（v0.5+）</b>：渲染路径可在任意线程进入（如 Beddium 多线程区块编译），
- * 扩展实例不得持有跨线程共享的可变状态；per-part 临时数据请使用 ThreadLocal 或写入
- * {@link RenderContext}。扩展链对单个扩展的异常做了隔离，不会拖死整场渲染。
+ * <b>Thread safety contract (v0.5+)</b>: the render path may enter from any thread (e.g., Beddium
+ * multithreaded chunk compilation). Extension instances must not hold cross-thread mutable shared
+ * state; use ThreadLocal for per-part temporary data or write to {@link RenderContext}. The extension
+ * chain isolates exceptions from individual extensions so they do not break the entire render.
  *
- * <h3>生命周期</h3>
+ * <h3>Lifecycle</h3>
  * <ol>
- *   <li>{@link #beforePart(List, RenderPhase)} — 处理一组 quad 之前调用一次，
- *       适用于 GL 状态设置等全局操作。</li>
- *   <li>{@link #apply(RenderContext)} — 对每个 quad 依次调用。</li>
- *   <li>{@link #afterPart()} — 一组 quad 全部处理完后调用一次，
- *       适用于 GL 状态恢复等清理操作。</li>
+ *   <li>{@link #beforePart(List, RenderPhase)} — called once before processing a group of quads;
+ *       suitable for global operations like setting GL state.</li>
+ *   <li>{@link #apply(RenderContext)} — called for each quad in order.</li>
+ *   <li>{@link #afterPart()} — called once after all quads in the group have been processed;
+ *       suitable for cleanup like restoring GL state modified in beforePart.</li>
  * </ol>
  *
- * <p>除了 {@link #apply(RenderContext)} 为强制实现外，其余两个方法都有默认空实现，
- * 扩展只需按需覆写。
+ * <p>Only {@link #apply(RenderContext)} is mandatory; the other two methods have empty default
+ * implementations, so extensions only override what they need.
  *
- * <h3>常见用法示例</h3>
+ * <h3>Usage examples</h3>
  * <pre>{@code
- * // 1. 让某种方块顶面叠加一层暖色（仅世界渲染）
+ * // 1. Add a warm tint to the top face of a specific block (block world only)
  * ModelRenderExtensions.register(ctx -> {
  *     if (ctx.phase != RenderPhase.BLOCK_WORLD) return;
  *     if (ctx.block != MyBlocks.LAVA_ROCK) return;
@@ -38,12 +40,12 @@ import java.util.List;
  *     ctx.mulColor(0xFFAA66);
  * });
  *
- * // 2. 自定义阴影：所有手持物品亮度降一半
+ * // 2. Custom lighting: halve brightness for all held items
  * ModelRenderExtensions.register(ctx -> {
  *     if (ctx.phase.isHandPhase()) ctx.brightnessOverride = 0x800080;
  * });
  *
- * // 3. 面剔除：当 quad 朝向北侧且北侧邻居是不透明方块时不渲染
+ * // 3. Face culling: skip rendering if the quad faces north and the neighbor to the north is an opaque block
  * ModelRenderExtensions.register(ctx -> {
  *     if (ctx.phase != RenderPhase.BLOCK_WORLD) return;
  *     if (ctx.quad.face != Direction.NORTH) return;
@@ -54,36 +56,36 @@ import java.util.List;
 public interface IModelRenderExtension {
 
     /**
-     * 处理一组 quad 之前的生命周期回调。在遍历 quad 列表前调用一次。
+     * Lifecycle callback before processing a group of quads. Called once before traversing the quad list.
      * <p>
-     * 适用于需要在处理所有 quad 之前执行的全局操作，
-     * 例如检测模型光照模式并设置 GL_LIGHTING 状态。
+     * Suitable for global operations that need to run before processing any quad, e.g. detecting model
+     * lighting mode and setting GL_LIGHTING state.
      *
-     * @param allQuads 当前部件的所有 BakedQuad
-     * @param phase    当前渲染阶段
-     * @param part     当前渲染的 BlockStateModelPart（提供 part 级别元数据）
+     * @param allQuads all BakedQuad in the current part
+     * @param phase    current render phase
+     * @param part     current BlockStateModelPart being rendered (provides part-level metadata)
      */
     default void beforePart(List<BakedQuad> allQuads, RenderPhase phase, BlockStateModelPart part) {
     }
 
     /**
-     * 处理单个 quad 的上下文。
-     * 若设置了 {@link RenderContext#skip skip=true}，后续扩展将被跳过且该 quad 不渲染。
+     * Process context for a single quad.
+     * If {@link RenderContext#skip skip=true} is set, subsequent extensions are skipped and this quad is not rendered.
      */
     void apply(RenderContext ctx);
 
     /**
-     * 一组 quad 全部处理完后的生命周期回调。
+     * Lifecycle callback after all quads in the group have been processed.
      * <p>
-     * 适用于需要在处理完所有 quad 之后执行的清理操作，
-     * 例如恢复 {@code beforePart} 中修改的 GL 状态。
+     * Suitable for cleanup operations that need to run after processing all quads, e.g. restoring
+     * GL state modified in {@code beforePart}.
      */
     default void afterPart() {
     }
 
     /**
-     * 旧版两参数 beforePart，默认委托给三参数版本（part=null）。
-     * 实现类应优先覆写 {@link #beforePart(List, RenderPhase, BlockStateModelPart)}。
+     * Legacy two-argument beforePart; defaults to delegating to the three-argument version (part=null).
+     * Implementations should override {@link #beforePart(List, RenderPhase, BlockStateModelPart)} instead.
      */
     default void beforePart(List<BakedQuad> allQuads, RenderPhase phase) {
         beforePart(allQuads, phase, null);

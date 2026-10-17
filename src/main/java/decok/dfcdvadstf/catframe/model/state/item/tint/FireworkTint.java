@@ -4,13 +4,14 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import net.minecraft.item.ItemStack;
 
 /**
- * 烟火之星颜色平均 tint。
- * <p>1.7.10 中从烟火之星 NBT 读取颜色数组并平均。初版占位返回白色。
+ * Average color tint of fireworks stars.
+ * <p>In 1.7.10, the color array is read from the fireworks star NBT and averaged. This
+ * initial placeholder returns white.
  */
 public class FireworkTint implements ItemTint {
     @Override
     public int compute(ItemStack stack, RenderPhase phase) {
-        // TODO: 从 Fireworks/Explosion NBT 读取颜色并平均
+        // TODO: Read colors from Fireworks/Explosion NBT and average them
         return 0xFFFFFF;
     }
 }

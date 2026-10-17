@@ -6,24 +6,24 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * 块状态定义管理器。类似于 26.1 的 {@code StateDefinition<Block, BlockState>}。
+ * Block state definition manager. Similar to 26.1's {@code StateDefinition<Block, BlockState>}.
  *
- * <p>管理一个所属者（通常是 Block）的所有属性和状态组合。
- * 通过 {@link Builder} 模式构建：
+ * <p>Manages all the properties and state combinations of an owner (usually a Block).
+ * Built via the {@link Builder} pattern:
  * <ol>
- *   <li>定义属性（{@link Builder#add(Property[])}）</li>
- *   <li>创建所有状态的笛卡尔积，预计算邻居跳表（{@link Builder#create()}）</li>
- *   <li>运行时通过 {@link BlockState#setValue} O(1) 状态转换</li>
+ *   <li>Define properties ({@link Builder#add(Property[])})</li>
+ *   <li>Create the cartesian product of all states and precompute the neighbor jump table ({@link Builder#create()})</li>
+ *   <li>Perform O(1) state transitions at runtime via {@link BlockState#setValue}</li>
  * </ol>
  *
- * <h3>构建算法</h3>
+ * <h3>Construction algorithm</h3>
  * <ul>
- *   <li><b>无属性</b>：1 个状态（单例）</li>
- *   <li><b>1 个属性 N 个值</b>：N 个状态，邻居跳表大小为 1×N</li>
- *   <li><b>多属性</b>：笛卡尔积，邻居跳表大小 N_(props)×N_(values_each)</li>
+ *   <li><b>No properties</b>: 1 state (singleton)</li>
+ *   <li><b>1 property with N values</b>: N states, neighbor jump table size 1×N</li>
+ *   <li><b>Multiple properties</b>: cartesian product, neighbor jump table size N_(props)×N_(values_each)</li>
  * </ul>
  *
- * @param <O> 所属者类型（通常是 Block）
+ * @param <O> the owner type (usually Block)
  */
 public final class BlockStateDefinition<O> {
 
@@ -33,32 +33,33 @@ public final class BlockStateDefinition<O> {
     private final Map<Property<?>, Integer> propertyIndex;
     private final BlockState defaultState;
 
-    // 由 Builder.create() 回填的 meta 编解码相关字段
-    // dynamicFlags[i]：属性 i 是否为动态属性（运行时从世界计算，不参与 meta 解码）
+    // Meta encode/decode related fields backfilled by Builder.create()
+    // dynamicFlags[i]: whether property i is a dynamic property (computed at runtime from the world, not involved in meta decoding)
     private boolean[] dynamicFlags;
-    // 静态属性（参与 meta 解码），保持声明顺序
+    // Static properties (involved in meta decoding), kept in declaration order
     private Property<?>[] staticProperties;
-    // meta 编解码器；为 null 时使用静态属性的笛卡尔积自然编码
+    // Meta codec; when null, uses the natural cartesian-product encoding of the static properties
     private MetaCodec metaCodec;
-    // 常驻表：resolvedByMeta[meta] 直接给出 meta 对应的 CatBlockState（长度 16）
+    // Resident table: resolvedByMeta[meta] directly yields the CatBlockState for that meta (length 16)
     private BlockState[] resolvedByMeta;
 
     /**
-     * meta 编解码器。仅负责把 metadata 解码为「静态属性」的值数组
-     * （按静态属性声明顺序），动态属性不参与。
+     * Meta codec. Only responsible for decoding metadata into the value array of the
+     * "static properties" (in static property declaration order); dynamic properties do
+     * not participate.
      */
     @FunctionalInterface
     public interface MetaCodec {
         /**
-         * 从 metadata 解出静态属性值。
+         * Decodes the static property values from metadata.
          *
-         * @param meta 方块 metadata（0-15）
-         * @return 按静态属性声明顺序排列的值数组
+         * @param meta the block metadata (0-15)
+         * @return the value array ordered by static property declaration order
          */
         Comparable<?>[] decode(int meta);
     }
 
-    // 由 Builder.create() 调用
+    // Called by Builder.create()
     BlockStateDefinition(O owner, Property<?>[] properties,
                          BlockState[] allStates,
                          Map<Property<?>, Integer> propertyIndex,
@@ -70,24 +71,24 @@ public final class BlockStateDefinition<O> {
         this.defaultState = defaultState;
     }
 
-    // ==================== 查询 ====================
+    // ==================== Queries ====================
 
     /**
-     * 返回所属者。
+     * Returns the owner.
      */
     public O getOwner() {
         return owner;
     }
 
     /**
-     * 返回所有已定义的属性数组。
+     * Returns the array of all defined properties.
      */
     public Property<?>[] getProperties() {
         return properties;
     }
 
     /**
-     * 返回指定属性在属性数组中的索引。
+     * Returns the index of the given property in the property array.
      */
     public int getPropertyIndex(Property<?> prop) {
         Integer idx = propertyIndex.get(prop);
@@ -98,53 +99,53 @@ public final class BlockStateDefinition<O> {
     }
 
     /**
-     * 返回默认状态（第一个状态，所有属性取第一个值）。
+     * Returns the default state (the first state, with all properties at their first value).
      */
     public BlockState any() {
         return defaultState;
     }
 
     /**
-     * 返回所有预创建的状态实例（不可修改）。
+     * Returns all pre-created state instances (unmodifiable).
      */
     public List<BlockState> getAllStates() {
         return Collections.unmodifiableList(Arrays.asList(allStates));
     }
 
     /**
-     * 返回状态总数。
+     * Returns the total state count.
      */
     public int getStateCount() {
         return allStates.length;
     }
 
     /**
-     * 检查是否有任何已定义的属性。
+     * Checks whether there is any defined property.
      */
     public boolean hasProperties() {
         return properties.length > 0;
     }
 
     /**
-     * 检查是否只有一个状态（无属性或单值）。
+     * Checks whether there is only one state (no properties or a single value).
      */
     public boolean isSingletonState() {
         return allStates.length == 1;
     }
 
     /**
-     * 返回属性数量。
+     * Returns the property count.
      */
     public int getPropertyCount() {
         return properties.length;
     }
 
     /**
-     * 根据属性值组合查找对应的 CatBlockState。
+     * Finds the corresponding CatBlockState by a combination of property values.
      *
-     * @param values 按属性数组顺序对应的值
-     * @return 匹配的 CatBlockState
-     * @throws IllegalArgumentException 如果找不到匹配的状态
+     * @param values the values corresponding to the property array order
+     * @return the matching CatBlockState
+     * @throws IllegalArgumentException if no matching state is found
      */
     @SuppressWarnings("unchecked")
     public BlockState findState(Comparable<?>... values) {
@@ -169,10 +170,11 @@ public final class BlockStateDefinition<O> {
         return idx;
     }
 
-    // ==================== meta 编解码 / 常驻表 ====================
+    // ==================== meta encode/decode / resident table ====================
 
     /**
-     * 返回指定属性是否为动态属性（运行时从世界计算，不参与 meta 解码）。
+     * Returns whether the given property is a dynamic property (computed at runtime from
+     * the world, not involved in meta decoding).
      */
     public boolean isDynamic(Property<?> prop) {
         Integer idx = propertyIndex.get(prop);
@@ -180,19 +182,21 @@ public final class BlockStateDefinition<O> {
     }
 
     /**
-     * 返回参与 meta 解码的静态属性数组（声明顺序）。
+     * Returns the array of static properties involved in meta decoding (declaration order).
      */
     public Property<?>[] getStaticProperties() {
         return staticProperties;
     }
 
     /**
-     * 返回 meta 编解码器；未设置时为 {@code null}（使用静态属性的笛卡尔积自然编码）。
+     * Returns the meta codec; {@code null} when unset (uses the natural cartesian-product
+     * encoding of the static properties).
      * <p>
-     * 供 {@link BlockStateInheritance} 提取片段 codec 使用：子类继承父类状态定义时
-     * 需要把各片段的 codec 按位域拼接组合。
+     * Used by {@link BlockStateInheritance} to extract a fragment codec: when a subclass
+     * inherits a superclass state definition, the codecs of the fragments must be spliced
+     * and combined by bit field.
      *
-     * @return meta 编解码器，或 {@code null}
+     * @return the meta codec, or {@code null}
      */
     @Nullable
     public MetaCodec getMetaCodec() {
@@ -200,11 +204,12 @@ public final class BlockStateDefinition<O> {
     }
 
     /**
-     * 根据 metadata 查表得到对应的常驻 CatBlockState。
-     * <p>动态属性取默认值（第一个值），运行时可再通过 {@link BlockState#setValue} O(1) 跳转。
+     * Looks up the corresponding resident CatBlockState by metadata.
+     * <p>Dynamic properties take their default values (first value) and can be jumped to at
+     * runtime in O(1) via {@link BlockState#setValue}.
      *
-     * @param meta 方块 metadata（0-15）
-     * @return 该 meta 对应的常驻状态
+     * @param meta the block metadata (0-15)
+     * @return the resident state corresponding to that meta
      */
     public BlockState getStateFromMeta(int meta) {
         if (resolvedByMeta != null) {
@@ -218,7 +223,7 @@ public final class BlockStateDefinition<O> {
                 ? metaCodec.decode(meta)
                 : defaultDecode(meta);
 
-        // 拼出完整属性值数组：静态属性取解码值，动态属性取默认值
+        // Assemble the full property value array: static properties take decoded values, dynamic properties take default values
         Comparable<?>[] full = new Comparable<?>[properties.length];
         int si = 0;
         for (int i = 0; i < properties.length; i++) {
@@ -232,7 +237,8 @@ public final class BlockStateDefinition<O> {
     }
 
     /**
-     * 缺省 meta 解码：把 meta 当作静态属性的笛卡尔积自然索引（最后一个属性变化最快）。
+     * Default meta decoding: treats meta as the natural cartesian-product index of the
+     * static properties (the last property changes fastest).
      */
     private Comparable<?>[] defaultDecode(int meta) {
         Property<?>[] statics = staticProperties;
@@ -251,14 +257,14 @@ public final class BlockStateDefinition<O> {
     // ==================== Builder ====================
 
     /**
-     * BlockStateDefinition 的构建器。使用
+     * Builder for BlockStateDefinition. Use
      * <pre>{@code
      * BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<>(myBlock)
      *     .add(TYPE, WATERLOGGED)
      *     .create();
      * }</pre>
      *
-     * @param <O> 所属者类型
+     * @param <O> the owner type
      */
     public static class Builder<O> {
 
@@ -269,7 +275,7 @@ public final class BlockStateDefinition<O> {
         private MetaCodec metaCodec;
 
         /**
-         * @param owner 状态定义的所属者（如 Block 实例）
+         * @param owner the owner of the state definition (e.g. a Block instance)
          */
         public Builder(O owner) {
             if (owner == null) {
@@ -279,11 +285,11 @@ public final class BlockStateDefinition<O> {
         }
 
         /**
-         * 添加一个或多个属性。属性名称不能重复。
+         * Adds one or more properties. Property names must not be duplicated.
          *
-         * @param properties 要添加的属性
-         * @return 此 Builder 实例（链式调用）
-         * @throws IllegalArgumentException 如果属性名重复
+         * @param properties the properties to add
+         * @return this Builder instance (chainable)
+         * @throws IllegalArgumentException if a property name is duplicated
          */
         public Builder<O> add(Property<?>... properties) {
             for (Property<?> prop : properties) {
@@ -296,12 +302,14 @@ public final class BlockStateDefinition<O> {
         }
 
         /**
-         * 标记一个或多个属性为「动态属性」（运行时从世界计算，不参与 meta 解码）。
-         * <p>动态属性仍需先通过 {@link #add(Property[])} 添加，以保证参与笛卡尔积与跳表。
-         * 典型用例：stairs 的 {@code shape}、pane 的 {@code north/east/south/west}。
+         * Marks one or more properties as "dynamic properties" (computed at runtime from the
+         * world, not involved in meta decoding).
+         * <p>Dynamic properties must still be added first via {@link #add(Property[])} so that
+         * they participate in the cartesian product and jump table. Typical use cases: a
+         * stair's {@code shape}, a pane's {@code north/east/south/west}.
          *
-         * @param properties 要标记为动态的属性
-         * @return 此 Builder 实例（链式调用）
+         * @param properties the properties to mark as dynamic
+         * @return this Builder instance (chainable)
          */
         public Builder<O> dynamic(Property<?>... properties) {
             Collections.addAll(dynamicProps, properties);
@@ -309,11 +317,12 @@ public final class BlockStateDefinition<O> {
         }
 
         /**
-         * 设置非规则 meta 编码的解码器（如 log 的 wood+axis、slab 的 half+variant）。
-         * 不设置时默认用静态属性的笛卡尔积自然编码。
+         * Sets the decoder for non-regular meta encoding (e.g. a log's wood+axis, a slab's
+         * half+variant). When unset, defaults to the natural cartesian-product encoding of
+         * the static properties.
          *
-         * @param codec meta 解码器
-         * @return 此 Builder 实例（链式调用）
+         * @param codec the meta decoder
+         * @return this Builder instance (chainable)
          */
         public Builder<O> metaCodec(MetaCodec codec) {
             this.metaCodec = codec;
@@ -321,41 +330,42 @@ public final class BlockStateDefinition<O> {
         }
 
         /**
-         * 构建 BlockStateDefinition。计算所有状态组合的笛卡尔积并构建邻居跳表。
+         * Builds the BlockStateDefinition. Computes the cartesian product of all state
+         * combinations and builds the neighbor jump table.
          *
-         * @return 新的 BlockStateDefinition 实例
+         * @return a new BlockStateDefinition instance
          */
         public BlockStateDefinition<O> create() {
             int propCount = props.size();
             Property<?>[] properties = props.toArray(new Property<?>[0]);
 
-            // 计算属性索引映射
+            // Compute the property index mapping
             Map<Property<?>, Integer> propIndexMap = new HashMap<>();
             for (int i = 0; i < propCount; i++) {
                 propIndexMap.put(properties[i], i);
             }
 
-            // 计算每个属性的值数量
+            // Compute the value count of each property
             int[] valueCounts = new int[propCount];
             for (int i = 0; i < propCount; i++) {
                 valueCounts[i] = properties[i].getValueCount();
             }
 
-            // 总状态数 = 各属性值数量的乘积
+            // Total state count = product of each property's value count
             int totalStates = 1;
             for (int c : valueCounts) {
                 totalStates *= c;
             }
 
-            // 创建所有状态
+            // Create all states
             BlockState[] states = new BlockState[Math.max(totalStates, 1)];
             Comparable<?>[][] allValues = new Comparable<?>[states.length][propCount];
 
             if (propCount == 0) {
-                // 无属性：单例
+                // No properties: singleton
                 states[0] = new BlockState(null, new Comparable<?>[0]);
             } else {
-                // 使用计数器生成所有值组合（最后一个属性变化最快）
+                // Use counters to generate all value combinations (the last property changes fastest)
                 int[] counters = new int[propCount];
                 for (int stateIdx = 0; stateIdx < totalStates; stateIdx++) {
                     for (int p = 0; p < propCount; p++) {
@@ -363,7 +373,7 @@ public final class BlockStateDefinition<O> {
                     }
                     states[stateIdx] = new BlockState(null, allValues[stateIdx]);
 
-                    // 递增计数器
+                    // Increment the counters
                     for (int p = propCount - 1; p >= 0; p--) {
                         counters[p]++;
                         if (counters[p] < valueCounts[p]) break;
@@ -372,7 +382,7 @@ public final class BlockStateDefinition<O> {
                 }
             }
 
-            // 计算 stride（用于 O(1) 邻居定位）
+            // Compute strides (for O(1) neighbor location)
             int[] strides = new int[propCount];
             if (propCount > 0) {
                 strides[propCount - 1] = 1;
@@ -381,10 +391,10 @@ public final class BlockStateDefinition<O> {
                 }
             }
 
-            // 构建邻居跳表
+            // Build the neighbor jump table
             BlockStateDefinition<O> definition = new BlockStateDefinition<>(owner, properties, states, propIndexMap, states[0]);
 
-            // 回填 meta 编解码相关字段
+            // Backfill meta encode/decode related fields
             definition.metaCodec = this.metaCodec;
             definition.dynamicFlags = new boolean[propCount];
             List<Property<?>> staticList = new ArrayList<>(propCount);
@@ -397,8 +407,8 @@ public final class BlockStateDefinition<O> {
             }
             definition.staticProperties = staticList.toArray(new Property<?>[0]);
 
-            // [C2 修复] 回填 definition 到所有 CatBlockState 实例
-            // （创建 CatBlockState 时 definition 为 null，因为 definition 尚未构建）
+            // [C2 fix] Backfill the definition into all CatBlockState instances
+            // (definition is null when the CatBlockState is created, because the definition is not yet built)
             for (BlockState s : states) {
                 s.definition = definition;
             }
@@ -411,7 +421,7 @@ public final class BlockStateDefinition<O> {
                     int valCount = valueCounts[p];
                     state.neighbors[p] = new BlockState[valCount];
 
-                    // 解码当前状态在该属性的 counter 值
+                    // Decode the counter value of the current state on this property
                     int currentCounter = 0;
                     int remaining = stateIdx;
                     for (int i = propCount - 1; i >= 0; i--) {
@@ -421,14 +431,14 @@ public final class BlockStateDefinition<O> {
                     }
 
                     for (int v = 0; v < valCount; v++) {
-                        // O(1) 计算目标状态索引
+                        // O(1) computation of the target state index
                         int delta = (v - currentCounter) * strides[p];
                         state.neighbors[p][v] = states[stateIdx + delta];
                     }
                 }
             }
 
-            // 预填常驻表 resolvedByMeta[0..15]
+            // Prefill the resident table resolvedByMeta[0..15]
             definition.resolvedByMeta = new BlockState[16];
             for (int meta = 0; meta < 16; meta++) {
                 definition.resolvedByMeta[meta] = definition.computeStateFromMeta(meta);

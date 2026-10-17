@@ -280,9 +280,10 @@ public class RenderJsonItemModel implements IItemRenderer {
         // would render attached items of distant entities with misaligned highlighting.
         EntityLivingBase holderEntity = phase.isAttachedItemPhase() ? entity : null;
 
-        // ---- per-Item 完全自绘门（对称 IItemTintProvider）----
-        // 命中注册的特殊 provider 且其接管该阶段时，直接交给 provider 自绘并跳过通用模型；
-        // 未命中则维持现行为（走 ItemStateModel 求值）。GL 环境与 preTransform 均已就绪。
+        // ---- Per-item fully custom draw gate (symmetric to IItemTintProvider) ----
+        // If a registered special provider matches and handles this phase, delegate drawing to the provider
+        // and skip the generic model; otherwise fall back to the current behavior (resolve via ItemStateModel).
+        // GL state and preTransform are ready.
         IItemRenderSpecialProvider special = SpecialRenderRegistry.getProvider(stack.getItem());
         if (special != null && special.handles(phase)) {
             if (droppedEntity != null) currentDroppedEntity = droppedEntity;

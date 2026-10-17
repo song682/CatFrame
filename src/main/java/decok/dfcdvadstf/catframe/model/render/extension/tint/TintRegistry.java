@@ -13,11 +13,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 公共"染色"便利 API：为 JSON face 中带 {@code "tintindex"} 的面提供颜色。
+ * Public "tinting" convenience API: supplies colours for JSON faces carrying a
+ * {@code "tintindex"}.
  *
- * <h3>典型用法</h3>
+ * <h3>Typical usage</h3>
  * <pre>{@code
- * // 客户端 init：
+ * // client init:
  * TintRegistry.registerBlockTint(myFoliage,
  *     (world, x, y, z, b, idx) -> BiomeGenBase
  *         .getBiomeGenAt(world.getBiomeGenForCoords(x, z))
@@ -27,12 +28,13 @@ import java.util.Map;
  *     (stack, idx) -> 0x79C05A);
  * }</pre>
  *
- * <h3>默认回退（未注册时）</h3>
+ * <h3>Default fallbacks (when not registered)</h3>
  * <ul>
- *   <li>方块：调用 {@link Block#colorMultiplier(IBlockAccess, int, int, int)}，
- *       原版草/树叶/水已经能给出正确生物群系颜色，无需额外注册。</li>
- *   <li>物品：若是 {@link ItemBlock}，回退到 {@link Block#getRenderColor(int)}，
- *       让方块物品形态自动获得默认草色等。</li>
+ *   <li>Block: calls {@link Block#colorMultiplier(IBlockAccess, int, int, int)}; vanilla
+ *       grass/leaves/water already yield the correct biome colours, so no extra
+ *       registration is needed.</li>
+ *   <li>Item: if it is an {@link ItemBlock}, falls back to {@link Block#getRenderColor(int)},
+ *       so the block item form automatically gets the default grass colour etc.</li>
  * </ul>
  */
 @SideOnly(Side.CLIENT)
@@ -48,19 +50,21 @@ public final class TintRegistry {
     private TintRegistry() {
     }
 
-    // ==================== 注册 API ====================
+    // ==================== Registration API ====================
 
     /**
-     * 注册实现 {@link IBlockTintProvider} 的实例，委托其 {@link IBlockTintProvider#register()} 完成具体注册。
-     * 对齐 {@code ModelRenderRegistry.register(new XxxExtension())} 风格。
+     * Registers an instance implementing {@link IBlockTintProvider}, delegating the actual
+     * registration to its {@link IBlockTintProvider#register()}. Mirrors the
+     * {@code ModelRenderRegistry.register(new XxxExtension())} style.
      */
     public static void register(IBlockTintProvider provider) {
         if (provider != null) provider.register();
     }
 
     /**
-     * 注册实现 {@link IItemTintProvider} 的实例，委托其 {@link IItemTintProvider#register()} 完成具体注册。
-     * 对齐 {@code ModelRenderRegistry.register(new XxxExtension())} 风格。
+     * Registers an instance implementing {@link IItemTintProvider}, delegating the actual
+     * registration to its {@link IItemTintProvider#register()}. Mirrors the
+     * {@code ModelRenderRegistry.register(new XxxExtension())} style.
      */
     public static void register(IItemTintProvider provider) {
         if (provider != null) provider.register();
@@ -106,10 +110,10 @@ public final class TintRegistry {
         return item == null ? null : ITEM_PROVIDERS.get(item);
     }
 
-    // ==================== 查询 API（供 TintRenderExtension 调用） ====================
+    // ==================== Query API (called by TintRenderExtension) ====================
 
     /**
-     * 方块染色查询。无匹配时回退到 {@link Block#colorMultiplier}。
+     * Block tint query. Falls back to {@link Block#colorMultiplier} when there is no match.
      */
     public static int getBlockTint(IBlockAccess world, int x, int y, int z,
                                    Block block, int tintIndex) {
@@ -124,7 +128,8 @@ public final class TintRegistry {
     }
 
     /**
-     * 物品染色查询。无匹配时若是 ItemBlock，回退到 {@link Block#getRenderColor}。
+     * Item tint query. Falls back to {@link Block#getRenderColor} when there is no
+     * match and the item is an ItemBlock.
      */
     public static int getItemTint(ItemStack stack, int tintIndex) {
         if (stack == null) return 0xFFFFFF;

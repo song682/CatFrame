@@ -4,7 +4,7 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import net.minecraft.item.ItemStack;
 
 /**
- * 固定 RGB 颜色 tint。
+ * Fixed RGB color tint.
  * <p>JSON: {@code {"type": "minecraft:constant", "value": 0xFF0000}}
  */
 public class ConstantTint implements ItemTint {

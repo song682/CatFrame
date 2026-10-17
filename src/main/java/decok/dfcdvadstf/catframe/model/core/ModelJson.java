@@ -37,8 +37,8 @@ public class ModelJson {
     public Boolean ambientocclusion;
 
     /**
-     * 标记此模型继承自 builtin/generated（需触发生成侧面 quad）。
-     * transient — 不由 Gson 反序列化，仅由 ModelResolver 在 resolve 时设置。
+     * Marks this model as inheriting from builtin/generated (side quads must be generated).
+     * transient — not deserialized by Gson; set only by ModelResolver during resolution.
      */
     public transient boolean builtinGenerated = false;
 
@@ -69,8 +69,8 @@ public class ModelJson {
     }
 
     /**
-     * 校验 26.3+ {@code shade_direction_override} 取值是否为 6 个方向名之一
-     * （up/down/north/south/east/west）。
+     * Validates that a 26.3+ {@code shade_direction_override} value is one of the six direction
+     * names (up/down/north/south/east/west).
      */
     private static boolean isValidShadeDirection(String name) {
         if (name == null) return false;
@@ -83,13 +83,15 @@ public class ModelJson {
     }
 
     /**
-     * 收集所有未识别键（已知键之外的键）为原样快照，保持 JSON 出现顺序。
-     * <p>未识别键只存不解释、不丢弃，供后续兼容层读取未来格式（如 26.x 新增字段）；
-     * 无未知键时返回 null（不分配）。
+     * Collects all unrecognized keys (anything beyond the known keys) as an as-is snapshot,
+     * preserving JSON order.
+     * <p>Unrecognized keys are stored but never interpreted or dropped, so compatibility layers
+     * can read future format additions (e.g. new 26.x fields); returns null (no allocation)
+     * when there are no unknown keys.
      *
-     * @param where     日志定位（model / element / face）
-     * @param obj       源 JSON 对象
-     * @param knownKeys 已解析的键名
+     * @param where     log location (model / element / face)
+     * @param obj       the source JSON object
+     * @param knownKeys the recognized key names
      */
     private static Map<String, JsonElement> collectUnknown(String where, JsonObject obj, String... knownKeys) {
         Map<String, JsonElement> raw = null;
@@ -119,26 +121,29 @@ public class ModelJson {
         public Faces faces;
 
         /**
-         * 环境光遮蔽: true(默认) 启用逐顶点 AO(采样相邻方块亮度), false 禁用 AO(自发光)
+         * Ambient occlusion: true (default) enables per-vertex AO (sampling neighboring block brightness), false disables AO (self-lit)
          */
         public Boolean ambientocclusion;
 
         /**
-         * 方向阴影: true(默认) 根据法线应用方向光照衰减(top=1.0/side=0.8/bottom=0.5), false 均匀照明
+         * Directional shading: true (default) applies directional light falloff based on normals (top=1.0/side=0.8/bottom=0.5), false gives uniform lighting
          */
         public Boolean shade;
 
         /**
-         * 26.3+ 阴影方向覆写: up/down/north/south/east/west 之一。
-         * <p>指定后该元素的所有面在计算方向阴影时不再使用面的实际朝向，而统一以本方向查表；
-         * 与 {@link #shade} 互斥（同时声明视为重复并告警，本字段优先）。
-         * 取值非法时告警并忽略（回退为按面实际朝向计算）。
+         * 26.3+ directional shading override: one of up/down/north/south/east/west.
+         * <p>When set, all faces of this element look up the directional shading from this direction
+         * instead of using each face's actual orientation; mutually exclusive with {@link #shade}
+         * (declaring both is treated as a duplicate and warned about; this field takes precedence).
+         * An invalid value is warned about and ignored (falls back to computing from each face's
+         * actual orientation).
          */
         public String shadeDirectionOverride;
 
         /**
-         * 未识别键的原样快照（已知键之外的键，不解释、不丢弃），供后续兼容层读取未来格式新增字段；
-         * 无未知键时为 null。与根级 {@link ModelJson#raw} 同一约定。
+         * As-is snapshot of unrecognized keys (anything beyond the known keys; never interpreted or
+         * dropped), so compatibility layers can read future format additions; null when there are no
+         * unknown keys. Same convention as the root-level {@link ModelJson#raw}.
          */
         public Map<String, JsonElement> raw;
     }
@@ -161,24 +166,25 @@ public class ModelJson {
         public float[] origin;
 
         /**
-         * 重新缩放标记（对应 JSON rotation 中的 "rescale"）。
-         * <p>当为 {@code true} 时，在旋转前对顶点沿各局部坐标轴应用非均匀缩放，
-         * 使旋转后的最大投影分量恢复至原始大小，补偿旋转造成的视觉收缩。
-         * 缩放因子 = 1 / max(abs(rotated_axis_unit))，以旋转中心为原点。
-         * 对齐 26.1 {@code net.minecraft.client.resources.model.cuboid.CuboidRotation#computeRescale}。
+         * Rescale flag (corresponds to "rescale" in the JSON rotation).
+         * <p>When {@code true}, a non-uniform scale is applied to the vertices along each local axis
+         * before rotating, restoring the largest projected component to its original size and
+         * compensating for the visual shrinkage caused by rotation.
+         * Scale factor = 1 / max(abs(rotated_axis_unit)), centered on the rotation origin.
+         * Aligned with 26.1 {@code net.minecraft.client.resources.model.cuboid.CuboidRotation#computeRescale}.
          */
         public boolean rescale;
 
         /**
          * Multi-axis rotation angles in degrees (one per axis).
-         * <p>高版本 Blockbench 导出的多轴旋转格式：
-         * {@code {"x": -37.5, "y": 0, "z": 0, "origin": [0,0,0]}}。
-         * 当 {@link #angle}/{@link #axis} 未指定时生效，按 X→Y→Z 顺序依次应用
-         * （对齐 26.1 {@code Quaternionf.rotationXYZ} 语义）。
-         * 支持任意角度（不限于 22.5° 倍数），支持多轴同时非零。
+         * <p>Multi-axis rotation format exported by modern Blockbench versions:
+         * {@code {"x": -37.5, "y": 0, "z": 0, "origin": [0,0,0]}}.
+         * Takes effect when {@link #angle}/{@link #axis} are unspecified, applied in X→Y→Z order
+         * (aligned with 26.1 {@code Quaternionf.rotationXYZ} semantics).
+         * Accepts any angle (not limited to multiples of 22.5°) and multiple non-zero axes at once.
          * <p>
-         * 解析优先级：先尝试 {@code angle}/{@code axis}（单轴），
-         * 若缺失则回退到 {@code x}/{@code y}/{@code z}（多轴）。
+         * Parsing priority: first try {@code angle}/{@code axis} (single-axis),
+         * falling back to {@code x}/{@code y}/{@code z} (multi-axis) when absent.
          */
         public float x, y, z;
     }
@@ -236,9 +242,9 @@ public class ModelJson {
 
             model.parent = obj.has("parent") ? obj.get("parent").getAsString() : null;
 
-            // textures: {key: value}，值均为字符串，需逐项解析
-            // 不能使用 context.deserialize(..., Map.class)：丢失泛型信息会导致
-            // Gson 将其解析为 LinkedTreeMap，而这里需要 Map<String, String>
+            // textures: {key: value}; values are all strings and must be parsed item by item
+            // context.deserialize(..., Map.class) cannot be used: losing the generic type info
+            // makes Gson parse it as a LinkedTreeMap, while Map<String, String> is required here
             if (obj.has("textures") && obj.get("textures").isJsonObject()) {
                 JsonObject texturesObj = obj.getAsJsonObject("textures");
                 model.textures = new HashMap<>();
@@ -247,9 +253,9 @@ public class ModelJson {
                 }
             }
 
-            // elements: Element 数组，需逐项指定 Element.class
-            // 不能使用 context.deserialize(..., List.class)：Gson 无法从原始类型
-            // 推断元素类型，会把每个元素解析成 LinkedTreeMap 而非 ModelJson.Element
+            // elements: an Element array; Element.class must be specified item by item
+            // context.deserialize(..., List.class) cannot be used: Gson cannot infer the element type
+            // from a raw type and would parse each element as a LinkedTreeMap instead of ModelJson.Element
             if (obj.has("elements") && obj.get("elements").isJsonArray()) {
                 JsonArray elementsArray = obj.getAsJsonArray("elements");
                 model.elements = new ArrayList<>();
@@ -270,8 +276,8 @@ public class ModelJson {
             model.ambientocclusion = obj.has("ambientocclusion")
                     ? obj.get("ambientocclusion").getAsBoolean() : null;
 
-            // display: {slot: DisplayTransform}，值需逐项指定 DisplayTransform.class
-            // 不能使用 context.deserialize(..., Map.class)：同上，会解析成 LinkedTreeMap
+            // display: {slot: DisplayTransform}; DisplayTransform.class must be specified item by item
+            // context.deserialize(..., Map.class) cannot be used: same as above, it would be parsed as a LinkedTreeMap
             if (obj.has("display") && obj.get("display").isJsonObject()) {
                 JsonObject displayObj = obj.getAsJsonObject("display");
                 model.display = new HashMap<>();
@@ -281,7 +287,7 @@ public class ModelJson {
                 }
             }
 
-            // 未识别顶层键 → raw 快照（只存不解释）
+            // Unrecognized top-level keys -> raw snapshot (stored, never interpreted)
             model.raw = collectUnknown("model", obj,
                     "parent", "textures", "elements", "texture_size", "gui_light", "display", "ambientocclusion");
 
@@ -322,7 +328,7 @@ public class ModelJson {
             element.shade = obj.has("shade")
                     ? obj.get("shade").getAsBoolean() : null;
 
-            // 26.3+: "shade_direction_override" 与旧 "shade" 互斥，同时出现时按重复声明告警（本字段优先）
+            // 26.3+: "shade_direction_override" is mutually exclusive with the legacy "shade"; declaring both triggers a duplicate-declaration warning (this field takes precedence)
             if (obj.has("shade_direction_override")) {
                 if (obj.has("shade")) {
                     CatFrame.logger.warn("[ModelJson] element declares both 'shade' and 'shade_direction_override' "
@@ -339,7 +345,7 @@ public class ModelJson {
                 }
             }
 
-            // 未识别元素键 → raw 快照（只存不解释）
+            // Unrecognized element keys -> raw snapshot (stored, never interpreted)
             element.raw = collectUnknown("element", obj,
                     "from", "to", "rotation", "faces", "ambientocclusion", "shade", "shade_direction_override");
 
@@ -428,7 +434,7 @@ public class ModelJson {
             face.cullface = obj.has("cullface") ? obj.get("cullface").getAsString() : null;
             face.tintIndex = obj.has("tintindex") ? obj.get("tintindex").getAsInt() : -1;
 
-            // 未识别面键 → raw 快照（只存不解释）
+            // Unrecognized face keys -> raw snapshot (stored, never interpreted)
             face.raw = collectUnknown("face", obj, "uv", "texture", "rotation", "cullface", "tintindex");
 
             return face;
@@ -463,7 +469,7 @@ public class ModelJson {
                 transform.scale = new float[]{scaleArray.get(0).getAsFloat(), scaleArray.get(1).getAsFloat(), scaleArray.get(2).getAsFloat()};
             }
 
-            // 未识别变换键 → raw 快照（只存不解释）
+            // Unrecognized transform keys -> raw snapshot (stored, never interpreted)
             transform.raw = collectUnknown("display transform", obj, "rotation", "translation", "scale");
 
             return transform;

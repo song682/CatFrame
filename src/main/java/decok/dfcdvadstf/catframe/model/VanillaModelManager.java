@@ -48,15 +48,15 @@ public class VanillaModelManager {
          * State-mapping mode switch (new-era format). Defaults to {@code false},
          * preserving the legacy key → model-path semantics for backward compatibility.
          * <p>
-         * 新时代 state mapping 开关，默认 {@code false}（向后兼容：保留旧版
-         * key → JSON 模型路径 的映射语义）。为 {@code true} 时，blocks/items 的值
-         * 不再是模型路径，而是 (Block/Item)State 名称：
+         * When {@code true}, the blocks/items values are no longer model paths but
+         * (Block/Item)State names:
          * <ul>
-         *   <li>blocks 值 → {@code blockstates/{value}.json}（可带 "ns:" 前缀）</li>
-         *   <li>items 值 → {@code items/{value}.json} 决策树（可带 "ns:" 前缀）</li>
+         *   <li>blocks value → {@code blockstates/{value}.json} (may carry an "ns:" prefix)</li>
+         *   <li>items value → {@code items/{value}.json} decision tree (may carry an "ns:" prefix)</li>
          * </ul>
-         * 之后走常规 state → 模型 的数据驱动管线。面向未实现 JSON 加载的旧模组：
-         * 把旧 ID 直接接入现有 state 定义，无需为每个旧 ID 单独铺模型文件。
+         * After that, the regular data-driven state → model pipeline is used. Intended for
+         * legacy mods that do not implement JSON loading: wire old IDs directly to existing
+         * state definitions without laying out a separate model file for each old ID.
          */
         public boolean state_mapping = false;
         public Map<String, String> blocks;
@@ -84,7 +84,7 @@ public class VanillaModelManager {
         }
     }
 
-    // ==================== 向后兼容内层类 (模块拆分 E3 后作为委托) ====================
+    // ==================== Backward-compatible inner classes (delegates after the E3 module split) ====================
 
     /**
      * Backward-compatible delegate to {@link ModelManagerDataLoader}.
@@ -104,48 +104,47 @@ public class VanillaModelManager {
     }
 
     /**
-     * 模型注册：异步烘焙架构下的模型注册入口。
+     * Model registration: the model registration entry under the async baking architecture.
      * <p>
-     * 不再执行同步烘焙。所有烘焙由 {@link BakedModelCache}（懒烘焙）和
-     * {@link AsyncBakePipeline}（异步预烘焙）承担。
+     * No synchronous baking is performed anymore. All baking is handled by
+     * {@link BakedModelCache} (lazy baking) and {@link AsyncBakePipeline} (async pre-baking).
      * <p>
-     * 本类职责：
+     * Responsibilities of this class:
      * <ul>
-     *   <li>物化 Models 声明式 spec（typed {@link BlockStateDefinition} 常驻表）</li>
-     *   <li>为 blockstate 创建常驻模型（{@link ResidentStateModel}）</li>
-     *   <li>为 model_mappings 创建懒模型（{@link LazySingleBlockModel}、{@link ItemStateModel}）</li>
-     *   <li>处理 BlockPane 特殊注册</li>
-     *   <li>注册 Forge IItemRenderer</li>
+     *   <li>materialize the declarative Models spec (typed {@link BlockStateDefinition} resident table)</li>
+     *   <li>create resident models for blockstates ({@link ResidentStateModel})</li>
+     *   <li>create lazy models for model_mappings ({@link LazySingleBlockModel}, {@link ItemStateModel})</li>
+     *   <li>handle BlockPane special registration</li>
+     *   <li>register the Forge IItemRenderer</li>
      * </ul>
      */
     public static class Baking {
 
-        // ==================== 模型注册入口 ====================
+        // ==================== Model registration entry ====================
 
         /**
-         * 注册所有模型（不执行烘焙）。
+         * Registers all models (does not bake).
          * <p>
-         * 在 {@link VanillaTextureTracker#onTextureStitchPost} 中调用，
-         * 此时纹理已缝合、iconMap 已通过参数传入缓存和烘焙管线，懒烘焙可正确解析纹理。
+         * Called from {@link VanillaTextureTracker#onTextureStitchPost}, when textures are
+         * already stitched and iconMap has been passed through parameters to the cache and
+         * baking pipeline, so lazy baking can resolve textures correctly.
          * <p>
-         * 替代旧系统的 {@code bakeAllModels()}。
+         * Replaces the old system's {@code bakeAllModels()}.
          */
         public static void registerAllModels() {
-            // 清空注册表（保留 persistent 项）
+            // Clear the registry (keeping persistent entries)
             ModelRegistry.registeredBlockModels.clear();
             ModelRegistry.registeredBlockRotations.clear();
             ModelRegistry.registeredItemModels.keySet()
                     .removeIf(item -> !ModelRegistry.persistentItemModels.contains(item));
-            // oversized 标记完全源自 loadedOversizedItems，下方循环会全量重建 ——
-            // 清空以避免重注册后残留过期项（如资源包移除后旧的 oversized 标记）
             // oversized flags are fully derived from loadedOversizedItems and rebuilt below —
             // clear to avoid stale entries surviving re-registration (e.g. after pack removal)
             ModelRegistry.oversizedItems.clear();
 
-            // Step 0: 物化 Models 声明式 spec（typed 常驻表 + itemFromBlockstate）
+            // Step 0: materialize the declarative Models spec (typed resident table + itemFromBlockstate)
             Models.materialize();
 
-            // Step 2: 处理 blockstates — 注册懒 BlockStateModel
+            // Step 2: process blockstates — register lazy BlockStateModel
             for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry :
                     new ArrayList<>(ModelManagerDataLoader.loadedBlockstates.entrySet())) {
                 String namespace = nsEntry.getKey();
@@ -155,14 +154,14 @@ public class VanillaModelManager {
                     BlockstateJson bs = bsEntry.getValue();
                     Block block = Utilities.findBlock(namespace, blockName);
                     if (block == null) continue;
-                    // 已被 Models 物化或先前步骤处理的方块跳过
+                    // Skip blocks already materialized by Models or handled in an earlier step
                     if (ModelRegistry.registeredBlockModels.containsKey(block)) continue;
 
                     registerResidentBlockModel(block, bs);
                 }
             }
 
-            // Step 3: 处理 model_mappings 中的 blocks（无 blockstate 的方块）
+            // Step 3: process blocks in model_mappings (blocks without a blockstate)
             for (Map.Entry<String, ModelMappings> entry :
                     ModelManagerDataLoader.loadedMappings.entrySet()) {
                 String namespace = entry.getKey();
@@ -182,11 +181,10 @@ public class VanillaModelManager {
 
                         Block block = Utilities.findBlock(namespace, blockName);
                         if (block == null) continue;
-                        // 已被 blockstate 处理的方块跳过
+                        // Skip blocks already handled by blockstate
                         if (ModelRegistry.registeredBlockModels.containsKey(block)) continue;
 
                         if (mappings.state_mapping) {
-                            // 新时代 state mapping：ID → blockstate 名，复用已加载的 state 定义
                             // New-era state mapping: ID → blockstate name, reuse the loaded state definition
                             String[] ref = parseStateRef(namespace, blockEntry.getValue());
                             Map<String, BlockstateJson> nsStates =
@@ -199,7 +197,7 @@ public class VanillaModelManager {
                             }
                             registerResidentBlockModel(block, bs);
                         } else {
-                            // legacy：使用懒单模型 —— 持有 modelPath，渲染时从 BakedModelCache 获取
+                            // legacy: use a lazy single model — holds the modelPath and fetches from BakedModelCache at render time
                             ModelRegistry.registerBlockModel(block,
                                     new LazySingleBlockModel(blockEntry.getValue()));
                         }
@@ -207,9 +205,9 @@ public class VanillaModelManager {
                 }
             }
 
-            // Step 4: 注册 item 模型
+            // Step 4: register item models
 
-            // 4a: items/ ItemState 决策树（最高优先 — 包括 ItemBlock）
+            // 4a: items/ ItemState decision tree (highest priority — includes ItemBlock)
             for (Map.Entry<String, Map<String, ItemStateNode>> nsEntry :
                     new ArrayList<>(ModelManagerDataLoader.loadedItemStates.entrySet())) {
                 String namespace = nsEntry.getKey();
@@ -221,7 +219,6 @@ public class VanillaModelManager {
 
                     ItemStateModel ism = new ItemStateModel(itemEntry.getValue());
                     ModelRegistry.registeredItemModels.put(item, ism);
-                    // 桥接：若决策树声明了 tints，注册到渲染侧 TintRegistry（由 TintRenderExtension 消费）
                     // Bridge: if the tree declares tints, register into the render-side TintRegistry
                     if (ism.hasAnyTint()) {
                         TintRegistry.registerItemTint(item, new ItemStateTintBridge(ism));
@@ -234,13 +231,13 @@ public class VanillaModelManager {
                 }
             }
 
-            // 4b: model_mappings 中的 items（跳过已被 ItemState 注册的；legacy / state mapping 双语义）
+            // 4b: items in model_mappings (skip those already registered by ItemState; dual legacy / state mapping semantics)
             for (Map.Entry<String, ModelMappings> entry :
                     ModelManagerDataLoader.loadedMappings.entrySet()) {
                 registerMappingItems(entry.getKey(), entry.getValue());
             }
 
-            // 4c: IItemStateProvider (Tier 3 接口发现 — 代码交付的决策树)
+            // 4c: IItemStateProvider (Tier 3 interface discovery — code-delivered decision trees)
             // Tier 3 interface discovery: only items that deliver a code-built tree are bound;
             // items without a tree rely on their items/{name}.json (4a) or stay on vanilla path.
             for (Map.Entry<Item, IItemStateProvider> entry : ModelManagerDataLoader.interfaceItemStates.entrySet()) {
@@ -258,10 +255,10 @@ public class VanillaModelManager {
                 CatFrame.logger.debug("[VMM] Registered IItemState: {}", registryName);
             }
 
-            // 4d: ITEM_MODEL 组件覆写（优先级最高 — 对标原版 item_model 组件）
+            // 4d: ITEM_MODEL component override (highest priority — mirrors the vanilla item_model component)
             applyItemModelOverrides(false);
 
-            // Step 5: Forge IItemRenderer 注册
+            // Step 5: Forge IItemRenderer registration
             Set<Item> registered = new HashSet<>();
             int forgeRegistered = 0;
 
@@ -285,20 +282,19 @@ public class VanillaModelManager {
         }
 
         /**
-         * 增量重建 item 模型（item atlas 缝合后调用）。
+         * Incrementally rebuilds item models (called after the item atlas stitch).
          * <p>
-         * 仅重新创建非 persistent 的 IItemState wrapper。
-         * 由于使用懒模型，无需实际烘焙 — 只需更新注册表中的 wrapper 引用。
+         * Only non-persistent IItemState wrappers are recreated. Since lazy models are used,
+         * no actual baking is needed — only the wrapper references in the registry are updated.
          */
         public static void registerItemModels() {
-            // 移除非 persistent item models
+            // Remove non-persistent item models
             ModelRegistry.registeredItemModels.keySet()
                     .removeIf(item -> !ModelRegistry.persistentItemModels.contains(item));
-            // oversized 标记全量重建（与 registerAllModels 同理，清除过期项）
             // Rebuild oversized flags from scratch (same as registerAllModels, drops stale entries)
             ModelRegistry.oversizedItems.clear();
 
-            // 重新注册 ItemState 决策树（最高优先）
+            // Re-register ItemState decision trees (highest priority)
             for (Map.Entry<String, Map<String, ItemStateNode>> nsEntry :
                     ModelManagerDataLoader.loadedItemStates.entrySet()) {
                 String namespace = nsEntry.getKey();
@@ -307,7 +303,6 @@ public class VanillaModelManager {
                     if (item == null) continue;
                     ItemStateModel ism = new ItemStateModel(itemEntry.getValue());
                     ModelRegistry.registeredItemModels.put(item, ism);
-                    // 桥接：增量重建时同步重新注册 tints 桥接（指向新 ItemStateModel 实例）
                     // Bridge: re-register the tint bridge on incremental rebuild (points to the new instance)
                     if (ism.hasAnyTint()) {
                         TintRegistry.registerItemTint(item, new ItemStateTintBridge(ism));
@@ -319,13 +314,12 @@ public class VanillaModelManager {
                 }
             }
 
-            // 重新注册 model_mappings items（跳过已被 ItemState 注册的；legacy / state mapping 双语义）
+            // Re-register model_mappings items (skip those already registered by ItemState; dual legacy / state mapping semantics)
             for (Map.Entry<String, ModelMappings> entry :
                     ModelManagerDataLoader.loadedMappings.entrySet()) {
                 registerMappingItems(entry.getKey(), entry.getValue());
             }
 
-            // 重新注册接口发现的 items（仅代码交付决策树者；跳过已有手动注册模型的 persistent 项）
             // Re-register interface-discovered items (code-delivered trees only; skip persistent entries)
             for (Map.Entry<Item, IItemStateProvider> entry : ModelManagerDataLoader.interfaceItemStates.entrySet()) {
                 Item item = entry.getKey();
@@ -342,7 +336,7 @@ public class VanillaModelManager {
                 MinecraftForgeClient.registerItemRenderer(item, RenderJsonItemModel.INSTANCE);
             }
 
-            // ITEM_MODEL 组件覆写（优先级最高 — 增量路径同样重新断言，防止被 items/ 约定匹配覆盖）
+            // ITEM_MODEL component override (highest priority — the incremental path re-asserts it too, preventing an items/ convention match from overriding it)
             applyItemModelOverrides(true);
 
             CatFrame.logger.info("VanillaModelManager: Re-registered {} item models (incremental, lazy)",
@@ -350,20 +344,16 @@ public class VanillaModelManager {
         }
 
         /**
-         * 注册单个方块的常驻 state 模型（Pane / Stairs / redirect / 常规 variants-multipart 分支）。
+         * Registers a resident state model for a single block (Pane / Stairs / redirect /
+         * regular variants-multipart branches).
          * <p>
-         * Register a resident state model for one block (Pane / Stairs / redirect / plain branches).
-         * 从 {@link #registerAllModels} Step 2 提取，供 blockstate 遍历与
-         * {@code state_mapping} 模式的 model_mappings 共用同一套注册逻辑。
+         * Extracted from {@link #registerAllModels} Step 2 so the blockstate traversal and
+         * the {@code state_mapping} model_mappings share the same registration logic.
          */
         private static void registerResidentBlockModel(Block block, BlockstateJson bs) {
             String blockId = Block.blockRegistry.getNameForObject(block);
             String ns = (blockId != null && blockId.contains(":"))
                     ? blockId.substring(0, blockId.indexOf(':')) : "minecraft";
-            // 继承即接入：实现了 IBlockStateProvider 的方块，其类继承链上登记的基类片段
-            // 在此物化为 typed 状态定义（幂等，每轮重建重试 —— 迟到的 registerBase 也能
-            // 在下一轮生效）；无片段时保持原有无 typed 行为。必须位于下方分支分发之前：
-            // 常规分支要读取本表，Pane/Stairs/redirect 分支不受影响。
             // Inheritance as declaration: for IBlockStateProvider blocks, base-class
             // fragments along the class hierarchy are materialized into a typed
             // definition here (idempotent, retried every rebuild so late registerBase
@@ -376,13 +366,10 @@ public class VanillaModelManager {
             // blocks without a typed BlockStateDefinition never reach
             // BlockstateKeyValidator.validate() (no-op when def == null), and this method
             // is the single choke point of every resident blockstate registration.
-            // 旋转角度校验不依赖状态定义，必须在此补上一道：无 typed BlockStateDefinition
-            // 的方块不会进入 BlockstateKeyValidator.validate()（def 为 null 时直接跳过），
-            // 而本方法是所有常驻 blockstate 注册的唯一必经点。
             BlockstateKeyValidator.validateRotations(bs, blockId);
             IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
 
-            // BlockPane: 运行时连接 multipart（per-face 合并 + AtlasGuard）
+            // BlockPane: runtime connection multipart (per-face merge + AtlasGuard)
             if (block instanceof BlockPane) {
                 ResidentStateModel.Builder pb = ResidentStateModel.builder(block)
                         .connectionMultipart()
@@ -396,7 +383,7 @@ public class VanillaModelManager {
                 return;
             }
 
-            // BlockStairs: 运行时转角检测（facing/half/shape 由 resolver 自建）
+            // BlockStairs: runtime corner detection (facing/half/shape built by the resolver)
             if (block instanceof BlockStairs) {
                 ModelRegistry.registerBlockModel(block, ResidentStateModel.builder(block)
                         .blockstate(bs)
@@ -405,7 +392,7 @@ public class VanillaModelManager {
                 return;
             }
 
-            // Blockstate redirect: per-meta 重定向到另一个 blockstate
+            // Blockstate redirect: per-meta redirect to another blockstate
             if (redirect != null) {
                 ResidentStateModel.Builder rb = ResidentStateModel.builder(block)
                         .redirect(redirect, ns);
@@ -413,9 +400,6 @@ public class VanillaModelManager {
                 return;
             }
 
-            // 常规 variants/multipart —— 补查 typed 状态表：常驻模型每轮重建（纹理缝合 /
-            // 资源重载）时保留已登记的 BlockStateDefinition，否则 typed 能力丢失后会落入
-            // 无属性回退链（首键回退）。表内无值时传 null，等价于原有行为。
             // Plain variants/multipart — re-apply the registered typed definition so resident
             // rebuilds keep property-driven matching instead of degrading to the
             // attribute-less fallback chain. null is a no-op (unchanged behavior).
@@ -425,9 +409,8 @@ public class VanillaModelManager {
         }
 
         /**
-         * 解析 state 引用字符串 {@code "ns:name"} 或 {@code "name"}（无前缀时默认当前 namespace）。
-         * <p>
-         * Parse a state reference {@code "ns:name"} / {@code "name"} (defaults to the current namespace).
+         * Parses a state reference string {@code "ns:name"} or {@code "name"} (defaults to
+         * the current namespace when no prefix is present).
          *
          * @return {@code [namespace, name]}
          */
@@ -439,15 +422,17 @@ public class VanillaModelManager {
         }
 
         /**
-         * 注册 model_mappings.items（legacy / state mapping 双语义，全量与增量入口共用）。
-         * <p>
-         * Register model_mappings.items with dual semantics, shared by the full and incremental paths:
+         * Registers model_mappings.items with dual semantics, shared by the full and
+         * incremental paths:
          * <ul>
-         *   <li>{@code state_mapping=false}（legacy）：值为模型路径 → 包装为单模型 {@link ItemStateModel}</li>
-         *   <li>{@code state_mapping=true}：值为 ItemState 决策树名 → 复用已加载的决策树，
-         *       tint 桥接与 {@code oversized_in_gui} 标记随被引用的 state 一并生效</li>
+         *   <li>{@code state_mapping=false} (legacy): the value is a model path → wrapped as a
+         *       single-model {@link ItemStateModel}</li>
+         *   <li>{@code state_mapping=true}: the value is an ItemState decision tree name →
+         *       reuses the loaded tree; the tint bridge and {@code oversized_in_gui} flag take
+         *       effect together with the referenced state</li>
          * </ul>
-         * 已被 items/ 约定匹配注册的物品不会被覆盖（ItemState 优先级更高）。
+         * Items already registered by the items/ convention match are not overridden
+         * (ItemState has higher priority).
          */
         private static void registerMappingItems(String namespace, ModelMappings mappings) {
             if (mappings.items == null) return;
@@ -465,11 +450,10 @@ public class VanillaModelManager {
 
                 Item item = Utilities.findItem(namespace, itemName);
                 if (item == null) continue;
-                // 跳过已被 ItemState 注册的
+                // Skip those already registered by ItemState
                 if (ModelRegistry.registeredItemModels.containsKey(item)) continue;
 
                 if (mappings.state_mapping) {
-                    // 新时代 state mapping：ID → ItemState 决策树名，复用已加载的 state 定义
                     // New-era state mapping: ID → ItemState tree name, reuse the loaded definition
                     String[] ref = parseStateRef(namespace, itemEntry.getValue());
                     Map<String, ItemStateNode> nsStates = ModelManagerDataLoader.loadedItemStates.get(ref[0]);
@@ -481,7 +465,6 @@ public class VanillaModelManager {
                     }
                     ItemStateModel ism = new ItemStateModel(node);
                     ModelRegistry.registeredItemModels.put(item, ism);
-                    // tint 桥接与 oversized 标记随被引用的 state 同步生效
                     // Tint bridge and oversized flag follow the referenced state
                     if (ism.hasAnyTint()) {
                         TintRegistry.registerItemTint(item, new ItemStateTintBridge(ism));
@@ -491,7 +474,7 @@ public class VanillaModelManager {
                         ModelRegistry.oversizedItems.add(item);
                     }
                 } else {
-                    // legacy：值为模型路径，包装为单模型 wrapper
+                    // legacy: the value is a model path, wrapped as a single-model wrapper
                     ModelRegistry.registeredItemModels.put(item,
                             new ItemStateModel(itemEntry.getValue()));
                 }
@@ -499,14 +482,16 @@ public class VanillaModelManager {
         }
 
         /**
-         * 应用 {@code ITEM_MODEL} 组件覆写（对标原版 item_model 组件，优先级最高）。
+         * Applies the {@code ITEM_MODEL} component override (mirrors the vanilla item_model
+         * component, highest priority).
          * <p>
-         * 遍历所有已注册物品，若物品挂了 {@code ITEM_MODEL} 默认组件，则以该值指向的模型
-         * 映射为准，覆盖按注册 ID 约定匹配的 {@code items/{name}.json}，并标记为 persistent。
-         * 值存在但无法解析时使用 {@code builtin/missing}
-         * （见 {@link ModelRegistry#resolveItemModelOverride}）。
+         * Iterates all registered items; if an item carries the {@code ITEM_MODEL} default
+         * component, the model mapping it points to takes precedence, overriding the
+         * {@code items/{name}.json} matched by registry ID convention, and is marked
+         * persistent. When a value exists but cannot be resolved, {@code builtin/missing} is
+         * used (see {@link ModelRegistry#resolveItemModelOverride}).
          *
-         * @param registerRenderer 是否同时注册 Forge {@code IItemRenderer}
+         * @param registerRenderer whether to also register the Forge {@code IItemRenderer}
          */
         private static void applyItemModelOverrides(boolean registerRenderer) {
             for (Object obj : Item.itemRegistry) {

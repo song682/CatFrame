@@ -5,7 +5,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
 /**
- * 从 NBT custom_model_data.colors[index] 读取 tint 颜色。
+ * Reads tint color from NBT custom_model_data.colors[index].
  * <p>JSON: {@code {"type": "minecraft:custom_model_data", "index": 0}}
  */
 public class CustomModelDataTint implements ItemTint {

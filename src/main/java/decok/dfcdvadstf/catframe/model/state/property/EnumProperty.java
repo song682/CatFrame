@@ -5,23 +5,23 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 枚举属性。值域为枚举类型的一个子集。
+ * Enum property. The value domain is a subset of an enum type.
  *
- * <p>内部索引通过 {@code ordinalToIndex[]} 映射：{@code Enum.ordinal() → 内部索引}。
+ * <p>The internal index is mapped through {@code ordinalToIndex[]}: {@code Enum.ordinal() → internal index}.
  *
- * <p>用法（全部枚举值）：
+ * <p>Usage (all enum values):
  * <pre>{@code
  * public enum SlabType { BOTTOM, TOP, DOUBLE }
  * public static final Property<SlabType> TYPE = EnumProperty.create("type", SlabType.class);
  * }</pre>
  *
- * <p>用法（过滤后的子集）：
+ * <p>Usage (filtered subset):
  * <pre>{@code
  * public static final Property<Direction> FACING_HORIZONTAL =
  *     EnumProperty.create("facing", Direction.class, Direction.NORTH, Direction.SOUTH, ...);
  * }</pre>
  *
- * @param <T> 枚举类型
+ * @param <T> the enum type
  */
 public final class EnumProperty<T extends Enum<T>> extends Property<T> {
 
@@ -46,12 +46,12 @@ public final class EnumProperty<T extends Enum<T>> extends Property<T> {
     }
 
     /**
-     * 创建一个包含枚举所有值的枚举属性。
+     * Creates an enum property containing all values of the enum.
      *
-     * @param name  属性名称
-     * @param clazz 枚举类
-     * @param <T>   枚举类型
-     * @return 新的 EnumProperty 实例
+     * @param name  the property name
+     * @param clazz the enum class
+     * @param <T>   the enum type
+     * @return a new EnumProperty instance
      */
     public static <T extends Enum<T>> EnumProperty<T> create(String name, Class<T> clazz) {
         T[] constants = clazz.getEnumConstants();
@@ -59,13 +59,13 @@ public final class EnumProperty<T extends Enum<T>> extends Property<T> {
     }
 
     /**
-     * 创建一个仅包含指定枚举值子集的枚举属性。
+     * Creates an enum property containing only the specified subset of enum values.
      *
-     * @param name   属性名称
-     * @param clazz  枚举类
-     * @param filter 要包含的枚举值
-     * @param <T>    枚举类型
-     * @return 新的 EnumProperty 实例
+     * @param name   the property name
+     * @param clazz  the enum class
+     * @param filter the enum values to include
+     * @param <T>    the enum type
+     * @return a new EnumProperty instance
      */
     @SafeVarargs
     @SuppressWarnings("varargs")

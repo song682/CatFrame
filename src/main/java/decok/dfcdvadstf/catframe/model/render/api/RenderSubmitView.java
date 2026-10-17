@@ -11,81 +11,76 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 一次渲染提交的只读视图（retained command 的快照投影）。
- * <p>
- * 供分组认领 SPI（执行端）与外部模组读取渲染数据：覆盖 {@code RenderSubmit}
- * 的全部输入面，但<b>不暴露内部可变状态</b> —— 变换矩阵经防御性拷贝返回
- * （{@link #preTransformCopy()} / {@link #transformationCopy()}），
- * 内部类型 {@code BlockStateModelPart} 本身不泄露（以 {@link #getAllQuads()} 投影）。
- * <p>
  * A read-only projection of a retained render submission for external
  * consumers. Matrices are returned as defensive copies; the internal part
  * object is only reachable through its quad list.
  */
 public interface RenderSubmitView {
 
-    /** 渲染阶段（决定 brightness/gui 分支等）。 */
+    /** Render phase (determines the brightness/gui branches etc.). */
     RenderPhase phase();
 
-    /** 分组类型（图集 + 混合 + 排序键）。 */
+    /** Group type (atlas + blend + sort key). */
     RenderTypeKey type();
 
-    /** 方块坐标（物品阶段通常为 0）。 */
+    /** Block coordinate (usually 0 for item phases). */
     int x();
 
-    /** 方块坐标（物品阶段通常为 0）。 */
+    /** Block coordinate (usually 0 for item phases). */
     int y();
 
-    /** 方块坐标（物品阶段通常为 0）。 */
+    /** Block coordinate (usually 0 for item phases). */
     int z();
 
-    /** Y 轴旋转角度（方块世界/GUI 使用，0/90/180/270）。 */
+    /** Y-axis rotation angle in degrees (used by block world/GUI, 0/90/180/270). */
     float rotationDeg();
 
-    /** 方块实例（物品阶段可为 null）。 */
+    /** Block instance (may be null for item phases). */
     @Nullable
     Block block();
 
-    /** 物品栈（方块阶段为 null）。 */
+    /** Item stack (null for block phases). */
     @Nullable
     ItemStack stack();
 
-    /** 世界访问（无世界上下文时为 null）。 */
+    /** World access (null when there is no world context). */
     @Nullable
     IBlockAccess world();
 
-    /** 方块 metadata（用于染色等场景）。 */
+    /** Block metadata (used for tinting and similar). */
     int metadata();
 
-    /** flush 时是否需要关闭面剔除（物品路径 true，方块路径 false）。 */
+    /** Whether face culling must be disabled at flush (true for the item path, false for the block path). */
     boolean disableCull();
 
-    /** flush 时是否需要开启混合（与 {@link #type()} 的 blend 一致）。 */
+    /** Whether blending must be enabled at flush (consistent with the blend of {@link #type()}). */
     boolean blend();
 
-    /** 待渲染部件的全部 quad（只读约定：调用方不得修改）。 */
+    /** All quads of the part to render (read-only convention: the caller must not modify them). */
     List<BakedQuad> getAllQuads();
 
     /**
-     * 预变换矩阵（反抵消）的防御性拷贝，可为 null。
-     * 返回副本，修改不影响内部提交数据。
+     * Defensive copy of the pre-transform (counter-transform) matrix, may be null.
+     * A copy is returned; modifying it does not affect the internal submission data.
      */
     @Nullable
     Matrix4d preTransformCopy();
 
     /**
-     * 物品模型渲染变换（items JSON {@code transformation} 标签）的防御性拷贝，可为 null。
-     * 返回副本，修改不影响内部提交数据。
+     * Defensive copy of the item model render transform (the items JSON
+     * {@code transformation} tag), may be null. A copy is returned; modifying it
+     * does not affect the internal submission data.
      */
     @Nullable
     Matrix4d transformationCopy();
 
     /**
-     * 方块状态属性（如 pane 的 north/east/south/west、stairs 的 facing/half/shape），
-     * 由模型解析阶段计算并随提交携带。仅 BLOCK_WORLD / BLOCK_DESTROY 提交非 null。
+     * Blockstate properties (e.g. pane north/east/south/west, stairs facing/half/shape),
+     * computed by the model parsing stage and carried along with the submission.
+     * Non-null only for BLOCK_WORLD / BLOCK_DESTROY submissions.
      * <p>
-     * 只读约定：返回不可修改视图，调用方不得修改。默认返回 null，由 {@code RenderSubmit}
-     * 覆写返回真实值。
+     * Read-only convention: returns an unmodifiable view; the caller must not modify
+     * it. Defaults to null; {@code RenderSubmit} overrides it with the real value.
      */
     @Nullable
     default Map<String, String> blockstateProps() {
@@ -93,11 +88,13 @@ public interface RenderSubmitView {
     }
 
     /**
-     * 物品属性（如 damage / using_item / use_duration / display_context），
-     * 由物品属性系统构建并随提交携带。仅 ITEM_* 提交非 null。
+     * Item properties (e.g. damage / using_item / use_duration / display_context),
+     * built by the item property system and carried along with the submission.
+     * Non-null only for ITEM_* submissions.
      * <p>
-     * 只读惰性 Map：读取某个 key 才触发对应 provider 的计算，请避免全量遍历。
-     * 默认返回 null，由 {@code RenderSubmit} 覆写返回真实值。
+     * Read-only lazy map: reading a particular key only then triggers the
+     * corresponding provider's computation, so avoid iterating the whole map.
+     * Defaults to null; {@code RenderSubmit} overrides it with the real value.
      */
     @Nullable
     default Map<String, Comparable<?>> itemProps() {

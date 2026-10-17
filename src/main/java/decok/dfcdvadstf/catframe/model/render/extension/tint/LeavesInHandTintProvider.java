@@ -13,13 +13,13 @@ public class LeavesInHandTintProvider implements IItemTintProvider{
     public int getTint(ItemStack stack, int tintIndex) {
         Item item = stack.getItem();
 
-        // leaves2 物品始终返回基础 foliage 色
+        // The leaves2 item always returns the basic foliage colour
         Block leaves2 = getLeaves2Block();
         if (leaves2 != null && item == Item.getItemFromBlock(leaves2)) {
             return ColorizerFoliage.getFoliageColorBasic();
         }
 
-        // leaves1 物品按 metadata 区分
+        // The leaves1 item is differentiated by metadata
         int meta = stack.getItemDamage() & 3;
         if (meta == 1) return ColorizerFoliage.getFoliageColorPine();
         if (meta == 2) return ColorizerFoliage.getFoliageColorBirch();

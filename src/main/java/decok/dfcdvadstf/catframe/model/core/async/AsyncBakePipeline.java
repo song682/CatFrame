@@ -24,28 +24,29 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * 异步预烘焙管线，使用 Guava {@link ListenableFuture} 编排。
+ * Asynchronous pre-bake pipeline, orchestrated with Guava {@link ListenableFuture}.
  * <p>
- * 架构（Fork-Join 模式，替代原 Akka Actor Per-Stage）：
+ * Architecture (Fork-Join pattern, replacing the original Akka Actor Per-Stage):
  * <pre>
  *   triggerAsyncBake()
- *   ├── 收集所有待烘焙模型路径（collectModelPaths）
- *   ├── 拓扑排序（ModelResolver.topologicalSort）
- *   ├── 生成 BakeTask（每模型 × 常见旋转组合）
- *   ├── 每个任务提交为 ListenableFuture（RenderExecutors 共享池并行执行 BakingCore.bake）
- *   └── Futures.allAsList + FutureCallback → 完成后 bulkPut 灌入 BakedModelCache
+ *   ├── collect all model paths to bake (collectModelPaths)
+ *   ├── topological sort (ModelResolver.topologicalSort)
+ *   ├── generate BakeTasks (each model × common rotation combinations)
+ *   ├── submit each task as a ListenableFuture (RenderExecutors shared pool runs BakingCore.bake in parallel)
+ *   └── Futures.allAsList + FutureCallback → bulkPut into BakedModelCache on completion
  * </pre>
  * <p>
- * 在 {@link VanillaTextureTracker#onTextureStitchPost} 中被触发，
- * 此时 iconMap 已通过参数传入，烘焙可以正确解析纹理引用。
+ * Triggered in {@link VanillaTextureTracker#onTextureStitchPost}, at which point the iconMap has
+ * already been passed in as a parameter so baking can resolve texture references correctly.
  * <p>
- * {@link BakingCore#bake} 为纯函数、无状态，天然可被线程池并发调用。
+ * {@link BakingCore#bake} is a pure, stateless function and is naturally safe to call concurrently
+ * from a thread pool.
  */
 public class AsyncBakePipeline {
 
-    // ==================== 任务/结果载体（普通 POJO） ====================
+    // ==================== Task/result carriers (plain POJOs) ====================
 
-    /** 烘焙任务：一个模型 + 旋转组合。 */
+    /** A bake task: one model + rotation combination. */
     public static class BakeTask {
         public final String modelPath;
         public final float rotX;
@@ -63,7 +64,7 @@ public class AsyncBakePipeline {
         }
     }
 
-    /** 烘焙结果：cacheKey → 烘焙部件（part 可能为 null 表示烘焙失败）。 */
+    /** Bake result: cacheKey → baked part (part may be null, meaning the bake failed). */
     public static class BakeResult {
         public final String cacheKey;
         @Nullable
@@ -75,17 +76,18 @@ public class AsyncBakePipeline {
         }
     }
 
-    // ==================== 公共 API ====================
+    // ==================== Public API ====================
 
     /**
-     * 屏障等待超时（秒）。并行烘焙数千个模型通常远快于此；
-     * 超时仅作为防止永久挂起的安全阀，超时后退化到 {@link BakedModelCache} 懒烘焙。
+     * Barrier wait timeout (seconds). Parallel baking of thousands of models is usually far faster
+     * than this; the timeout is only a safety valve against hanging forever, after which it degrades
+     * to {@link BakedModelCache} lazy baking.
      */
     private static final long BAKE_BARRIER_TIMEOUT_SECONDS = 60L;
 
     /**
-     * 提交结果：汇聚 future + 起始时间 + 任务数 + 个体 future 列表（进度上报用）。
-     * dispatch 返回 null 表示无模型可烘焙。
+     * Dispatch result: the aggregate future + start time + task count + individual future list
+     * (for progress reporting). dispatch returns null when there are no models to bake.
      */
     private static final class Dispatch {
         final ListenableFuture<List<BakeResult>> all;
@@ -107,18 +109,19 @@ public class AsyncBakePipeline {
     }
 
     /**
-     * 触发异步预烘焙（非阻塞）。由旧调用方保留。
+     * Triggers asynchronous pre-baking (non-blocking). Kept for legacy callers.
      * <p>
-     * 提交所有烘焙任务到共享线程池后立即返回，烘焙在后台并行执行，
-     * 全部完成后结果自动灌入 {@link BakedModelCache}。
+     * Returns immediately after submitting all bake tasks to the shared thread pool; baking runs in
+     * the background in parallel and, once all tasks finish, the results are automatically loaded
+     * into {@link BakedModelCache}.
      *
-     * @param iconMap 当前 stitch 周期的 IIcon 映射
+     * @param iconMap the IIcon map for the current stitch cycle
      */
     public static void triggerAsyncBake(@Nullable final Map<String, IIcon> iconMap) {
         final Dispatch d = dispatch(iconMap);
         if (d == null) return;
 
-        // 汇聚所有结果 → 灌入缓存（回调在池线程执行）
+        // Aggregate all results → load them into the cache (callback runs on a pool thread)
         Futures.addCallback(d.all, new FutureCallback<List<BakeResult>>() {
             @Override
             public void onSuccess(List<BakeResult> results) {
@@ -136,23 +139,27 @@ public class AsyncBakePipeline {
     }
 
     /**
-     * 触发预烘焙并阻塞至全部完成（"异步准备，同步切换"）。
+     * Triggers pre-baking and blocks until everything is complete ("async prepare, sync switch").
      * <p>
-     * 对标高版本 {@code ModelManager.reload()} 的 {@code preparationBarrier::wait} + {@code apply()}：
-     * 烘焙仍在后台线程池<b>并行</b>执行（异步准备），但本方法阻塞调用线程（stitch 主线程）
-     * 直到所有模型烤完，并<b>同步</b>将结果灌入 {@link BakedModelCache}（同步切换），
-     * 保证返回后渲染系统永远读到已烤好的 {@link BlockStateModelPart}，运行时零现场烘焙。
+     * Matches modern Minecraft {@code ModelManager.reload()} with its
+     * {@code preparationBarrier::wait} + {@code apply()}: baking still runs <b>in parallel</b> on
+     * the background thread pool (async preparation), but this method blocks the calling thread
+     * (the stitch main thread) until every model is baked and <b>synchronously</b> loads the results
+     * into {@link BakedModelCache} (sync switch), guaranteeing that after it returns the render
+     * system always reads already-baked {@link BlockStateModelPart}s with zero on-the-fly baking at
+     * runtime.
      * <p>
-     * {@link BakedModelCache} 的首帧懒烘焙由此降级为极少触发的安全网（仅覆盖
-     * 预烤集合未包含的模型/旋转组合，或屏障超时的兜底）。
+     * The first-frame lazy baking of {@link BakedModelCache} is thereby reduced to a rarely triggered
+     * safety net (covering only model/rotation combinations outside the pre-baked set, or acting as
+     * a fallback after a barrier timeout).
      * <p>
-     * 注意：{@link BakingCore#bake} 为纯函数、不依赖 GL 上下文，可在后台线程安全执行，
-     * 因此主线程阻塞等待不会造成死锁。
+     * Note: {@link BakingCore#bake} is a pure function that does not depend on the GL context and is
+     * safe to execute on a background thread, so blocking the main thread to wait cannot deadlock.
      *
-     * @param iconMap 当前 stitch 周期的 IIcon 映射
+     * @param iconMap the IIcon map for the current stitch cycle
      */
     public static void triggerBakeBlocking(@Nullable final Map<String, IIcon> iconMap) {
-        // ===== 1. 分阶段收集模型路径 =====
+        // ===== 1. Collect model paths in stages =====
         Set<String> blockPaths = collectBlockModelPaths();
         Set<String> itemPaths = collectItemModelPaths();
         Set<String> allPaths = new LinkedHashSet<>(blockPaths);
@@ -163,7 +170,7 @@ public class AsyncBakePipeline {
             return;
         }
 
-        // ===== 2. 拓扑排序 + 生成任务 =====
+        // ===== 2. Topological sort + task generation =====
         List<String> sorted = ModelResolver.topologicalSort(allPaths);
         List<BakeTask> tasks = generateTasks(sorted, iconMap);
         final int totalTasks = tasks.size();
@@ -172,14 +179,14 @@ public class AsyncBakePipeline {
         CatFrame.logger.info("[AsyncBake] dispatching {} bake tasks for {} models",
                 totalTasks, allPaths.size());
 
-        // ===== 3. 双层进度报告器 =====
+        // ===== 3. Two-level progress reporter =====
         final BakeProgressReporter progress = new BakeProgressReporter();
         progress.begin(3); // 3 phases: search blocks, search items, baking
         progress.stepPhase("Searching BlockState Models");
         progress.stepPhase("Searching Item Models");
         progress.beginBaking(totalTasks);
 
-        // ===== 4. 提交所有烘焙任务到线程池 =====
+        // ===== 4. Submit all bake tasks to the thread pool =====
         List<ListenableFuture<BakeResult>> futures = new ArrayList<>(totalTasks);
         for (final BakeTask task : tasks) {
             ListenableFuture<BakeResult> f = RenderExecutors.get().submit(new Callable<BakeResult>() {
@@ -190,9 +197,6 @@ public class AsyncBakePipeline {
                     try {
                         part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.rotZ, task.iconMap);
                     } catch (Throwable t) {
-                        // [FIX] 单任务失败隔离：任何一个模型抛异常都不得经由 fail-fast 聚合
-                        //     拖垮整轮烘焙（否则整批物品模型被作废 → 物品消失）。失败模型
-                        //     返回 null 部件，applyResults 跳过、渲染时懒烘焙兜底重试。
                         // [FIX] Per-task isolation: a single model throwing must not fail the
                         //     fail-fast aggregate and discard the whole round (item models would
                         //     vanish). A failed model yields a null part; applyResults skips it
@@ -204,7 +208,7 @@ public class AsyncBakePipeline {
                     return new BakeResult(cacheKey, part);
                 }
             });
-            // 完成回调 → 推入 reporter 队列
+            // Completion callback → push into the reporter queue
             Futures.addCallback(f, new FutureCallback<BakeResult>() {
                 @Override
                 public void onSuccess(BakeResult r) {
@@ -219,7 +223,7 @@ public class AsyncBakePipeline {
             futures.add(f);
         }
 
-        // ===== 5. 主线程轮询进度 =====
+        // ===== 5. Main thread polls progress =====
         long deadline = System.nanoTime() + BAKE_BARRIER_TIMEOUT_SECONDS * 1_000_000_000L;
         while (!progress.pollAndStep()) {
             if (System.nanoTime() > deadline) {
@@ -238,7 +242,7 @@ public class AsyncBakePipeline {
             progress.finish();
         }
 
-        // ===== 6. 收集结果并灌入缓存 =====
+        // ===== 6. Collect results and load them into the cache =====
         ListenableFuture<List<BakeResult>> allFuture = Futures.allAsList(futures);
         try {
             List<BakeResult> results = allFuture.get(5, TimeUnit.SECONDS);
@@ -267,12 +271,12 @@ public class AsyncBakePipeline {
     }
 
     /**
-     * 收集模型路径、生成任务并提交到线程池，返回汇聚 future。
-     * 无模型可烘焙时返回 {@code null}。
+     * Collects model paths, generates tasks, submits them to the thread pool, and returns the
+     * aggregate future. Returns {@code null} when there are no models to bake.
      */
     @Nullable
     private static Dispatch dispatch(@Nullable final Map<String, IIcon> iconMap) {
-        // 1. 收集所有待烘焙的模型路径
+        // 1. Collect all model paths to bake
         Set<String> modelPaths = new LinkedHashSet<>(collectBlockModelPaths());
         modelPaths.addAll(collectItemModelPaths());
         if (modelPaths.isEmpty()) {
@@ -280,10 +284,10 @@ public class AsyncBakePipeline {
             return null;
         }
 
-        // 2. 拓扑排序
+        // 2. Topological sort
         List<String> sorted = ModelResolver.topologicalSort(modelPaths);
 
-        // 3. 生成烘焙任务（每个模型 × 常见旋转组合）
+        // 3. Generate bake tasks (each model × common rotation combinations)
         List<BakeTask> tasks = generateTasks(sorted, iconMap);
         final int totalTasks = tasks.size();
         final long startTime = System.nanoTime();
@@ -291,7 +295,7 @@ public class AsyncBakePipeline {
         CatFrame.logger.info("[AsyncBake] dispatching {} bake tasks for {} models",
                 totalTasks, modelPaths.size());
 
-        // 4. 每个任务提交为 ListenableFuture（BakingCore.bake 纯函数，可并发）
+        // 4. Submit each task as a ListenableFuture (BakingCore.bake is a pure function, safe to run concurrently)
         List<ListenableFuture<BakeResult>> futures = new ArrayList<>(totalTasks);
         for (final BakeTask task : tasks) {
             ListenableFuture<BakeResult> f = RenderExecutors.get().submit(new Callable<BakeResult>() {
@@ -302,7 +306,6 @@ public class AsyncBakePipeline {
                     try {
                         part = BakingCore.bake(task.modelPath, task.rotX, task.rotY, task.rotZ, task.iconMap);
                     } catch (Throwable t) {
-                        // [FIX] 单任务失败隔离（见阻塞路径同名注释）：不得拖垮整轮烘焙。
                         // [FIX] Per-task isolation (see blocking path): one bad model must not
                         //     fail the fail-fast aggregate and discard the whole bake round.
                         CatFrame.logger.error("[AsyncBake] bake task failed for '{}' @{}@{}@{}: {}",
@@ -319,7 +322,7 @@ public class AsyncBakePipeline {
     }
 
     /**
-     * 将烘焙结果批量灌入 {@link BakedModelCache}。异步回调与阻塞屏障共用。
+     * Bulk-loads bake results into {@link BakedModelCache}. Shared by the async callback and the blocking barrier.
      */
     private static void applyResults(List<BakeResult> results, long startTime) {
         long elapsed = (System.nanoTime() - startTime) / 1_000_000;
@@ -335,22 +338,22 @@ public class AsyncBakePipeline {
     }
 
     /**
-     * 关闭底层线程池。在模组卸载或游戏关闭时调用。
+     * Shuts down the underlying thread pool. Called on mod unload or game shutdown.
      */
     public static void shutdown() {
         RenderExecutors.shutdown();
     }
 
-    // ==================== 内部：任务收集与生成 ====================
+    // ==================== Internal: task collection and generation ====================
 
     /**
-     * 收集方块模型路径（从 blockstates + model_mappings.blocks）。
-     * 路径均带 namespace 前缀（如 "minecraft:block/stone"）。
+     * Collects block model paths (from blockstates + model_mappings.blocks).
+     * All paths carry a namespace prefix (e.g. "minecraft:block/stone").
      */
     private static Set<String> collectBlockModelPaths() {
         Set<String> paths = new LinkedHashSet<>();
 
-        // 从 blockstates 收集（namespace 为外层 key）
+        // Collect from blockstates (namespace is the outer key)
         for (Map.Entry<String, Map<String, BlockstateJson>> nsEntry : ModelManagerDataLoader.loadedBlockstates.entrySet()) {
             String namespace = nsEntry.getKey();
             for (BlockstateJson bs : nsEntry.getValue().values()) {
@@ -358,8 +361,6 @@ public class AsyncBakePipeline {
             }
         }
 
-        // 从 model_mappings.blocks 收集（state_mapping 模式下值是 blockstate 名而非模型路径，
-        // 其模型已由上方 loadedBlockstates 分支覆盖，跳过）
         // Collect from model_mappings.blocks (skip state_mapping mode: values are blockstate
         // names, their models are already covered by the loadedBlockstates branch above)
         for (Map.Entry<String, VanillaModelManager.ModelMappings> entry : ModelManagerDataLoader.loadedMappings.entrySet()) {
@@ -377,14 +378,12 @@ public class AsyncBakePipeline {
     }
 
     /**
-     * 收集物品模型路径（从 loadedItemStates + interfaceItemStates + model_mappings.items）。
-     * 路径均带 namespace 前缀。
+     * Collects item model paths (from loadedItemStates + interfaceItemStates + model_mappings.items).
+     * All paths carry a namespace prefix.
      */
     private static Set<String> collectItemModelPaths() {
         Set<String> paths = new LinkedHashSet<>();
 
-        // 从 model_mappings.items 收集（state_mapping 模式下值是 ItemState 名而非模型路径，
-        // 其模型已由下方 loadedItemStates 分支覆盖，跳过）
         // Collect from model_mappings.items (skip state_mapping mode: values are ItemState
         // names, their models are already covered by the loadedItemStates branch below)
         for (Map.Entry<String, VanillaModelManager.ModelMappings> entry : ModelManagerDataLoader.loadedMappings.entrySet()) {
@@ -398,7 +397,7 @@ public class AsyncBakePipeline {
             }
         }
 
-        // 从 ItemState 决策树收集所有引用的模型路径
+        // Collect all model paths referenced by the ItemState decision trees
         for (Map.Entry<String, Map<String, ItemStateNode>> nsEntry : ModelManagerDataLoader.loadedItemStates.entrySet()) {
             String namespace = nsEntry.getKey();
             for (ItemStateNode root : nsEntry.getValue().values()) {
@@ -410,7 +409,6 @@ public class AsyncBakePipeline {
             }
         }
 
-        // 从 IItemState 接口声明收集（双模型物品的 hand 模型等）
         // Collect from the IItemState interface declarations (e.g. dual-model hand paths)
         for (IItemStateProvider provider : ModelManagerDataLoader.interfaceItemStates.values()) {
             paths.addAll(provider.getDeclaredModelPaths());
@@ -420,8 +418,8 @@ public class AsyncBakePipeline {
     }
 
     /**
-     * 确保模型路径带有 namespace 前缀。
-     * 已含 ":" 的路径原样返回，否则补上所属 namespace。
+     * Ensures a model path carries a namespace prefix.
+     * Paths already containing ":" are returned unchanged; otherwise the owning namespace is prepended.
      */
     private static String ensureNamespace(String path, String namespace) {
         if (path == null) return namespace + ":";
@@ -456,17 +454,17 @@ public class AsyncBakePipeline {
     }
 
     /**
-     * 为每个模型生成烘焙任务（包含常见旋转组合）。
+     * Generates bake tasks for each model (including common rotation combinations).
      */
     private static List<BakeTask> generateTasks(List<String> sortedPaths, @Nullable Map<String, IIcon> iconMap) {
         List<BakeTask> tasks = new ArrayList<>();
         float[] rotations = {0, 90, 180, 270};
 
         for (String path : sortedPaths) {
-            // 基础烘焙（无旋转）
+            // Base bake (no rotation)
             tasks.add(new BakeTask(path, 0, 0, 0, iconMap));
 
-            // Y 轴旋转
+            // Y-axis rotations
             for (float rotY : rotations) {
                 if (rotY != 0) {
                     tasks.add(new BakeTask(path, 0, rotY, 0, iconMap));

@@ -9,22 +9,24 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 命令缓冲：按 {@link RenderTypeKey} 分组累积 {@link RenderSubmit}，对标原版 26w+ 管线中的
- * {@code SubmitNodeStorage}（每 render type 一条命令链）。
+ * Command buffer: accumulates {@link RenderSubmit} grouped by {@link RenderTypeKey}, mirroring
+ * the {@code SubmitNodeStorage} in the vanilla 26w+ pipeline (one command chain per render type).
  * <p>
- * 使用 {@link HashMap} 以注册表条目为键（submit 路径 O(1)）；遍历顺序由
- * {@link RenderTypeRegistry#forEachInOrder} 的排序快照决定（sortKey 升序，solid 先于
- * translucent），{@link FeatureRenderDispatcher#flushBatched(SubmitNodeStorage)} 据此
- * 实现排序批量绘制。注册表运行时变更（第三方新增分组）会立即反映到 flush 顺序。
+ * Uses a {@link HashMap} keyed by registry entry (O(1) on the submit path); the traversal order is
+ * determined by the ordered snapshot of {@link RenderTypeRegistry#forEachInOrder} (sortKey
+ * ascending, solid before translucent), and
+ * {@link FeatureRenderDispatcher#flushBatched(SubmitNodeStorage)} uses this to perform sorted
+ * batched drawing. Runtime registry changes (a third party adding a group) are reflected in the
+ * flush order immediately.
  * <p>
- * <b>线程模型</b>：客户端渲染单线程；本类不做同步，由
- * {@link RenderCommandBuffers} 以 {@link ThreadLocal} 持有当前活动作用域。
+ * <b>Thread model</b>: client rendering is single-threaded; this class does no synchronization and
+ * relies on {@link RenderCommandBuffers} holding the currently active scope in a {@link ThreadLocal}.
  */
 public final class SubmitNodeStorage {
 
     private final Map<RenderTypeKey, List<RenderSubmit>> groups = new HashMap<>();
 
-    /** 追加一条提交到其渲染分组。 */
+    /** Appends a submission to its render group. */
     public void submit(RenderSubmit s) {
         List<RenderSubmit> list = groups.get(s.type);
         if (list == null) {
@@ -34,7 +36,7 @@ public final class SubmitNodeStorage {
         list.add(s);
     }
 
-    /** 是否没有任何提交。 */
+    /** Whether there is no submission at all. */
     public boolean isEmpty() {
         if (groups.isEmpty()) return true;
         for (List<RenderSubmit> list : groups.values()) {
@@ -43,16 +45,18 @@ public final class SubmitNodeStorage {
         return true;
     }
 
-    /** 清空所有分组（复用缓冲）。 */
+    /** Clears all groups (reuses the buffer). */
     public void clear() {
         groups.clear();
     }
 
     /**
-     * 按注册表排序快照顺序（sortKey 升序）产出的非空分组视图。
+     * A view of the non-empty groups produced in the order of the registry's ordered snapshot
+     * (sortKey ascending).
      * <p>
-     * 分组内容（submit 列表）零排序零拷贝；仅收集少量非空分组的只读 entry
-     * （数量 = 实际有提交的分组数，内建 4 个，分配可忽略）。
+     * The group contents (submit lists) are neither sorted nor copied; only a small number of
+     * read-only entries for non-empty groups are collected (count = the number of groups that
+     * actually have submissions, 4 built in, so the allocation is negligible).
      */
     public List<Map.Entry<RenderTypeKey, List<RenderSubmit>>> groups() {
         List<Map.Entry<RenderTypeKey, List<RenderSubmit>>> result = new ArrayList<>(4);

@@ -10,34 +10,34 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 统一方块模型光照计算器 — 对齐 26.1.2 {@code BlockModelLighter}。
+ * Unified block model lighting calculator — aligned with 26.1.2 {@code BlockModelLighter}.
  *
- * <p>提供两条光照路径：
+ * <p>Provides two lighting paths:
  * <ul>
- *   <li><b>AO 路径</b> ({@link #prepareQuadAmbientOcclusion})：逐顶点环境光遮蔽 + 平滑光照混合</li>
- *   <li><b>Flat 路径</b> ({@link #prepareQuadFlat})：单一亮度 + 方向阴影</li>
+ *   <li><b>AO path</b> ({@link #prepareQuadAmbientOcclusion}): per-vertex ambient occlusion + smooth lighting blending</li>
+ *   <li><b>Flat path</b> ({@link #prepareQuadFlat}): single brightness + directional shading</li>
  * </ul>
  *
- * <p>核心设计：
+ * <p>Core design:
  * <ol>
- *   <li>{@link AdjacencyInfo} — 每个面的 4 角方向 + 4 组顶点权重索引（SizeInfo）</li>
- *   <li>{@link AmbientVertexRemap} — quad 顶点到 AO 计算结果的映射</li>
- *   <li>{@link SizeInfo} — 12 个尺寸分量（6 面 + 6 翻转），用于部分面加权</li>
- *   <li>{@link Cache} — LRU 缓存（亮度 + shade），容量 100</li>
+ *   <li>{@link AdjacencyInfo} — the 4 corner directions of each face + 4 sets of vertex weight indices (SizeInfo)</li>
+ *   <li>{@link AmbientVertexRemap} — mapping from quad vertices to AO computation results</li>
+ *   <li>{@link SizeInfo} — 12 size components (6 faces + 6 flipped), used for partial-face weighting</li>
+ *   <li>{@link Cache} — LRU cache (brightness + shade), capacity 100</li>
  * </ol>
  *
- * <p>输出写入 {@link RenderContext} 的 aoBrightness[4] 和 aoColorMul[4]：
+ * <p>Output is written to aoBrightness[4] and aoColorMul[4] of {@link RenderContext}:
  * <ul>
- *   <li>aoBrightness[v] = 平滑混合后的 packed 光照坐标</li>
- *   <li>aoColorMul[v] = AO shade × CardinalLighting（已含方向光照）</li>
+ *   <li>aoBrightness[v] = packed light coordinate after smooth blending</li>
+ *   <li>aoColorMul[v] = AO shade × CardinalLighting (already includes directional lighting)</li>
  * </ul>
  */
 public final class BlockModelLighter {
 
-    /** LRU 缓存容量。 */
+    /** LRU cache capacity. */
     private static final int CACHE_SIZE = 100;
 
-    /** ThreadLocal 实例，每个渲染线程一个（对齐 26.1.2 ThreadLocal<Cache> 模式）。 */
+    /** ThreadLocal instance, one per render thread (aligned with the 26.1.2 ThreadLocal<Cache> pattern). */
     private static final ThreadLocal<BlockModelLighter> THREAD_LOCAL =
             ThreadLocal.withInitial(BlockModelLighter::new);
 
@@ -51,29 +51,29 @@ public final class BlockModelLighter {
         return THREAD_LOCAL.get();
     }
 
-    // ==================== 公共 API ====================
+    // ==================== Public API ====================
 
     /**
-     * AO 路径：计算逐顶点环境光遮蔽 + 平滑光照。
+     * AO path: computes per-vertex ambient occlusion + smooth lighting.
      *
-     * <p>对齐 26.1.2 {@code prepareQuadAmbientOcclusion}：
+     * <p>Aligned with 26.1.2 {@code prepareQuadAmbientOcclusion}:
      * <ol>
-     *   <li>面形状分析（faceCubic / facePartial）</li>
-     *   <li>4 角 + 4 边 + 1 中心 = 9 点亮度/shade 采样</li>
-     *   <li>边角回退（双不透明时复用边 shade）</li>
-     *   <li>smoothBlend 平滑混合</li>
-     *   <li>部分面双线性加权（smoothWeightedBlend）</li>
-     *   <li>CardinalLighting 方向光照乘入 aoColorMul</li>
+     *   <li>Face shape analysis (faceCubic / facePartial)</li>
+     *   <li>4 corners + 4 edges + 1 center = 9-point brightness/shade sampling</li>
+     *   <li>Corner fallback (reuse the edge shade when both sides are opaque)</li>
+     *   <li>smoothBlend smooth blending</li>
+     *   <li>Partial-face bilinear weighting (smoothWeightedBlend)</li>
+     *   <li>CardinalLighting directional lighting multiplied into aoColorMul</li>
      * </ol>
      *
-     * @param world       世界
-     * @param bx, by, bz 方块坐标
-     * @param block       方块实例
-     * @param quad        待渲染 quad
-     * @param ctx         输出目标（aoBrightness / aoColorMul）
+     * @param world       world
+     * @param bx, by, bz block coordinates
+     * @param block       block instance
+     * @param quad        quad to render
+     * @param ctx         output target (aoBrightness / aoColorMul)
      *
-     * <p>注意：aoColorMul 仅包含 AO shade（不含 CardinalLighting），
-     * 方向光照由 {@link RenderContext#shade} 统一承载（由管线设置为 CardinalLighting.byFace）。
+     * <p>Note: aoColorMul contains only AO shade (not CardinalLighting);
+     * directional lighting is carried uniformly by {@link RenderContext#shade} (set by the pipeline to CardinalLighting.byFace).
      */
     public void prepareQuadAmbientOcclusion(
             IBlockAccess world, int bx, int by, int bz,
@@ -85,14 +85,14 @@ public final class BlockModelLighter {
         Direction direction = quad.face;
         if (direction == null) return;
 
-        // 满块面：基准位置 = 面外侧；非满块面：基准位置 = 方块自身
+        // Cubic face: base position = outside the face; non-cubic face: base position = the block itself
         int baseX = faceCubic ? bx + direction.getStepX() : bx;
         int baseY = faceCubic ? by + direction.getStepY() : by;
         int baseZ = faceCubic ? bz + direction.getStepZ() : bz;
 
         AdjacencyInfo info = AdjacencyInfo.fromFacing(direction);
 
-        // --- 4 角采样 ---
+        // --- 4 corner samples ---
         int[] cx = new int[4], cy = new int[4], cz = new int[4];
         int[] light = new int[4];
         float[] shade = new float[4];
@@ -106,7 +106,7 @@ public final class BlockModelLighter {
             shade[i] = cache.getShadeBrightness(cornerBlock, world, cx[i], cy[i], cz[i]);
         }
 
-        // --- 4 个面外侧角（用于边角回退判定） ---
+        // --- 4 outer corners of the face (used for corner-fallback decisions) ---
         boolean[] translucent = new boolean[4];
         for (int i = 0; i < 4; i++) {
             int ox = cx[i] + direction.getStepX();
@@ -116,7 +116,7 @@ public final class BlockModelLighter {
             translucent[i] = !outerBlock.isOpaqueCube();
         }
 
-        // --- 边角 shade/light（带透明回退） ---
+        // --- Corner shade/light (with translucent fallback) ---
         float shadeCorner02, shadeCorner03, shadeCorner12, shadeCorner13;
         int lightCorner02, lightCorner03, lightCorner12, lightCorner13;
 
@@ -165,7 +165,7 @@ public final class BlockModelLighter {
             lightCorner13 = cache.getBrightness(b13, world, dx, dy, dz);
         }
 
-        // --- 中心亮度 ---
+        // --- Center brightness ---
         int lightCenter = cache.getBrightness(block, world, bx, by, bz);
         int outX = bx + direction.getStepX();
         int outY = by + direction.getStepY();
@@ -175,7 +175,7 @@ public final class BlockModelLighter {
             lightCenter = cache.getBrightness(outsideBlock, world, outX, outY, outZ);
         }
 
-        // --- 中心 shade ---
+        // --- Center shade ---
         float shadeCenter;
         if (faceCubic) {
             shadeCenter = cache.getShadeBrightness(
@@ -187,13 +187,13 @@ public final class BlockModelLighter {
         AmbientVertexRemap remap = AmbientVertexRemap.fromFacing(direction);
 
         if (facePartial && info.doNonCubicWeight) {
-            // --- 部分面：加权混合 ---
+            // --- Partial face: weighted blending ---
             float ts1 = (shade[3] + shade[0] + shadeCorner03 + shadeCenter) * 0.25F;
             float ts2 = (shade[2] + shade[0] + shadeCorner02 + shadeCenter) * 0.25F;
             float ts3 = (shade[2] + shade[1] + shadeCorner12 + shadeCenter) * 0.25F;
             float ts4 = (shade[3] + shade[1] + shadeCorner13 + shadeCenter) * 0.25F;
 
-            // 4 个顶点的权重
+            // Weights of the 4 vertices
             float[][] vertWeights = {
                     vertWeight(info.vert0Weights),
                     vertWeight(info.vert1Weights),
@@ -201,13 +201,13 @@ public final class BlockModelLighter {
                     vertWeight(info.vert3Weights)
             };
 
-            // 4 个 smooth-blended 光照坐标（每角一组）
+            // 4 smooth-blended light coordinates (one set per corner)
             int tc1 = LightCoordsUtil.smoothBlend(light[3], light[0], lightCorner03, lightCenter);
             int tc2 = LightCoordsUtil.smoothBlend(light[2], light[0], lightCorner02, lightCenter);
             int tc3 = LightCoordsUtil.smoothBlend(light[2], light[1], lightCorner12, lightCenter);
             int tc4 = LightCoordsUtil.smoothBlend(light[3], light[1], lightCorner13, lightCenter);
 
-            // 按 remap 写入各顶点
+            // Write each vertex according to the remap
             writeVertexAO(ctx, remap.vert0, ts1, ts2, ts3, ts4, tc1, tc2, tc3, tc4,
                     vertWeights[0]);
             writeVertexAO(ctx, remap.vert1, ts1, ts2, ts3, ts4, tc1, tc2, tc3, tc4,
@@ -217,7 +217,7 @@ public final class BlockModelLighter {
             writeVertexAO(ctx, remap.vert3, ts1, ts2, ts3, ts4, tc1, tc2, tc3, tc4,
                     vertWeights[3]);
         } else {
-            // --- 满块面：简单平均 ---
+            // --- Cubic face: simple average ---
             float ll1 = (shade[3] + shade[0] + shadeCorner03 + shadeCenter) * 0.25F;
             float ll2 = (shade[2] + shade[0] + shadeCorner02 + shadeCenter) * 0.25F;
             float ll3 = (shade[2] + shade[1] + shadeCorner12 + shadeCenter) * 0.25F;
@@ -228,7 +228,7 @@ public final class BlockModelLighter {
             int tc3 = LightCoordsUtil.smoothBlend(light[2], light[1], lightCorner12, lightCenter);
             int tc4 = LightCoordsUtil.smoothBlend(light[3], light[1], lightCorner13, lightCenter);
 
-            // 按 remap 写入各顶点（等权，无需加权；aoColorMul 仅含 AO shade）
+            // Write each vertex according to the remap (equal weight, no weighting needed; aoColorMul contains only AO shade)
             ctx.aoColorMul[remap.vert0] = clamp(ll1);
             ctx.aoBrightness[remap.vert0] = tc1;
             ctx.aoColorMul[remap.vert1] = clamp(ll2);
@@ -241,16 +241,16 @@ public final class BlockModelLighter {
     }
 
     /**
-     * Flat 路径：计算单一亮度 + 方向阴影。
+     * Flat path: computes a single brightness + directional shading.
      *
-     * <p>对齐 26.1.2 {@code prepareQuadFlat}。当 quad 无 AO 时使用此路径。
+     * <p>Aligned with 26.1.2 {@code prepareQuadFlat}. This path is used when the quad has no AO.
      *
-     * @param world       世界
-     * @param bx, by, bz 方块坐标
-     * @param block       方块实例
-     * @param quad        待渲染 quad
-     * @param cardinal    方向亮度表
-     * @param ctx         输出目标（brightnessOverride / shade）
+     * @param world       world
+     * @param bx, by, bz block coordinates
+     * @param block       block instance
+     * @param quad        quad to render
+     * @param cardinal    directional brightness table
+     * @param ctx         output target (brightnessOverride / shade)
      */
     public void prepareQuadFlat(
             IBlockAccess world, int bx, int by, int bz,
@@ -268,7 +268,7 @@ public final class BlockModelLighter {
         ctx.brightnessOverride = cache.getBrightness(lightBlock, world, lightX, lightY, lightZ);
 
         // shade = shadeEnabled ? cardinal.byFace : cardinal.up()
-        // 26.3+: shade_direction_override 优先，按覆写方向查表（面实际朝向仅用于亮度采样位置）
+        // 26.3+: shade_direction_override takes precedence; look up the table by the override direction (the face's actual orientation is used only for the brightness sampling position)
         boolean useShade = quad.shadeDirectionOverride != null
                 || quad.shadeEnabled == null || quad.shadeEnabled;
         Direction shadeFace = quad.shadeDirectionOverride != null ? quad.shadeDirectionOverride : direction;
@@ -276,7 +276,7 @@ public final class BlockModelLighter {
         ctx.shade = dirLight;
     }
 
-    // ==================== 面形状分析 ====================
+    // ==================== Face shape analysis ====================
 
     private void prepareQuadShape(IBlockAccess world, int bx, int by, int bz,
                                   Block block, BakedQuad quad, boolean computeAO) {
@@ -343,9 +343,9 @@ public final class BlockModelLighter {
         }
     }
 
-    // ==================== 辅助方法 ====================
+    // ==================== Helper methods ====================
 
-    /** 部分面顶点加权写入（aoColorMul 仅含 AO shade，不含 CardinalLighting）。 */
+    /** Weighted per-vertex write for a partial face (aoColorMul contains only AO shade, not CardinalLighting). */
     private void writeVertexAO(RenderContext ctx, int vertIdx,
                                float ts1, float ts2, float ts3, float ts4,
                                int tc1, int tc2, int tc3, int tc4,
@@ -357,7 +357,7 @@ public final class BlockModelLighter {
                 tc1, tc2, tc3, tc4, w[0], w[1], w[2], w[3]);
     }
 
-    /** 计算顶点在 8 个候选 cell 中的加权值。 */
+    /** Computes the vertex's weighted value across the 8 candidate cells. */
     private float[] vertWeight(SizeInfo[] weights) {
         float[] result = new float[4];
         result[0] = faceShape[weights[0].index] * faceShape[weights[1].index];
@@ -371,7 +371,7 @@ public final class BlockModelLighter {
         return Math.max(0.0F, Math.min(1.0F, v));
     }
 
-    // ==================== 面方向偏移 ====================
+    // ==================== Face direction offsets ====================
 
     private static int faceOffsetX(Direction f) {
         return f.getStepX();
@@ -383,7 +383,7 @@ public final class BlockModelLighter {
         return f.getStepZ();
     }
 
-    // ==================== 缓存管理 ====================
+    // ==================== Cache management ====================
 
     public static void enableCaching() {
         get().cache.enable();
@@ -393,11 +393,11 @@ public final class BlockModelLighter {
         get().cache.disable();
     }
 
-    // ==================== 内部枚举：SizeInfo ====================
+    // ==================== Internal enum: SizeInfo ====================
 
     /**
-     * 12 个尺寸分量索引：6 面 + 6 翻转面。
-     * 用于 faceShape 数组索引和部分面顶点权重计算。
+     * 12 size component indices: 6 faces + 6 flipped faces.
+     * Used for faceShape array indexing and partial-face vertex weight calculation.
      */
     private enum SizeInfo {
         DOWN(0), UP(1), NORTH(2), SOUTH(3), WEST(4), EAST(5),
@@ -409,13 +409,13 @@ public final class BlockModelLighter {
         SizeInfo(int index) { this.index = index; }
     }
 
-    // ==================== 内部枚举：AmbientVertexRemap ====================
+    // ==================== Internal enum: AmbientVertexRemap ====================
 
     /**
-     * quad 顶点到 AO 计算结果的映射。
-     * 每个面对应一个排列，将 AO 计算的 4 个角值映射到 quad 的 4 个顶点。
+     * Mapping from quad vertices to AO computation results.
+     * Each face has a permutation that maps the 4 corner values from AO computation to the quad's 4 vertices.
      *
-     * <p>对齐 26.1.2 AmbientVertexRemap — 与 JsonModelBake 的顶点顺序一致。
+     * <p>Aligned with 26.1.2 AmbientVertexRemap — consistent with JsonModelBake's vertex order.
      */
     private enum AmbientVertexRemap {
         DOWN(0, 1, 2, 3),
@@ -446,13 +446,13 @@ public final class BlockModelLighter {
         }
     }
 
-    // ==================== 内部枚举：AdjacencyInfo ====================
+    // ==================== Internal enum: AdjacencyInfo ====================
 
     /**
-     * 每个面的邻接信息：4 角方向、是否做非满块加权、4 组顶点权重索引。
+     * Adjacency information for each face: 4 corner directions, whether to apply non-cubic weighting, and 4 sets of vertex weight indices.
      *
-     * <p>对齐 26.1.2 AdjacencyInfo — 定义了每个面在 AO 计算时如何采样
-     * 周围方块以及如何将结果映射到顶点。
+     * <p>Aligned with 26.1.2 AdjacencyInfo — defines how each face samples
+     * surrounding blocks during AO computation and how the results map to vertices.
      */
     private enum AdjacencyInfo {
         DOWN(
@@ -533,14 +533,14 @@ public final class BlockModelLighter {
         }
     }
 
-    // ==================== 内部类：Cache ====================
+    // ==================== Internal class: Cache ====================
 
     /**
-     * LRU 缓存 — 缓存方块亮度和 shade 查询结果。
+     * LRU cache — caches block brightness and shade query results.
      *
-     * <p>对齐 26.1.2 BlockModelLighter.Cache：
-     * 使用两个 LRU map 分别缓存亮度和 shade，容量各 100。
-     * 在 chunk 渲染开始时 enable()，结束时 disable()。
+     * <p>Aligned with 26.1.2 BlockModelLighter.Cache:
+     * two LRU maps cache brightness and shade separately, each with capacity 100.
+     * enable() is called at the start of a chunk render and disable() at the end.
      */
     static final class Cache {
         private boolean enabled;
@@ -603,7 +603,7 @@ public final class BlockModelLighter {
         }
 
         /**
-         * 将 3D 坐标编码为 long（用于缓存键）。
+         * Encodes 3D coordinates into a long (used as a cache key).
          * x: bits 0-25, z: bits 26-51, y: bits 52-63
          */
         private static long encodePos(int x, int y, int z) {

@@ -7,23 +7,23 @@ import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.light.BlockModelLighter;
 
 /**
- * 内建渲染扩展：执行逐顶点 AO（环境光遮蔽）计算。
+ * Built-in render extension: performs per-vertex AO (ambient occlusion) computation.
  *
- * <p>委托给 {@link BlockModelLighter#prepareQuadAmbientOcclusion}，
- * 对齐 26.1.2 {@code BlockModelLighter.prepareQuadAmbientOcclusion} 算法：
- * 面形状分析 → 9 点采样 → 边角回退 → smoothBlend 平滑混合 → 部分面加权。
+ * <p>Delegates to {@link BlockModelLighter#prepareQuadAmbientOcclusion},
+ * aligned with the 26.1.2 {@code BlockModelLighter.prepareQuadAmbientOcclusion} algorithm:
+ * face shape analysis → 9-position sampling → corner fallback → smoothBlend smooth blending → partial-face weighting.
  *
- * <p>输出写入 {@link RenderContext#aoBrightness}[4] 和 {@link RenderContext#aoColorMul}[4]。
- * aoColorMul 仅含 AO shade，方向光照（CardinalLighting）由 {@link RenderContext#shade} 承载。
+ * <p>Output is written to {@link RenderContext#aoBrightness}[4] and {@link RenderContext#aoColorMul}[4].
+ * aoColorMul contains only AO shade; directional lighting (CardinalLighting) is carried by {@link RenderContext#shade}.
  *
- * <p>本扩展强制为扩展链的第一个扩展，确保后续扩展（如 AOShadeExtension）
- * 可以读取/修改 AO 计算结果。
+ * <p>This extension is forced to be the first extension in the extension chain, ensuring that subsequent extensions (such as AOShadeExtension)
+ * can read/modify the AO computation results.
  */
 public final class AOComputeExtension implements IModelRenderExtension {
 
     @Override
     public void apply(RenderContext ctx) {
-        // 仅在世界渲染阶段执行 AO 计算
+        // Run AO computation only during the world render phase
         if (ctx.phase != RenderPhase.BLOCK_WORLD) return;
         if (ctx.world == null || ctx.block == null) return;
 

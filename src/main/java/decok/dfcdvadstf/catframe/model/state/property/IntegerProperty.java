@@ -5,11 +5,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 整数范围属性。值域为从 min 到 max 的所有整数（含两端）。
+ * Integer range property. The value domain is all integers from min to max (inclusive).
  *
- * <p>内部索引：{@code value - min}，即按升序排列。
+ * <p>Internal index: {@code value - min}, i.e. arranged in ascending order.
  *
- * <p>用法：
+ * <p>Usage:
  * <pre>{@code
  * public static final Property<Integer> BITES = IntegerProperty.create("bites", 0, 6);
  * }</pre>
@@ -35,27 +35,27 @@ public final class IntegerProperty extends Property<Integer> {
     }
 
     /**
-     * 返回最小值（含）。
+     * Returns the minimum value (inclusive).
      */
     public int getMin() {
         return min;
     }
 
     /**
-     * 返回最大值（含）。
+     * Returns the maximum value (inclusive).
      */
     public int getMax() {
         return max;
     }
 
     /**
-     * 创建一个整数范围属性。
+     * Creates an integer range property.
      *
-     * @param name 属性名称（如 "level", "bites"）
-     * @param min  最小值（含）
-     * @param max  最大值（含）
-     * @return 新的 IntegerProperty 实例
-     * @throws IllegalArgumentException 如果 min > max
+     * @param name the property name (e.g. "level", "bites")
+     * @param min  the minimum value (inclusive)
+     * @param max  the maximum value (inclusive)
+     * @return a new IntegerProperty instance
+     * @throws IllegalArgumentException if min > max
      */
     public static IntegerProperty create(String name, int min, int max) {
         if (min > max) {

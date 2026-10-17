@@ -9,39 +9,41 @@ import javax.annotation.Nullable;
 import javax.vecmath.Matrix4d;
 
 /**
- * per-Item 完全自绘门（对称 {@code IItemTintProvider}）。
+ * Per-item full self-draw gate (symmetric to the item tint provider).
  * <p>
- * 第三方若要让某个 {@link net.minecraft.item.Item} 在 CatFrame 物品渲染管线中"完全接管自绘"
- * （绕过通用 {@link decok.dfcdvadstf.catframe.model.state.item.ItemStateModel} 模型求值），
- * 实现本接口并经 {@link SpecialRenderRegistry#registerItem} 注册。命中后
- * {@code RenderJsonItemModel} 会调用 {@link #renderItem}（此时管线已完成 GL 环境准备与
- * Forge 逆变换的 preTransform 计算），并跳过通用模型。
+ * A third party that wants a particular {@link net.minecraft.item.Item} to "fully take
+ * over its own drawing" in the CatFrame item rendering pipeline (bypassing the general
+ * {@link decok.dfcdvadstf.catframe.model.state.item.ItemStateModel} model evaluation)
+ * implements this interface and registers it via {@link SpecialRenderRegistry#registerItem}.
+ * On a hit (i.e. {@link #handles(RenderPhase)} returns true for the current phase),
+ * {@code RenderJsonItemModel} calls {@link #renderItem} (by which point the pipeline has
+ * already prepared the GL environment and computed the Forge counter-transform
+ * preTransform) and skips the general model.
  * <p>
- * A per-item full self-draw gate, symmetric to the item tint provider. When registered and
- * {@link #handles(RenderPhase)} returns true for the current phase, the general model is
- * bypassed and {@link #renderItem} is invoked with the pipeline's prepared GL context.
- * <p>
- * 若需在自绘中递归渲染其它物品栈（如展示框多层内容），调用官方入口
- * {@code UniformRenderPipeline.renderItemStack(stack, phase, preTransform)}。
+ * To recursively render other item stacks during a self-draw (e.g. multi-layer item frame
+ * contents), call the official entry point
+ * {@code UniformRenderPipeline.renderItemStack(stack, phase, preTransform)}.
  */
 @SideOnly(Side.CLIENT)
 public interface IItemRenderSpecialProvider {
 
     /**
-     * 是否接管该渲染阶段。返回 {@code false} 时该阶段回退通用模型行为。
+     * Whether to take over this render phase. Returning {@code false} falls back to the
+     * general model behaviour for that phase.
      *
-     * @param phase 当前物品渲染阶段
-     * @return true 表示接管
+     * @param phase the current item render phase
+     * @return true to take over
      */
     boolean handles(RenderPhase phase);
 
     /**
-     * 完全自绘该物品栈。GL 环境已由管线准备，{@code preTransform} 为 Forge 逆变换抵消矩阵
-     * （可能为 {@code null}，如 GUI 之外的默认场景）。
+     * Fully self-draws this item stack. The GL environment has already been prepared by
+     * the pipeline, and {@code preTransform} is the Forge counter-transform matrix
+     * (may be {@code null}, e.g. in default scenarios other than the GUI).
      *
-     * @param stack        正在渲染的物品栈
-     * @param phase        当前渲染阶段
-     * @param preTransform 逆变换抵消矩阵，可为 null
+     * @param stack        the item stack being rendered
+     * @param phase        the current render phase
+     * @param preTransform the counter-transform matrix, may be null
      */
     void renderItem(ItemStack stack, RenderPhase phase, @Nullable Matrix4d preTransform);
 }

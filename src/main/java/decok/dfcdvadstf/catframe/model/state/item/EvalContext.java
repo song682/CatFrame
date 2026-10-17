@@ -6,19 +6,23 @@ import net.minecraft.item.ItemStack;
 import javax.annotation.Nullable;
 
 /**
- * 决策树求值上下文，贯穿 {@link ItemStateNode#evaluate(java.util.Map, EvalContext)} 的递归求值。
+ * Decision tree evaluation context, threaded through the recursive evaluation of
+ * {@link ItemStateNode#evaluate(java.util.Map, EvalContext)}.
  * <p>
- * 历史求值仅依赖属性集 {@code Map<String, Comparable<?>>}，足以驱动纯数据节点（model /
- * condition / range_dispatch / select / composite / empty）。特殊节点
- * （{@link ItemStateNode.SpecialNode}，对齐高版本 {@code SpecialRenderer#appendItemLayers}）
- * 需要在求值时读取当前 {@link ItemStack}（NBT 等）与渲染阶段，故引入本上下文并将其沿树向下传递。
+ * Historically evaluation depended only on the property set
+ * {@code Map<String, Comparable<?>>}, enough to drive pure data nodes (model /
+ * condition / range_dispatch / select / composite / empty). Special nodes
+ * ({@link ItemStateNode.SpecialNode}, aligned with the modern {@code SpecialRenderer#appendItemLayers})
+ * need to read the current {@link ItemStack} (NBT etc.) and the render phase at evaluation
+ * time, so this context is introduced and threaded down the tree.
  * <p>
  * Evaluation context threaded through the item-state decision tree. Ordinary data nodes only
  * need the property map; special nodes additionally read the live {@link ItemStack} and
  * {@link RenderPhase} at evaluation time, so the context is passed down the tree.
  * <p>
- * 允许为 {@code null}（例如纹理收集、tint 解析等非渲染求值路径），特殊节点在 {@code null}
- * 上下文下应退化为不产出动态图层。
+ * May be {@code null} (e.g. non-rendering evaluation paths such as texture collection and
+ * tint resolution); special nodes should degrade to producing no dynamic layers under a
+ * {@code null} context.
  */
 public final class EvalContext {
 
@@ -32,13 +36,13 @@ public final class EvalContext {
         this.phase = phase;
     }
 
-    /** 当前正在渲染/求值的物品栈；非渲染路径可能为 {@code null}。 */
+    /** The item stack currently being rendered/evaluated; may be {@code null} on non-rendering paths. */
     @Nullable
     public ItemStack getStack() {
         return stack;
     }
 
-    /** 当前渲染阶段；非渲染路径可能为 {@code null}。 */
+    /** The current render phase; may be {@code null} on non-rendering paths. */
     @Nullable
     public RenderPhase getPhase() {
         return phase;

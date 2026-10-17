@@ -16,14 +16,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Multipart 条件组合模型。根据属性条件评估每个 MultipartCase，
- * 合并所有匹配的部件。
+ * Multipart conditional composition model. Evaluates each MultipartCase against
+ * property conditions and merges all matching parts.
  *
- * <p>对应 1.21.5 的 Multipart BlockStateModel 实现。
+ * <p>Corresponds to the 1.21.5 Multipart BlockStateModel implementation.
  *
- * <p>[S7] 本类为后期开发预留：门（doors）、玻璃（glass）、栅栏（fences/walls）等
- * 需要 multipart 组合逻辑的方块。当前主 VMM 中的 multipart 路径采用内联实现，
- * 待相关方块类型合并后将切换到本类。
+ * <p>[S7] Reserved for later development: blocks that need multipart composition
+ * logic such as doors, glass, and fences/walls. The multipart path in the main VMM
+ * currently uses an inline implementation and will switch to this class once the
+ * relevant block types are consolidated.
  */
 public class MultipartBlockModel implements BlockStateModel {
     private final List<MultipartEntry> entries;
@@ -57,15 +58,17 @@ public class MultipartBlockModel implements BlockStateModel {
 
     @Override
     public boolean isFullModel() {
-        return false; // Multipart 通常是叠加层
+        return false; // Multipart is usually an overlay layer
     }
 
-    // ==================== 粒子纹理解析（模型驱动） ====================
+    // ==================== Particle icon resolution (model-driven) ====================
 
     /**
-     * 粒子纹理解析：取首个 entry 的模型（对标 26.1.2 首 selector 语义，与条件匹配无关），
-     * 返回其显式 particle 槽（缺失为 null，由 ParticleIconResolver 映射 missingno）。
-     * 本类为后期预留（当前生产路径不经过），保持与其它实现同构的语义即可。
+     * Particle icon resolution: takes the first entry's model (26.1.2 first-selector
+     * semantics, unrelated to condition matching) and returns its explicit particle slot
+     * (null when missing, mapped to missingno by ParticleIconResolver). This class is a
+     * later-development placeholder (not on the current production path); it only needs to
+     * keep semantics isomorphic to the other implementations.
      */
     @Override
     public IIcon particleIcon(int metadata) {
@@ -77,7 +80,7 @@ public class MultipartBlockModel implements BlockStateModel {
     }
 
     /**
-     * Multipart 条件。支持基于 metadata 范围的条件判断。
+     * Multipart condition. Supports condition evaluation based on metadata.
      */
     @FunctionalInterface
     public interface MultipartCondition {
@@ -85,15 +88,15 @@ public class MultipartBlockModel implements BlockStateModel {
     }
 
     /**
-     * 一个 multipart 条件条目。
+     * A multipart condition entry.
      */
     public static class MultipartEntry {
         /**
-         * 条件（null=始终应用）
+         * Condition (null = always applies)
          */
         public final MultipartCondition when;
         /**
-         * 模型路径
+         * Model path
          */
         public final String modelPath;
 

@@ -1,0 +1,12 @@
+[15:29:18] [Test worker/WARN] [CatFrame]: [ModelJson] element declares both 'shade' and 'shade_direction_override' (duplicate); they are mutually exclusive - 'shade_direction_override' takes precedence and 'shade' is ignored
+[15:29:18] [Test worker/WARN] [CatFrame]: [ModelJson] invalid 'shade_direction_override' value 'middle', expected one of up/down/north/south/east/west; ignoring
+[15:29:18] [Test worker/DEBUG] [CatFrame]: [ModelJson] face retains unrecognized keys in raw: [future_face_field]
+[15:29:18] [Test worker/DEBUG] [CatFrame]: [ModelJson] element retains unrecognized keys in raw: [future_element_field]
+[15:29:18] [Test worker/DEBUG] [CatFrame]: [ModelJson] model retains unrecognized keys in raw: [future_root_field]
+[15:29:18] [Test worker/DEBUG] [CatFrame]: [ModelJson] display transform retains unrecognized keys in raw: [future_transform_field]
+[15:30:14] [Test worker/WARN] [CatFrame]: [ModelJson] element declares both 'shade' and 'shade_direction_override' (duplicate); they are mutually exclusive - 'shade_direction_override' takes precedence and 'shade' is ignored
+[15:30:14] [Test worker/WARN] [CatFrame]: [ModelJson] invalid 'shade_direction_override' value 'middle', expected one of up/down/north/south/east/west; ignoring
+[15:30:14] [Test worker/DEBUG] [CatFrame]: [ModelJson] face retains unrecognized keys in raw: [future_face_field]
+[15:30:14] [Test worker/DEBUG] [CatFrame]: [ModelJson] element retains unrecognized keys in raw: [future_element_field]
+[15:30:14] [Test worker/DEBUG] [CatFrame]: [ModelJson] model retains unrecognized keys in raw: [future_root_field]
+[15:30:14] [Test worker/DEBUG] [CatFrame]: [ModelJson] display transform retains unrecognized keys in raw: [future_transform_field]

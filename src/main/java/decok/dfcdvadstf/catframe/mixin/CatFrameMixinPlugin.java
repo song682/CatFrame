@@ -27,7 +27,7 @@ public class CatFrameMixinPlugin implements IMixinConfigPlugin {
     public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {}
 
     /**
-     * Selects the regular mixins from {@link Mixins.NormalMixin} at config load
+     * Selects the regular mixins from {@link Mixins} at config load
      * time: the GTNHMixins builder evaluates the load-time state (physical side,
      * {@code applyIf} conditions) and returns only the classes valid for this
      * run, which replaces the former static {@code "client"} list of the JSON

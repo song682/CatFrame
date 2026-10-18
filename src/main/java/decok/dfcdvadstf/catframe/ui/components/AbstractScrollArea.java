@@ -20,13 +20,13 @@ public abstract class AbstractScrollArea extends AbstractComponent {
 
     /** Scroller (thumb) texture — 6x32, border 1 nine-patch */
     protected static final ResourceLocation SCROLLER_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/widgets/scroll.png");
+            "textures/gui/sprites/widgets/scroll.png");
 
     /**
      * Scrollbar background track texture — 6x32, border 1 nine-patch
      */
     protected static final ResourceLocation SCROLLER_BACKGROUND_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/widgets/scroll_background.png");
+            "textures/gui/sprites/widgets/scroll_background.png");
 
     /** Scrollbar texture dimensions */
     protected static final int SCROLLBAR_TEX_W = 6;

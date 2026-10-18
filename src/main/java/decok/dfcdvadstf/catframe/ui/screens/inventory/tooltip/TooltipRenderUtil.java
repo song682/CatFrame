@@ -36,9 +36,9 @@ public class TooltipRenderUtil {
     private static final int MARGIN = 9;
 
     /** Default background fill texture (tiled in the center) */
-    private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/tooltips/background.png");
+    private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/sprites/tooltips/background.png");
     /** Default frame texture (stretched in the center) */
-    private static final ResourceLocation FRAME_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/tooltips/frame.png");
+    private static final ResourceLocation FRAME_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/sprites/tooltips/frame.png");
 
     /**
      * Renders the tooltip background (no custom style).

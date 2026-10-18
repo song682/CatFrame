@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.ui;
 
 import decok.dfcdvadstf.catframe.core.component.DataComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
+import decok.dfcdvadstf.catframe.utils.ObjectsUtil;
 import decok.dfcdvadstf.catframe.world.tooltip.ItemTooltipImages;
 import decok.dfcdvadstf.catframe.world.tooltip.TooltipComponent;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
@@ -72,6 +73,8 @@ public class GuiGraphicsExtractor {
 
     /** Global singleton — 1.7.10 doesn't have a per-frame GuiGraphics creation mechanism, using a singleton instead */
     private static final GuiGraphicsExtractor INSTANCE = new GuiGraphicsExtractor();
+
+    public GuiGraphicsExtractor.ScissorStack scissorStack = new GuiGraphicsExtractor.ScissorStack();
 
     /**
      * modelview matrix snapshot/restore buffer (reused by single-threaded client).
@@ -366,8 +369,8 @@ public class GuiGraphicsExtractor {
      * @param t Shared Tessellator instance
      */
     public static void renderEnchantmentGlint(RenderSubmit s, Tessellator t) {
-// ENABLE_BIT: depth/blend/lighting/alpha test bits; DEPTH_BUFFER_BIT: depthFunc + depthMask;
-            // COLOR_BUFFER_BIT: blendFunc + alphaFunc; TEXTURE_BIT: texture binding; CURRENT_BIT: current color
+        // ENABLE_BIT: depth/blend/lighting/alpha test bits; DEPTH_BUFFER_BIT: depthFunc + depthMask;
+        // COLOR_BUFFER_BIT: blendFunc + alphaFunc; TEXTURE_BIT: texture binding; CURRENT_BIT: current color
         GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT
                 | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_TEXTURE_BIT | GL11.GL_CURRENT_BIT);
         try {
@@ -668,6 +671,44 @@ public class GuiGraphicsExtractor {
 
         public static GuiGraphicsExtractor.HoveredTextEffects notClickable(final boolean canTooltip) {
             return canTooltip ? TOOLTIP_ONLY : NONE;
+        }
+    }
+
+    public static class ScissorStack {
+        private final Deque<ScreenRectangle> stack = new ArrayDeque<>();
+
+        private ScissorStack() {
+        }
+
+        public ScreenRectangle push(final ScreenRectangle rectangle) {
+            ScreenRectangle lastRectangle = this.stack.peekLast();
+            if (lastRectangle != null) {
+                ScreenRectangle intersection = (ScreenRectangle)ObjectsUtil.requireNonNullElse(rectangle.intersection(lastRectangle), ScreenRectangle.empty());
+                this.stack.addLast(intersection);
+                return intersection;
+            } else {
+                this.stack.addLast(rectangle);
+                return rectangle;
+            }
+        }
+
+        @Nullable
+        public ScreenRectangle pop() {
+            if (this.stack.isEmpty()) {
+                throw new IllegalStateException("Scissor stack underflow");
+            } else {
+                this.stack.removeLast();
+                return (ScreenRectangle)this.stack.peekLast();
+            }
+        }
+
+        @Nullable
+        public ScreenRectangle peek() {
+            return (ScreenRectangle)this.stack.peekLast();
+        }
+
+        public boolean containsPoint(final int x, final int y) {
+            return this.stack.isEmpty() ? true : ((ScreenRectangle)this.stack.peek()).containsPoint(x, y);
         }
     }
 }

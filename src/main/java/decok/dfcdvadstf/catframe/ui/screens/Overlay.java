@@ -7,7 +7,5 @@ public abstract class Overlay implements Renderable {
         return true;
     }
 
-    public void tick(){
-
-    }
+    public void tick(){}
 }

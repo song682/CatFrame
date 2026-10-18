@@ -5,6 +5,7 @@ import decok.dfcdvadstf.catframe.ui.GuiDrawing;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.ResourceLocation;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -19,6 +20,8 @@ import java.util.*;
  */
 public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entry<E>> extends AbstractContainerWidget {
 
+    private static final ResourceLocation MENU_LIST_BACKGROUND = new ResourceLocation("catframe","textures/gui/menu_list_background.png");
+    private static final ResourceLocation INWORLD_MENU_LIST_BACKGROUND = new ResourceLocation("catframe","textures/gui/menu_list_background.png");
     /** Content padding inside each entry */
     public static final int CONTENT_PADDING = 2;
 

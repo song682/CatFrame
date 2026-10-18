@@ -2,6 +2,8 @@ package decok.dfcdvadstf.catframe.ui.navigation;
 
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 
+import javax.annotation.Nullable;
+
 /**
  * <p>
  * Screen rectangle — describes the position and size of a widget on screen.<br>
@@ -9,6 +11,8 @@ import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
  * </p>
  */
 public final class ScreenRectangle {
+
+    private static final ScreenRectangle EMPTY = new ScreenRectangle(0, 0, 0, 0);
 
     public final int x;
     public final int y;
@@ -20,6 +24,10 @@ public final class ScreenRectangle {
         this.y = y;
         this.width = width;
         this.height = height;
+    }
+
+    public static ScreenRectangle empty() {
+        return EMPTY;
     }
 
     /**
@@ -67,6 +75,19 @@ public final class ScreenRectangle {
                 && other.y >= this.y
                 && other.x + other.width <= this.x + this.width
                 && other.y + other.height <= this.y + this.height;
+    }
+
+    @Nullable
+    public ScreenRectangle intersection(final ScreenRectangle other) {
+        int left = Math.max(this.left(), other.left());
+        int top = Math.max(this.top(), other.top());
+        int right = Math.min(this.right(), other.right());
+        int bottom = Math.min(this.bottom(), other.bottom());
+        return left < right && top < bottom ? new ScreenRectangle(left, top, right - left, bottom - top) : null;
+    }
+
+    public boolean containsPoint(final int x, final int y) {
+        return x >= this.left() && x < this.right() && y >= this.top() && y < this.bottom();
     }
 
     @Override

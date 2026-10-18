@@ -1,35 +1,28 @@
 package decok.dfcdvadstf.catframe.datapack.content;
 
-import com.google.gson.JsonObject;
 import decok.dfcdvadstf.catframe.datapack.DataContentLoader;
 import decok.dfcdvadstf.catframe.datapack.DataPackErrors;
-import decok.dfcdvadstf.catframe.datapack.DataPackJson;
 import decok.dfcdvadstf.catframe.datapack.DataPackRepository;
-import decok.dfcdvadstf.catframe.tags.TagBuilder;
-import decok.dfcdvadstf.catframe.tags.TagFile;
 import decok.dfcdvadstf.catframe.tags.TagLoader;
+import decok.dfcdvadstf.catframe.tags.TagManager;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
-import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Tags content loader (worklist C1).
+ * Tag content loader.
  * <p>
- * Reads every enabled pack's {@code data/<ns>/tags/items/**.json} and
- * {@code data/<ns>/tags/blocks/**.json} into the tag loaders, then rebuilds
- * them once. Because packs are visited from lowest to highest priority, the
- * existing {@link TagFile} semantics compose naturally across packs:
- * contributions accumulate (cross-pack merge) and a {@code "replace": true}
- * file clears everything contributed by lower-priority packs for that tag.
- * Dependency ordering across tag references is handled inside
- * {@link TagLoader#rebuild()}.
+ * Reads every enabled pack's {@code data/<ns>/tags/item/**.json} and
+ * {@code data/<ns>/tags/block/**.json} into the tag loaders, then builds them
+ * once. Packs are visited from lowest to highest priority, so contributions
+ * accumulate across packs and a {@code "replace": true} file clears everything
+ * contributed by lower-priority packs for that tag.
  * </p>
  * <p>
- * Build-phase problems are forwarded to the consolidated report through the
- * loader's problem sink; discovered/unbuilt tags are reported with their tag id
- * in place of a file path.
+ * Load-phase problems are forwarded to {@link DataPackErrors} with the file
+ * path; build-phase problems (missing required references) are reported with
+ * the tag id in place of a file path.
  * </p>
  */
 public class TagsContentLoader implements DataContentLoader {
@@ -45,57 +38,25 @@ public class TagsContentLoader implements DataContentLoader {
 
     @Override
     public void unload(DataPackErrors errors) {
-        TagBuilder.itemLoader().clearRawEntries();
-        TagBuilder.blockLoader().clearRawEntries();
+        TagManager.itemLoader().unload();
+        TagManager.blockLoader().unload();
     }
 
     @Override
     public void load(DataPackRepository repository, DataPackErrors errors) {
-        TagLoader<Item> itemLoader = TagBuilder.itemLoader();
-        TagLoader<Block> blockLoader = TagBuilder.blockLoader();
+        TagLoader<Item> itemLoader = TagManager.itemLoader();
+        TagLoader<Block> blockLoader = TagManager.blockLoader();
 
         itemLoader.setProblemSink((error, tagId, message) -> errors.report(
                 error ? DataPackErrors.Severity.ERROR : DataPackErrors.Severity.WARNING,
-                null, "tags/" + tagId, message));
+                null, "tags/item/" + tagId, message));
         blockLoader.setProblemSink((error, tagId, message) -> errors.report(
                 error ? DataPackErrors.Severity.ERROR : DataPackErrors.Severity.WARNING,
-                null, "tags/" + tagId, message));
+                null, "tags/block/" + tagId, message));
 
-        int count = 0;
-        for (String namespace : repository.listNamespaces()) {
-            count += loadDirectory(repository, errors, namespace, "items", itemLoader);
-            count += loadDirectory(repository, errors, namespace, "blocks", blockLoader);
-        }
-
-        itemLoader.rebuild();
-        blockLoader.rebuild();
+        int count = itemLoader.load(repository, errors) + blockLoader.load(repository, errors);
+        itemLoader.build();
+        blockLoader.build();
         LOGGER.info("Loaded {} tag file(s) from data packs", count);
-    }
-
-    private <T> int loadDirectory(DataPackRepository repository, DataPackErrors errors,
-                                  String namespace, String kind, TagLoader<T> loader) {
-        String prefix = "data/" + namespace + "/tags/" + kind + "/";
-        int count = 0;
-        for (DataPackRepository.PackResource resource : repository.listResources(prefix)) {
-            String path = resource.getPath();
-            String relative = path.substring(prefix.length());
-            if (!relative.endsWith(".json")) {
-                continue;
-            }
-            String tagName = relative.substring(0, relative.length() - ".json".length());
-
-            JsonObject json = DataPackJson.parseObject(resource.read(), resource.getPack().getId(), path, errors);
-            if (json == null) {
-                continue;
-            }
-            try {
-                ResourceLocation tagId = new ResourceLocation(namespace, tagName);
-                loader.addTagFile(tagId, TagFile.fromJson(json));
-                count++;
-            } catch (RuntimeException e) {
-                errors.error(resource.getPack().getId(), path, "invalid tag file: " + e);
-            }
-        }
-        return count;
     }
 }

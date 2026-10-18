@@ -1,92 +1,82 @@
 package decok.dfcdvadstf.catframe.tags;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
- * Tag file - represents a complete tag definition loaded from a JSON file
- * 
- * Similar to 26.1's TagFile, containing:
- * - entries: List of tag entries
- * - replace: Whether to replace existing content   
- * 
- * JSON format example:
+ * Parsed content of one tag JSON file, mirroring the modern {@code TagFile}.
+ *
  * <pre>
  * {
  *   "replace": false,
  *   "values": [
  *     "minecraft:wool",
- *     "#catframe:carpet"
+ *     "#minecraft:logs",
+ *     { "id": "minecraft:stone", "required": false }
  *   ]
  * }
  * </pre>
  */
-public class TagFile {
-    
-    private static final Logger LOGGER = LogManager.getLogger(TagFile.class);
-    
-    /** List of tag entries */
+public final class TagFile {
+
     private final List<TagEntry> entries;
-    
-    /** Whether to replace existing content */
     private final boolean replace;
-    
+
     public TagFile(List<TagEntry> entries, boolean replace) {
-        this.entries = entries;
+        this.entries = Collections.unmodifiableList(new ArrayList<>(entries));
         this.replace = replace;
     }
-    
-    /**
-     * Parse TagFile from JSON object
-     */
+
+    /** Parses a tag file. Malformed entries raise {@link IllegalArgumentException}. */
     public static TagFile fromJson(JsonObject json) {
         if (json == null) {
-            LOGGER.warn("Null JSON provided to TagFile.fromJson");
-            return new TagFile(new ArrayList<>(), false);
+            throw new IllegalArgumentException("tag file is null");
         }
-        
-        // Parse replace field
         boolean replace = false;
-        if (json.has("replace")) {
-            replace = json.get("replace").getAsBoolean();
+        JsonElement replaceElement = json.get("replace");
+        if (replaceElement != null && replaceElement.isJsonPrimitive()) {
+            replace = replaceElement.getAsBoolean();
         }
-        
-        // Parse values array
-        List<TagEntry> entries = new ArrayList<>();
-        if (json.has("values")) {
-            com.google.gson.JsonArray valuesArray = json.getAsJsonArray("values");
-            for (com.google.gson.JsonElement element : valuesArray) {
-                String value = element.getAsString();
-                TagEntry entry = TagEntry.parse(value);
-                if (entry != null) {
-                    entries.add(entry);
-                }
-            }
+
+        JsonElement valuesElement = json.get("values");
+        if (valuesElement == null || !valuesElement.isJsonArray()) {
+            throw new IllegalArgumentException("tag file is missing a 'values' array");
         }
-        
+        JsonArray values = valuesElement.getAsJsonArray();
+        List<TagEntry> entries = new ArrayList<>(values.size());
+        for (JsonElement value : values) {
+            entries.add(TagEntry.fromJson(value));
+        }
         return new TagFile(entries, replace);
     }
-    
-    /**
-     * Get the list of tag entries
-     */
+
+    /** Entries in declaration order. */
+    public List<TagEntry> entries() {
+        return entries;
+    }
+
+    /** @return true when this file replaces lower-priority contributions. */
+    public boolean replace() {
+        return replace;
+    }
+
+    /** Compatibility accessor. */
     public List<TagEntry> getEntries() {
         return entries;
     }
-    
-    /**
-     * Whether to replace existing content
-     */
+
+    /** Compatibility accessor. */
     public boolean isReplace() {
         return replace;
     }
-    
+
     @Override
     public String toString() {
-        return "TagFile{replace=" + replace + ", entries=" + entries.size() + "}";
+        return "TagFile{replace=" + replace + ", entries=" + entries.size() + '}';
     }
 }

@@ -8,7 +8,7 @@ import java.util.List;
  * embedded in a zip/jar (mod jars and the CatFrame jar itself).
  * <p>
  * All paths are pack-relative, forward-slash separated, e.g.
- * {@code data/mymod/tags/items/foo.json}. Implementations list and read
+ * {@code data/mymod/tags/item/foo.json}. Implementations list and read
  * defensively: IO failures degrade to empty lists / {@code null} reads and are
  * reported by the caller through {@link DataPackErrors}.
  * </p>
@@ -19,7 +19,7 @@ public interface PackContent {
      * Lists all file paths under the given prefix (recursively), sorted for a
      * stable, deterministic processing order.
      *
-     * @param prefix pack-relative directory prefix, e.g. {@code "data/mymod/tags/items/"}
+     * @param prefix pack-relative directory prefix, e.g. {@code "data/mymod/tags/item/"}
      * @return matching pack-relative file paths, possibly empty
      */
     List<String> list(String prefix);

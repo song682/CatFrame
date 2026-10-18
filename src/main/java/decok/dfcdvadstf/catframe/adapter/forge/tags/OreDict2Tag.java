@@ -1,7 +1,7 @@
 package decok.dfcdvadstf.catframe.adapter.forge.tags;
 
-import decok.dfcdvadstf.catframe.tags.TagBuilder;
 import decok.dfcdvadstf.catframe.tags.TagLoader;
+import decok.dfcdvadstf.catframe.tags.TagManager;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
@@ -13,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -156,14 +157,14 @@ public final class OreDict2Tag {
         
         // Smart OreDict name to Tag name conversion
         String tagName = convertOreDictNameToTagName(oreName);
-        TagLoader<Item> itemLoader = TagBuilder.itemLoader();
-        TagLoader<Block> blockLoader = TagBuilder.blockLoader();
+        TagLoader<Item> itemLoader = TagManager.itemLoader();
+        TagLoader<Block> blockLoader = TagManager.blockLoader();
         
         ResourceLocation tagLocation = new ResourceLocation(FORGE_NAMESPACE, tagName);
         
-        // Get or create Tag content set (modifiable)
-        Set<Item> items = itemLoader.getOrCreateTagContents(tagLocation);
-        Set<Block> blocks = blockLoader.getOrCreateTagContents(tagLocation);
+        // Get or create Tag content list (modifiable)
+        List<Item> items = itemLoader.getOrCreateTagContents(tagLocation);
+        List<Block> blocks = blockLoader.getOrCreateTagContents(tagLocation);
         
         // Convert all ItemStacks to Item/Block and add to Tag
         for (ItemStack stack : ores) {
@@ -234,12 +235,12 @@ public final class OreDict2Tag {
         
         LOGGER.info("Converting Tag '{}' to OreDict '{}'", tagFullName, oreName);
         
-        TagLoader<Item> itemLoader = TagBuilder.itemLoader();
-        TagLoader<Block> blockLoader = TagBuilder.blockLoader();
+        TagLoader<Item> itemLoader = TagManager.itemLoader();
+        TagLoader<Block> blockLoader = TagManager.blockLoader();
         
         // Get Tag contents
-        Set<Item> items = itemLoader.getTagContents(tagLocation);
-        Set<Block> blocks = blockLoader.getTagContents(tagLocation);
+        List<Item> items = itemLoader.getTagContents(tagLocation);
+        List<Block> blocks = blockLoader.getTagContents(tagLocation);
         
         int registered = 0;
         
@@ -288,8 +289,8 @@ public final class OreDict2Tag {
     public static void convertAllForgeTagsToOreDict() {
         LOGGER.info("Converting all forge: Tags to OreDictionary...");
         
-        TagLoader<Item> itemLoader = TagBuilder.itemLoader();
-        TagLoader<Block> blockLoader = TagBuilder.blockLoader();
+        TagLoader<Item> itemLoader = TagManager.itemLoader();
+        TagLoader<Block> blockLoader = TagManager.blockLoader();
         
         Set<ResourceLocation> itemTags = itemLoader.getAllTagNames();
         Set<ResourceLocation> blockTags = blockLoader.getAllTagNames();
@@ -300,7 +301,7 @@ public final class OreDict2Tag {
         for (ResourceLocation tagLocation : itemTags) {
             if (FORGE_NAMESPACE.equals(tagLocation.getResourceDomain())) {
                 String oreName = tagLocation.getResourcePath();
-                Set<Item> items = itemLoader.getTagContents(tagLocation);
+                List<Item> items = itemLoader.getTagContents(tagLocation);
                 
                 for (Item item : items) {
                     try {
@@ -317,7 +318,7 @@ public final class OreDict2Tag {
         for (ResourceLocation tagLocation : blockTags) {
             if (FORGE_NAMESPACE.equals(tagLocation.getResourceDomain())) {
                 String oreName = tagLocation.getResourcePath();
-                Set<Block> blocks = blockLoader.getTagContents(tagLocation);
+                List<Block> blocks = blockLoader.getTagContents(tagLocation);
                 
                 for (Block block : blocks) {
                     try {
@@ -352,8 +353,8 @@ public final class OreDict2Tag {
             return false;
         }
         
-        TagLoader<Item> itemLoader = TagBuilder.itemLoader();
-        Set<Item> tagItems = itemLoader.getTagContents(tagLocation);
+        TagLoader<Item> itemLoader = TagManager.itemLoader();
+        List<Item> tagItems = itemLoader.getTagContents(tagLocation);
         
         // Simple check: are counts equal?
         return oreStacks.size() == tagItems.size();
@@ -404,7 +405,7 @@ public final class OreDict2Tag {
      * @return whether it belongs
      */
     public static boolean isItemInTag(Item item, String tagName) {
-        return TagBuilder.is(item, tagName);
+        return TagManager.is(item, tagName);
     }
     
     /**

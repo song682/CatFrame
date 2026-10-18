@@ -6,6 +6,7 @@ import decok.dfcdvadstf.catframe.core.component.DataComponents;
 import decok.dfcdvadstf.catframe.core.component.predicates.ItemStackComponents;
 import decok.dfcdvadstf.catframe.world.tooltip.ItemTooltipImages;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
+import decok.dfcdvadstf.catframe.ui.InputModeTracker;
 import decok.dfcdvadstf.catframe.ui.components.Renderable;
 import decok.dfcdvadstf.catframe.ui.components.events.CatFrameInputScreen;
 import decok.dfcdvadstf.catframe.ui.components.events.ComponentPath;
@@ -248,12 +249,14 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
 
     @Override
     public void mouseClicked(final int mouseX, final int mouseY, final int mouseButton) {
+        InputModeTracker.onMouseInput();
         super.mouseClicked(mouseX, mouseY, mouseButton);
         dispatchMouseClicked(mouseX, mouseY, mouseButton);
     }
 
     @Override
     protected void mouseMovedOrUp(final int mouseX, final int mouseY, final int state) {
+        InputModeTracker.onMouseInput();
         super.mouseMovedOrUp(mouseX, mouseY, state);
         dispatchMouseReleased(mouseX, mouseY, state);
     }
@@ -288,6 +291,7 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
      */
     @Override
     public void handleKeyboardInput() {
+        InputModeTracker.onKeyboardInput();
         ScreenKeyboardInput.handleCurrentEvent(getEventRoot());
         super.handleKeyboardInput();
     }

@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.ui.components;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
+import decok.dfcdvadstf.catframe.ui.InputModeTracker;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 import decok.dfcdvadstf.catframe.ui.screens.inventory.tooltip.BelowOrAboveWidgetTooltipPositioner;
 import decok.dfcdvadstf.catframe.ui.screens.inventory.tooltip.ClientTooltipPositioner;
@@ -71,10 +72,10 @@ public class WidgetTooltipHolder {
         }
 
         Minecraft mc = Minecraft.getMinecraft();
-        // 26.1.2: isHovered || isFocused && lastInputType.isKeyboard(). 1.7.10 has no input-type
-        // tracking, but focus in this UI only comes from keyboard Tab navigation, so isFocused
-        // already implies keyboard-driven.
-        boolean shouldDisplay = isHovered || isFocused;
+        // Mirrors 26.1.2: hovered, or focused while the last input was the keyboard.
+        // Focus left over from a mouse click does not show the tooltip.
+        boolean keyboardFocus = isFocused && InputModeTracker.isKeyboardMode();
+        boolean shouldDisplay = isHovered || keyboardFocus;
 
         if (shouldDisplay != wasDisplayed) {
             if (shouldDisplay) {
@@ -84,9 +85,10 @@ public class WidgetTooltipHolder {
         }
 
         if (shouldDisplay && System.currentTimeMillis() - displayStartTime > delayMs) {
-            // Pick the positioner based on focus/hover (counterpart of 26.1.2 createTooltipPositioner)
+            // Hover follows the cursor; keyboard focus anchors to the widget (counterpart of
+            // 26.1.2 createTooltipPositioner).
             ClientTooltipPositioner positioner;
-            if (!isHovered && isFocused) {
+            if (!isHovered && keyboardFocus) {
                 positioner = new BelowOrAboveWidgetTooltipPositioner(widgetRect);
             } else {
                 positioner = new MenuTooltipPositioner(widgetRect);

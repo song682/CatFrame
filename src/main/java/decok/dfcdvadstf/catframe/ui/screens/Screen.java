@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.screens;
 
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
+import decok.dfcdvadstf.catframe.ui.InputModeTracker;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
 import decok.dfcdvadstf.catframe.ui.components.Renderable;
@@ -260,12 +261,14 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      */
     @Override
     public void mouseClicked(final int mouseX, final int mouseY, final int mouseButton) {
+        InputModeTracker.onMouseInput();
         super.mouseClicked(mouseX, mouseY, mouseButton);
         dispatchMouseClicked(mouseX, mouseY, mouseButton);
     }
 
     @Override
     protected void mouseMovedOrUp(final int mouseX, final int mouseY, final int state) {
+        InputModeTracker.onMouseInput();
         super.mouseMovedOrUp(mouseX, mouseY, state);
         dispatchMouseReleased(mouseX, mouseY, state);
     }
@@ -320,6 +323,7 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      */
     @Override
     public void handleKeyboardInput() {
+        InputModeTracker.onKeyboardInput();
         ScreenKeyboardInput.handleCurrentEvent(getEventRoot());
         super.handleKeyboardInput();
     }

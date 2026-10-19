@@ -27,6 +27,120 @@ A modern rendering & UI framework for **Minecraft 1.7.10**. Backports the **26.3
 | **[Built-in Resource](src/main/java/decok/dfcdvadstf/catframe/resources/builtin)** | `BuiltinPackDescriptor`, `BuiltinPackRegister` | Modern feelings of the registering built-in resource packs. |
 | **[Search Tree](src/main/java/decok/dfcdvadstf/catframe/searching)** | `TextSearchTree`, `SuffixArray` | Suffix-array / trie-based search tree for item/block lookup. |
 
+## Commands
+
+CatFrame adds four commands. `/title` works on both sides, `/datapack`, `/function` and `/execute` run on the server (singleplayer included).
+
+### `/title`
+
+Shows titles, subtitles and action bar text on players' screens.
+
+```
+/title <targets> clear|reset
+/title <targets> title|subtitle|actionbar <text>
+/title <targets> times <fadeIn> <stay> <fadeOut>
+```
+
+- `<targets>` is a player name or a player selector (`@a`, `@p`, `@r`).
+- `<text>` is the remaining words joined by spaces. Raw JSON text components are rendered with their styles; anything that is not valid JSON is shown as plain text.
+- Times are in ticks.
+
+### `/datapack`
+
+Manages data packs.
+
+```
+/datapack list
+/datapack enable <pack id>
+/datapack disable <pack id>
+/datapack reload
+```
+
+`enable` and `disable` are saved and take effect immediately. `reload` rescans every source and reapplies all packs. See [Data Pack](#data-pack-functions) below for how packs are discovered.
+
+### `/function`
+
+Runs a datapack function, or every function of a function tag.
+
+```
+/function <namespace:path>
+/function #<namespace:tag>
+```
+
+The command reports how many commands succeeded.
+
+### `/execute`
+
+A subset of the modern `/execute` command, for 1.7.10.
+
+```
+/execute as <players> <subcommand...>
+/execute at <players> <subcommand...>
+/execute positioned <x> <y> <z> <subcommand...>
+/execute ... run <command>
+```
+
+- `as <players>` runs the rest as each matched player. Only the sender's name changes.
+- `at <players>` runs at each matched player's position and world.
+- `positioned` takes three coordinates. `~` means the current value and `~n` an offset from it.
+- `run <command>` is the final step and runs any registered command, including `/function`.
+
+Modifiers can be chained, for example `/execute as Steve at Steve run give @p apple`.
+
+**Limits (1.7.10):** selectors match players only (no `@e`), `as` does not change the entity that commands act on, coordinates are whole blocks, and `if`, `unless` and `store` are not available.
+
+## Data Pack Functions
+
+Data packs are folders or zip/jar subtrees with a `pack.mcmeta` next to `data/`. Packs are discovered from the mod jars, `config/catframe/datapacks/`, `<game>/datapacks/` and each world's `datapacks/` folder. A higher-priority source overrides a lower one with the same pack id.
+
+### Function files
+
+A function is a plain text file at `data/<namespace>/functions/<path>.mcfunction`. Its id is `<namespace>:<path>`.
+
+```
+# Give a reward and show a message
+give dfdvdsf minecraft:apple
+title dfdvdsf actionbar "Give you an apple"
+```
+
+- Each line is one command. A leading `/` is optional.
+- Lines starting with `#` are comments. Blank lines are ignored.
+- A line ending in `\` continues on the next line. The backslash is removed and nothing is inserted, so `title dfdvdsf actionbar "Give yo\` followed by `u an apple"` becomes `title dfdvdsf actionbar "Give you an apple"`.
+- Comments are whole-line only; there are no inline comments.
+- A function file with the same path in a higher-priority pack replaces the lower one.
+
+### Function tags
+
+A function tag is a JSON file at `data/<namespace>/tags/functions/<name>.json`. It lists functions or other tags, and works like the item and block tags:
+
+```json
+{
+  "replace": false,
+  "values": [
+    "mypack:greet",
+    "#minecraft:load",
+    { "id": "mypack:optional_extra", "required": false }
+  ]
+}
+```
+
+- Entries starting with `#` reference another tag. A `"?"` suffix or `"required": false` makes an entry optional.
+- `"replace": true` discards entries contributed by lower-priority packs.
+- Cycles are reported as errors and the cyclic reference is dropped.
+
+Two built-in tags run automatically:
+
+| Tag | When it runs |
+|---|---|
+| `#minecraft:load` | After every apply pass (server start and every `/datapack` change or reload). |
+| `#minecraft:tick` | At the start of every server tick. |
+
+Keep `#minecraft:tick` functions short: they run every tick.
+
+### Problems
+
+Load problems (unreadable files, bad JSON, unknown recipe types, tag cycles, empty tags) are collected into one report and logged after each apply pass. Broken data is skipped and never stops the game.
+
 ## Installation
 
 ```gradle

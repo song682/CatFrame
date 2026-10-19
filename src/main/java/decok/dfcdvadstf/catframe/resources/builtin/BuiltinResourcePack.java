@@ -84,7 +84,7 @@ public class BuiltinResourcePack extends AbstractResourcePack {
             IMetadataSection metadata = super.getPackMetadata(serializer, section);
             if (metadata instanceof PackMetadataSection) {
                 PackMetadataSection pack = (PackMetadataSection) metadata;
-                return new PackMetadataSection(withBuiltinTag(pack.getPackDescription()), pack.getPackFormat());
+                return new PackMetadataSection(withBuiltinTag(pack.func_152805_a()), pack.getPackFormat());
             }
             if (metadata != null) {
                 return metadata;

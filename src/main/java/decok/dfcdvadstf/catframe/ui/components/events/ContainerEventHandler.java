@@ -18,7 +18,7 @@ import java.util.Optional;
  * adapted to CatFrame's event signatures.
  * </p>
  */
-public interface ContainerEventHandler {
+public interface ContainerEventHandler extends GuiEventListener {
 
     /**
      * Returns the list of child components in this container.

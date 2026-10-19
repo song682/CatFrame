@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components.events;
 
+import decok.dfcdvadstf.catframe.ui.components.TabOrderedElement;
 import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
@@ -14,7 +15,7 @@ import javax.annotation.Nullable;
  * {@code GuiEventListener}.
  * </p>
  */
-public interface GuiEventListener extends ILayout {
+public interface GuiEventListener extends TabOrderedElement {
 
     // ──── Position / Size ────
 
@@ -165,21 +166,16 @@ public interface GuiEventListener extends ILayout {
         return isFocused() ? null : ComponentPath.leaf(this);
     }
 
-    // ──── Utility ────
-
-    /**
-     * @return this component's bounds as a {@link ScreenRectangle}
-     */
-    default ScreenRectangle getRectangle() {
-        return new ScreenRectangle(getX(), getY(), getWidth(), getHeight());
-    }
-
     /**
      * Check whether the given point is inside this component.
      */
     default boolean isMouseOver(int mouseX, int mouseY) {
         return mouseX >= getX() && mouseX < getX() + getWidth()
                 && mouseY >= getY() && mouseY < getY() + getHeight();
+    }
+
+    default ScreenRectangle getRectangle() {
+        return ScreenRectangle.empty();
     }
 
     default String getTheme(){

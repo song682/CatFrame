@@ -4,6 +4,8 @@ import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Style;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.components.events.GuiEventListener;
+import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
+import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
 
 import javax.annotation.Nullable;
 
@@ -17,7 +19,7 @@ import javax.annotation.Nullable;
  * {@code AbstractWidget implements Renderable}).
  * </p>
  */
-public abstract class AbstractComponent implements GuiEventListener, Renderable, TabOrderedElement {
+public abstract class AbstractComponent implements GuiEventListener, Renderable, ILayout {
 
     protected int x;
     protected int y;
@@ -28,6 +30,7 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
     protected float alpha = 1.0F;
     protected boolean isHovered;
     protected boolean focused;
+    private int tabOrderGroup;
 
     /**
      * Tooltip holder — counterpart of 26.1.2 {@code AbstractWidget#tooltip}.
@@ -84,6 +87,20 @@ public abstract class AbstractComponent implements GuiEventListener, Renderable,
     public void setSize(int width, int height) {
         this.width = width;
         this.height = height;
+    }
+
+    @Override
+    public ScreenRectangle getRectangle() {
+        return ScreenRectangle.of(this);
+    }
+
+    @Override
+    public int getTabOrderGroup() {
+        return this.tabOrderGroup;
+    }
+
+    public void setTabOrderGroup(final int tabOrderGroup) {
+        this.tabOrderGroup = tabOrderGroup;
     }
 
     // ──── Visibility / Active ────

@@ -1,5 +1,7 @@
 package decok.dfcdvadstf.catframe.ui.layouts;
 
+import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
+
 import java.util.function.Consumer;
 
 /**
@@ -28,5 +30,9 @@ public interface ILayout {
      * Visit all "leaf" widgets inside this element (no-op by default).
      */
     default void visitWidgets(final Consumer<Object> widgetVisitor) {
+    }
+
+    default ScreenRectangle getRectangle() {
+        return new ScreenRectangle(getX(), getY(), getWidth(), getHeight());
     }
 }

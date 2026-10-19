@@ -19,6 +19,7 @@ public final class BuiltinPackDescriptor {
     private final String id;
     private final String nameKey;
     private final String descriptionKey;
+    private final String sourceModName;
 
     /**
      * @param id             globally unique pack id (lowercase letters, digits
@@ -30,6 +31,15 @@ public final class BuiltinPackDescriptor {
      *                       {@code pack.mcmeta}
      */
     public BuiltinPackDescriptor(String id, String nameKey, String descriptionKey) {
+        this(id, nameKey, descriptionKey, null);
+    }
+
+    /**
+     * @param sourceModName  optional name of the mod that provides the pack,
+     *                       shown as {@code (built-in: <name>)}; {@code null}
+     *                       or empty shows a plain {@code (built-in)} tag
+     */
+    public BuiltinPackDescriptor(String id, String nameKey, String descriptionKey, String sourceModName) {
         if (id == null || !id.matches("[a-z0-9_]+")) {
             throw new IllegalArgumentException("Invalid built-in pack id: " + id);
         }
@@ -42,6 +52,12 @@ public final class BuiltinPackDescriptor {
         this.id = id;
         this.nameKey = nameKey;
         this.descriptionKey = descriptionKey;
+        this.sourceModName = (sourceModName == null || sourceModName.isEmpty()) ? null : sourceModName;
+    }
+
+    /** Optional providing-mod name, or {@code null} when not given. */
+    public String getSourceModName() {
+        return this.sourceModName;
     }
 
     public String getId() {

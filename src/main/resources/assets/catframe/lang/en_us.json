@@ -36,5 +36,7 @@
   "commands.catframe.datapack.unknown": "Unknown data pack: %s",
   "commands.catframe.datapack.reload.done": "Data packs reloaded: %s active, %s problem(s)",
   "resourcePack.catframe.builtin.example.name": "CatFrame Example Pack",
-  "resourcePack.catframe.builtin.example.description": "A demonstration built-in resource pack shipped by CatFrame"
+  "resourcePack.catframe.builtin.example.description": "A demonstration built-in resource pack shipped by CatFrame",
+  "resourcePack.catframe.builtin.tag": "(built-in)",
+  "resourcePack.catframe.builtin.tag.mod": "(built-in: %s)"
 }

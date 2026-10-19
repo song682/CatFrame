@@ -42,7 +42,8 @@ public class ClientProxy extends CommonProxy {
             BuiltinPackRegistry.register(new BuiltinPackDescriptor(
                     "example",
                     "resourcePack.catframe.builtin.example.name",
-                    "resourcePack.catframe.builtin.example.description"));
+                    "resourcePack.catframe.builtin.example.description",
+                    "CatFrame"));
         }
 
         // Drive GuiGraphicsExtractor's deferred pipeline (item/PiP/tooltip) via Forge

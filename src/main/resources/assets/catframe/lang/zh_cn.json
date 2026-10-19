@@ -36,5 +36,7 @@
   "commands.catframe.datapack.unknown": "未知的数据包：%s",
   "commands.catframe.datapack.reload.done": "数据包已重载：%s 个生效，%s 个问题",
   "resourcePack.catframe.builtin.example.name": "CatFrame 示例资源包",
-  "resourcePack.catframe.builtin.example.description": "CatFrame 自带的演示内置资源包"
+  "resourcePack.catframe.builtin.example.description": "CatFrame 自带的演示内置资源包",
+  "resourcePack.catframe.builtin.tag": "（内置）",
+  "resourcePack.catframe.builtin.tag.mod": "（内置: %s）"
 }

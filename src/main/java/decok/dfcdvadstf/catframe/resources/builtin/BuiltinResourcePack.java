@@ -4,7 +4,10 @@ import net.minecraft.client.resources.AbstractResourcePack;
 import net.minecraft.client.resources.data.IMetadataSection;
 import net.minecraft.client.resources.data.IMetadataSerializer;
 import net.minecraft.client.resources.data.PackMetadataSection;
+import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.IChatComponent;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -79,6 +82,10 @@ public class BuiltinResourcePack extends AbstractResourcePack {
     public IMetadataSection getPackMetadata(IMetadataSerializer serializer, String section) throws IOException {
         try {
             IMetadataSection metadata = super.getPackMetadata(serializer, section);
+            if (metadata instanceof PackMetadataSection) {
+                PackMetadataSection pack = (PackMetadataSection) metadata;
+                return new PackMetadataSection(withBuiltinTag(pack.getPackDescription()), pack.getPackFormat());
+            }
             if (metadata != null) {
                 return metadata;
             }
@@ -87,7 +94,27 @@ public class BuiltinResourcePack extends AbstractResourcePack {
         } catch (RuntimeException ignored) {
             // malformed pack.mcmeta (JsonParseException) — same fallback
         }
-        return new PackMetadataSection(new ChatComponentTranslation(this.descriptor.getDescriptionKey()), 1);
+        return new PackMetadataSection(
+                withBuiltinTag(new ChatComponentTranslation(this.descriptor.getDescriptionKey())), 1);
+    }
+
+    /**
+     * Appends a gray {@code (built-in: <mod>)} tag (or {@code (built-in)} when no
+     * mod name is known) after the description, separated by two spaces.
+     */
+    private IChatComponent withBuiltinTag(IChatComponent description) {
+        ChatComponentText root = new ChatComponentText("");
+        if (description != null) {
+            root.appendSibling(description);
+            root.appendSibling(new ChatComponentText("  "));
+        }
+        String source = this.descriptor.getSourceModName();
+        IChatComponent tag = source == null
+                ? new ChatComponentTranslation("resourcePack.catframe.builtin.tag")
+                : new ChatComponentTranslation("resourcePack.catframe.builtin.tag.mod", source);
+        tag.getChatStyle().setColor(EnumChatFormatting.GRAY);
+        root.appendSibling(tag);
+        return root;
     }
 
     @Override

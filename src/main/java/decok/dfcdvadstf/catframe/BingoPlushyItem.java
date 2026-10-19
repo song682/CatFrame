@@ -12,4 +12,5 @@ public class BingoPlushyItem extends ModernItem {
         this.setLayerTextureNames("catframe:bingo_pixelized_inventory");
         this.setCreativeTab(CreativeTabs.tabMisc);
     }
+
 }

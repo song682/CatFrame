@@ -11,7 +11,7 @@ import net.minecraft.client.gui.FontRenderer;
  * Counterpart of the high-version Minecraft {@code Button}.
  * </p>
  */
-public class Button extends AbstractButton {
+public abstract class Button extends AbstractButton {
 
     /** Standard widths */
     public static final int SMALL_WIDTH = 120;
@@ -21,11 +21,11 @@ public class Button extends AbstractButton {
 
     private final OnPress onPress;
 
-    protected Button(int x, int y, int width, int height, Text message, OnPress onPress) {
+    protected Button(final int x, final int y, final int width, final int height, final Text message, final OnPress onPress) {
         this(x, y, width, height, message, onPress, false);
     }
 
-    protected Button(int x, int y, int width, int height, Text message, OnPress onPress, boolean useVanillaTexture) {
+    protected Button(final int x, final int y, final int width, final int height, final Text message, final OnPress onPress, final boolean useVanillaTexture) {
         super(x, y, width, height, message);
         this.onPress = onPress;
         this.useVanillaTexture = useVanillaTexture;
@@ -119,7 +119,18 @@ public class Button extends AbstractButton {
         }
 
         public Button build() {
-            return new Button(x, y, width, height, message, onPress, useVanillaTexture);
+            return new Button.Plain(x, y, width, height, message, onPress, useVanillaTexture);
+        }
+    }
+
+    public static class Plain extends Button {
+
+        protected Plain(int x, int y, int width, int height, Text message, OnPress onPress, boolean useVanillaTexture) {
+            super(x, y, width, height, message, onPress, useVanillaTexture);
+        }
+
+        protected Plain(int x, int y, int width, int height, Text message, OnPress onPress) {
+            super(x, y, width, height, message, onPress);
         }
     }
 }

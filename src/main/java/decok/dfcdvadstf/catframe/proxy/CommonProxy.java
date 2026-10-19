@@ -28,6 +28,9 @@ public class CommonProxy {
         // Datapack sync (worklist C5): login trigger + post-apply broadcast.
         DataPackSync.register();
 
+        // Datapack functions (D5): #minecraft:tick hook on the server tick.
+        decok.dfcdvadstf.catframe.datapack.mcfunction.FunctionManager.register();
+
         // Scan CatFrame's own jar/directory for JSON lang files and inject them
         LanguageRegister.load();
         // Register data components

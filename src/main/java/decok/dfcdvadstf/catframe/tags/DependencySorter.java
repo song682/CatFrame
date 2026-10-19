@@ -55,17 +55,35 @@ public final class DependencySorter<K, V extends DependencySorter.Entry<K>> {
         return false;
     }
 
-    private static <K> void addDependencyIfNotCyclic(Multimap<K, K> directDependencies, K from, K to) {
-        if (!isCyclic(directDependencies, from, to)) {
-            directDependencies.put(from, to);
+    /** @return true when the edge was added; false when it would close a cycle. */
+    private static <K> boolean addDependencyIfNotCyclic(Multimap<K, K> directDependencies, K from, K to) {
+        if (isCyclic(directDependencies, from, to)) {
+            return false;
         }
+        directDependencies.put(from, to);
+        return true;
     }
 
     /** Visits every entry after its dependencies. */
     public void orderByDependencies(BiConsumer<K, V> output) {
+        orderByDependencies(output, null);
+    }
+
+    /**
+     * Visits every entry after its dependencies, reporting required edges that
+     * had to be dropped because they would close a cycle.
+     *
+     * @param rejectedRequired receives {@code (from, to)} for each dropped
+     *                         required edge; may be {@code null}
+     */
+    public void orderByDependencies(BiConsumer<K, V> output, BiConsumer<K, K> rejectedRequired) {
         Multimap<K, K> directDependencies = HashMultimap.create();
         this.contents.forEach((id, value) ->
-                value.visitRequiredDependencies(dep -> addDependencyIfNotCyclic(directDependencies, id, dep)));
+                value.visitRequiredDependencies(dep -> {
+                    if (!addDependencyIfNotCyclic(directDependencies, id, dep) && rejectedRequired != null) {
+                        rejectedRequired.accept(id, dep);
+                    }
+                }));
         this.contents.forEach((id, value) ->
                 value.visitOptionalDependencies(dep -> addDependencyIfNotCyclic(directDependencies, id, dep)));
 

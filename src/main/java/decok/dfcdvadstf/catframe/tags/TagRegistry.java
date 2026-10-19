@@ -23,6 +23,10 @@ public final class TagRegistry<T> {
     /** Block registry: {@code data/<ns>/tags/block}. */
     public static final TagRegistry<Block> BLOCKS = new TagRegistry<>("block", "block");
 
+    /** Function registry: {@code data/<ns>/tags/functions}, elements are mcfunction files. */
+    public static final TagRegistry<decok.dfcdvadstf.catframe.datapack.mcfunction.McFunction> FUNCTIONS =
+            new TagRegistry<>("function", "functions");
+
     private final String name;
     private final String directory;
 

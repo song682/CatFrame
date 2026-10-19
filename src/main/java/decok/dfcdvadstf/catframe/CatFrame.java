@@ -8,6 +8,7 @@ import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import decok.dfcdvadstf.catframe.command.CommandDataPack;
+import decok.dfcdvadstf.catframe.command.CommandFunction;
 import decok.dfcdvadstf.catframe.command.CommandTitle;
 import decok.dfcdvadstf.catframe.datapack.DataPackManager;
 import decok.dfcdvadstf.catframe.proxy.CommonProxy;
@@ -61,6 +62,8 @@ public class CatFrame {
     @EventHandler
     public void onServerStarting(FMLServerStartingEvent event) {
         event.registerServerCommand(new CommandTitle());
+        // Registered before the pipeline runs: #minecraft:load may call /function.
+        event.registerServerCommand(new CommandFunction());
 
         // Data pack pipeline: discover + apply on the first server start, and
         // reapply when the active world changed (singleplayer world switch).

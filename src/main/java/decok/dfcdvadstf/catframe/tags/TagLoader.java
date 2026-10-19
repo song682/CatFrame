@@ -180,7 +180,21 @@ public class TagLoader<T> {
                     newTags.put(id, tag);
                 }
             }
+        }, new java.util.function.BiConsumer<ResourceLocation, ResourceLocation>() {
+            @Override
+            public void accept(ResourceLocation from, ResourceLocation to) {
+                report(true, from.toString(),
+                        "required reference #" + to + " forms a cycle; the cyclic edge was dropped");
+            }
         });
+
+        // Empty-tag policy (B5): a built tag without elements is legal but almost
+        // always a typo or a stale reference, so it is reported as a warning.
+        for (Map.Entry<ResourceLocation, List<T>> built : newTags.entrySet()) {
+            if (built.getValue().isEmpty()) {
+                report(false, built.getKey().toString(), "tag is empty");
+            }
+        }
 
         built.clear();
         built.putAll(newTags);

@@ -88,11 +88,47 @@ public class RecipesContentLoader implements DataContentLoader {
     private static final String TYPE_SHAPELESS = "shapeless";
     private static final String TYPE_SMELTING = "smelting";
 
+    /**
+     * Decodes one recipe body whose {@code type} has already been dispatched.
+     * Returns {@code false} when the file was rejected (already reported).
+     */
+    public interface Decoder {
+
+        boolean decode(JsonObject json, ItemStack result, String packId, String path, DataPackErrors errors);
+    }
+
+    /**
+     * Type dispatch table (worklist B2): {@code "type"} local name to decoder,
+     * mirroring the modern registry-keyed codec dispatch. Built-in types are
+     * registered in the constructor; extensions call {@link #registerType}.
+     */
+    private final Map<String, Decoder> decoders = new LinkedHashMap<>();
+
     /** Crafting recipes registered by the previous pass (identity set), removed on unload. */
     private final Set<IRecipe> registeredCrafting = Collections.newSetFromMap(new IdentityHashMap<IRecipe, Boolean>());
 
     /** Smelting inputs registered by the previous pass, removed on unload. */
     private final List<ItemStack> registeredSmeltingInputs = new ArrayList<>();
+
+    public RecipesContentLoader() {
+        registerType(TYPE_SHAPED, this::parseShaped);
+        registerType(TYPE_SHAPELESS, this::parseShapeless);
+        registerType(TYPE_SMELTING, this::parseSmelting);
+    }
+
+    /**
+     * Registers a recipe type under its local name (the part after the
+     * namespace, e.g. {@code "shaped"} for {@code "catframe:shaped"}).
+     *
+     * @throws IllegalArgumentException when the name is already taken
+     */
+    public void registerType(String name, Decoder decoder) {
+        String key = normalizeType(name);
+        if (decoders.containsKey(key)) {
+            throw new IllegalArgumentException("recipe type already registered: " + key);
+        }
+        decoders.put(key, decoder);
+    }
 
     @Override
     public String getId() {
@@ -143,22 +179,17 @@ public class RecipesContentLoader implements DataContentLoader {
         }
         try {
             String type = normalizeType(DataPackJson.getString(json, "type", TYPE_SHAPED));
+            Decoder decoder = decoders.get(type);
+            if (decoder == null) {
+                errors.error(packId, path, "unknown recipe type: " + type + " (registered: " + decoders.keySet() + ")");
+                return false;
+            }
             ItemStack result = parseResult(json.get("result"), packId, path, errors);
             if (result == null) {
                 errors.error(packId, path, "missing or invalid 'result'");
                 return false;
             }
-            if (TYPE_SHAPED.equals(type)) {
-                return parseShaped(json, result, packId, path, errors);
-            }
-            if (TYPE_SHAPELESS.equals(type)) {
-                return parseShapeless(json, result, packId, path, errors);
-            }
-            if (TYPE_SMELTING.equals(type)) {
-                return parseSmelting(json, result, packId, path, errors);
-            }
-            errors.error(packId, path, "unknown recipe type: " + type + " (use shaped, shapeless or smelting)");
-            return false;
+            return decoder.decode(json, result, packId, path, errors);
         } catch (RuntimeException e) {
             errors.error(packId, path, "recipe construction failed: " + e);
             return false;

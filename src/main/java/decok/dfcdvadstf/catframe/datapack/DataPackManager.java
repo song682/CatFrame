@@ -1,6 +1,8 @@
 package decok.dfcdvadstf.catframe.datapack;
 
+import decok.dfcdvadstf.catframe.datapack.content.FunctionsContentLoader;
 import decok.dfcdvadstf.catframe.datapack.content.RecipesContentLoader;
+import decok.dfcdvadstf.catframe.datapack.mcfunction.FunctionManager;
 import decok.dfcdvadstf.catframe.datapack.content.TagsContentLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -41,6 +43,7 @@ public final class DataPackManager {
     static {
         LOADERS.add(new TagsContentLoader());
         LOADERS.add(new RecipesContentLoader());
+        LOADERS.add(new FunctionsContentLoader());
     }
 
     private static DataPackRepository repository;
@@ -123,6 +126,11 @@ public final class DataPackManager {
             } catch (RuntimeException e) {
                 errors.error(null, loader.getId(), "load failed: " + e);
             }
+        }
+        try {
+            FunctionManager.runLoadTag();
+        } catch (RuntimeException e) {
+            errors.error(null, FunctionsContentLoader.ID, "minecraft:load failed: " + e);
         }
         lastErrors = errors;
         errors.logAll();

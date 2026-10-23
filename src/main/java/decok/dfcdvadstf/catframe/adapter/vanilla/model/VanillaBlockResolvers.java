@@ -42,7 +42,7 @@ public final class VanillaBlockResolvers {
     // ==================== Stairs ====================
 
     /** facing: 0=east,1=west,2=south,3=north */
-    private static final String[] STAIR_FACINGS = { "east", "west", "south", "north" };
+    public static final String[] STAIR_FACINGS = { "east", "west", "south", "north" };
     // CW (rotateY): 0(east)→2(south), 2(south)→1(west), 1(west)→3(north),
     // 3(north)→0(east)
     private static final int[] CW = { 2, 3, 1, 0 };

@@ -10,6 +10,7 @@ import decok.dfcdvadstf.catframe.model.state.property.EnumMetaProperty;
 import decok.dfcdvadstf.catframe.model.state.property.MappedMetaProperty;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import decok.dfcdvadstf.catframe.model.state.property.StateDefinitions;
+import decok.dfcdvadstf.catframe.model.state.property.TableMetaProperty;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRotatedPillar;
 import net.minecraft.block.BlockSlab;
@@ -324,6 +325,39 @@ public final class VanillaStateDefinitions {
                         TorchFacing.STANDING, TorchFacing.EAST, TorchFacing.WEST, TorchFacing.SOUTH, TorchFacing.NORTH,
                         TorchFacing.STANDING, TorchFacing.STANDING, TorchFacing.STANDING);
 
+        // Non-linear single-variant String tables (raw = full meta & 0xF). These replace the former
+        // positional MetaCodec for sand/dirt/tallgrass/quartz, where the meta field is not a contiguous
+        // ordinal range (e.g. dirt only becomes podzol at raw 2, tallgrass becomes grass only at raw 1).
+        private static final MappedMetaProperty<String> SAND_VARIANT_META = smeta("variant", 0xF, 0, false,
+                        "sand", "red_sand");
+        private static final MappedMetaProperty<String> WALL_VARIANT_META = smeta("variant", 0xF, 0, false,
+                        "cobblestone", "mossy_cobblestone");
+        // yellow_flower: dandelion only (constant). Mask 0 -> raw always 0 -> the single value.
+        private static final MappedMetaProperty<String> YELLOW_FLOWER_VARIANT_META = smeta("variant", 0, 0, false,
+                        "dandelion");
+        private static final TableMetaProperty<String> DIRT_VARIANT_META = TableMetaProperty.of("variant",
+                        Arrays.asList("dirt", "podzol"), 0xF, 0, "dirt",
+                        null, null, "podzol");
+        private static final TableMetaProperty<String> TALLGRASS_VARIANT_META = TableMetaProperty.of("variant",
+                        Arrays.asList("grass", "fern"), 0xF, 0, "fern",
+                        null, "grass");
+        // quartz_block: type and axis are each a pure function of the full meta (0-4), so the former
+        // joint switch decomposes into two independent raw tables.
+        private static final TableMetaProperty<String> QUARTZ_TYPE_META = TableMetaProperty.of("type",
+                        Arrays.asList("quartz_block", "chiseled_quartz_block", "quartz_pillar"), 0xF, 0, "quartz_block",
+                        "quartz_block", "chiseled_quartz_block", "quartz_pillar", "quartz_pillar", "quartz_pillar");
+        private static final TableMetaProperty<String> QUARTZ_AXIS_META = TableMetaProperty.of("axis",
+                        Arrays.asList("y", "x", "z"), 0xF, 0, "y",
+                        null, null, null, "x", "z");
+
+        // Comparator mode / powered bit fields. The lit comparator always reports powered=true, so its
+        // powered property is a constant one-value field (mask 0 -> raw 0 regardless of meta).
+        private static final MappedMetaProperty<String> COMPARATOR_MODE_META = smeta("mode", 4, 2, false,
+                        "compare", "subtract");
+        private static final MappedMetaProperty<String> COMPARATOR_POWERED_LIT = smeta("powered", 0, 0, false, "true");
+        private static final MappedMetaProperty<String> COMPARATOR_POWERED_B3 = smeta("powered", 8, 3, false,
+                        "false", "true");
+
         // ==================== Registration entry points ====================
 
         /**
@@ -462,12 +496,10 @@ public final class VanillaStateDefinitions {
                 singleMeta(Blocks.stonebrick, STONEBRICK_VARIANT_META);
                 singleMeta(Blocks.sandstone, SANDSTONE_VARIANT_META);
 
-                // sand: meta==0 ? sand : red_sand (non-linear, keeps a positional codec)
-                singleVariant(Blocks.sand, SAND_VARIANT,
-                                meta -> new Comparable<?>[] { SAND_VARIANT.getValues().get(meta == 0 ? 0 : 1) });
-                // dirt: meta==2 ? podzol : dirt (non-linear, keeps a positional codec)
-                singleVariant(Blocks.dirt, DIRT_VARIANT,
-                                meta -> new Comparable<?>[] { DIRT_VARIANT.getValues().get(meta == 2 ? 1 : 0) });
+                // sand: meta==0 ? sand : red_sand (clamped: any non-zero meta resolves to red_sand)
+                singleMeta(Blocks.sand, SAND_VARIANT_META);
+                // dirt: podzol only at meta==2, everything else dirt (non-linear table)
+                singleMeta(Blocks.dirt, DIRT_VARIANT_META);
         }
 
         /** Registers a block whose only property is a meta-backed property that decodes itself (no positional codec). */
@@ -551,23 +583,10 @@ public final class VanillaStateDefinitions {
         // ==================== Quartz block (type[+axis], custom codec) ====================
 
         private static void registerQuartzBlock() {
+                // quartz_block: type + axis are both decoded from the full meta nibble; each is an
+                // independent raw table, so the former joint switch is expressed per-property.
                 BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.quartz_block)
-                                .add(QUARTZ_TYPE, StateDefinitions.AXIS)
-                                .metaCodec(meta -> {
-                                        switch (meta) {
-                                                case 1:
-                                                        return new Comparable<?>[] { "chiseled_quartz_block", "y" };
-                                                case 2:
-                                                        return new Comparable<?>[] { "quartz_pillar", "y" };
-                                                case 3:
-                                                        return new Comparable<?>[] { "quartz_pillar", "x" };
-                                                case 4:
-                                                        return new Comparable<?>[] { "quartz_pillar", "z" };
-                                                case 0:
-                                                default:
-                                                        return new Comparable<?>[] { "quartz_block", "y" };
-                                        }
-                                })
+                                .add(QUARTZ_TYPE_META, QUARTZ_AXIS_META)
                                 .create();
                 Models.register(Blocks.quartz_block).states(def).register();
         }
@@ -603,10 +622,8 @@ public final class VanillaStateDefinitions {
                 // 1.7.10 BlockWall is not a BlockPane, so it relies on the resolver's canConnectWallTo special case;
                 // the blockstate is a 10-case multipart (2 materials × post + 4-way sides, with when matching variant+direction).
                 BlockStateDefinition<Block> wallDef = new BlockStateDefinition.Builder<Block>(Blocks.cobblestone_wall)
-                                .add(WALL_VARIANT, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                                .add(WALL_VARIANT_META, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
-                                .metaCodec(meta -> new Comparable<?>[] {
-                                                WALL_VARIANT.getValues().get(meta == 0 ? 0 : 1) })
                                 .create();
                 Models.register(Blocks.cobblestone_wall)
                                 .states(wallDef)
@@ -699,11 +716,10 @@ public final class VanillaStateDefinitions {
         private static void registerFlowersAndGrass() {
                 // red_flower: meta%9 (9 flower kinds) - clamped single property, decode lives in the property
                 singleMeta(Blocks.red_flower, RED_FLOWER_VARIANT_META);
-                // yellow_flower: dandelion only (meta always 0) - constant, keeps a positional codec
-                singleVariant(Blocks.yellow_flower, YELLOW_FLOWER_VARIANT, meta -> new Comparable<?>[] { "dandelion" });
-                // tallgrass: meta==1→grass, meta==2→fern (non-linear, keeps a positional codec)
-                singleVariant(Blocks.tallgrass, TALLGRASS_VARIANT,
-                                meta -> new Comparable<?>[] { TALLGRASS_VARIANT.getValues().get(meta == 1 ? 0 : 1) });
+                // yellow_flower: dandelion only (constant single-value property)
+                singleMeta(Blocks.yellow_flower, YELLOW_FLOWER_VARIANT_META);
+                // tallgrass: grass only at meta==1, everything else fern (non-linear table)
+                singleMeta(Blocks.tallgrass, TALLGRASS_VARIANT_META);
 
                 // double_plant: variant[min(meta&7, 5)] + half[(meta&8)==0?lower:upper]
                 // Clamp to 5: only 6 variants exist but meta&7 ranges 0~7 (vanilla BlockDoublePlant clamps too)
@@ -830,26 +846,15 @@ public final class VanillaStateDefinitions {
                 // meta&3=facing, (meta&4)!=0→subtract, (meta&8)!=0→powered(lit)
                 // The lit state lives in meta bit 8 while the block stays
                 // unpowered_comparator; the powered_comparator instance always
-                // renders lit (isRepeaterPowered).
-                BlockStateDefinition.MetaCodec unpoweredCodec = meta -> new Comparable<?>[] {
-                                DIODE_FACING.getValues().get(meta & 3),
-                                (meta & 4) != 0 ? "subtract" : "compare",
-                                (meta & 8) != 0 ? "true" : "false" };
-                BlockStateDefinition.MetaCodec poweredCodec = meta -> new Comparable<?>[] {
-                                DIODE_FACING.getValues().get(meta & 3),
-                                (meta & 4) != 0 ? "subtract" : "compare",
-                                "true" };
-
+                // renders lit (isRepeaterPowered), so its powered field is a constant "true".
                 BlockStateDefinition<Block> poweredDef = new BlockStateDefinition.Builder<Block>(Blocks.powered_comparator)
-                                .add(DIODE_FACING, COMPARATOR_MODE, POWERED)
-                                .metaCodec(poweredCodec)
+                                .add(DIODE_FACING_META, COMPARATOR_MODE_META, COMPARATOR_POWERED_LIT)
                                 .create();
                 Models.register(Blocks.powered_comparator).states(poweredDef).register();
 
                 BlockStateDefinition<Block> unpoweredDef = new BlockStateDefinition.Builder<Block>(
                                 Blocks.unpowered_comparator)
-                                .add(DIODE_FACING, COMPARATOR_MODE, POWERED)
-                                .metaCodec(unpoweredCodec)
+                                .add(DIODE_FACING_META, COMPARATOR_MODE_META, COMPARATOR_POWERED_B3)
                                 .create();
                 Models.register(Blocks.unpowered_comparator).states(unpoweredDef).register();
         }

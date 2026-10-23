@@ -65,6 +65,33 @@ public abstract class Property<T extends Comparable<T>> {
         return idx;
     }
 
+    // ==================== Value <-> serialized name codec ====================
+
+    /**
+     * Returns the serialized (JSON/variant-key) form of the given value. Defaults to
+     * {@code value.toString()}; subclasses backed by {@link decok.dfcdvadstf.catframe.core.StringRepresentable}
+     * or with a non-trivial textual form should override this so the produced string exactly matches
+     * the variant key in the blockstate JSON.
+     */
+    public String getName(T value) {
+        return value == null ? "null" : value.toString();
+    }
+
+    /**
+     * Parses a serialized value name back into a domain value, or {@code null} when the name does
+     * not correspond to any allowed value. The default implementation scans the value list comparing
+     * against {@code getName(value)}.
+     */
+    public T getValueByName(String valueName) {
+        if (valueName == null) return null;
+        for (T value : values) {
+            if (getName(value).equals(valueName)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
     // ==================== Instance methods ====================
 
     public String getName() {

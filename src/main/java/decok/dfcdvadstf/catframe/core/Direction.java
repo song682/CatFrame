@@ -13,7 +13,7 @@ import java.util.NoSuchElementException;
  * and provides core methods for opposite, clockwise rotation, lookup by name,
  * nearest direction, etc.
  */
-public enum Direction {
+public enum Direction implements StringRepresentable {
     DOWN(0, 1, -1, "down",  AxisDirection.NEGATIVE, Axis.Y,  0, -1,  0),
     UP  (1, 0, -1, "up",    AxisDirection.POSITIVE, Axis.Y,  0,  1,  0),
     NORTH(2, 3, 2, "north", AxisDirection.NEGATIVE, Axis.Z,  0,  0, -1),
@@ -72,6 +72,9 @@ public enum Direction {
     public int get3DDataValue() { return data3d; }
     public int get2DDataValue() { return data2d; }
     public String getName()     { return name; }
+
+    @Override
+    public String getSerializedName() { return name; }
     public Axis getAxis()       { return axis; }
     public AxisDirection getAxisDirection() { return axisDirection; }
 
@@ -237,7 +240,7 @@ public enum Direction {
     // ==================== Inner enum: Axis ====================
 
     /** Three-axis enum. */
-    public enum Axis {
+    public enum Axis implements StringRepresentable {
         X("x") {
             @Override public int choose(int x, int y, int z) { return x; }
             @Override public double choose(double x, double y, double z) { return x; }
@@ -262,6 +265,10 @@ public enum Direction {
         Axis(String name) { this.name = name; }
 
         public String getName() { return name; }
+
+        @Override
+        public String getSerializedName() { return name; }
+
         public boolean isHorizontal() { return this == X || this == Z; }
         public boolean isVertical() { return this == Y; }
 

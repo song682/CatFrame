@@ -34,6 +34,22 @@ public final class IntegerProperty extends Property<Integer> {
         return idx;
     }
 
+    @Override
+    public String getName(Integer value) {
+        return value.toString();
+    }
+
+    @Override
+    public Integer getValueByName(String valueName) {
+        if (valueName == null) return null;
+        try {
+            int v = Integer.parseInt(valueName);
+            return (v >= min && v <= max) ? v : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     /**
      * Returns the minimum value (inclusive).
      */

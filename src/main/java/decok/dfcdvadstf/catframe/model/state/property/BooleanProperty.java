@@ -27,6 +27,18 @@ public final class BooleanProperty extends Property<Boolean> {
         return value ? 0 : 1;
     }
 
+    @Override
+    public String getName(Boolean value) {
+        return value.toString();
+    }
+
+    @Override
+    public Boolean getValueByName(String valueName) {
+        if ("true".equals(valueName)) return Boolean.TRUE;
+        if ("false".equals(valueName)) return Boolean.FALSE;
+        return null;
+    }
+
     /**
      * Creates a boolean property.
      *

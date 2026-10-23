@@ -1,5 +1,7 @@
 package decok.dfcdvadstf.catframe.model.state.property;
 
+import decok.dfcdvadstf.catframe.core.StringRepresentable;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -43,6 +45,18 @@ public final class EnumProperty<T extends Enum<T>> extends Property<T> {
             throw new IllegalArgumentException("Value " + value + " is not in this property filter");
         }
         return idx;
+    }
+
+    /**
+     * Serializes an enum value to its variant-key form: the {@link StringRepresentable} name when
+     * the enum provides one, otherwise the plain {@code toString()} (preserving legacy behavior).
+     */
+    @Override
+    public String getName(T value) {
+        if (value instanceof StringRepresentable) {
+            return ((StringRepresentable) value).getSerializedName();
+        }
+        return value.toString();
     }
 
     /**

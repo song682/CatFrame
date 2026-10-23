@@ -1,9 +1,9 @@
-package decok.dfcdvadstf.catframe.adapter.vanilla.model;
+package decok.dfcdvadstf.catframe.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.adapter.vanilla.model.TorchFacing;
 import decok.dfcdvadstf.catframe.core.Direction;
-import decok.dfcdvadstf.catframe.model.Models;
 import decok.dfcdvadstf.catframe.model.state.BlockStateDefinition;
 import decok.dfcdvadstf.catframe.model.state.property.BooleanFlagProperty;
 import decok.dfcdvadstf.catframe.model.state.property.EnumMetaProperty;

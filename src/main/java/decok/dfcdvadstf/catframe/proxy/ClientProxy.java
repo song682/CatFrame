@@ -10,7 +10,7 @@ import decok.dfcdvadstf.catframe.adapter.vanilla.ClientScreenGraphicsHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.LanguageReloadListener;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.GuiTextureStitchHandler;
 import decok.dfcdvadstf.catframe.adapter.vanilla.model.ResourcePackModelDetector;
-import decok.dfcdvadstf.catframe.adapter.vanilla.model.VanillaStateDefinitions;
+import decok.dfcdvadstf.catframe.model.VanillaStateDefinitions;
 import decok.dfcdvadstf.catframe.datapack.client.ClientDataSync;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
 import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;

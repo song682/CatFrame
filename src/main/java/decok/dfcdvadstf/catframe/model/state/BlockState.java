@@ -105,9 +105,20 @@ public final class BlockState {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < properties.length; i++) {
             if (i > 0) sb.append(',');
-            sb.append(properties[i].getName()).append('=').append(values[i]);
+            sb.append(properties[i].getName()).append('=').append(valueName(properties[i], values[i]));
         }
         return sb.toString();
+    }
+
+    /**
+     * Returns the serialized variant-key form of a property value, delegating to the property's
+     * {@link Property#getName(Comparable)} so enum-backed values emit their
+     * {@link decok.dfcdvadstf.catframe.core.StringRepresentable} name instead of the raw
+     * {@code toString()}. Uses the raw type to bridge the property's captured value type.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static String valueName(Property prop, Comparable value) {
+        return prop.getName(value);
     }
 
     /**
@@ -125,7 +136,7 @@ public final class BlockState {
         for (int i = 0; i < props.length; i++) {
             String expected = properties.get(props[i].getName());
             if (expected != null) {
-                if (!values[i].toString().equals(expected)) return false;
+                if (!valueName(props[i], values[i]).equals(expected)) return false;
             }
         }
         return true;
@@ -143,7 +154,7 @@ public final class BlockState {
         String[] allowed = allowedValues.split("\\|");
         for (int i = 0; i < props.length; i++) {
             if (props[i].getName().equals(propertyName)) {
-                String current = values[i].toString();
+                String current = valueName(props[i], values[i]);
                 for (String a : allowed) {
                     if (a.equals(current)) return true;
                 }
@@ -160,9 +171,10 @@ public final class BlockState {
      * in index order. Used for debugging and serialization.
      */
     public List<String> getValueNames() {
+        Property<?>[] props = definition.getProperties();
         List<String> names = new ArrayList<>(values.length);
-        for (Comparable<?> v : values) {
-            names.add(v.toString());
+        for (int i = 0; i < values.length; i++) {
+            names.add(valueName(props[i], values[i]));
         }
         return names;
     }

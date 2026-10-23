@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.state;
 
+import decok.dfcdvadstf.catframe.model.state.property.MetaBlockProperty;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 
 import javax.annotation.Nullable;
@@ -40,6 +41,10 @@ public final class BlockStateDefinition<O> {
     private Property<?>[] staticProperties;
     // Meta codec; when null, uses the natural cartesian-product encoding of the static properties
     private MetaCodec metaCodec;
+    // When true, every static property is a MetaBlockProperty and decodes its own metadata bit
+    // field (distributed byte mapping). When false, the definition falls back to metaCodec or the
+    // natural cartesian-product defaultDecode. Backfilled by Builder.create().
+    private boolean usesMetaProperties;
     // Resident table: resolvedByMeta[meta] directly yields the CatBlockState for that meta (length 16)
     private BlockState[] resolvedByMeta;
 
@@ -219,9 +224,17 @@ public final class BlockStateDefinition<O> {
     }
 
     private BlockState computeStateFromMeta(int meta) {
-        Comparable<?>[] staticValues = metaCodec != null
-                ? metaCodec.decode(meta)
-                : defaultDecode(meta);
+        Comparable<?>[] staticValues;
+        if (metaCodec != null) {
+            // Legacy positional codec (kept until the vanilla definitions are restated with
+            // per-property meta mapping); takes precedence over per-property decoding.
+            staticValues = metaCodec.decode(meta);
+        } else if (usesMetaProperties) {
+            // Distributed byte mapping: each static property decodes its own bit field.
+            staticValues = decodePerProperty(meta);
+        } else {
+            staticValues = defaultDecode(meta);
+        }
 
         // Assemble the full property value array: static properties take decoded values, dynamic properties take default values
         Comparable<?>[] full = new Comparable<?>[properties.length];
@@ -234,6 +247,21 @@ public final class BlockStateDefinition<O> {
             }
         }
         return findState(full);
+    }
+
+    /**
+     * Per-property meta decoding: each static {@link MetaBlockProperty} extracts its own value
+     * from the raw meta, touching only its bit field. This replaces the whole-definition
+     * positional {@code MetaCodec} with a distributed byte mapping that a mod developer can
+     * express per property.
+     */
+    private Comparable<?>[] decodePerProperty(int meta) {
+        Property<?>[] statics = staticProperties;
+        Comparable<?>[] result = new Comparable<?>[statics.length];
+        for (int i = 0; i < statics.length; i++) {
+            result[i] = ((MetaBlockProperty<?>) statics[i]).decode(meta);
+        }
+        return result;
     }
 
     /**
@@ -406,6 +434,18 @@ public final class BlockStateDefinition<O> {
                 }
             }
             definition.staticProperties = staticList.toArray(new Property<?>[0]);
+
+            // Detect per-property byte mapping: enabled only when there is at least one static
+            // property and every static property carries its own decode(int). A positional
+            // metaCodec, when present, still takes precedence at decode time.
+            boolean allMeta = !staticList.isEmpty();
+            for (Property<?> p : staticList) {
+                if (!(p instanceof MetaBlockProperty)) {
+                    allMeta = false;
+                    break;
+                }
+            }
+            definition.usesMetaProperties = allMeta;
 
             // [C2 fix] Backfill the definition into all CatBlockState instances
             // (definition is null when the CatBlockState is created, because the definition is not yet built)

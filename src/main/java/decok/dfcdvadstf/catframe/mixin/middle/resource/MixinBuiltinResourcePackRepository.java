@@ -1,4 +1,4 @@
-package decok.dfcdvadstf.catframe.mixin.middle;
+package decok.dfcdvadstf.catframe.mixin.middle.resource;
 
 import decok.dfcdvadstf.catframe.resources.builtin.BuiltinPackInjector;
 import net.minecraft.client.resources.ResourcePackRepository;

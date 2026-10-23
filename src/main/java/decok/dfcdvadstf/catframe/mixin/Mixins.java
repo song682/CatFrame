@@ -16,9 +16,9 @@ public enum Mixins implements IMixins {
 
         /** Repository and GUI integration of the built-in resource packs. */
         BUILTIN_RESOURCE_PACKS(Side.CLIENT,
-                "middle.MixinBuiltinResourcePackRepository",
-                "middle.MixinBuiltinResourcePackRepositoryEntry",
-                "middle.MixinBuiltinResourcePackListEntryFound"),
+                "middle.resource.MixinBuiltinResourcePackRepository",
+                "middle.resource.MixinBuiltinResourcePackRepositoryEntry",
+                "middle.resource.MixinBuiltinResourcePackListEntryFound"),
 
         /** Keyboard dispatch and the public keyboard event bridge for screens. */
         SCREEN_INPUT(Side.CLIENT, "middle.event.MixinGuiScreen", "middle.event.MixinGuiScreenEventBridge"),
@@ -28,7 +28,7 @@ public enum Mixins implements IMixins {
                 "middle.render.MixinEntityDiggingFX"),
 
         /** Built-in pack startup bootstrap on the first vanilla refresh after preInit. */
-        BUILTIN_PACK_BOOTSTRAP(Side.CLIENT, "middle.MixinMinecraftRefreshResources");
+        BUILTIN_PACK_BOOTSTRAP(Side.CLIENT, "middle.resource.MixinMinecraftRefreshResources");
 
         private final MixinBuilder builder;
 

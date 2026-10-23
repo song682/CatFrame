@@ -510,29 +510,6 @@ public final class VanillaStateDefinitions {
                 Models.register(block).states(def).register();
         }
 
-        private static void singleVariant(Block block, Property<String> prop, BlockStateDefinition.MetaCodec codec) {
-                BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<>(block)
-                                .add(prop)
-                                .metaCodec(codec)
-                                .create();
-                Models.register(block).states(def).register();
-        }
-
-        /**
-         * Single-property clamp decoder: index = {@code min(mask>0 ? meta&mask : meta, count-1)}.
-         */
-        private static BlockStateDefinition.MetaCodec clampCodec(final Property<String> prop, final int mask) {
-                final int max = prop.getValueCount() - 1;
-                return meta -> {
-                        int idx = mask > 0 ? (meta & mask) : meta;
-                        if (idx > max)
-                                idx = max;
-                        if (idx < 0)
-                                idx = 0;
-                        return new Comparable<?>[] { prop.getValues().get(idx) };
-                };
-        }
-
         // ==================== Stone slab (half+variant) / anvil (facing+damage)
         // ====================
 

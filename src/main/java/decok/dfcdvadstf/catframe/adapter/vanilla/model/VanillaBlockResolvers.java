@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.adapter.vanilla.model;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel.DynamicPropertyResolver;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockFence;
@@ -56,7 +57,8 @@ public final class VanillaBlockResolvers {
     /**
      * Stairs dynamic resolver: writes facing/half/shape.
      * <p>
-     * Corner detection aligns with 1.12+ {@code BlockStairs#getShape} (ported from the former {@code StairsBlockModel}).
+     * Corner detection mirrors 1.7.10 {@code BlockStairs.func_150145_f} (outer corner, high side)
+     * and {@code BlockStairs.func_150144_g} (inner corner, low side), including the blocker check.
      */
     public static final DynamicPropertyResolver STAIRS = new DynamicPropertyResolver() {
         @Override
@@ -69,22 +71,40 @@ public final class VanillaBlockResolvers {
         }
     };
 
+    /**
+     * facing is the direction the stair rises toward (facing=east raises the +X half).
+     * The high neighbour (along facing) decides outer corners; the low neighbour (opposite
+     * facing) decides inner corners. A perpendicular neighbour forms a corner unless a stair
+     * with the same facing and half sits on the side cell (blocker check).
+     */
     private static String computeShape(IBlockAccess world, int x, int y, int z, int facing, boolean top) {
         int[] fwd = FRONT_OFFSET[facing];
 
-        // Check behind (opposite of facing)
-        Integer behind = getStairFacing(world, x - fwd[0], y, z - fwd[1], top);
-        if (behind != null && (behind & 1) != (facing & 1)) { // different axis
-            return behind == CW[facing] ? "outer_left" : "outer_right";
+        // Outer corner: high side (along facing)
+        Integer high = getStairFacing(world, x + fwd[0], y, z + fwd[1], top);
+        if (high != null && (high & 1) != (facing & 1)) {
+            int[] d = FRONT_OFFSET[high];
+            if (!isCornerBlocked(world, x - d[0], y, z - d[1], facing, top)) {
+                return high == CW[facing] ? "outer_right" : "outer_left";
+            }
         }
 
-        // Check ahead (along facing)
-        Integer ahead = getStairFacing(world, x + fwd[0], y, z + fwd[1], top);
-        if (ahead != null && (ahead & 1) != (facing & 1)) { // different axis
-            return ahead == CW[facing] ? "inner_left" : "inner_right";
+        // Inner corner: low side (opposite facing)
+        Integer low = getStairFacing(world, x - fwd[0], y, z - fwd[1], top);
+        if (low != null && (low & 1) != (facing & 1)) {
+            int[] d = FRONT_OFFSET[low];
+            if (!isCornerBlocked(world, x + d[0], y, z + d[1], facing, top)) {
+                return low == CW[facing] ? "inner_right" : "inner_left";
+            }
         }
 
         return "straight";
+    }
+
+    /** A stair with the same facing and half on the side cell cancels the corner. */
+    private static boolean isCornerBlocked(IBlockAccess world, int x, int y, int z, int facing, boolean top) {
+        Integer f = getStairFacing(world, x, y, z, top);
+        return f != null && f.intValue() == facing;
     }
 
     private static Integer getStairFacing(IBlockAccess world, int nx, int ny, int nz, boolean top) {
@@ -323,7 +343,7 @@ public final class VanillaBlockResolvers {
      * When that block is missing / is a different block (e.g. a leftover stalk placed by setblock),
      * fall back to this half's own low 3 bits.
      * <p>
-     * Render-path veto ({@link #shouldRender}): while the upper half's block below is not the
+     * Render-path veto ({@link #shouldRender()}): while the upper half's block below is not the
      * same double plant, nothing is emitted — the in-resolve fallback above therefore no longer
      * surfaces as a "phantom upper half" during the client-sync window right after the lower
      * half is broken (its low 3 bits are an {@code onBlockPlacedBy} facing residue, not a variant).

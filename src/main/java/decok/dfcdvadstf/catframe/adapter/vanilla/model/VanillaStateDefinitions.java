@@ -50,166 +50,166 @@ public final class VanillaStateDefinitions {
         // ==================== Shared / per-block property constants ====================
 
         // Logs / leaves
-        private static final Property<String> LOG_WOOD = StateDefinitions.stringProp("wood", "oak", "spruce", "birch",
+        public static final Property<String> LOG_WOOD = StateDefinitions.stringProp("wood", "oak", "spruce", "birch",
                         "jungle");
-        private static final Property<String> LOG2_WOOD = StateDefinitions.stringProp("wood", "acacia", "dark_oak");
+        public static final Property<String> LOG2_WOOD = StateDefinitions.stringProp("wood", "acacia", "dark_oak");
 
         // Single variant / wood (clamp decode)
-        private static final Property<String> SAPLING_VARIANT = StateDefinitions.stringProp("variant", "oak", "spruce",
+        public static final Property<String> SAPLING_VARIANT = StateDefinitions.stringProp("variant", "oak", "spruce",
                         "birch", "jungle", "acacia", "dark_oak");
-        private static final Property<String> EGG_VARIANT = StateDefinitions.stringProp("variant", "stone",
+        public static final Property<String> EGG_VARIANT = StateDefinitions.stringProp("variant", "stone",
                         "cobblestone", "stone_brick",
                         "mossy_stone_brick", "cracked_stone_brick", "chiseled_stone_brick");
-        private static final Property<String> PLANK_WOOD = StateDefinitions.stringProp("wood", "oak", "spruce", "birch",
+        public static final Property<String> PLANK_WOOD = StateDefinitions.stringProp("wood", "oak", "spruce", "birch",
                         "jungle", "acacia", "dark_oak");
-        private static final Property<String> STONEBRICK_VARIANT = StateDefinitions.stringProp("variant", "stonebrick",
+        public static final Property<String> STONEBRICK_VARIANT = StateDefinitions.stringProp("variant", "stonebrick",
                         "mossy_stonebrick",
                         "cracked_stonebrick", "chiseled_stonebrick");
-        private static final Property<String> SANDSTONE_VARIANT = StateDefinitions.stringProp("variant", "sandstone",
+        public static final Property<String> SANDSTONE_VARIANT = StateDefinitions.stringProp("variant", "sandstone",
                         "chiseled_sandstone", "smooth_sandstone");
-        private static final Property<String> SAND_VARIANT = StateDefinitions.stringProp("variant", "sand", "red_sand");
-        private static final Property<String> DIRT_VARIANT = StateDefinitions.stringProp("variant", "dirt", "podzol");
-        private static final Property<String> WALL_VARIANT = StateDefinitions.stringProp("variant", "cobblestone",
+        public static final Property<String> SAND_VARIANT = StateDefinitions.stringProp("variant", "sand", "red_sand");
+        public static final Property<String> DIRT_VARIANT = StateDefinitions.stringProp("variant", "dirt", "podzol");
+        public static final Property<String> WALL_VARIANT = StateDefinitions.stringProp("variant", "cobblestone",
                         "mossy_cobblestone");
 
         // Flowers
-        private static final Property<String> RED_FLOWER_VARIANT = StateDefinitions.stringProp("variant", "poppy",
+        public static final Property<String> RED_FLOWER_VARIANT = StateDefinitions.stringProp("variant", "poppy",
                         "blue_orchid", "allium", "houstonia",
                         "tulip_red", "tulip_orange", "tulip_white", "tulip_pink", "oxeye_daisy");
-        private static final Property<String> YELLOW_FLOWER_VARIANT = StateDefinitions.stringProp("variant",
+        public static final Property<String> YELLOW_FLOWER_VARIANT = StateDefinitions.stringProp("variant",
                         "dandelion");
 
         // Tall grass (single block)
-        private static final Property<String> TALLGRASS_VARIANT = StateDefinitions.stringProp("variant", "grass",
+        public static final Property<String> TALLGRASS_VARIANT = StateDefinitions.stringProp("variant", "grass",
                         "fern");
 
         // Grass block snow overlay (dynamic; computed at runtime by the SNOWY resolver from the block above)
-        private static final Property<String> SNOWY = StateDefinitions.stringProp("snowy", "false", "true");
+        public static final Property<String> SNOWY = StateDefinitions.stringProp("snowy", "false", "true");
 
         // Double plants (2 blocks tall)
-        private static final Property<String> DOUBLE_PLANT_VARIANT = StateDefinitions.stringProp("variant", "sunflower",
+        public static final Property<String> DOUBLE_PLANT_VARIANT = StateDefinitions.stringProp("variant", "sunflower",
                         "lilac",
                         "double_grass", "double_fern", "rose_bush", "peony");
         // Vanilla double_plant half uses lower/upper — NOT the slab's bottom/top
         // vocabulary
         // Vanilla double_plant's half is lower/upper - not the slab's bottom/top vocabulary, so SLAB_HALF cannot be reused
-        private static final Property<String> PLANT_HALF = StateDefinitions.stringProp("half", "lower", "upper");
+        public static final Property<String> PLANT_HALF = StateDefinitions.stringProp("half", "lower", "upper");
 
         // Stone slab
-        private static final Property<String> SLAB_VARIANT = StateDefinitions.stringProp("variant", "stone",
+        public static final Property<String> SLAB_VARIANT = StateDefinitions.stringProp("variant", "stone",
                         "sandstone", "wood", "cobblestone",
                         "brick", "stone_brick", "nether_brick", "quartz");
 
         // Anvil
-        private static final Property<String> ANVIL_FACING = StateDefinitions.stringProp("facing", "north", "east",
+        public static final Property<String> ANVIL_FACING = StateDefinitions.stringProp("facing", "north", "east",
                         "south", "west");
-        private static final Property<String> ANVIL_DAMAGE = StateDefinitions.stringProp("damage", "0", "1", "2");
+        public static final Property<String> ANVIL_DAMAGE = StateDefinitions.stringProp("damage", "0", "1", "2");
 
         // Crop age
-        private static final Property<String> AGE = StateDefinitions.stringProp("age", "0", "1", "2", "3", "4", "5",
+        public static final Property<String> AGE = StateDefinitions.stringProp("age", "0", "1", "2", "3", "4", "5",
                         "6", "7");
 
         // Hopper
-        private static final Property<String> HOPPER_FACING = StateDefinitions.stringProp("facing", "down", "north",
+        public static final Property<String> HOPPER_FACING = StateDefinitions.stringProp("facing", "down", "north",
                         "south", "west", "east");
-        private static final Property<String> POWERED = StateDefinitions.stringProp("powered", "false", "true");
+        public static final Property<String> POWERED = StateDefinitions.stringProp("powered", "false", "true");
 
         // Quartz block
-        private static final Property<String> QUARTZ_TYPE = StateDefinitions.stringProp("type", "quartz_block",
+        public static final Property<String> QUARTZ_TYPE = StateDefinitions.stringProp("type", "quartz_block",
                         "chiseled_quartz_block", "quartz_pillar");
 
         // Stairs
-        private static final Property<String> STAIR_FACING = StateDefinitions.stringProp("facing", "east", "west",
+        public static final Property<String> STAIR_FACING = StateDefinitions.stringProp("facing", "east", "west",
                         "south", "north");
-        private static final Property<String> STAIR_SHAPE = StateDefinitions.stringProp("shape", "straight",
+        public static final Property<String> STAIR_SHAPE = StateDefinitions.stringProp("shape", "straight",
                         "inner_left", "inner_right", "outer_left", "outer_right");
 
         // Pane connections
-        private static final Property<String> PANE_NORTH = StateDefinitions.stringProp("north", "false", "true");
-        private static final Property<String> PANE_EAST = StateDefinitions.stringProp("east", "false", "true");
-        private static final Property<String> PANE_SOUTH = StateDefinitions.stringProp("south", "false", "true");
-        private static final Property<String> PANE_WEST = StateDefinitions.stringProp("west", "false", "true");
+        public static final Property<String> PANE_NORTH = StateDefinitions.stringProp("north", "false", "true");
+        public static final Property<String> PANE_EAST = StateDefinitions.stringProp("east", "false", "true");
+        public static final Property<String> PANE_SOUTH = StateDefinitions.stringProp("south", "false", "true");
+        public static final Property<String> PANE_WEST = StateDefinitions.stringProp("west", "false", "true");
 
         // Wooden slab variants (double_wooden_slab / wooden_slab: 6 in total via BlockWoodSlab.field_150005_b)
-        private static final Property<String> WOOD_SLAB_VARIANT = StateDefinitions.stringProp("variant", "oak",
+        public static final Property<String> WOOD_SLAB_VARIANT = StateDefinitions.stringProp("variant", "oak",
                         "spruce", "birch", "jungle", "acacia", "big_oak");
 
         // Torch facing (east/west/south/north wall-mounted, standing on the ground)
-        private static final Property<String> TORCH_FACING = StateDefinitions.stringProp("facing", "east", "west",
+        public static final Property<String> TORCH_FACING = StateDefinitions.stringProp("facing", "east", "west",
                         "south", "north", "standing");
 
         // Trapdoor
-        private static final Property<String> TRAPDOOR_FACING = StateDefinitions.stringProp("facing", "north", "south",
+        public static final Property<String> TRAPDOOR_FACING = StateDefinitions.stringProp("facing", "north", "south",
                         "east", "west");
-        private static final Property<String> OPEN = StateDefinitions.stringProp("open", "false", "true");
+        public static final Property<String> OPEN = StateDefinitions.stringProp("open", "false", "true");
 
         // Doors (iron + wooden): the facing values align with the DOOR resolver's 1.8 mapping table (east/south/west/north)
-        private static final Property<String> DOOR_FACING = StateDefinitions.stringProp("facing", "east", "south",
+        public static final Property<String> DOOR_FACING = StateDefinitions.stringProp("facing", "east", "south",
                         "west", "north");
-        private static final Property<String> DOOR_HALF = StateDefinitions.stringProp("half", "lower", "upper");
-        private static final Property<String> DOOR_HINGE = StateDefinitions.stringProp("hinge", "left", "right");
+        public static final Property<String> DOOR_HALF = StateDefinitions.stringProp("half", "lower", "upper");
+        public static final Property<String> DOOR_HINGE = StateDefinitions.stringProp("hinge", "left", "right");
 
         // Cauldron water level
-        private static final Property<String> LEVEL = StateDefinitions.stringProp("level", "0", "1", "2", "3");
+        public static final Property<String> LEVEL = StateDefinitions.stringProp("level", "0", "1", "2", "3");
 
         // Redstone wire signal strength
-        private static final Property<String> POWER = StateDefinitions.stringProp("power", "0", "1", "2", "3", "4", "5",
+        public static final Property<String> POWER = StateDefinitions.stringProp("power", "0", "1", "2", "3", "4", "5",
                         "6", "7",
                         "8", "9", "10", "11", "12", "13", "14", "15");
 
         // Redstone wire climbing (1.7.10 renderBlockRedstoneWire's four independent ramp faces)
-        private static final Property<String> REDSTONE_UP_NORTH = StateDefinitions.stringProp("up_north", "false",
+        public static final Property<String> REDSTONE_UP_NORTH = StateDefinitions.stringProp("up_north", "false",
                         "true");
-        private static final Property<String> REDSTONE_UP_EAST = StateDefinitions.stringProp("up_east", "false",
+        public static final Property<String> REDSTONE_UP_EAST = StateDefinitions.stringProp("up_east", "false",
                         "true");
-        private static final Property<String> REDSTONE_UP_SOUTH = StateDefinitions.stringProp("up_south", "false",
+        public static final Property<String> REDSTONE_UP_SOUTH = StateDefinitions.stringProp("up_south", "false",
                         "true");
-        private static final Property<String> REDSTONE_UP_WEST = StateDefinitions.stringProp("up_west", "false",
+        public static final Property<String> REDSTONE_UP_WEST = StateDefinitions.stringProp("up_west", "false",
                         "true");
 
         // Repeater / comparator facing (output direction)
-        private static final Property<String> DIODE_FACING = StateDefinitions.stringProp("facing", "north", "east",
+        public static final Property<String> DIODE_FACING = StateDefinitions.stringProp("facing", "north", "east",
                         "south", "west");
-        private static final Property<String> DELAY = StateDefinitions.stringProp("delay", "1", "2", "3", "4");
-        private static final Property<String> COMPARATOR_MODE = StateDefinitions.stringProp("mode", "compare",
+        public static final Property<String> DELAY = StateDefinitions.stringProp("delay", "1", "2", "3", "4");
+        public static final Property<String> COMPARATOR_MODE = StateDefinitions.stringProp("mode", "compare",
                         "subtract");
 
         // Piston facing (down/up/north/south/west/east - EnumFacing order) plus the extended/sticky flags
         // BlockPistonBase meta[0:2]=facing, bit3=extended; BlockPistonExtension has the same layout but
         // bit3=sticky
-        private static final Property<String> PISTON_FACING = StateDefinitions.stringProp("facing", "down", "up",
+        public static final Property<String> PISTON_FACING = StateDefinitions.stringProp("facing", "down", "up",
                         "north", "south", "west", "east");
-        private static final Property<String> EXTENDED = StateDefinitions.stringProp("extended", "false", "true");
-        private static final Property<String> STICKY = StateDefinitions.stringProp("sticky", "false", "true");
+        public static final Property<String> EXTENDED = StateDefinitions.stringProp("extended", "false", "true");
+        public static final Property<String> STICKY = StateDefinitions.stringProp("sticky", "false", "true");
 
         // ==================== Group four: ladder / lever / fence gate, etc. ====================
 
         // Ladder facing (north/south/west/east)
-        private static final Property<String> LADDER_FACING = StateDefinitions.stringProp("facing", "north", "south",
+        public static final Property<String> LADDER_FACING = StateDefinitions.stringProp("facing", "north", "south",
                         "west", "east");
 
         // Lever facing (east/west/south/north/up/down)
-        private static final Property<String> LEVER_FACING = StateDefinitions.stringProp("facing", "east", "west",
+        public static final Property<String> LEVER_FACING = StateDefinitions.stringProp("facing", "east", "west",
                         "south", "north", "up", "down");
 
         // Fence gate facing (south/west/north/east - BlockDirectional order)
-        private static final Property<String> FENCE_GATE_FACING = StateDefinitions.stringProp("facing", "south", "west",
+        public static final Property<String> FENCE_GATE_FACING = StateDefinitions.stringProp("facing", "south", "west",
                         "north", "east");
 
         // Pumpkin facing (south/east/north/west - special order)
-        private static final Property<String> PUMPKIN_FACING = StateDefinitions.stringProp("facing", "south", "east",
+        public static final Property<String> PUMPKIN_FACING = StateDefinitions.stringProp("facing", "south", "east",
                         "north", "west");
 
         // Dispenser/dropper facing (down/up/north/south/west/east - EnumFacing order)
-        private static final Property<String> DISPENSER_FACING = StateDefinitions.stringProp("facing", "down", "up",
+        public static final Property<String> DISPENSER_FACING = StateDefinitions.stringProp("facing", "down", "up",
                         "north", "south", "west", "east");
 
         // Button facing (east/west/south/north - wall-mounted only)
-        private static final Property<String> BUTTON_FACING = StateDefinitions.stringProp("facing", "east", "west",
+        public static final Property<String> BUTTON_FACING = StateDefinitions.stringProp("facing", "east", "west",
                         "south", "north");
 
         // Furnace facing (north/south/west/east)
-        private static final Property<String> FURNACE_FACING = StateDefinitions.stringProp("facing", "north", "south",
+        public static final Property<String> FURNACE_FACING = StateDefinitions.stringProp("facing", "north", "south",
                         "west", "east");
 
         // ==================== Property-level metadata byte mapping (per-property decode) ====================
@@ -227,100 +227,100 @@ public final class VanillaStateDefinitions {
         }
 
         // Axis: raw = (meta & 0xC) >> 2, wraps into {y, x, z} (vanilla (meta>>2)%3).
-        private static final EnumMetaProperty<Direction.Axis> AXIS_META = EnumMetaProperty.create("axis",
+        public static final EnumMetaProperty<Direction.Axis> AXIS_META = EnumMetaProperty.create("axis",
                         Direction.Axis.class,
                         Arrays.asList(Direction.Axis.Y, Direction.Axis.X, Direction.Axis.Z), 0xC, 2, true);
 
         // Log / log2 wood type fields.
-        private static final MappedMetaProperty<String> LOG_WOOD_META = smeta("wood", 3, 0, false,
+        public static final MappedMetaProperty<String> LOG_WOOD_META = smeta("wood", 3, 0, false,
                         "oak", "spruce", "birch", "jungle");
-        private static final MappedMetaProperty<String> LOG2_WOOD_META = smeta("wood", 1, 0, false,
+        public static final MappedMetaProperty<String> LOG2_WOOD_META = smeta("wood", 1, 0, false,
                         "acacia", "dark_oak");
 
         // Slab/stairs/plant half bit fields: half lives on bit 3 for most blocks, bit 2 for stairs.
-        private static final MappedMetaProperty<String> HALF_BOTTOM_TOP_B3 = smeta("half", 8, 3, false, "bottom", "top");
-        private static final MappedMetaProperty<String> HALF_BOTTOM_TOP_B2 = smeta("half", 4, 2, false, "bottom", "top");
-        private static final MappedMetaProperty<String> HALF_LOWER_UPPER_B3 = smeta("half", 8, 3, false, "lower", "upper");
+        public static final MappedMetaProperty<String> HALF_BOTTOM_TOP_B3 = smeta("half", 8, 3, false, "bottom", "top");
+        public static final MappedMetaProperty<String> HALF_BOTTOM_TOP_B2 = smeta("half", 4, 2, false, "bottom", "top");
+        public static final MappedMetaProperty<String> HALF_LOWER_UPPER_B3 = smeta("half", 8, 3, false, "lower", "upper");
 
         // Stairs / trapdoor facing (linear meta & 3, block-specific value order).
-        private static final MappedMetaProperty<String> STAIR_FACING_META = smeta("facing", 3, 0, false,
+        public static final MappedMetaProperty<String> STAIR_FACING_META = smeta("facing", 3, 0, false,
                         "east", "west", "south", "north");
-        private static final MappedMetaProperty<String> TRAPDOOR_FACING_META = smeta("facing", 3, 0, false,
+        public static final MappedMetaProperty<String> TRAPDOOR_FACING_META = smeta("facing", 3, 0, false,
                         "north", "south", "east", "west");
 
         // Single-variant clamp fields (mask 0x7 or full nibble, clamped to the last value).
-        private static final MappedMetaProperty<String> SAPLING_VARIANT_META = smeta("variant", 7, 0, false,
+        public static final MappedMetaProperty<String> SAPLING_VARIANT_META = smeta("variant", 7, 0, false,
                         "oak", "spruce", "birch", "jungle", "acacia", "dark_oak");
-        private static final MappedMetaProperty<String> EGG_VARIANT_META = smeta("variant", 7, 0, false,
+        public static final MappedMetaProperty<String> EGG_VARIANT_META = smeta("variant", 7, 0, false,
                         "stone", "cobblestone", "stone_brick", "mossy_stone_brick", "cracked_stone_brick",
                         "chiseled_stone_brick");
-        private static final MappedMetaProperty<String> PLANK_WOOD_META = smeta("wood", 0xF, 0, false,
+        public static final MappedMetaProperty<String> PLANK_WOOD_META = smeta("wood", 0xF, 0, false,
                         "oak", "spruce", "birch", "jungle", "acacia", "dark_oak");
-        private static final MappedMetaProperty<String> STONEBRICK_VARIANT_META = smeta("variant", 0xF, 0, false,
+        public static final MappedMetaProperty<String> STONEBRICK_VARIANT_META = smeta("variant", 0xF, 0, false,
                         "stonebrick", "mossy_stonebrick", "cracked_stonebrick", "chiseled_stonebrick");
-        private static final MappedMetaProperty<String> SANDSTONE_VARIANT_META = smeta("variant", 0xF, 0, false,
+        public static final MappedMetaProperty<String> SANDSTONE_VARIANT_META = smeta("variant", 0xF, 0, false,
                         "sandstone", "chiseled_sandstone", "smooth_sandstone");
-        private static final MappedMetaProperty<String> RED_FLOWER_VARIANT_META = smeta("variant", 0xF, 0, false,
+        public static final MappedMetaProperty<String> RED_FLOWER_VARIANT_META = smeta("variant", 0xF, 0, false,
                         "poppy", "blue_orchid", "allium", "houstonia", "tulip_red", "tulip_orange", "tulip_white",
                         "tulip_pink", "oxeye_daisy");
 
         // Slab / double-slab variant fields.
-        private static final MappedMetaProperty<String> SLAB_VARIANT_META = smeta("variant", 7, 0, false,
+        public static final MappedMetaProperty<String> SLAB_VARIANT_META = smeta("variant", 7, 0, false,
                         "stone", "sandstone", "wood", "cobblestone", "brick", "stone_brick", "nether_brick", "quartz");
-        private static final MappedMetaProperty<String> WOOD_SLAB_VARIANT_META = smeta("variant", 7, 0, false,
+        public static final MappedMetaProperty<String> WOOD_SLAB_VARIANT_META = smeta("variant", 7, 0, false,
                         "oak", "spruce", "birch", "jungle", "acacia", "big_oak");
-        private static final MappedMetaProperty<String> DOUBLE_PLANT_VARIANT_META = smeta("variant", 7, 0, false,
+        public static final MappedMetaProperty<String> DOUBLE_PLANT_VARIANT_META = smeta("variant", 7, 0, false,
                         "sunflower", "lilac", "double_grass", "double_fern", "rose_bush", "peony");
 
         // Anvil facing + damage.
-        private static final MappedMetaProperty<String> ANVIL_FACING_META = smeta("facing", 3, 0, false,
+        public static final MappedMetaProperty<String> ANVIL_FACING_META = smeta("facing", 3, 0, false,
                         "north", "east", "south", "west");
-        private static final MappedMetaProperty<String> ANVIL_DAMAGE_META = smeta("damage", 0xC, 2, false, "0", "1", "2");
+        public static final MappedMetaProperty<String> ANVIL_DAMAGE_META = smeta("damage", 0xC, 2, false, "0", "1", "2");
 
         // Cauldron level / redstone power / repeater delay + facing.
-        private static final MappedMetaProperty<String> LEVEL_META = smeta("level", 3, 0, false, "0", "1", "2", "3");
-        private static final MappedMetaProperty<String> POWER_META = smeta("power", 0xF, 0, false,
+        public static final MappedMetaProperty<String> LEVEL_META = smeta("level", 3, 0, false, "0", "1", "2", "3");
+        public static final MappedMetaProperty<String> POWER_META = smeta("power", 0xF, 0, false,
                         "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15");
-        private static final MappedMetaProperty<String> DIODE_FACING_META = smeta("facing", 3, 0, false,
+        public static final MappedMetaProperty<String> DIODE_FACING_META = smeta("facing", 3, 0, false,
                         "north", "east", "south", "west");
-        private static final MappedMetaProperty<String> DELAY_META = smeta("delay", 0xC, 2, false, "1", "2", "3", "4");
+        public static final MappedMetaProperty<String> DELAY_META = smeta("delay", 0xC, 2, false, "1", "2", "3", "4");
 
         // Piston facing (meta & 7 clamped to the six EnumFacing values) + extended / sticky flags (bit 3).
-        private static final MappedMetaProperty<String> PISTON_FACING_META = smeta("facing", 7, 0, false,
+        public static final MappedMetaProperty<String> PISTON_FACING_META = smeta("facing", 7, 0, false,
                         "down", "up", "north", "south", "west", "east");
-        private static final BooleanFlagProperty EXTENDED_FLAG = BooleanFlagProperty.flag("extended", 8);
-        private static final BooleanFlagProperty STICKY_FLAG = BooleanFlagProperty.flag("sticky", 8);
+        public static final BooleanFlagProperty EXTENDED_FLAG = BooleanFlagProperty.flag("extended", 8);
+        public static final BooleanFlagProperty STICKY_FLAG = BooleanFlagProperty.flag("sticky", 8);
 
         // Trapdoor open flag (bit 2).
-        private static final BooleanFlagProperty OPEN_B2 = BooleanFlagProperty.flag("open", 4);
+        public static final BooleanFlagProperty OPEN_B2 = BooleanFlagProperty.flag("open", 4);
 
         // Lever / button / hopper powered flag (bit 3).
-        private static final BooleanFlagProperty POWERED_B3 = BooleanFlagProperty.flag("powered", 8);
+        public static final BooleanFlagProperty POWERED_B3 = BooleanFlagProperty.flag("powered", 8);
 
         // Non-linear facing tables (raw = meta & 7): EnumMetaProperty table mode replaces the former
         // switch lambdas. Each entry maps a raw meta field value to a Direction / TorchFacing whose
         // serialized name matches the blockstate variant-key value; the fallback covers out-of-range raws.
-        private static final EnumMetaProperty<Direction> SWITCH_NSWE = EnumMetaProperty.withTable("facing", 7, 0,
+        public static final EnumMetaProperty<Direction> SWITCH_NSWE = EnumMetaProperty.withTable("facing", 7, 0,
                         Direction.NORTH,
                         Direction.NORTH, Direction.NORTH, Direction.NORTH, Direction.SOUTH, Direction.WEST,
                         Direction.EAST, Direction.NORTH, Direction.NORTH);
-        private static final EnumMetaProperty<Direction> LEVER_FACING_TABLE = EnumMetaProperty.withTable("facing", 7, 0,
+        public static final EnumMetaProperty<Direction> LEVER_FACING_TABLE = EnumMetaProperty.withTable("facing", 7, 0,
                         Direction.DOWN,
                         Direction.DOWN, Direction.EAST, Direction.WEST, Direction.SOUTH, Direction.NORTH,
                         Direction.UP, Direction.UP, Direction.DOWN);
-        private static final EnumMetaProperty<Direction> DISPENSER_FACING_TABLE = EnumMetaProperty.withTable("facing", 7, 0,
+        public static final EnumMetaProperty<Direction> DISPENSER_FACING_TABLE = EnumMetaProperty.withTable("facing", 7, 0,
                         Direction.NORTH,
                         Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.WEST,
                         Direction.EAST, Direction.NORTH, Direction.NORTH);
-        private static final EnumMetaProperty<Direction> BUTTON_FACING_TABLE = EnumMetaProperty.withTable("facing", 7, 0,
+        public static final EnumMetaProperty<Direction> BUTTON_FACING_TABLE = EnumMetaProperty.withTable("facing", 7, 0,
                         Direction.EAST,
                         Direction.EAST, Direction.EAST, Direction.WEST, Direction.SOUTH, Direction.NORTH,
                         Direction.EAST, Direction.EAST, Direction.EAST);
-        private static final EnumMetaProperty<Direction> HOPPER_FACING_TABLE = EnumMetaProperty.withTable("facing", 7, 0,
+        public static final EnumMetaProperty<Direction> HOPPER_FACING_TABLE = EnumMetaProperty.withTable("facing", 7, 0,
                         Direction.DOWN,
                         Direction.DOWN, Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.WEST,
                         Direction.EAST, Direction.DOWN, Direction.DOWN);
-        private static final EnumMetaProperty<TorchFacing> TORCH_FACING_TABLE = EnumMetaProperty.withTable("facing", 7, 0,
+        public static final EnumMetaProperty<TorchFacing> TORCH_FACING_TABLE = EnumMetaProperty.withTable("facing", 7, 0,
                         TorchFacing.STANDING,
                         TorchFacing.STANDING, TorchFacing.EAST, TorchFacing.WEST, TorchFacing.SOUTH, TorchFacing.NORTH,
                         TorchFacing.STANDING, TorchFacing.STANDING, TorchFacing.STANDING);
@@ -328,34 +328,34 @@ public final class VanillaStateDefinitions {
         // Non-linear single-variant String tables (raw = full meta & 0xF). These replace the former
         // positional MetaCodec for sand/dirt/tallgrass/quartz, where the meta field is not a contiguous
         // ordinal range (e.g. dirt only becomes podzol at raw 2, tallgrass becomes grass only at raw 1).
-        private static final MappedMetaProperty<String> SAND_VARIANT_META = smeta("variant", 0xF, 0, false,
+        public static final MappedMetaProperty<String> SAND_VARIANT_META = smeta("variant", 0xF, 0, false,
                         "sand", "red_sand");
-        private static final MappedMetaProperty<String> WALL_VARIANT_META = smeta("variant", 0xF, 0, false,
+        public static final MappedMetaProperty<String> WALL_VARIANT_META = smeta("variant", 0xF, 0, false,
                         "cobblestone", "mossy_cobblestone");
         // yellow_flower: dandelion only (constant). Mask 0 -> raw always 0 -> the single value.
-        private static final MappedMetaProperty<String> YELLOW_FLOWER_VARIANT_META = smeta("variant", 0, 0, false,
+        public static final MappedMetaProperty<String> YELLOW_FLOWER_VARIANT_META = smeta("variant", 0, 0, false,
                         "dandelion");
-        private static final TableMetaProperty<String> DIRT_VARIANT_META = TableMetaProperty.of("variant",
+        public static final TableMetaProperty<String> DIRT_VARIANT_META = TableMetaProperty.of("variant",
                         Arrays.asList("dirt", "podzol"), 0xF, 0, "dirt",
                         null, null, "podzol");
-        private static final TableMetaProperty<String> TALLGRASS_VARIANT_META = TableMetaProperty.of("variant",
+        public static final TableMetaProperty<String> TALLGRASS_VARIANT_META = TableMetaProperty.of("variant",
                         Arrays.asList("grass", "fern"), 0xF, 0, "fern",
                         null, "grass");
         // quartz_block: type and axis are each a pure function of the full meta (0-4), so the former
         // joint switch decomposes into two independent raw tables.
-        private static final TableMetaProperty<String> QUARTZ_TYPE_META = TableMetaProperty.of("type",
+        public static final TableMetaProperty<String> QUARTZ_TYPE_META = TableMetaProperty.of("type",
                         Arrays.asList("quartz_block", "chiseled_quartz_block", "quartz_pillar"), 0xF, 0, "quartz_block",
                         "quartz_block", "chiseled_quartz_block", "quartz_pillar", "quartz_pillar", "quartz_pillar");
-        private static final TableMetaProperty<String> QUARTZ_AXIS_META = TableMetaProperty.of("axis",
+        public static final TableMetaProperty<String> QUARTZ_AXIS_META = TableMetaProperty.of("axis",
                         Arrays.asList("y", "x", "z"), 0xF, 0, "y",
                         null, null, null, "x", "z");
 
         // Comparator mode / powered bit fields. The lit comparator always reports powered=true, so its
         // powered property is a constant one-value field (mask 0 -> raw 0 regardless of meta).
-        private static final MappedMetaProperty<String> COMPARATOR_MODE_META = smeta("mode", 4, 2, false,
+        public static final MappedMetaProperty<String> COMPARATOR_MODE_META = smeta("mode", 4, 2, false,
                         "compare", "subtract");
-        private static final MappedMetaProperty<String> COMPARATOR_POWERED_LIT = smeta("powered", 0, 0, false, "true");
-        private static final MappedMetaProperty<String> COMPARATOR_POWERED_B3 = smeta("powered", 8, 3, false,
+        public static final MappedMetaProperty<String> COMPARATOR_POWERED_LIT = smeta("powered", 0, 0, false, "true");
+        public static final MappedMetaProperty<String> COMPARATOR_POWERED_B3 = smeta("powered", 8, 3, false,
                         "false", "true");
 
         // ==================== Registration entry points ====================

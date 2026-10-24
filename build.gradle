@@ -92,7 +92,6 @@ dependencies {
 
     runtimeOnly "maven.modrinth:notenoughitems-unofficial:${project.nei_version}-GTNH"
     runtimeOnly "maven.modrinth:codechickencore-unofficial:${project.cc_version}"
-    runtimeOnly "maven.modrinth:codechickenlib-unofficial:${project.cc_version}"
     implementation fileTree(dir: 'lib', includes: ['*.jar'])
 
     testImplementation 'junit:junit:4.13.2'

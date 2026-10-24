@@ -118,7 +118,7 @@ public abstract class AbstractContainerMenu extends net.minecraft.inventory.Cont
             case PICKUP:
                 return onPickup(slotIndex, button, player);
             case QUICK_MOVE:
-                return onQuickMove(slotIndex, player);
+                return onQuickMove(slotIndex, button, player);
             case SWAP:
                 return onSwap(slotIndex, button, player);
             case CLONE:
@@ -148,9 +148,51 @@ public abstract class AbstractContainerMenu extends net.minecraft.inventory.Cont
 
     /**
      * Handle a QUICK_MOVE click (shift-click transfer).
+     * <p>
+     * Restores the vanilla mode-1 guards (1.7.10 {@code Container.slotClick},
+     * lines 245–292, and the 26.1.2 {@code QUICK_MOVE} branch of
+     * {@code doClick}) that a raw {@link #transferStackInSlot} call would
+     * bypass, because the server re-runs {@code slotClick} with
+     * client-supplied packet arguments:
+     * </p>
+     * <ul>
+     *   <li>{@code slotIndex == -999}: drop the carried stack (button 0) or
+     *       one item of it (button 1), matching vanilla;</li>
+     *   <li>{@code slotIndex < 0}: reject (avoids an out-of-bounds access);</li>
+     *   <li>{@code button} must be 0 or 1, otherwise reject;</li>
+     *   <li>{@code Slot.canTakeStack(player)} must accept the take.</li>
+     * </ul>
      */
-    protected ItemStack onQuickMove(final int slotIndex, final EntityPlayer player) {
-        return this.transferStackInSlot(player, slotIndex);
+    protected ItemStack onQuickMove(final int slotIndex, final int button, final EntityPlayer player) {
+        final InventoryPlayer playerInv = player.inventory;
+
+        if (slotIndex == -999) {
+            // Click outside the window: drop the carried stack (vanilla behaviour)
+            if (playerInv.getItemStack() != null) {
+                if (button == 0) {
+                    player.dropPlayerItemWithRandomChoice(playerInv.getItemStack(), true);
+                    playerInv.setItemStack(null);
+                } else if (button == 1) {
+                    player.dropPlayerItemWithRandomChoice(playerInv.getItemStack().splitStack(1), true);
+
+                    if (playerInv.getItemStack().stackSize == 0) {
+                        playerInv.setItemStack(null);
+                    }
+                }
+            }
+            return null;
+        }
+
+        // Reject invalid indices / buttons, mirroring the vanilla guards
+        if (slotIndex < 0 || (button != 0 && button != 1)) {
+            return null;
+        }
+
+        final Slot slot = (Slot) this.inventorySlots.get(slotIndex);
+        if (slot != null && slot.canTakeStack(player)) {
+            return this.transferStackInSlot(player, slotIndex);
+        }
+        return null;
     }
 
     /**
@@ -188,16 +230,59 @@ public abstract class AbstractContainerMenu extends net.minecraft.inventory.Cont
         return super.slotClick(slotIndex, button, 6, player);
     }
 
-    // ──── Abstract method ────
+    // ──── Network sync (client side) ────
 
     /**
      * {@inheritDoc}
-     * <p>Subclasses must implement to define accessibility rules.</p>
+     * <p>
+     * Receives data-slot values broadcast by
+     * {@link net.minecraft.inventory.ICrafting#sendProgressBarUpdate} on the
+     * server (carried by {@code S31PacketWindowProperty}). Writes the value
+     * back into the corresponding {@link ContainerData} via
+     * {@link ContainerData#set}, mirroring how 26.1.2's
+     * {@code ClientPacketListener.handleContainerSetData} routes through
+     * {@code AbstractContainerMenu.setData}. The flat {@code id} uses the same
+     * ordering as {@link #syncDataSlots()}.
+     * </p>
      */
     @Override
-    public abstract boolean canInteractWith(EntityPlayer player);
+    public void updateProgressBar(final int id, final int value) {
+        int flatIndex = 0;
+        for (int d = 0; d < this.dataSlots.size(); d++) {
+            final ContainerData data = this.dataSlots.get(d);
+            if (id < flatIndex + data.getCount()) {
+                data.set(id - flatIndex, value);
+                return;
+            }
+            flatIndex += data.getCount();
+        }
+    }
 
     // ──── Lifecycle hooks ────
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>Initial data push:</b> shared previous-value tracking means a newly
+     * attached listener would otherwise only receive values that change after
+     * it joins. Pushes the full current state of every data slot to the new
+     * listener, matching vanilla {@code ContainerFurnace.addCraftingToCrafters}
+     * and 26.1.2's {@code AbstractContainerMenu.sendAllDataToRemote}.
+     * </p>
+     */
+    @Override
+    public void addCraftingToCrafters(final net.minecraft.inventory.ICrafting listener) {
+        super.addCraftingToCrafters(listener);
+
+        int flatIndex = 0;
+        for (int d = 0; d < this.dataSlots.size(); d++) {
+            final ContainerData data = this.dataSlots.get(d);
+            for (int i = 0; i < data.getCount(); i++) {
+                listener.sendProgressBarUpdate(this, flatIndex, data.get(i));
+                flatIndex++;
+            }
+        }
+    }
 
     /**
      * {@inheritDoc}

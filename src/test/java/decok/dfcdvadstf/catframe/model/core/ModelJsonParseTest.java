@@ -1,6 +1,7 @@
 package decok.dfcdvadstf.catframe.model.core;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import org.junit.Test;
 
@@ -9,6 +10,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Runtime verification for the custom ModelJson deserializer
@@ -127,6 +129,51 @@ public class ModelJsonParseTest {
         assertEquals(Boolean.FALSE, model.elements.get(1).shade);
         // invalid values are dropped with a warning (falls back to face-direction shading)
         assertEquals(null, model.elements.get(2).shadeDirectionOverride);
+    }
+
+    @Test
+    public void parsesLightEmissionWithDefaultAndRange() {
+        String json = "{ \"elements\": ["
+                + "  { \"from\": [0,0,0], \"to\": [16,16,16], \"light_emission\": 15 },"
+                + "  { \"from\": [0,0,0], \"to\": [16,16,16], \"light_emission\": 0 },"
+                + "  { \"from\": [0,0,0], \"to\": [16,16,16], \"light_emission\": 7 },"
+                + "  { \"from\": [0,0,0], \"to\": [16,16,16] }"
+                + "] }";
+        ModelJson model = ModelJson.createGson().fromJson(json, ModelJson.class);
+        assertNotNull(model);
+        assertEquals(4, model.elements.size());
+        assertEquals(15, model.elements.get(0).lightEmission);
+        assertEquals(0, model.elements.get(1).lightEmission);
+        assertEquals(7, model.elements.get(2).lightEmission);
+        // absent field defaults to 0 (26.1.2 CuboidModelElement DEFAULT_LIGHT_EMISSION)
+        assertEquals(0, model.elements.get(3).lightEmission);
+        // known key must not leak into the raw unknown-key snapshot
+        assertEquals(null, model.elements.get(0).raw);
+    }
+
+    @Test
+    public void rejectsInvalidLightEmission() {
+        // 26.1.2 CuboidModelElement.Deserializer semantics: non-number or out-of-range rejects the model
+        // (numeric strings and booleans are not number primitives; null is not a primitive at all)
+        String[] invalid = { "-1", "16", "\"5\"", "true", "null" };
+        for (String value : invalid) {
+            String json = "{ \"elements\": [ { \"from\": [0,0,0], \"to\": [16,16,16], \"light_emission\": " + value + " } ] }";
+            try {
+                ModelJson.createGson().fromJson(json, ModelJson.class);
+                fail("Expected JsonParseException for light_emission=" + value);
+            } catch (JsonParseException expected) {
+                // expected rejection
+            }
+        }
+    }
+
+    @Test
+    public void truncatesFractionalLightEmissionLikeVanilla() {
+        // GsonHelper.getAsInt truncates via Number.intValue(): 3.7 -> 3 (in range, accepted)
+        String json = "{ \"elements\": [ { \"from\": [0,0,0], \"to\": [16,16,16], \"light_emission\": 3.7 } ] }";
+        ModelJson model = ModelJson.createGson().fromJson(json, ModelJson.class);
+        assertNotNull(model);
+        assertEquals(3, model.elements.get(0).lightEmission);
     }
 
     @Test

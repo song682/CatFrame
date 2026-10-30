@@ -54,6 +54,28 @@ public final class LightCoordsUtil {
         return (coords & 0xFF0000) | (block & 15) << 4;
     }
 
+    /**
+     * Floors both light components of packed coordinates to at least the given emission level.
+     *
+     * <p>Aligned with 26.1.2 {@code LightCoordsUtil.lightCoordsWithEmission}: an emission of 0
+     * returns the input unchanged; otherwise the sky and block components are each raised to
+     * {@code max(component, emission)} and repacked. Used at vertex output for the JSON element
+     * {@code "light_emission"} field (26.1.2 {@code VertexConsumer.putBlockBakedQuad} /
+     * {@code putBakedQuad} apply it to every vertex on both the AO and flat paths).
+     *
+     * @param lightCoords packed light coordinates ({@code block << 4 | sky << 20})
+     * @param emission    emission level (0-15)
+     * @return the light coordinates with both components floored to the emission level
+     */
+    public static int lightCoordsWithEmission(int lightCoords, int emission) {
+        if (emission == 0) {
+            return lightCoords;
+        }
+        int sky = Math.max(sky(lightCoords), emission);
+        int block = Math.max(block(lightCoords), emission);
+        return pack(block, sky);
+    }
+
     // ==================== Smooth format (for weighted blending) ====================
 
     /**

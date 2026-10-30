@@ -315,6 +315,7 @@ public class ModelResolver {
         dst.ambientocclusion = src.ambientocclusion;
         dst.shade = src.shade;
         dst.shadeDirectionOverride = src.shadeDirectionOverride;
+        dst.lightEmission = src.lightEmission;
         dst.raw = src.raw;
         if (src.rotation != null) {
             dst.rotation = new ModelJson.Rotation();

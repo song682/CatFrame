@@ -46,8 +46,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *       via beforePart relay and writes to {@link RenderContext#brightnessOverride} in apply;
  *       for block world, only computes default brightness for AO-degraded quads. Must run after AOCompute
  *       (reads aoBrightness to detect AO-degraded quads).</li>
- *   <li>{@link AOShadeExtension} ({@code -997}): processes {@code "ambientocclusion"} and {@code "shade"} in
- *       JSON elements to control brightness and directional shading for emissive/uniformly lit blocks.</li>
+ *   <li>{@link AOShadeExtension} ({@code -997}): processes {@code "ambientocclusion"}, {@code "shade"} and
+ *       {@code "light_emission"} in JSON elements to control brightness and directional shading for
+ *       emissive/uniformly lit blocks (emission floors the final light coordinates component-wise,
+ *       aligned with the 26.1.2 vertex-output semantics).</li>
  *   <li>{@link GuiLightExtension} ({@code -996}): processes {@code "gui_light"} in JSON models to control
  *       directional shading and GL_LIGHTING state.</li>
  *   <li>{@link TintRenderExtension} ({@code -995}): processes {@code "tintindex"} in JSON faces and automatically

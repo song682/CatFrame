@@ -5,10 +5,11 @@ import decok.dfcdvadstf.catframe.model.render.ModelRenderRegistry;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
 import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLighting;
+import decok.dfcdvadstf.catframe.model.render.extension.ao.light.LightCoordsUtil;
 
 /**
  * Built-in render extension: handles the {@code "ambientocclusion"}, {@code "shade"},
- * and {@code "shade_direction_override"} (26.3+) fields in a JSON element.
+ * {@code "shade_direction_override"} (26.3+) and {@code "light_emission"} (26.1.2+) fields in a JSON element.
  *
  * <h3>Per-vertex AO principle (aligned with the 26.1 {@code BlockModelLighter} algorithm)</h3>
  * <p>During the {@link RenderPhase#BLOCK_WORLD} phase,
@@ -32,6 +33,12 @@ import decok.dfcdvadstf.catframe.model.render.extension.ao.light.CardinalLightin
  *     {@link CardinalLighting} table using the specified direction to compute directional shading; mutually exclusive
  *     with {@code shade}, and this field takes precedence when both are declared
  *     (a duplicate warning is already issued during parsing; see the ElementDeserializer in {@code ModelJson}).</li>
+ *   <li>{@code lightEmission > 0} (26.1.2+): floors both the sky and block components of the final light
+ *     coordinates to at least the emission level ({@link LightCoordsUtil#lightCoordsWithEmission}), on the
+ *     per-vertex AO channel when present, otherwise on the uniform brightness channel. Aligned with the
+ *     26.1.2 vertex-output semantics ({@code VertexConsumer.putBlockBakedQuad} / {@code putBakedQuad}):
+ *     emission neither disables AO nor flattens directional shading, and runs after the AO/flat degrade
+ *     above so it floors whichever brightness channel the emitter will consume.</li>
  * </ul>
  *
  * <p>This extension is installed automatically by {@link ModelRenderRegistry} on first use.
@@ -59,6 +66,29 @@ public final class AOShadeExtension implements IModelRenderExtension {
         } else if (ctx.quad.shadeEnabled != null && !ctx.quad.shadeEnabled) {
             // Directional shading disabled: flatten the directional coefficient; per-vertex AO data is retained
             ctx.shade = 1.0f;
+        }
+
+        // Handle light_emission (26.1.2+): floor the final light coordinates component-wise to the emission
+        // level. Runs after the ambientocclusion degrade above so it floors whichever channel the emitter
+        // consumes: per-vertex AO (aoBrightness[0] >= 0, same contract as QuadWriter.hasVertexAO) or the
+        // uniform brightness (effectiveBrightness). Emission does not touch shade or AO color, mirroring
+        // 26.1.2 VertexConsumer.putBlockBakedQuad / putBakedQuad output-stage semantics.
+        int emission = ctx.quad.lightEmission;
+        if (emission > 0) {
+            if (ctx.aoBrightness[0] >= 0) {
+                for (int i = 0; i < 4; i++) {
+                    if (ctx.aoBrightness[i] >= 0) {
+                        ctx.aoBrightness[i] = LightCoordsUtil.lightCoordsWithEmission(ctx.aoBrightness[i], emission);
+                    }
+                }
+            } else {
+                int base = ctx.effectiveBrightness();
+                // Guard: -1 means no brightness resolved yet (chain-missing edge path); packing -1 would
+                // spuriously yield full-bright, so leave the fallback chain untouched in that case
+                if (base >= 0) {
+                    ctx.brightnessOverride = LightCoordsUtil.lightCoordsWithEmission(base, emission);
+                }
+            }
         }
     }
 }

@@ -141,6 +141,17 @@ public class ModelJson {
         public String shadeDirectionOverride;
 
         /**
+         * Element-level light emission (JSON {@code "light_emission"}, int 0-15, default 0;
+         * aligned with 26.1.2 {@code CuboidModelElement.lightEmission}).
+         * <p>At vertex output the sky and block components of the light coordinates are floored
+         * to at least this level ({@code LightCoordsUtil.lightCoordsWithEmission}); it does not
+         * disable ambient occlusion or directional shading (the AO dispatch only checks the
+         * block-level emission). A non-number or out-of-range value rejects the model during
+         * deserialization, mirroring the vanilla {@code CuboidModelElement.Deserializer}.
+         */
+        public int lightEmission;
+
+        /**
          * As-is snapshot of unrecognized keys (anything beyond the known keys; never interpreted or
          * dropped), so compatibility layers can read future format additions; null when there are no
          * unknown keys. Same convention as the root-level {@link ModelJson#raw}.
@@ -345,9 +356,23 @@ public class ModelJson {
                 }
             }
 
+            // 26.1.2 "light_emission": element-level emission level (int 0-15, default 0).
+            // Mirrors CuboidModelElement.Deserializer: must be a number primitive within [0,15],
+            // otherwise the model is rejected with a JsonParseException (no warn-and-ignore).
+            if (obj.has("light_emission")) {
+                JsonElement le = obj.get("light_emission");
+                boolean isNumber = le.isJsonPrimitive() && le.getAsJsonPrimitive().isNumber();
+                int lightEmission = isNumber ? le.getAsInt() : 0;
+                if (!isNumber || lightEmission < 0 || lightEmission > 15) {
+                    throw new JsonParseException("Expected 'light_emission' to be an Integer between (inclusive) 0 and 15");
+                }
+                element.lightEmission = lightEmission;
+            }
+
             // Unrecognized element keys -> raw snapshot (stored, never interpreted)
             element.raw = collectUnknown("element", obj,
-                    "from", "to", "rotation", "faces", "ambientocclusion", "shade", "shade_direction_override");
+                    "from", "to", "rotation", "faces", "ambientocclusion", "shade", "shade_direction_override",
+                    "light_emission");
 
             return element;
         }

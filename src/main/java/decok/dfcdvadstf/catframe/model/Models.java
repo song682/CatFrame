@@ -37,7 +37,7 @@ import java.util.Map;
  * }</pre>
  *
  * <h3>Timing</h3>
- * {@link #register()} only registers declarative {@link ModelSpec}s; actual blockstate JSON
+ * {@link #register(Block)} only registers declarative {@link ModelSpec}s; actual blockstate JSON
  * materialization is deferred to {@link #materialize()} (invoked by
  * {@code VanillaModelManager.Baking.registerAllModels}
  * after blockstate loading completes).

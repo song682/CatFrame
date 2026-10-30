@@ -33,25 +33,40 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * item GUI rendering, and item hand rendering. Extensions should decide whether to take effect based
  * on {@link RenderContext#phase}.
  *
- * <h3>Built-in extensions (in registration order)</h3>
+ * <h3>Built-in extensions (in chain execution order)</h3>
+ * Installed lazily by {@link #ensureDefaults()} with consecutive priorities starting at
+ * {@link #BUILTIN_PRIORITY_BASE}, so execution order equals registration order:
  * <ul>
- *   <li>{@link AOComputeExtension}: head of the chain. In the BLOCK_WORLD phase, computes per-vertex
+ *   <li>{@link FaceCullExtension} ({@code -1000}): head of the chain. Processes {@code "cullface"}
+ *       in JSON faces and automatically culls hidden faces based on whether adjacent blocks are
+ *       fully opaque. Must run before AOCompute — cull hidden faces before computing AO.</li>
+ *   <li>{@link AOComputeExtension} ({@code -999}): in the BLOCK_WORLD phase, computes per-vertex
  *       AO and writes results to {@link RenderContext#aoBrightness} and {@link RenderContext#aoColorMul}.</li>
- *   <li>{@link LightPolicyExtension}: phase default brightness policy. For item phases, computes
+ *   <li>{@link LightPolicyExtension} ({@code -998}): phase default brightness policy. For item phases, computes
  *       via beforePart relay and writes to {@link RenderContext#brightnessOverride} in apply;
- *       for block world, only computes default brightness for AO-degraded quads. Must run after AOCompute.</li>
- *   <li>{@link FaceCullExtension}: processes {@code "cullface"} in JSON faces and automatically
- *       culls hidden faces based on whether adjacent blocks are fully opaque.</li>
- *   <li>{@link AOShadeExtension}: processes {@code "ambientocclusion"} and {@code "shade"} in
+ *       for block world, only computes default brightness for AO-degraded quads. Must run after AOCompute
+ *       (reads aoBrightness to detect AO-degraded quads).</li>
+ *   <li>{@link AOShadeExtension} ({@code -997}): processes {@code "ambientocclusion"} and {@code "shade"} in
  *       JSON elements to control brightness and directional shading for emissive/uniformly lit blocks.</li>
- *   <li>{@link GuiLightExtension}: processes {@code "gui_light"} in JSON models to control
+ *   <li>{@link GuiLightExtension} ({@code -996}): processes {@code "gui_light"} in JSON models to control
  *       directional shading and GL_LIGHTING state.</li>
- *   <li>{@link TintRenderExtension}: processes {@code "tintindex"} in JSON faces and automatically
+ *   <li>{@link TintRenderExtension} ({@code -995}): processes {@code "tintindex"} in JSON faces and automatically
  *       calls {@link decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry} to provide
  *       biome- or NBT-based tinting for grass blocks, leaves, water, dyed items, etc.</li>
- *   <li>{@link DisplayTransformExtension}: processes {@code "display"} in JSON models and applies
- *       corresponding GL transforms (translation, rotation, scale) for GUI and hand rendering.</li>
+ *   <li>{@link DisplayTransformExtension} ({@code -994}): processes {@code "display"} in JSON models and applies
+ *       corresponding GL transforms (translation, rotation, scale) for GUI and hand rendering.
+ *       Serves the item phases only — block phases receive no display transform from this extension.</li>
+ *   <li>{@link BlockDestroyExtension} ({@code -993}): tail of the chain, active only in the
+ *       {@link RenderPhase#BLOCK_DESTROY} phase. Sets {@link RenderContext#iconOverride} to the current
+ *       destroy-stage icon, forces full brightness, {@code shade=1.0} and pure white vertex color.</li>
  * </ul>
+ * <p>
+ * One further built-in-priority extension is registered <b>outside</b> {@link #ensureDefaults()}, from
+ * {@code decok.dfcdvadstf.catframe.proxy.ClientProxy}: {@link decok.dfcdvadstf.catframe.model.render.extension.LeavesGraphicsExtension}
+ * at {@code -992}. It switches leaves to their {@code *_opaque} sprite under smooth graphics by writing
+ * {@link RenderContext#iconOverride}, so it sits at the tail of the built-in band and any external
+ * extension that also writes {@code iconOverride} must use a priority greater than {@code -992} to see
+ * (and compose with) its result.
  *
  * <h3>Priority contract (v0.5+)</h3>
  * Each extension has an integer {@code priority}: <b>smaller priority values execute first</b>.

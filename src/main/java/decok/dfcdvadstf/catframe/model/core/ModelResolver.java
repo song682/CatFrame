@@ -20,25 +20,22 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ModelResolver {
     public static final Gson GSON = ModelJson.createGson();
-    private static final Map<String, ModelJson> cache = new ConcurrentHashMap<>();
-    private static final List<String> registeredNamespaces = new ArrayList<>();
-    private static final int MAX_DEPTH = 16;
 
     /**
-     * Cycle detection: tracks the model paths currently being resolved by this thread.
-     * If a path already in the set is encountered again during resolution, a circular dependency exists.
+     * Resolved-model cache. Keys are {@linkplain #canonicalKey(String) canonical}
+     * {@code namespace:path} strings, so a bare reference and its qualified spelling of the same
+     * model share one entry instead of being parsed and cached twice.
      */
-    private static final ThreadLocal<Set<String>> resolvingStack = new ThreadLocal<Set<String>>() {
-        @Override
-        protected Set<String> initialValue() {
-            return new LinkedHashSet<>();
-        }
-    };
+    private static final Map<String, ModelJson> cache = new ConcurrentHashMap<>();
+    private static final List<String> registeredNamespaces = new ArrayList<>();
 
     /**
      * Dependency graph: records each model's parent dependency.
      * Used by topological sorting to determine bake order.
      * key = model path, value = set of parent paths this model depends on
+     * <p>
+     * Both the key and the recorded parents are canonical keys, so a dependency discovered through a
+     * bare parent reference still matches the dependent model's entry.
      */
     private static final Map<String, Set<String>> dependencyGraph = new ConcurrentHashMap<>();
 
@@ -63,56 +60,92 @@ public class ModelResolver {
      * <p>If the model is not found or fails to load, it automatically falls back to the
      * {@code builtin/missing} placeholder model (displays the purple/black missingno texture),
      * preventing render pipeline failures caused by missing models.
+     *
+     * <p>The path is {@linkplain #canonicalKey(String) canonicalized} on entry, so a bare
+     * {@code "block/stone"} and a qualified {@code "minecraft:block/stone"} resolve through, and are
+     * cached under, the same key.
      */
     public static ModelJson resolve(String modelPath) {
-        if (cache.containsKey(modelPath)) {
-            return cache.get(modelPath);
+        String key = canonicalKey(modelPath);
+        if (cache.containsKey(key)) {
+            return cache.get(key);
         }
 
-        Set<String> stack = resolvingStack.get();
-        stack.clear();
-        ModelJson resolved = resolveInternal(modelPath, 0);
-        stack.clear();
+        // The cycle-detection chain belongs to this top-level call rather than to the thread, so a
+        // nested resolve() (from an extension point, say) cannot clobber an outer chain.
+        ModelJson resolved = resolveInternal(key, new LinkedHashSet<String>());
 
         if (resolved != null) {
             // Resolve texture variables in the final model
             resolveTextureVariables(resolved);
-            cache.put(modelPath, resolved);
+            cache.put(key, resolved);
         } else {
             // [W5] Model load failed → fallback to builtin/missing (not cached, retried next time)
-            CatFrame.logger.warn("[ModelResolver] Model '{}' not found or errored, falling back to builtin/missing", modelPath);
+            CatFrame.logger.warn("[ModelResolver] Model '{}' not found or errored, falling back to builtin/missing", key);
             resolved = deepCopy(builtinModels.get("builtin/missing"));
         }
         return resolved;
     }
 
-    private static ModelJson resolveInternal(String modelPath, int depth) {
-        if (depth > MAX_DEPTH) {
-            CatFrame.logger.error("Model parent chain too deep for: {}", modelPath);
-            return null;
+    /**
+     * Returns the canonical {@code namespace:path} key of a model path.
+     * <p>
+     * A bare path defaults to the {@code minecraft} namespace (ResourceLocation semantics), matching
+     * the normalization already applied to texture references in
+     * {@link #resolveTextureVariables(ModelJson)}. Without it, {@code "block/cube"} and
+     * {@code "minecraft:block/cube"} — two spellings of one file, both present in the shipped assets
+     * — would occupy separate cache slots and separate dependency-graph entries, and a model naming
+     * itself through the other spelling would be reported as a multi-hop cycle.
+     * <p>
+     * {@code builtin/} paths are left alone: they address the hardcoded {@link #builtinModels} map,
+     * which is a virtual namespace with no ResourceLocation behind it.
+     *
+     * @param modelPath the path as written; {@code null} and empty are returned unchanged
+     * @return the canonical key; applying this method twice yields the same result as applying it once
+     */
+    static String canonicalKey(String modelPath) {
+        if (modelPath == null || modelPath.isEmpty() || modelPath.startsWith("builtin/")) {
+            return modelPath;
         }
+        return modelPath.indexOf(':') < 0 ? "minecraft:" + modelPath : modelPath;
+    }
 
-        // Cycle detection: check whether the current path is already in the resolution stack
-        Set<String> stack = resolvingStack.get();
-        if (!stack.add(modelPath)) {
-            // Already in the stack → circular dependency
+    /**
+     * Resolves one link of the parent chain, guarding against circular dependencies.
+     * <p>
+     * Cycle detection: tracks the model paths currently being resolved. If a path already in the set
+     * is encountered again during resolution, a circular dependency exists.
+     * <p>
+     * No depth limit accompanies the chain. {@link ModelJson#parent} is a single value, so resolution
+     * walks a deterministic function over a finite key space: a walk that does not stop at a
+     * parentless, builtin or missing model must eventually revisit a key, and that revisit is exactly
+     * what the chain catches. A depth counter could therefore only ever fire on an acyclic chain long
+     * enough to be a mistake in its own right, never on a cycle.
+     *
+     * @param modelPath the canonical model key (see {@link #canonicalKey(String)})
+     * @param chain     canonical keys of the models currently being resolved, outermost first
+     */
+    private static ModelJson resolveInternal(String modelPath, Set<String> chain) {
+        // Cycle detection: check whether the current path is already in the resolution chain
+        if (!chain.add(modelPath)) {
+            // Already in the chain → circular dependency
             CatFrame.logger.error("Circular model dependency detected: {} -> ... -> {}",
-                    buildCyclePath(stack, modelPath), modelPath);
+                    buildCyclePath(chain, modelPath), modelPath);
             return null;
         }
 
         try {
-            return resolveInternalChecked(modelPath, depth);
+            return resolveInternalChecked(modelPath, chain);
         } finally {
-            stack.remove(modelPath);
+            chain.remove(modelPath);
         }
     }
 
     /**
      * The actual resolution logic (extracted from the original resolveInternal);
-     * cycle detection and stack management are handled by the outer resolveInternal.
+     * cycle detection and chain management are handled by the outer resolveInternal.
      */
-    private static ModelJson resolveInternalChecked(String modelPath, int depth) {
+    private static ModelJson resolveInternalChecked(String modelPath, Set<String> chain) {
 
         // Check the hardcoded built-in models first (paths starting with "builtin/")
         if (modelPath.startsWith("builtin/")) {
@@ -137,13 +170,12 @@ public class ModelResolver {
             return model;
         }
 
-        // Resolve parent recursively and record dependency
-        if (model.parent != null && !model.parent.isEmpty()) {
-            dependencyGraph.computeIfAbsent(modelPath, k -> new LinkedHashSet<>()).add(model.parent);
-        }
+        // Record the dependency and resolve the parent, both under the parent's canonical key so the
+        // graph stays matchable when a bare reference and a qualified one name the same model
+        String parentKey = canonicalKey(model.parent);
+        dependencyGraph.computeIfAbsent(modelPath, k -> new LinkedHashSet<>()).add(parentKey);
 
-        // Resolve parent recursively
-        ModelJson parent = resolveInternal(model.parent, depth + 1);
+        ModelJson parent = resolveInternal(parentKey, chain);
         if (parent == null) {
             return model;
         }
@@ -423,6 +455,8 @@ public class ModelResolver {
                 String path = modelPath.substring(modelPath.indexOf(':') + 1);
                 return tryLoadFromManager(rm, ns, "models/" + path + ".json");
             } else {
+                // Bare-path branch. resolve() canonicalizes every path to a qualified key before it
+                // reaches here, so this is retained for direct invocation of the loader only.
                 // Search minecraft first by default, then the other registered namespaces
                 ModelJson result = tryLoadFromManager(rm, "minecraft", "models/" + modelPath + ".json");
                 if (result != null) return result;
@@ -469,6 +503,8 @@ public class ModelResolver {
             String path = modelPath.substring(modelPath.indexOf(':') + 1);
             searchPaths.add("/assets/" + namespace + "/models/" + path + ".json");
         } else {
+            // Bare-path branch. resolve() canonicalizes every path to a qualified key before it
+            // reaches here, so this is retained for direct invocation of the loader only.
             searchPaths.add("/assets/minecraft/models/" + modelPath + ".json");
             for (String ns : registeredNamespaces) {
                 if (!ns.equals("minecraft")) {
@@ -603,11 +639,14 @@ public class ModelResolver {
 
     /**
      * Builds the circular-dependency path string for the error log.
+     * <p>
+     * Relies on the chain being insertion-ordered, which is what lets the segment from the repeated
+     * key onward be read straight back out as the loop.
      */
-    private static String buildCyclePath(Set<String> stack, String cycleTarget) {
+    private static String buildCyclePath(Set<String> chain, String cycleTarget) {
         StringBuilder sb = new StringBuilder();
         boolean found = false;
-        for (String s : stack) {
+        for (String s : chain) {
             if (s.equals(cycleTarget)) found = true;
             if (found) {
                 if (sb.length() > 0) sb.append(" -> ");

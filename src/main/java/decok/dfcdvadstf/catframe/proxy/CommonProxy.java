@@ -17,12 +17,15 @@ import decok.dfcdvadstf.catframe.datapack.DataPackSync;
 import decok.dfcdvadstf.catframe.network.OverlayNetwork;
 import decok.dfcdvadstf.catframe.tags.TagManager;
 import net.minecraftforge.common.MinecraftForge;
+import org.spongepowered.asm.launch.MixinBootstrap;
 
 public class CommonProxy {
     protected BlueyPlushyItem blueyPlushy;
     protected BingoPlushyItem bingoPlushy;
 
     public void preInit(FMLPreInitializationEvent event) {
+        MixinBootstrap.init();
+
         OverlayNetwork.init();
 
         // Datapack sync (worklist C5): login trigger + post-apply broadcast.

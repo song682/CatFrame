@@ -21,11 +21,17 @@ public enum Mixins implements IMixins {
                 "middle.resource.MixinBuiltinResourcePackListEntryFound"),
 
         /** Keyboard dispatch and the public keyboard event bridge for screens. */
-        SCREEN_INPUT(Side.CLIENT, "middle.event.MixinGuiScreen", "middle.event.MixinGuiScreenEventBridge"),
+        SCREEN_INPUT(Side.CLIENT,
+                "middle.event.MixinGuiScreen",
+                "middle.event.MixinGuiScreenEventBridge"
+        ),
 
         /** Render pipeline interception: block rendering and chunk compile hooks. */
-        RENDERING(Side.CLIENT, "middle.render.MixinRenderBlocks", "middle.render.MixinWorldRenderer",
-                "middle.render.MixinEntityDiggingFX"),
+        RENDERING(Side.CLIENT,
+                "middle.render.MixinRenderBlocks",
+                "middle.render.MixinWorldRenderer",
+                "middle.render.MixinEntityDiggingFX"
+        ),
 
         /** Built-in pack startup bootstrap on the first vanilla refresh after preInit. */
         BUILTIN_PACK_BOOTSTRAP(Side.CLIENT, "middle.resource.MixinMinecraftRefreshResources");

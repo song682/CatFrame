@@ -177,8 +177,4 @@ public interface GuiEventListener extends TabOrderedElement {
     default ScreenRectangle getRectangle() {
         return ScreenRectangle.empty();
     }
-
-    default String getTheme(){
-        return null;
-    }
 }

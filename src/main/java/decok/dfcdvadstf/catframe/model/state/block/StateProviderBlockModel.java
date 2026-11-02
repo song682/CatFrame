@@ -7,7 +7,6 @@ import decok.dfcdvadstf.catframe.model.ParticleIconResolver;
 import decok.dfcdvadstf.catframe.model.RenderDispatcher;
 import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
-import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModel;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.BlockstateJson;
@@ -65,8 +64,12 @@ public class StateProviderBlockModel implements BlockStateModel {
             BlockstateJson.Variant variant = entry.getVariant(seed);
             if (variant == null || variant.model == null) return new BlockStateModel.CollectedPart(BlockStateModelPart.empty(), null);
 
-            // Bake directly (VanillaModelManager has a cache)
-            part = AtlasGuard.gate(ModelBaker.bake(variant.model), variant.model);
+            // Route through the central bake cache so the variant's x/y/z rotation (and uvlock)
+            // actually take effect — ModelBaker.bake(model) ignored them and re-baked every call.
+            part = AtlasGuard.gate(
+                    BakedModelCache.INSTANCE.get(
+                            BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z, variant.uvlock)),
+                    variant.model);
             if (part == null || part.isEmpty()) return new BlockStateModel.CollectedPart(BlockStateModelPart.empty(), null);
 
         } else if (blockstate.multipart != null) {
@@ -80,7 +83,9 @@ public class StateProviderBlockModel implements BlockStateModel {
                 if (applies && mpc.apply != null) {
                     BlockstateJson.Variant v = mpc.apply.getVariant(0);
                     if (v != null && v.model != null) {
-                        BlockStateModelPart subPart = AtlasGuard.gate(ModelBaker.bake(v.model), v.model);
+                        BlockStateModelPart subPart = AtlasGuard.gate(
+                                BakedModelCache.INSTANCE.get(
+                                        BakedModelCache.buildKey(v.model, v.x, v.y, v.z, v.uvlock)), v.model);
                         if (subPart != null) {
                             for (Direction dir : Direction.values()) {
                                 mergedFace.computeIfAbsent(dir, k -> new java.util.ArrayList<>())

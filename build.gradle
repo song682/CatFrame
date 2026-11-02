@@ -213,6 +213,9 @@ sourceCompatibility = targetCompatibility = "1.8"
 
 tasks.withType(Jar).configureEach {
     compileJava.options.encoding = 'UTF-8'
+    // Test sources must match main-source encoding, otherwise javac falls back to the
+    // platform charset (GBK on zh-CN Windows) and fails on non-ASCII characters.
+    compileTestJava.options.encoding = 'UTF-8'
     compileJava.options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:all"
 }
 

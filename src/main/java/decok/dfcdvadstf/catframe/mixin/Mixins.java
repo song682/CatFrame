@@ -30,6 +30,7 @@ public enum Mixins implements IMixins {
         RENDERING(Side.CLIENT,
                 "middle.render.MixinRenderBlocks",
                 "middle.render.MixinWorldRenderer",
+                "middle.render.MixinBlock",
                 "middle.render.MixinEntityDiggingFX"
         ),
 

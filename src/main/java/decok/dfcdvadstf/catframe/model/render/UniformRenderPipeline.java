@@ -6,6 +6,7 @@ import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderCommandBuffers;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderTypeRegistry;
+import decok.dfcdvadstf.catframe.model.render.pipeline.WorldTranslucentPasses;
 import decok.dfcdvadstf.catframe.model.state.BlockStateModelPart;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import net.minecraft.block.Block;
@@ -97,12 +98,37 @@ public final class UniformRenderPipeline {
                                          @Nullable Map<String, String> blockstateProps) {
         if (part == null) return;
 
+        // force_translucent world routing (Forge 1.7.10 dual-pass tessellation): a part that
+        // contains force-translucent quads marks its block (MixinBlock then hijacks the BASE
+        // getRenderBlockPass to 1 and opts the solid pass back in), and during a chunk build
+        // the submission is split by the tessellation pass of the paired position: pass 0
+        // writes only the non-forced quads into the opaque chunk mesh, pass 1 writes only the
+        // forced quads into the alpha mesh — which vanilla draws with GL_BLEND enabled.
+        // Native translucent blocks (their own getRenderBlockPass/canRenderInPass overrides
+        // dispatch before the base mixin) and every non-tessellation context keep submitting
+        // the whole part unchanged.
+        if (phase == RenderPhase.BLOCK_WORLD) {
+            BlockStateModelPart[] tSplit = part.translucentSplit();
+            if (tSplit[1] != null) {
+                WorldTranslucentPasses.mark(block);
+                if (WorldTranslucentPasses.shouldSplitByPass(block)) {
+                    int wp = WorldTranslucentPasses.lastTessellationPass();
+                    if (wp == 0) {
+                        if (tSplit[0] == null) return; // fully forced part: nothing in the solid pass
+                        part = tSplit[0];
+                    } else if (wp == 1) {
+                        part = tSplit[1];
+                    }
+                    // wp < 0 (unpaired): submit the whole part — never drop faces
+                }
+            }
+        }
+
         // World rendering binds the CatAtlas: blocks with getRenderBlockPass()==1 go to the translucent group
         // (blending enabled), others go to the solid group (alpha test). Not opaque and culling remains enabled (disableCull=false).
-        // Note: the per-texture force_translucent flag is NOT applied here — world blocks are written inline into the
-        // vanilla chunk batch (see RenderCommandBuffers#submit / FeatureRenderDispatcher#flushInline), where blending is
-        // fixed by the block's own render pass and cannot be switched per quad. force_translucent takes effect on the
-        // item/GUI batched path (renderItemQuads -> flushGroup), covering block items in inventory / hand / dropped.
+        // Note: on the inline world path the RenderTypeKey only keys batch grouping — flushInline writes vertices
+        // into the vanilla chunk Tessellator without touching GL; the force_translucent pass split above is what
+        // routes quads into the alpha-pass mesh (drawn blended by vanilla).
         boolean translucent = block != null && block.getRenderBlockPass() == 1;
         RenderTypeKey type = translucent
                 ? RenderTypeRegistry.BLOCK_ATLAS_TRANSLUCENT

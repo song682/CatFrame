@@ -7,6 +7,7 @@ import decok.dfcdvadstf.catframe.adapter.vanilla.model.VanillaBlockResolvers;
 import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.lazy.LazySingleBlockModel;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
+import decok.dfcdvadstf.catframe.model.render.pipeline.WorldTranslucentPasses;
 import decok.dfcdvadstf.catframe.model.render.extension.tint.TintRegistry;
 import decok.dfcdvadstf.catframe.model.state.*;
 import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
@@ -135,6 +136,9 @@ public class VanillaModelManager {
             // Clear the registry (keeping persistent entries)
             ModelRegistry.registeredBlockModels.clear();
             ModelRegistry.registeredBlockRotations.clear();
+            // force_translucent world-pass marks are derived from baked parts; drop them together
+            // with the models that produced them (stale hijacks must not survive a pack reload)
+            WorldTranslucentPasses.clear();
             ModelRegistry.registeredItemModels.keySet()
                     .removeIf(item -> !ModelRegistry.persistentItemModels.contains(item));
             // oversized flags are fully derived from loadedOversizedItems and rebuilt below —

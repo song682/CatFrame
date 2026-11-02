@@ -42,6 +42,13 @@ public class BakedModelCache {
     @Nullable
     private volatile Map<String, IIcon> iconMap = null;
 
+    /**
+     * Cache generation, incremented on every {@link #clear}. Downstream memo caches that store
+     * bake-derived results (e.g. ResidentStateModel's per-state part memo) compare this counter
+     * before reuse so a resource reload / re-stitch cycle invalidates stale UVs automatically.
+     */
+    private volatile long generation = 0;
+
     public BakedModelCache(int maxSize) {
         this.maxSize = maxSize;
         this.cache = CacheBuilder.newBuilder()
@@ -145,6 +152,7 @@ public class BakedModelCache {
      */
     public void clear(@Nullable Map<String, IIcon> iconMap) {
         cache.invalidateAll();
+        generation++;
         this.iconMap = iconMap;
         CatFrame.logger.info("[BakedModelCache] cache cleared | iconMap.size={}",
                 iconMap != null ? iconMap.size() : 0);
@@ -163,6 +171,13 @@ public class BakedModelCache {
     @Nullable
     public Map<String, IIcon> getIconMap() {
         return iconMap;
+    }
+
+    /**
+     * Current cache generation: changes whenever baked results were invalidated (reload / re-stitch).
+     */
+    public long getGeneration() {
+        return generation;
     }
 
     /**

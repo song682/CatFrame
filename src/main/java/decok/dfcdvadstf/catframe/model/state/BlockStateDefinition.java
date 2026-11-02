@@ -175,6 +175,38 @@ public final class BlockStateDefinition<O> {
         return idx;
     }
 
+    /**
+     * Encodes a full property-name/value map (serialized string domain, same as
+     * {@link BlockState#getValueNames()} / {@code Property.getName(value)}) into the cartesian-product
+     * state index of this definition — the same mixed-radix numbering used by {@link #findStateIndex},
+     * so the index doubles as a discrete "virtual palette" code for memoization.
+     * <p>
+     * Takes <b>all</b> properties, not just the dynamic ones: runtime resolvers may override static
+     * properties too (e.g. double plant's variant/half), and a code that omitted them would alias
+     * different states onto one cached model.
+     *
+     * @param propsByName property name → serialized value name, as written by propsFromState and
+     *                    dynamic property resolvers
+     * @return the state index in {@code 0..getStateCount()-1}, or {@code -1} when any defined
+     *         property is missing from the map or its value is outside the property's value domain
+     *         (callers must then bypass the code and take the uncached slow path)
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public int stateIndexOf(Map<String, String> propsByName) {
+        int idx = 0;
+        int stride = 1;
+        for (int i = properties.length - 1; i >= 0; i--) {
+            Property prop = properties[i];
+            String valueName = (propsByName == null) ? null : propsByName.get(prop.getName());
+            if (valueName == null) return -1;
+            Comparable<?> value = prop.getValueByName(valueName);
+            if (value == null) return -1;
+            idx += prop.getInternalIndex(value) * stride;
+            stride *= prop.getValueCount();
+        }
+        return idx;
+    }
+
     // ==================== meta encode/decode / resident table ====================
 
     /**

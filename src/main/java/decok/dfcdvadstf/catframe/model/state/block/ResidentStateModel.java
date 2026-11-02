@@ -87,6 +87,17 @@ public final class ResidentStateModel implements BlockStateModel {
     /** Cache of the target blockstate resolved for each meta in redirect mode. */
     private final Map<Integer, BlockstateJson> redirectCache = new HashMap<>();
 
+    /**
+     * Static-layer memo: full state index (joinCode) → merged part, bucketed per target
+     * blockstate instance (identity-keyed, so redirect targets — e.g. the 16 stained pane
+     * colors — stay separate). Render thread only; cleared when the bake-cache generation
+     * changes (resource reload / re-stitch).
+     */
+    private final Map<BlockstateJson, Map<Integer, BlockStateModelPart>> partMemo = new IdentityHashMap<>();
+    private long partMemoGeneration = -1;
+    /** Per-target memo eligibility (JSON-structure property, stable across reloads). */
+    private final Map<BlockstateJson, Boolean> memoEligibility = new IdentityHashMap<>();
+
     private ResidentStateModel(Builder b) {
         this.block = b.block;
         this.bs = b.bs;
@@ -132,7 +143,32 @@ public final class ResidentStateModel implements BlockStateModel {
             dynamic.resolve(world, x, y, z, metadata, props);
         }
 
-        BlockStateModelPart part;
+        // Static-layer memoization: the resolved property table maps to a discrete code (the
+        // full cartesian-product state index), and (target, code) → merged part is cached, so
+        // repeated positions skip matching and merging entirely. The code is recomputed per
+        // position, so neighbor changes self-heal exactly as before. Weighted-array targets
+        // are excluded (position-seeded selection must keep re-rolling), and a -1 code
+        // (missing / out-of-domain property) bypasses the memo — slow path unchanged.
+        BlockStateModelPart part = null;
+        int code = -1;
+        if (def != null && isMemoEligible(target)) {
+            syncMemoGeneration();
+            code = def.stateIndexOf(props);
+            if (code >= 0) {
+                Map<Integer, BlockStateModelPart> byCode = partMemo.get(target);
+                if (byCode != null) {
+                    part = byCode.get(code);
+                }
+            }
+        }
+
+        if (part != null) {
+            // Memo hit: props still flow out as the read-only tint view — exposure unchanged
+            Map<String, String> exposed = (props == null || props.isEmpty())
+                    ? null : Collections.unmodifiableMap(props);
+            return new CollectedPart(part, exposed);
+        }
+
         if (connectionMultipart) {
             part = collectConnectionMultipart(world, x, y, z, target, props);
         } else if (target.variants != null) {
@@ -141,6 +177,10 @@ public final class ResidentStateModel implements BlockStateModel {
             part = collectMultipart(world, x, y, z, target, props);
         } else {
             part = BlockStateModelPart.empty();
+        }
+
+        if (code >= 0) {
+            partMemo.computeIfAbsent(target, k -> new HashMap<>()).put(code, part);
         }
 
         // After matching, wrap a read-only view carried along with the submission (guards
@@ -212,6 +252,57 @@ public final class ResidentStateModel implements BlockStateModel {
             part = BakedModelCache.INSTANCE.get(BakedModelCache.buildKey("builtin/missing", 0, 0, 0));
         }
         return ParticleIconResolver.fromPart(part);
+    }
+
+    // ==================== Static-layer memoization (state-index joinCode) ====================
+
+    /**
+     * Drop the whole part memo when the bake-cache generation changed (resource reload /
+     * re-stitch cycle): memoized parts carry UVs baked against the previous iconMap.
+     */
+    private void syncMemoGeneration() {
+        long gen = BakedModelCache.INSTANCE.getGeneration();
+        if (gen != partMemoGeneration) {
+            partMemo.clear();
+            partMemoGeneration = gen;
+        }
+    }
+
+    /**
+     * Eligibility computed once per target blockstate: any weighted variant array makes the
+     * selection position-seeded, so its result must not be keyed by state code alone. Arrays
+     * whose weights sum to 1 always resolve to the same entry and stay eligible.
+     */
+    private boolean isMemoEligible(@Nullable BlockstateJson target) {
+        if (target == null) return false;
+        Boolean cached = memoEligibility.get(target);
+        if (cached != null) return cached;
+        boolean eligible = computeMemoEligible(target);
+        memoEligibility.put(target, eligible);
+        return eligible;
+    }
+
+    private static boolean computeMemoEligible(BlockstateJson target) {
+        if (target.variants != null) {
+            for (BlockstateJson.VariantEntry entry : target.variants.values()) {
+                if (isWeightedArray(entry)) return false;
+            }
+        }
+        if (target.multipart != null) {
+            for (BlockstateJson.MultipartCase mpc : target.multipart) {
+                if (isWeightedArray(mpc.apply)) return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isWeightedArray(@Nullable BlockstateJson.VariantEntry entry) {
+        if (entry == null || !entry.isArray()) return false;
+        int totalWeight = 0;
+        for (BlockstateJson.Variant v : entry.list) {
+            totalWeight += Math.max(v.weight, 1);
+        }
+        return totalWeight > 1;
     }
 
     // ==================== Target blockstate resolution ====================

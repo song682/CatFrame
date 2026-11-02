@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.model.state;
 import com.google.gson.*;
 import com.google.gson.annotations.SerializedName;
 
+import javax.annotation.Nullable;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -186,12 +187,51 @@ public class BlockstateJson {
         @SerializedName("OR")
         public List<Map<String, String>> or;
 
-        private static boolean matchesAll(Map<String, String> required, Map<String, String> actual) {
+        /**
+         * Precomputed pipe-split allowed values for {@link #conditions} (key = property name,
+         * value = allowed value array). Filled by {@link MultipartWhenDeserializer} after parsing
+         * so the per-position match loop never re-splits strings at render time. Null when the
+         * instance was built programmatically — {@link #matchesAll} then falls back to splitting.
+         */
+        public transient Map<String, String[]> allowedByProp;
+        /**
+         * Precomputed allowed values per OR group, index-aligned with {@link #or}.
+         */
+        public transient List<Map<String, String[]>> allowedByOrGroup;
+
+        /**
+         * Precompute the pipe-split tables from the parsed condition maps (deserialization-time only).
+         */
+        void precomputeAllowed() {
+            if (or != null && !or.isEmpty()) {
+                allowedByOrGroup = new ArrayList<>(or.size());
+                for (Map<String, String> group : or) {
+                    allowedByOrGroup.add(splitAllowed(group));
+                }
+            }
+            if (conditions != null && !conditions.isEmpty()) {
+                allowedByProp = splitAllowed(conditions);
+            }
+        }
+
+        private static Map<String, String[]> splitAllowed(Map<String, String> required) {
+            Map<String, String[]> map = new HashMap<>(Math.max(16, required.size() * 2));
+            for (Map.Entry<String, String> e : required.entrySet()) {
+                map.put(e.getKey(), e.getValue().split("\\|"));
+            }
+            return map;
+        }
+
+        private static boolean matchesAll(Map<String, String> required, Map<String, String> actual,
+                                          @Nullable Map<String, String[]> allowedTable) {
             for (Map.Entry<String, String> entry : required.entrySet()) {
                 String actualValue = actual.get(entry.getKey());
                 if (actualValue == null) return false;
-                // Support pipe-separated values (e.g., "north|south")
-                String[] allowedValues = entry.getValue().split("\\|");
+                // Support pipe-separated values (e.g., "north|south"); prefer the precomputed
+                // split table, fall back to splitting for programmatically built conditions
+                // (no precompute phase ran).
+                String[] allowedValues = allowedTable != null ? allowedTable.get(entry.getKey()) : null;
+                if (allowedValues == null) allowedValues = entry.getValue().split("\\|");
                 boolean found = false;
                 for (String allowed : allowedValues) {
                     if (allowed.equals(actualValue)) {
@@ -210,13 +250,16 @@ public class BlockstateJson {
         public boolean matches(Map<String, String> blockProperties) {
             if (or != null && !or.isEmpty()) {
                 // OR mode: at least one group must fully match
-                for (Map<String, String> group : or) {
-                    if (matchesAll(group, blockProperties)) return true;
+                for (int i = 0; i < or.size(); i++) {
+                    Map<String, String[]> allowedGroup =
+                            (allowedByOrGroup != null && i < allowedByOrGroup.size())
+                                    ? allowedByOrGroup.get(i) : null;
+                    if (matchesAll(or.get(i), blockProperties, allowedGroup)) return true;
                 }
                 return false;
             }
             if (conditions != null) {
-                return matchesAll(conditions, blockProperties);
+                return matchesAll(conditions, blockProperties, allowedByProp);
             }
             return true; // No condition = always matches
         }
@@ -270,6 +313,8 @@ public class BlockstateJson {
                     when.conditions.put(e.getKey(), e.getValue().getAsString());
                 }
             }
+            // Precompute pipe-split tables once so the render-time match loop stays allocation-free
+            when.precomputeAllowed();
             return when;
         }
     }

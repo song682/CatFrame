@@ -12,7 +12,6 @@ import decok.dfcdvadstf.catframe.model.ParticleIconResolver;
 import decok.dfcdvadstf.catframe.model.RenderDispatcher;
 import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
-import decok.dfcdvadstf.catframe.model.core.baking.ModelBaker;
 import decok.dfcdvadstf.catframe.model.state.*;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.block.Block;
@@ -393,8 +392,12 @@ public final class ResidentStateModel implements BlockStateModel {
             if (applies && mpc.apply != null) {
                 BlockstateJson.Variant v = mpc.apply.getVariant(seed);
                 if (v != null && v.model != null) {
+                    // Route through the central bake cache (same resolve→bake pipeline and
+                    // iconMap source as ModelBaker.bake, which never caches by contract);
+                    // the atlas gate still applies per part, so missingno replacement is unchanged.
                     BlockStateModelPart part = AtlasGuard.gate(
-                            ModelBaker.bake(v.model, v.x, v.y, v.z), v.model);
+                            BakedModelCache.INSTANCE.get(
+                                    BakedModelCache.buildKey(v.model, v.x, v.y, v.z)), v.model);
                     if (part != null) {
                         for (Direction dir : Direction.values()) {
                             mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())

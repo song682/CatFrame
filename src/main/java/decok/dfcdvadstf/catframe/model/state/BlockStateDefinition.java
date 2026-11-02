@@ -47,6 +47,11 @@ public final class BlockStateDefinition<O> {
     private boolean usesMetaProperties;
     // Resident table: resolvedByMeta[meta] directly yields the CatBlockState for that meta (length 16)
     private BlockState[] resolvedByMeta;
+    // Property name → property handle (backfilled by Builder.create(); name uniqueness is enforced
+    // by Builder.add). Lets typed value writers (e.g. DynamicPropertyResolver.resolveState) resolve a
+    // property by the same name the string-domain resolvers use, without assuming constant identity
+    // across inherited/merged definitions.
+    private Map<String, Property<?>> byName;
 
     /**
      * Meta codec. Only responsible for decoding metadata into the value array of the
@@ -90,6 +95,15 @@ public final class BlockStateDefinition<O> {
      */
     public Property<?>[] getProperties() {
         return properties;
+    }
+
+    /**
+     * Returns the property registered under the given name, or {@code null} when this
+     * definition does not define it.
+     */
+    @Nullable
+    public Property<?> getPropertyByName(String name) {
+        return byName == null ? null : byName.get(name);
     }
 
     /**
@@ -466,6 +480,13 @@ public final class BlockStateDefinition<O> {
                 }
             }
             definition.staticProperties = staticList.toArray(new Property<?>[0]);
+
+            // Property name → handle index (names are unique, enforced by Builder.add)
+            Map<String, Property<?>> nameMap = new HashMap<>();
+            for (Property<?> p : properties) {
+                nameMap.put(p.getName(), p);
+            }
+            definition.byName = nameMap;
 
             // Detect per-property byte mapping: enabled only when there is at least one static
             // property and every static property carries its own decode(int). A positional

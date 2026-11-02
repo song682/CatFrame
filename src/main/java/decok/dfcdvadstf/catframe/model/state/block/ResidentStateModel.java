@@ -59,6 +59,36 @@ public final class ResidentStateModel implements BlockStateModel {
         void resolve(IBlockAccess world, int x, int y, int z, int meta, Map<String, String> props);
 
         /**
+         * Typed re-resolution: folds this resolver's string output into the canonical (interned)
+         * state instance through the O(1) {@link BlockState#setValue} neighbor jumps, so the memo
+         * can key on the state reference itself (pointer equality, the 26.1.2 {@code modelByState}
+         * identity-hash equivalent).
+         * <p>
+         * The default implementation runs {@link #resolve} (single source of truth for the
+         * computation), then maps every name/value pair back onto the definition's domain.
+         * Returns {@code null} when there is no base state, or when any name / value lies outside
+         * the definition — the caller then falls back to the legacy string-code memo path, so
+         * behavior is never changed by a resolver that stays in-domain only.
+         */
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        default BlockState resolveState(IBlockAccess world, int x, int y, int z, int meta, BlockState base) {
+            if (base == null) return null;
+            BlockStateDefinition<?> def = base.getDefinition();
+            if (def == null) return null;
+            Map<String, String> out = new HashMap<>();
+            resolve(world, x, y, z, meta, out);
+            BlockState state = base;
+            for (Map.Entry<String, String> e : out.entrySet()) {
+                Property prop = def.getPropertyByName(e.getKey());
+                if (prop == null) return null;
+                Comparable value = prop.getValueByName(e.getValue());
+                if (value == null) return null;
+                state = state.setValue(prop, value);
+            }
+            return state;
+        }
+
+        /**
          * Render veto hook: lets a resolver suppress rendering for the current world state.
          * Returning false makes collectPartsWithProps emit an empty part, which the render
          * caller treats as "nothing to draw" - the vanilla equivalent of a renderer
@@ -92,9 +122,22 @@ public final class ResidentStateModel implements BlockStateModel {
      * blockstate instance (identity-keyed, so redirect targets — e.g. the 16 stained pane
      * colors — stay separate). Render thread only; cleared when the bake-cache generation
      * changes (resource reload / re-stitch).
+     * <p>
+     * Legacy lane: only reached when {@link DynamicPropertyResolver#resolveState} is unavailable
+     * (no definition) or steps out of the property domain; the canonical-state memo below is
+     * the fast lane for in-domain typed resolvers.
      */
     private final Map<BlockstateJson, Map<Integer, BlockStateModelPart>> partMemo = new IdentityHashMap<>();
     private long partMemoGeneration = -1;
+    /**
+     * Canonical-state memo: per target blockstate, the interned {@link BlockState} reference
+     * (full property combination, reached via O(1) setValue jumps) → merged part + props
+     * snapshot. Identity-keyed lookup is the pointer-equality equivalent of 26.1.2's
+     * {@code IdentityHashMap<BlockState, BlockStateModel>}: no string re-parsing, no code
+     * encoding, no boxing on the hit path. The props snapshot is determined by the canonical
+     * instance, so sharing its read-only view across positions cannot bleed state.
+     */
+    private final Map<BlockstateJson, IdentityHashMap<BlockState, MemoEntry>> stateMemo = new IdentityHashMap<>();
     /** Per-target memo eligibility (JSON-structure property, stable across reloads). */
     private final Map<BlockstateJson, Boolean> memoEligibility = new IdentityHashMap<>();
 
@@ -137,7 +180,33 @@ public final class ResidentStateModel implements BlockStateModel {
             return new CollectedPart(BlockStateModelPart.empty(), null);
         }
 
+        // Typed fast lane: with a definition present, fold the resolver output into the canonical
+        // (interned) state instance and key the memo by that reference. A miss builds the part once
+        // per distinct combination; every later position with the same combination hits the identity
+        // lookup (no props map is even built on a hit). Out-of-domain resolvers return null and
+        // keep the legacy string-code lane below.
+        if (def != null && dynamic != null && isMemoEligible(target)) {
+            BlockState canonical = dynamic.resolveState(world, x, y, z, metadata,
+                    def.getStateFromMeta(metadata));
+            if (canonical != null) {
+                syncMemoGeneration();
+                IdentityHashMap<BlockState, MemoEntry> byState = stateMemo.get(target);
+                MemoEntry hit = (byState == null) ? null : byState.get(canonical);
+                if (hit != null) {
+                    return new CollectedPart(hit.part, hit.propsView);
+                }
+                Map<String, String> jumpedProps = propsFromState(canonical);
+                BlockStateModelPart jumped = collectForProps(world, x, y, z, metadata, target, jumpedProps);
+                Map<String, String> jumpedView = jumpedProps.isEmpty()
+                        ? null : Collections.unmodifiableMap(jumpedProps);
+                stateMemo.computeIfAbsent(target, k -> new IdentityHashMap<BlockState, MemoEntry>())
+                        .put(canonical, new MemoEntry(jumped, jumpedView));
+                return new CollectedPart(jumped, jumpedView);
+            }
+        }
+
         Map<String, String> props = resolveProps(world, x, y, z, metadata);
+
         if (dynamic != null) {
             if (props == null) props = new HashMap<>();
             dynamic.resolve(world, x, y, z, metadata, props);
@@ -169,12 +238,8 @@ public final class ResidentStateModel implements BlockStateModel {
             return new CollectedPart(part, exposed);
         }
 
-        if (connectionMultipart) {
-            part = collectConnectionMultipart(world, x, y, z, target, props);
-        } else if (target.variants != null) {
-            part = collectVariants(world, x, y, z, metadata, target, props);
-        } else if (target.multipart != null) {
-            part = collectMultipart(world, x, y, z, target, props);
+        if (connectionMultipart || target.variants != null || target.multipart != null) {
+            part = collectForProps(world, x, y, z, metadata, target, props);
         } else {
             part = BlockStateModelPart.empty();
         }
@@ -264,7 +329,37 @@ public final class ResidentStateModel implements BlockStateModel {
         long gen = BakedModelCache.INSTANCE.getGeneration();
         if (gen != partMemoGeneration) {
             partMemo.clear();
+            stateMemo.clear();
             partMemoGeneration = gen;
+        }
+    }
+
+    /**
+     * Shared dispatch of the three collect branches (used by both the canonical-state fast
+     * lane and the legacy string-code lane).
+     */
+    private BlockStateModelPart collectForProps(IBlockAccess world, int x, int y, int z, int metadata,
+                                                BlockstateJson target, @Nullable Map<String, String> props) {
+        if (connectionMultipart) {
+            return collectConnectionMultipart(world, x, y, z, target, props);
+        }
+        if (target.variants != null) {
+            return collectVariants(world, x, y, z, metadata, target, props);
+        }
+        if (target.multipart != null) {
+            return collectMultipart(world, x, y, z, target, props);
+        }
+        return BlockStateModelPart.empty();
+    }
+
+    /** Memo value: merged part + the read-only props snapshot exposed to the tint pipeline. */
+    private static final class MemoEntry {
+        final BlockStateModelPart part;
+        @Nullable final Map<String, String> propsView;
+
+        MemoEntry(BlockStateModelPart part, @Nullable Map<String, String> propsView) {
+            this.part = part;
+            this.propsView = propsView;
         }
     }
 

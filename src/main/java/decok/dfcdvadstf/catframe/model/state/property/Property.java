@@ -112,11 +112,14 @@ public abstract class Property<T extends Comparable<T>> {
 
     /**
      * Returns the list of string representations of all values.
+     * <p>Must go through {@link #getName(Object)} rather than {@code toString()} so enum-valued
+     * properties with a {@link decok.dfcdvadstf.catframe.core.StringRepresentable} domain report
+     * their serialized (lowercase) names — the same domain {@link #getValueByName} parses against.
      */
     public List<String> getNames() {
         List<String> names = new ArrayList<>(values.size());
         for (T value : values) {
-            names.add(value.toString());
+            names.add(getName(value));
         }
         return names;
     }

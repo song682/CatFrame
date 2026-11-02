@@ -76,13 +76,19 @@ public final class VanillaBlockResolvers {
      * The high neighbour (along facing) decides outer corners; the low neighbour (opposite
      * facing) decides inner corners. A perpendicular neighbour forms a corner unless a stair
      * with the same facing and half sits on the side cell (blocker check).
+     * <p>
+     * Axis grouping follows {@link #STAIR_FACINGS} order {east, west, south, north}: the two
+     * facings on one axis share the high bit (0|1 = X axis, 2|3 = Z axis), so perpendicularity
+     * is {@code (a >> 1) != (b >> 1)} — parity is NOT the axis bit here. This mirrors vanilla
+     * 1.7.10 {@code func_150145_f}/{@code func_150144_g}, which accept a corner neighbour only
+     * from the two facings on the other axis (e.g. east accepts south/north).
      */
     private static String computeShape(IBlockAccess world, int x, int y, int z, int facing, boolean top) {
         int[] fwd = FRONT_OFFSET[facing];
 
         // Outer corner: high side (along facing)
         Integer high = getStairFacing(world, x + fwd[0], y, z + fwd[1], top);
-        if (high != null && (high & 1) != (facing & 1)) {
+        if (high != null && (high >> 1) != (facing >> 1)) {
             int[] d = FRONT_OFFSET[high];
             if (!isCornerBlocked(world, x - d[0], y, z - d[1], facing, top)) {
                 return high == CW[facing] ? "outer_right" : "outer_left";
@@ -91,7 +97,7 @@ public final class VanillaBlockResolvers {
 
         // Inner corner: low side (opposite facing)
         Integer low = getStairFacing(world, x - fwd[0], y, z - fwd[1], top);
-        if (low != null && (low & 1) != (facing & 1)) {
+        if (low != null && (low >> 1) != (facing >> 1)) {
             int[] d = FRONT_OFFSET[low];
             if (!isCornerBlocked(world, x + d[0], y, z + d[1], facing, top)) {
                 return low == CW[facing] ? "inner_right" : "inner_left";

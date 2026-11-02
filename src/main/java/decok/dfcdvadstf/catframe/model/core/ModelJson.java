@@ -12,7 +12,36 @@ import java.util.Map;
 
 public class ModelJson {
     public String parent;
+
+    /**
+     * Texture-variable list, keyed by variable name.
+     * <p>
+     * Each variable may be declared in two forms under {@code textures}:
+     * <ul>
+     *   <li>direct string: {@code "<name>": "<sprite or #ref>"} — stored as-is here;</li>
+     *   <li>extended object: {@code "<name>": { "sprite": "<sprite or #ref>",
+     *       "force_translucent": <bool> }} — the {@code sprite} is stored here and the
+     *       {@code force_translucent} flag is recorded in {@link #textureForceTranslucent}.</li>
+     * </ul>
+     * Values are either a concrete namespaced id (resolved to
+     * {@code assets/<namespace>/textures/<path>.png} by the game) or a {@code #}-prefixed
+     * reference to another texture variable; {@code #}-refs are resolved along the parent chain.
+     * A child model's variable overrides a same-named parent variable; circular references are
+     * unresolvable (mapped to the missing texture). Retaining only the sprite string here keeps the
+     * existing resolution pipeline (ModelResolver / TextureSlots) format-agnostic.
+     */
     public Map<String, String> textures;
+
+    /**
+     * Per-texture-variable {@code force_translucent} flag, keyed by variable name.
+     * <p>
+     * Only variables declared in the extended object form that explicitly set
+     * {@code "force_translucent": true} are recorded here (value {@link Boolean#TRUE}); a variable
+     * absent from this map (or a null map) means false — the whole model element using this texture
+     * is not forced into translucent rendering. Null when no variable opts in (no allocation).
+     */
+    public Map<String, Boolean> textureForceTranslucent;
+
     public List<Element> elements;
 
     /**
@@ -253,14 +282,33 @@ public class ModelJson {
 
             model.parent = obj.has("parent") ? obj.get("parent").getAsString() : null;
 
-            // textures: {key: value}; values are all strings and must be parsed item by item
+            // textures: {key: value}; each value is either a plain sprite string (legacy direct
+            // form) or an extended object { "sprite": ..., "force_translucent": ... } whose sprite
+            // is stored in the textures map and whose force_translucent flag is recorded separately
             // context.deserialize(..., Map.class) cannot be used: losing the generic type info
             // makes Gson parse it as a LinkedTreeMap, while Map<String, String> is required here
             if (obj.has("textures") && obj.get("textures").isJsonObject()) {
                 JsonObject texturesObj = obj.getAsJsonObject("textures");
                 model.textures = new HashMap<>();
                 for (Map.Entry<String, JsonElement> e : texturesObj.entrySet()) {
-                    model.textures.put(e.getKey(), e.getValue().getAsString());
+                    JsonElement value = e.getValue();
+                    if (value.isJsonObject()) {
+                        // Extended form: object with "sprite" (+ optional "force_translucent")
+                        JsonObject entryObj = value.getAsJsonObject();
+                        String sprite = entryObj.has("sprite") ? entryObj.get("sprite").getAsString() : null;
+                        model.textures.put(e.getKey(), sprite);
+                        boolean forceTranslucent = entryObj.has("force_translucent")
+                                && entryObj.get("force_translucent").getAsBoolean();
+                        if (forceTranslucent) {
+                            if (model.textureForceTranslucent == null) {
+                                model.textureForceTranslucent = new HashMap<>();
+                            }
+                            model.textureForceTranslucent.put(e.getKey(), Boolean.TRUE);
+                        }
+                    } else {
+                        // Direct form: "<variable name>": "<sprite or #ref>"
+                        model.textures.put(e.getKey(), value.getAsString());
+                    }
                 }
             }
 

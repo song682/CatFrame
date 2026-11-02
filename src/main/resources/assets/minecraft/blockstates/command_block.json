@@ -1,5 +1,7 @@
 {
-  "variants": {
-    "normal": { "model": "minecraft:block/command_block" }
-  }
+    "variants": {
+        "normal": {
+            "model": "minecraft:block/command_block"
+        }
+    }
 }

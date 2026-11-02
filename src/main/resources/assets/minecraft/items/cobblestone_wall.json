@@ -7,8 +7,20 @@
             "model": "minecraft:block/cobblestone_wall_inventory"
         },
         "cases": [
-            {"when": "0", "model": {"type": "minecraft:model", "model": "minecraft:block/cobblestone_wall_inventory"}},
-            {"when": "1", "model": {"type": "minecraft:model", "model": "minecraft:block/mossy_cobblestone_wall_inventory"}}
+            {
+                "when": "0",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/cobblestone_wall_inventory"
+                }
+            },
+            {
+                "when": "1",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/mossy_cobblestone_wall_inventory"
+                }
+            }
         ]
     }
 }

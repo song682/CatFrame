@@ -6,14 +6,18 @@
             "type": "minecraft:model",
             "model": "minecraft:item/splash_potion",
             "tints": [
-                { "type": "minecraft:potion" }
+                {
+                    "type": "minecraft:potion"
+                }
             ]
         },
         "on_false": {
             "type": "minecraft:model",
             "model": "minecraft:item/potion",
             "tints": [
-                { "type": "minecraft:potion" }
+                {
+                    "type": "minecraft:potion"
+                }
             ]
         }
     }

@@ -5,7 +5,11 @@
         "fallback": {
             "type": "minecraft:model",
             "model": "minecraft:item/short_grass",
-            "tints": [{ "type": "minecraft:grass" }]
+            "tints": [
+                {
+                    "type": "minecraft:grass"
+                }
+            ]
         },
         "cases": [
             {
@@ -13,7 +17,11 @@
                 "model": {
                     "type": "minecraft:model",
                     "model": "minecraft:item/short_grass",
-                    "tints": [{ "type": "minecraft:grass" }]
+                    "tints": [
+                        {
+                            "type": "minecraft:grass"
+                        }
+                    ]
                 }
             },
             {
@@ -21,7 +29,11 @@
                 "model": {
                     "type": "minecraft:model",
                     "model": "minecraft:item/fern",
-                    "tints": [{ "type": "minecraft:grass" }]
+                    "tints": [
+                        {
+                            "type": "minecraft:grass"
+                        }
+                    ]
                 }
             }
         ]

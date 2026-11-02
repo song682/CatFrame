@@ -1,6 +1,10 @@
 {
-  "variants": {
-    "variant=sand": { "model": "minecraft:block/sand" },
-    "variant=red_sand": { "model": "minecraft:block/red_sand" }
-  }
+    "variants": {
+        "variant=sand": {
+            "model": "minecraft:block/sand"
+        },
+        "variant=red_sand": {
+            "model": "minecraft:block/red_sand"
+        }
+    }
 }

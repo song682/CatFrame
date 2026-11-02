@@ -1,7 +1,13 @@
 {
-  "variants": {
-    "variant=sandstone": { "model": "minecraft:block/sandstone" },
-    "variant=chiseled_sandstone": { "model": "minecraft:block/chiseled_sandstone" },
-    "variant=smooth_sandstone": { "model": "minecraft:block/smooth_sandstone" }
-  }
+    "variants": {
+        "variant=sandstone": {
+            "model": "minecraft:block/sandstone"
+        },
+        "variant=chiseled_sandstone": {
+            "model": "minecraft:block/chiseled_sandstone"
+        },
+        "variant=smooth_sandstone": {
+            "model": "minecraft:block/smooth_sandstone"
+        }
+    }
 }

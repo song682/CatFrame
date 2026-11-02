@@ -1,5 +1,7 @@
 {
-  "variants": {
-    "normal": { "model": "minecraft:block/tnt" }
-  }
+    "variants": {
+        "normal": {
+            "model": "minecraft:block/tnt"
+        }
+    }
 }

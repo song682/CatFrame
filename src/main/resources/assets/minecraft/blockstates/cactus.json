@@ -1,5 +1,7 @@
 {
-  "variants": {
-    "normal": { "model": "minecraft:block/cactus" }
-  }
+    "variants": {
+        "normal": {
+            "model": "minecraft:block/cactus"
+        }
+    }
 }

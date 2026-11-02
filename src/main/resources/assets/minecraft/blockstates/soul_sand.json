@@ -1,5 +1,7 @@
 {
-  "variants": {
-    "normal": { "model": "minecraft:block/soul_sand" }
-  }
+    "variants": {
+        "normal": {
+            "model": "minecraft:block/soul_sand"
+        }
+    }
 }

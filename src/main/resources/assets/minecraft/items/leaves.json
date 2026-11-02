@@ -3,36 +3,36 @@
         "type": "minecraft:select",
         "property": "catframe:meta",
         "fallback": {
-            "type": "minecraft:model", 
-            "model": "minecraft:block/leave" 
+            "type": "minecraft:model",
+            "model": "minecraft:block/leave"
         },
         "cases": [
             {
                 "when": "0",
                 "model": {
-                    "type": "minecraft:model", 
-                    "model": "minecraft:block/oak_leaves" 
-                    }
-                },
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/oak_leaves"
+                }
+            },
             {
                 "when": "1",
                 "model": {
-                    "type": "minecraft:model", 
-                    "model": "minecraft:block/spruce_leaves" 
-                    }
-                },
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/spruce_leaves"
+                }
+            },
             {
                 "when": "2",
                 "model": {
-                    "type": "minecraft:model", 
-                    "model": "minecraft:block/birch_leaves" 
-                    }
-                },
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/birch_leaves"
+                }
+            },
             {
                 "when": "3",
                 "model": {
-                    "type": "minecraft:model", 
-                    "model": "minecraft:block/jungle_leaves" 
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/jungle_leaves"
                 }
             }
         ]

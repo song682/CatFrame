@@ -1,5 +1,7 @@
 {
-  "variants": {
-    "normal": { "model": "minecraft:block/beacon" }
-  }
+    "variants": {
+        "normal": {
+            "model": "minecraft:block/beacon"
+        }
+    }
 }

@@ -26,7 +26,11 @@
                 "model": {
                     "type": "minecraft:model",
                     "model": "minecraft:item/tall_grass",
-                    "tints": [{ "type": "minecraft:grass" }]
+                    "tints": [
+                        {
+                            "type": "minecraft:grass"
+                        }
+                    ]
                 }
             },
             {
@@ -34,7 +38,11 @@
                 "model": {
                     "type": "minecraft:model",
                     "model": "minecraft:item/tall_fern",
-                    "tints": [{ "type": "minecraft:grass" }]
+                    "tints": [
+                        {
+                            "type": "minecraft:grass"
+                        }
+                    ]
                 }
             },
             {

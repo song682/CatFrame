@@ -543,6 +543,59 @@ public class JsonModelBake {
     }
 
     /**
+     * Recomputes every quad's UV purely from its (already geometry-rotated) vertex positions
+     * and the final facing direction, so the texture stays locked to the world axes instead of
+     * rotating together with the geometry. This is the classic blockstate {@code uvlock} behaviour
+     * ("geometry turns, texture does not").
+     * <p>
+     * Mirrors vanilla {@code FaceBakery.lockVertexUv} (MCP 1.8.9): the UV is derived from the
+     * vertex position in the unit-cell frame, ignoring the face's declared {@code uv} region and
+     * per-face texture {@code rotation}. It is only meaningful for 90°-multiple rotations (the
+     * stairs / log style cases), which is exactly where blockstates set {@code uvlock:true}.
+     * <p>
+     * The caller must invoke this AFTER the geometry rotation passes (which already deep-copied
+     * the quads and recomputed {@code q.face}), and mutates those copies in place.
+     *
+     * @param quads the rotated quad list (UVs rewritten in place; the list itself is returned)
+     * @return the same list, for chaining convenience
+     */
+    public static List<BakedQuad> applyUvLock(List<BakedQuad> quads) {
+        if (quads == null || quads.isEmpty()) return quads;
+        for (BakedQuad q : quads) {
+            if (q.face == null) continue; // direction-less quad: nothing to lock against
+            for (int i = 0; i < 4; i++) {
+                Vector3d v = q.vertices[i];
+                if (v == null) continue;
+                // Wrap out-of-cell coordinates back into [0,1) exactly like vanilla's
+                // "if (f < -0.1 || f >= 1.1) f -= floor(f)" guard.
+                double f = wrapUnit(v.x), f1 = wrapUnit(v.y), f2 = wrapUnit(v.z);
+                float fu, fv;
+                switch (q.face) {
+                    case DOWN:  fu = (float) (f * 16.0);        fv = (float) ((1.0 - f2) * 16.0); break;
+                    case UP:    fu = (float) (f * 16.0);        fv = (float) (f2 * 16.0);         break;
+                    case NORTH: fu = (float) ((1.0 - f) * 16.0); fv = (float) ((1.0 - f1) * 16.0); break;
+                    case SOUTH: fu = (float) (f * 16.0);        fv = (float) ((1.0 - f1) * 16.0); break;
+                    case WEST:  fu = (float) (f2 * 16.0);       fv = (float) ((1.0 - f1) * 16.0); break;
+                    case EAST:  fu = (float) ((1.0 - f2) * 16.0); fv = (float) ((1.0 - f1) * 16.0); break;
+                    default:    fu = q.up[i];                   fv = q.vp[i];                      break;
+                }
+                q.up[i] = fu;
+                q.vp[i] = fv;
+            }
+        }
+        return quads;
+    }
+
+    /**
+     * Vanilla UV-lock coordinate wrap: fold a unit-cell coordinate into [0,1) only when it lies
+     * clearly outside the cell (matching the {@code <-0.1 || >=1.1} tolerance).
+     */
+    private static double wrapUnit(double f) {
+        if (f < -0.1 || f >= 1.1) f -= Math.floor(f);
+        return f;
+    }
+
+    /**
      * Transforms the cullface normal vector with the same rotation matrix used for the geometry, then maps it back
      * to the nearest {@link Direction}.
      * <p>Guarantees that the cullface (occlusion test direction) always stays consistent with the rotated geometry

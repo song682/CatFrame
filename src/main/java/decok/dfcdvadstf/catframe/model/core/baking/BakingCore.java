@@ -93,4 +93,39 @@ public class BakingCore {
         }
         return part;
     }
+
+    /**
+     * Bakes a single model into a {@link BlockStateModelPart} with an explicitly specified iconMap
+     * and blockstate UV-lock.
+     * <p>
+     * When {@code uvlock} is true and a non-zero rotation is applied, the texture stays locked to the
+     * world axes (geometry rotates but the UV does not follow). This must be part of the bake cache
+     * key so a UV-locked variant is never served from a plain rotated bake.
+     *
+     * @param modelPath model path
+     * @param rotX      X-axis rotation angle
+     * @param rotY      Y-axis rotation angle
+     * @param rotZ      Z-axis rotation angle
+     * @param uvlock    whether to lock UVs to world axes under rotation
+     * @param iconMap   IIcon map for the current stitch cycle
+     * @return the baked model part, or null on failure
+     */
+    @Nullable
+    public static BlockStateModelPart bake(String modelPath, float rotX, float rotY, float rotZ, boolean uvlock,
+                                            @Nullable Map<String, IIcon> iconMap) {
+        if (modelPath == null) return null;
+
+        ModelJson resolved = ModelResolver.resolve(modelPath);
+        if (resolved == null) {
+            CatFrame.logger.warn("[BakingCore] ModelResolver.resolve('{}') returned null", modelPath);
+            return null;
+        }
+
+        BlockStateModelPart part = ModelBaker.bake(resolved, rotX, rotY, rotZ, modelPath, iconMap, uvlock);
+        if (part == null) {
+            CatFrame.logger.debug("[BakingCore] bake returned null for '{}' @ {}@{}@{} uvlock={}",
+                    modelPath, rotX, rotY, rotZ, uvlock);
+        }
+        return part;
+    }
 }

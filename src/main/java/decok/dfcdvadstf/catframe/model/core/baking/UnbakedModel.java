@@ -85,4 +85,25 @@ public interface UnbakedModel {
      * @return the baked render part
      */
     BlockStateModelPart bake(TextureSlots textures, float rotationX, float rotationY, float rotationZ);
+
+    /**
+     * Baking entry point with blockstate UV-lock.
+     * <p>
+     * When {@code uvlock} is true and a non-zero rotation is applied, the texture is kept locked
+     * to the world axes (geometry rotates but the UV does not follow), mirroring the blockstate
+     * {@code "uvlock": true} flag. The default implementation ignores {@code uvlock} and delegates
+     * to {@link #bake(TextureSlots, float, float, float)}, so implementors that do not support UV
+     * lock are unaffected.
+     *
+     * @param textures  resolved texture slots (IIcon already available)
+     * @param rotationX X-axis rotation angle
+     * @param rotationY Y-axis rotation angle
+     * @param rotationZ Z-axis rotation angle
+     * @param uvlock    whether to lock UVs to world axes under rotation
+     * @return the baked render part
+     */
+    default BlockStateModelPart bake(TextureSlots textures, float rotationX, float rotationY, float rotationZ,
+                                     boolean uvlock) {
+        return bake(textures, rotationX, rotationY, rotationZ);
+    }
 }

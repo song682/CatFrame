@@ -294,7 +294,7 @@ public final class ResidentStateModel implements BlockStateModel {
                 BlockstateJson.Variant v = mpc.apply.getVariant(metadata * 31);
                 if (v != null && v.model != null) {
                     BlockStateModelPart part = BakedModelCache.INSTANCE.get(
-                            BakedModelCache.buildKey(v.model, v.x, v.y, v.z));
+                            BakedModelCache.buildKey(v.model, v.x, v.y, v.z, v.uvlock));
                     return ParticleIconResolver.fromPart(part);
                 }
             }
@@ -318,7 +318,7 @@ public final class ResidentStateModel implements BlockStateModel {
         BlockStateModelPart part;
         if (variant != null && variant.model != null) {
             part = BakedModelCache.INSTANCE.get(
-                    BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z));
+                    BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z, variant.uvlock));
         } else {
             part = BakedModelCache.INSTANCE.get(BakedModelCache.buildKey("builtin/missing", 0, 0, 0));
         }
@@ -492,19 +492,22 @@ public final class ResidentStateModel implements BlockStateModel {
 
         String modelPath;
         float rotX, rotY, rotZ;
+        boolean uvlock;
         if (variant != null && variant.model != null) {
             modelPath = variant.model;
             rotX = variant.x;
             rotY = variant.y;
             rotZ = variant.z;
+            uvlock = variant.uvlock;
         } else {
             modelPath = "builtin/missing";
             rotX = 0;
             rotY = 0;
             rotZ = 0;
+            uvlock = false;
         }
 
-        String cacheKey = BakedModelCache.buildKey(modelPath, rotX, rotY, rotZ);
+        String cacheKey = BakedModelCache.buildKey(modelPath, rotX, rotY, rotZ, uvlock);
         BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
         return part != null ? part : BlockStateModelPart.empty();
     }
@@ -548,7 +551,7 @@ public final class ResidentStateModel implements BlockStateModel {
             if (applies && mpc.apply != null) {
                 BlockstateJson.Variant v = mpc.apply.getVariant(seed);
                 if (v != null && v.model != null) {
-                    String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z);
+                    String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z, v.uvlock);
                     BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
                     if (bakedPart != null && !bakedPart.isEmpty()) {
                         allQuads.addAll(bakedPart.getAllQuads());
@@ -589,7 +592,7 @@ public final class ResidentStateModel implements BlockStateModel {
                     // the atlas gate still applies per part, so missingno replacement is unchanged.
                     BlockStateModelPart part = AtlasGuard.gate(
                             BakedModelCache.INSTANCE.get(
-                                    BakedModelCache.buildKey(v.model, v.x, v.y, v.z)), v.model);
+                                    BakedModelCache.buildKey(v.model, v.x, v.y, v.z, v.uvlock)), v.model);
                     if (part != null) {
                         for (Direction dir : Direction.values()) {
                             mergedFace.computeIfAbsent(dir, k -> new ArrayList<>())

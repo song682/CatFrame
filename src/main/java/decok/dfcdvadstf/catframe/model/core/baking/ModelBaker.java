@@ -115,6 +115,23 @@ public class ModelBaker {
     }
 
     /**
+     * Bakes a model path into a {@link BlockStateModelPart} with an explicitly specified iconMap
+     * and blockstate UV-lock.
+     */
+    @Nullable
+    public static BlockStateModelPart bake(String modelPath, float rotationX, float rotationY, float rotationZ,
+                                            @Nullable Map<String, IIcon> iconMap, boolean uvlock) {
+        if (modelPath == null) return null;
+
+        ModelJson resolved = ModelResolver.resolve(modelPath);
+        if (resolved == null) {
+            CatFrame.logger.warn("[ModelBaker] ModelResolver.resolve('{}') returned null", modelPath);
+            return null;
+        }
+        return bake(resolved, rotationX, rotationY, rotationZ, modelPath, iconMap, uvlock);
+    }
+
+    /**
      * Convenience overload: bake from a resolved {@link ModelJson} with no rotation.
      */
     @Nullable
@@ -175,6 +192,27 @@ public class ModelBaker {
     @Nullable
     public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, float rotationZ,
                                             String modelPath, @Nullable Map<String, IIcon> iconMap) {
+        return bake(resolved, rotationX, rotationY, rotationZ, modelPath, iconMap, false);
+    }
+
+    /**
+     * Bakes from a resolved {@link ModelJson} with an explicitly specified iconMap and blockstate UV-lock.
+     * <p>
+     * When {@code uvlock} is true the geometry rotation keeps the texture locked to the world axes
+     * (see {@link ModelJsonUnbakedAdapter#bake(TextureSlots, float, float, float, boolean)}).
+     *
+     * @param resolved  the resolved model
+     * @param rotationX X-axis rotation angle
+     * @param rotationY Y-axis rotation angle
+     * @param rotationZ Z-axis rotation angle
+     * @param modelPath model path (used for logging and identification)
+     * @param iconMap   IIcon map for the current stitch cycle
+     * @param uvlock    whether to lock UVs to world axes under rotation
+     * @return the baked render part
+     */
+    @Nullable
+    public static BlockStateModelPart bake(ModelJson resolved, float rotationX, float rotationY, float rotationZ,
+                                            String modelPath, @Nullable Map<String, IIcon> iconMap, boolean uvlock) {
         if (resolved == null) return null;
         if (resolved.elements == null || resolved.elements.isEmpty()) {
             if (!resolved.builtinGenerated) {
@@ -190,7 +228,7 @@ public class ModelBaker {
         TextureSlots textures = TextureSlots.fromModel(resolved, iconMap, null);
 
         // 3. Bake
-        return unbaked.bake(textures, rotationX, rotationY, rotationZ);
+        return unbaked.bake(textures, rotationX, rotationY, rotationZ, uvlock);
     }
 
     /**

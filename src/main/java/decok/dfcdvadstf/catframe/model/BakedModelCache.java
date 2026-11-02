@@ -57,7 +57,10 @@ public class BakedModelCache {
                 .build(new CacheLoader<String, Optional<BlockStateModelPart>>() {
                     @Override
                     public Optional<BlockStateModelPart> load(String key) {
-                        String[] parts = parseCacheKey(key);
+                        // A trailing '!' marks a blockstate uvlock variant (see buildKey(.., uvlock)).
+                        boolean uvlock = key.endsWith(UVLOCK_SUFFIX);
+                        String rawKey = uvlock ? key.substring(0, key.length() - UVLOCK_SUFFIX.length()) : key;
+                        String[] parts = parseCacheKey(rawKey);
                         if (parts == null) return Optional.absent();
                         float rotX, rotY, rotZ;
                         try {
@@ -67,8 +70,8 @@ public class BakedModelCache {
                         } catch (NumberFormatException e) {
                             return Optional.absent();
                         }
-                        // Call bake pure function (passing current stitch cycle's iconMap)
-                        BlockStateModelPart result = BakingCore.bake(parts[0], rotX, rotY, rotZ, iconMap);
+                        // Call bake pure function (passing current stitch cycle's iconMap + uvlock flag)
+                        BlockStateModelPart result = BakingCore.bake(parts[0], rotX, rotY, rotZ, uvlock, iconMap);
                         if (result != null) {
                             CatFrame.logger.debug("[BakedModelCache] lazy bake: {} | quads={}",
                                     key, result.isEmpty() ? 0 : result.getAllQuads().size());
@@ -265,6 +268,23 @@ public class BakedModelCache {
      */
     public static String buildKey(String modelPath, float rotX, float rotY, float rotZ) {
         return modelPath + "@" + formatRot(rotX) + "@" + formatRot(rotY) + "@" + formatRot(rotZ);
+    }
+
+    /**
+     * UV-lock cache-key suffix. Appended only when uvlock is true, so plain rotated keys keep
+     * their historical format (and stay compatible with the async pre-bake path, which never
+     * pre-bakes uvlock variants). Model paths and float rotations never contain '!'.
+     */
+    private static final String UVLOCK_SUFFIX = "!";
+
+    /**
+     * Build cacheKey (with Z rotation and blockstate UV-lock).
+     * When {@code uvlock} is false the result is identical to {@link #buildKey(String, float, float, float)};
+     * when true a trailing marker is appended so a UV-locked bake is cached under its own key.
+     */
+    public static String buildKey(String modelPath, float rotX, float rotY, float rotZ, boolean uvlock) {
+        String base = buildKey(modelPath, rotX, rotY, rotZ);
+        return uvlock ? base + UVLOCK_SUFFIX : base;
     }
 
     /**

@@ -182,7 +182,7 @@ public class RenderDispatcher {
 
             // [C1+W3] Rotation already baked in bakeModel, pass 0 at runtime
             // Go through BakedModelCache (thread-safe + lazy bake)
-            String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z);
+            String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z, variant.uvlock);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) return null;
 
@@ -204,7 +204,7 @@ public class RenderDispatcher {
                     BlockstateJson.Variant v = mpc.apply.getVariant(seed);
                     if (v != null && v.model != null) {
                         // [C1] Go through BakedModelCache
-                        String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z);
+                        String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z, v.uvlock);
                         BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
                         if (bakedPart != null && !bakedPart.isEmpty()) {
                             allQuads.addAll(bakedPart.getAllQuads());
@@ -272,7 +272,7 @@ public class RenderDispatcher {
             if (variant == null || variant.model == null) return null;
 
             // [C1+W3] Go through BakedModelCache (thread-safe + lazy bake)
-            String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z);
+            String cacheKey = BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z, variant.uvlock);
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(cacheKey);
             if (part == null || part.isEmpty()) return null;
 
@@ -289,7 +289,7 @@ public class RenderDispatcher {
                     BlockstateJson.Variant v = mpc.apply.getVariant(seed);
                     if (v != null && v.model != null) {
                         // [C1] Go through BakedModelCache
-                        String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z);
+                        String partKey = BakedModelCache.buildKey(v.model, v.x, v.y, v.z, v.uvlock);
                         BlockStateModelPart bakedPart = BakedModelCache.INSTANCE.get(partKey);
                         if (bakedPart != null && !bakedPart.isEmpty()) {
                             allQuads.addAll(bakedPart.getAllQuads());

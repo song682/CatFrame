@@ -132,7 +132,7 @@ public class StateProviderBlockModel implements BlockStateModel {
             if (variant == null || variant.model == null) return null;
 
             BlockStateModelPart part = BakedModelCache.INSTANCE.get(
-                    BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z));
+                    BakedModelCache.buildKey(variant.model, variant.x, variant.y, variant.z, variant.uvlock));
             return ParticleIconResolver.fromPart(part);
         }
 
@@ -143,7 +143,7 @@ public class StateProviderBlockModel implements BlockStateModel {
                 BlockstateJson.Variant v = mpc.apply.getVariant(metadata * 31);
                 if (v != null && v.model != null) {
                     BlockStateModelPart part = BakedModelCache.INSTANCE.get(
-                            BakedModelCache.buildKey(v.model, v.x, v.y, v.z));
+                            BakedModelCache.buildKey(v.model, v.x, v.y, v.z, v.uvlock));
                     return ParticleIconResolver.fromPart(part);
                 }
             }

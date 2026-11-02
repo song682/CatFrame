@@ -97,6 +97,12 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
      */
     @Override
     public BlockStateModelPart bake(TextureSlots textures, float rotationX, float rotationY, float rotationZ) {
+        return bake(textures, rotationX, rotationY, rotationZ, false);
+    }
+
+    @Override
+    public BlockStateModelPart bake(TextureSlots textures, float rotationX, float rotationY, float rotationZ,
+                                    boolean uvlock) {
         // 1. Fetch texture_size
         int[] texSize = json.texture_size;
 
@@ -183,6 +189,15 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         }
         if (rotationZ != 0) {
             quads = JsonModelBake.applyZRotation(quads, rotationZ);
+        }
+
+        // 8.1 UV lock: when the blockstate requests it and a rotation actually turned the
+        //     geometry, re-derive each quad's UV from its world position so the texture stays
+        //     aligned to the world axes (geometry turns, texture does not). Skipped for an
+        //     identity rotation, where the baked UV already equals the world-locked one.
+        boolean anyRotation = (rotationX != 0) || (rotationY != 0) || (rotationZ != 0);
+        if (uvlock && anyRotation) {
+            quads = JsonModelBake.applyUvLock(quads);
         }
 
         // 8.5 Post-pass atlas membership scan (aligned with 26.1.2 BakedQuad.MaterialInfo.of, which

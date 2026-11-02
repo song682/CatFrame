@@ -4,6 +4,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.CatFrameConfig;
+import decok.dfcdvadstf.catframe.adapter.vanilla.model.ChunkProbeCache;
 import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.BakedModelCache;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
@@ -172,6 +173,11 @@ public final class ResidentStateModel implements BlockStateModel {
     public CollectedPart collectPartsWithProps(IBlockAccess world, int x, int y, int z, int metadata) {
         BlockstateJson target = resolveTarget(metadata);
         if (target == null) return new CollectedPart(BlockStateModelPart.empty(), null);
+
+        // Compile-window probe scratch: inside a chunk build (mixin-opened window) neighbor
+        // reads of this resolution go through the per-thread (Block, meta) cache; outside a
+        // window wrap returns the world untouched. Only dynamic resolvers probe the world.
+        if (dynamic != null && world != null) world = ChunkProbeCache.wrap(world);
 
         // Render veto: a dynamic resolver may suppress rendering for the current world
         // state (double plant upper half with a missing block below - renderBlockDoublePlant

@@ -78,10 +78,13 @@ public class StateProviderBlockModel implements BlockStateModel {
                     = new java.util.EnumMap<>(Direction.class);
             java.util.List<JsonModelBake.BakedQuad> mergedGeneral = new java.util.ArrayList<>();
 
+            // Position-based seed for weighted-random variant selection (aligned with the
+            // variants branch above and ResidentStateModel/RenderDispatcher multipart paths).
+            int seed = x * 3129871 ^ z * 116129781 ^ y;
             for (BlockstateJson.MultipartCase mpc : blockstate.multipart) {
                 boolean applies = (mpc.when == null) || mpc.when.matches(properties);
                 if (applies && mpc.apply != null) {
-                    BlockstateJson.Variant v = mpc.apply.getVariant(0);
+                    BlockstateJson.Variant v = mpc.apply.getVariant(seed);
                     if (v != null && v.model != null) {
                         BlockStateModelPart subPart = AtlasGuard.gate(
                                 BakedModelCache.INSTANCE.get(

@@ -1,6 +1,6 @@
 {
-  "parent": "minecraft:block/cross",
-  "textures": {
-    "cross": "minecraft:blocks/sapling_spruce"
-  }
+    "parent": "minecraft:block/cross",
+    "textures": {
+        "cross": "minecraft:blocks/sapling_spruce"
+    }
 }

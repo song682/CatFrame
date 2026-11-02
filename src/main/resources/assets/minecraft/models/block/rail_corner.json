@@ -1,6 +1,6 @@
 {
-  "parent": "minecraft:block/rail_curved",
-  "textures": {
-    "rail": "minecraft:blocks/rail_normal_turned"
-  }
+    "parent": "minecraft:block/rail_curved",
+    "textures": {
+        "rail": "minecraft:blocks/rail_normal_turned"
+    }
 }

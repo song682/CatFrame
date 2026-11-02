@@ -1,6 +1,6 @@
 {
-  "parent": "minecraft:block/cross",
-  "textures": {
-    "cross": "minecraft:blocks/flower_allium"
-  }
+    "parent": "minecraft:block/cross",
+    "textures": {
+        "cross": "minecraft:blocks/flower_allium"
+    }
 }

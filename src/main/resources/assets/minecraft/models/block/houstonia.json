@@ -1,6 +1,6 @@
 {
-  "parent": "minecraft:block/cross",
-  "textures": {
-    "cross": "minecraft:blocks/flower_houstonia"
-  }
+    "parent": "minecraft:block/cross",
+    "textures": {
+        "cross": "minecraft:blocks/flower_houstonia"
+    }
 }

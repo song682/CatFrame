@@ -1,6 +1,6 @@
 {
-  "parent": "block/cube_all",
-  "textures": {
-    "all": "minecraft:blocks/redstone_ore"
-  }
+    "parent": "block/cube_all",
+    "textures": {
+        "all": "minecraft:blocks/redstone_ore"
+    }
 }

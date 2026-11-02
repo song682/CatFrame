@@ -99,6 +99,10 @@ public final class UniformRenderPipeline {
 
         // World rendering binds the CatAtlas: blocks with getRenderBlockPass()==1 go to the translucent group
         // (blending enabled), others go to the solid group (alpha test). Not opaque and culling remains enabled (disableCull=false).
+        // Note: the per-texture force_translucent flag is NOT applied here — world blocks are written inline into the
+        // vanilla chunk batch (see RenderCommandBuffers#submit / FeatureRenderDispatcher#flushInline), where blending is
+        // fixed by the block's own render pass and cannot be switched per quad. force_translucent takes effect on the
+        // item/GUI batched path (renderItemQuads -> flushGroup), covering block items in inventory / hand / dropped.
         boolean translucent = block != null && block.getRenderBlockPass() == 1;
         RenderTypeKey type = translucent
                 ? RenderTypeRegistry.BLOCK_ATLAS_TRANSLUCENT
@@ -222,20 +226,47 @@ public final class UniformRenderPipeline {
         // winding aligns with emitFaceFromCorners — culling works correctly in all cases.
         BlockStateModelPart[] split = part.atlasSplit();
         for (int i = 0; i < split.length; i++) {
-            BlockStateModelPart sub = split[i];
-            if (sub == null) continue;
-            RenderTypeKey type = RenderTypeRegistry.of(i == 0, blendRequired);
-            // Both submissions share the same itemProps reference (zero copy)
-            RenderSubmit s = new RenderSubmit(
-                    phase, sub, type,
-                    x, y, z, 0,
-                    block, stack, world, 0,
-                    preTransform,
-                    transformation,
-                    false, blendRequired,
-                    null, itemProps);
-            RenderCommandBuffers.submit(s);
+            BlockStateModelPart atlasPart = split[i];
+            if (atlasPart == null) continue;
+            boolean blockAtlas = (i == 0);
+            // When the phase already blends (GUI / dropped / fixed), every quad is in a translucent
+            // group and the force_translucent split is a no-op -> keep the single submission (zero regression).
+            // Otherwise split the atlas sub-part so force_translucent elements route to a blend-enabled
+            // group while the rest stays opaque (e.g. a block item held in hand, blendRequired == false).
+            if (blendRequired) {
+                submitItem(atlasPart, RenderTypeRegistry.of(blockAtlas, true), phase, x, y, z,
+                        block, stack, world, preTransform, transformation, itemProps, true);
+            } else {
+                BlockStateModelPart[] tSplit = atlasPart.translucentSplit();
+                for (int j = 0; j < tSplit.length; j++) {
+                    BlockStateModelPart sub = tSplit[j];
+                    if (sub == null) continue;
+                    boolean blend = (j == 1); // index 1 = force-translucent group
+                    submitItem(sub, RenderTypeRegistry.of(blockAtlas, blend), phase, x, y, z,
+                            block, stack, world, preTransform, transformation, itemProps, blend);
+                }
+            }
         }
+    }
+
+    /**
+     * Builds and submits one item-path {@link RenderSubmit} (cull always disabled on the item path);
+     * extracted to keep {@link #renderItemQuads} readable across the atlas x translucent combinations.
+     */
+    private static void submitItem(BlockStateModelPart sub, RenderTypeKey type, RenderPhase phase,
+                                   int x, int y, int z, @Nullable Block block, @Nullable ItemStack stack,
+                                   @Nullable IBlockAccess world, @Nullable Matrix4d preTransform,
+                                   @Nullable Matrix4d transformation,
+                                   @Nullable Map<String, Comparable<?>> itemProps, boolean blend) {
+        RenderSubmit s = new RenderSubmit(
+                phase, sub, type,
+                x, y, z, 0,
+                block, stack, world, 0,
+                preTransform,
+                transformation,
+                false, blend,
+                null, itemProps);
+        RenderCommandBuffers.submit(s);
     }
 
     /**

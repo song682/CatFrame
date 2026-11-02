@@ -246,6 +246,48 @@ public class BlockStateModelPart {
         return true;
     }
 
+    // ==================== Translucent splitting (force_translucent per-element routing) ====================
+
+    /** Lazy cache: index 0 = non-forced (solid) sub-part, index 1 = force_translucent sub-part, either slot may be null. */
+    private BlockStateModelPart[] translucentSplitCache;
+
+    /**
+     * Splits parts by each quad's bake-time {@code forceTranslucent} flag, so the item/GUI render path
+     * can submit the forced quads to a blend-enabled group while leaving the rest in the opaque group.
+     * <p>
+     * When fully homogeneous (the common case, and always the case when no texture declares
+     * force_translucent) the occupied slot directly references {@code this} and the other is null — zero
+     * allocation and zero behavioral change. Mixed parts build two sub-parts (sharing display and the
+     * particle slot). Cached; accessed only by the render thread.
+     *
+     * @return a length-2 array: [0]=solid part, [1]=force-translucent part, either slot may be null
+     */
+    public BlockStateModelPart[] translucentSplit() {
+        if (translucentSplitCache == null) {
+            boolean hasSolid = false, hasForced = false;
+            for (BakedQuad q : getAllQuads()) {
+                if (q.forceTranslucent) hasForced = true; else hasSolid = true;
+                if (hasSolid && hasForced) break;
+            }
+            if (!hasForced) {
+                // All solid (including empty parts): nothing forced, no split needed
+                translucentSplitCache = new BlockStateModelPart[]{this, null};
+            } else if (!hasSolid) {
+                translucentSplitCache = new BlockStateModelPart[]{null, this};
+            } else {
+                List<BakedQuad> solid = new ArrayList<>();
+                List<BakedQuad> forced = new ArrayList<>();
+                for (BakedQuad q : getAllQuads()) {
+                    (q.forceTranslucent ? forced : solid).add(q);
+                }
+                translucentSplitCache = new BlockStateModelPart[]{
+                        fromQuads(solid, partDisplay, particleSlotIcon),
+                        fromQuads(forced, partDisplay, particleSlotIcon)};
+            }
+        }
+        return translucentSplitCache;
+    }
+
     /**
      * Merges two BlockStateModelParts (for multipart composition).
      */

@@ -10,6 +10,7 @@ import javax.vecmath.Vector3d;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class JsonModelBake {
     public static List<BakedQuad> bakeElement(ModelJson.Element e, Map<String, IIcon> iconMap) {
@@ -17,6 +18,19 @@ public class JsonModelBake {
     }
 
     public static List<BakedQuad> bakeElement(ModelJson.Element e, Map<String, IIcon> iconMap, int[] textureSize) {
+        return bakeElement(e, iconMap, textureSize, null);
+    }
+
+    /**
+     * Bakes one element into quads.
+     *
+     * @param forceTranslucentVars texture variable names whose resolved sprite declares
+     *        {@code force_translucent} (chain-expanded by {@code ModelResolver.resolveTextureVariables});
+     *        when any face of the element references one of them, the <b>whole element</b> is marked
+     *        translucent on every quad, per the format spec ("使用此纹理的整个模型元素"). null/empty = none.
+     */
+    public static List<BakedQuad> bakeElement(ModelJson.Element e, Map<String, IIcon> iconMap, int[] textureSize,
+                                              Set<String> forceTranslucentVars) {
         List<BakedQuad> out = new ArrayList<>();
         // [C6] Null check: from/to are required JSON fields; a corrupted model may have them null
         if (e.from == null || e.to == null) {
@@ -39,6 +53,9 @@ public class JsonModelBake {
         final Direction elemShadeDir = parseShadeDirectionOverride(e.shadeDirectionOverride);
         // 26.1.2: element-level light emission (0-15, validated during deserialization)
         final int elemLightEmission = e.lightEmission;
+        // Element-level force_translucent: the whole element is translucent when any of its faces
+        // references a texture variable flagged force_translucent ("使用此纹理的整个模型元素").
+        final boolean elemForced = isElementForcedTranslucent(e.faces, forceTranslucentVars);
         double x0 = e.from[0] / 16.0, y0 = e.from[1] / 16.0, z0 = e.from[2] / 16.0;
         double x1 = e.to[0] / 16.0, y1 = e.to[1] / 16.0, z1 = e.to[2] / 16.0;
         Vector3d[] C = new Vector3d[8];
@@ -146,17 +163,41 @@ public class JsonModelBake {
                 C[i].add(origin);
             }
         }
-        emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, Direction.NORTH, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize);
-        emitFaceFromCorners(out, e.faces.south, iconMap, C, new int[]{idx(0, 1, 1), idx(0, 0, 1), idx(1, 0, 1), idx(1, 1, 1)}, Direction.SOUTH, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize);
-        emitFaceFromCorners(out, e.faces.west, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 0, 0), idx(0, 0, 1), idx(0, 1, 1)}, Direction.WEST, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize);
-        emitFaceFromCorners(out, e.faces.east, iconMap, C, new int[]{idx(1, 1, 1), idx(1, 0, 1), idx(1, 0, 0), idx(1, 1, 0)}, Direction.EAST, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize);
-        emitFaceFromCorners(out, e.faces.down, iconMap, C, new int[]{idx(0, 0, 1), idx(0, 0, 0), idx(1, 0, 0), idx(1, 0, 1)}, Direction.DOWN, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize);
-        emitFaceFromCorners(out, e.faces.up, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 1, 1), idx(1, 1, 1), idx(1, 1, 0)}, Direction.UP, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize);
+        emitFaceFromCorners(out, e.faces.north, iconMap, C, new int[]{idx(1, 1, 0), idx(1, 0, 0), idx(0, 0, 0), idx(0, 1, 0)}, Direction.NORTH, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize, elemForced);
+        emitFaceFromCorners(out, e.faces.south, iconMap, C, new int[]{idx(0, 1, 1), idx(0, 0, 1), idx(1, 0, 1), idx(1, 1, 1)}, Direction.SOUTH, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize, elemForced);
+        emitFaceFromCorners(out, e.faces.west, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 0, 0), idx(0, 0, 1), idx(0, 1, 1)}, Direction.WEST, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize, elemForced);
+        emitFaceFromCorners(out, e.faces.east, iconMap, C, new int[]{idx(1, 1, 1), idx(1, 0, 1), idx(1, 0, 0), idx(1, 1, 0)}, Direction.EAST, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize, elemForced);
+        emitFaceFromCorners(out, e.faces.down, iconMap, C, new int[]{idx(0, 0, 1), idx(0, 0, 0), idx(1, 0, 0), idx(1, 0, 1)}, Direction.DOWN, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize, elemForced);
+        emitFaceFromCorners(out, e.faces.up, iconMap, C, new int[]{idx(0, 1, 0), idx(0, 1, 1), idx(1, 1, 1), idx(1, 1, 0)}, Direction.UP, elemFrom, elemTo, elemAO, elemShade, elemShadeDir, elemLightEmission, textureSize, elemForced);
         return out;
     }
 
+    /**
+     * Whether any face of the element references a texture variable flagged {@code force_translucent}.
+     * The face texture reference is a {@code #var} string (already chain-resolved by ModelResolver for
+     * the flag set), so the leading '#' is stripped before the lookup — same key the icon is resolved by.
+     */
+    private static boolean isElementForcedTranslucent(ModelJson.Faces faces, Set<String> forceTranslucentVars) {
+        if (faces == null || forceTranslucentVars == null || forceTranslucentVars.isEmpty()) {
+            return false;
+        }
+        return faceForced(faces.north, forceTranslucentVars)
+                || faceForced(faces.south, forceTranslucentVars)
+                || faceForced(faces.west, forceTranslucentVars)
+                || faceForced(faces.east, forceTranslucentVars)
+                || faceForced(faces.down, forceTranslucentVars)
+                || faceForced(faces.up, forceTranslucentVars);
+    }
+
+    private static boolean faceForced(ModelJson.Face f, Set<String> forceTranslucentVars) {
+        if (f == null || f.texture == null || !f.texture.startsWith("#")) {
+            return false;
+        }
+        return forceTranslucentVars.contains(f.texture.substring(1));
+    }
+
     private static void emitFaceFromCorners(List<BakedQuad> out, ModelJson.Face f, Map<String, IIcon> iconMap, Vector3d[] C, int[] id, Direction facing,
-                                            float[] elemFrom, float[] elemTo, Boolean elemAO, Boolean elemShade, Direction elemShadeDir, int elemLightEmission, int[] textureSize) {
+                                            float[] elemFrom, float[] elemTo, Boolean elemAO, Boolean elemShade, Direction elemShadeDir, int elemLightEmission, int[] textureSize, boolean elemForced) {
         if (f == null || f.texture == null) {
             return;
         }
@@ -196,6 +237,8 @@ public class JsonModelBake {
         q.shadeEnabled = elemShade;
         q.shadeDirectionOverride = elemShadeDir;
         q.lightEmission = elemLightEmission;
+        // Element-level force_translucent (whole element, propagated from the texture variable)
+        q.forceTranslucent = elemForced;
         out.add(q);
     }
 
@@ -495,6 +538,7 @@ public class JsonModelBake {
         q.lightEmission = src.lightEmission;
         q.guiLight = src.guiLight;
         q.solidColor = src.solidColor;
+        q.forceTranslucent = src.forceTranslucent;
         return q;
     }
 
@@ -698,5 +742,15 @@ public class JsonModelBake {
          * show a solid color consistent with the edge pixels and avoiding texture-atlas sampling deviations.
          */
         public int solidColor = 0;
+
+        /**
+         * Forced translucent rendering flag (JSON {@code force_translucent} on the texture variable;
+         * element granularity: every quad of an element that uses a force_translucent texture is set).
+         * <p>Aligned with the {@link #blockAtlas} per-quad routing: at render time the item/GUI path splits a
+         * part by this flag and submits the forced quads to a blend-enabled render group, so a normally-opaque
+         * render context (e.g. a block item held in hand) still alpha-blends this element. The vanilla chunk
+         * world path cannot honor it per-quad (blend there is fixed by the block's render pass).
+         */
+        public boolean forceTranslucent = false;
     }
 }

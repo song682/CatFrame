@@ -111,9 +111,14 @@ public class ModelJsonUnbakedAdapter implements UnbakedModel {
         }
 
         // 4. Iterate elements and bake them into BakedQuads
+        //    force_translucent texture variables (chain-expanded by ModelResolver) mark the whole
+        //    element translucent; pass their name set so each element can detect it at bake time.
+        java.util.Set<String> forceVars = (json.textureForceTranslucent != null
+                && !json.textureForceTranslucent.isEmpty())
+                ? json.textureForceTranslucent.keySet() : null;
         List<BakedQuad> quads = new ArrayList<>();
         for (ModelJson.Element element : json.elements) {
-            List<BakedQuad> elementQuads = JsonModelBake.bakeElement(element, iconMap, texSize);
+            List<BakedQuad> elementQuads = JsonModelBake.bakeElement(element, iconMap, texSize, forceVars);
             if (elementQuads != null) {
                 quads.addAll(elementQuads);
             }

@@ -207,6 +207,18 @@ public class ModelResolver {
             merged.textures.putAll(child.textures);
         }
 
+        // textureForceTranslucent: merge with child overriding parent (same policy as textures), so a
+        // per-texture-variable force_translucent flag declared anywhere in the parent chain is retained.
+        if (parent.textureForceTranslucent != null || child.textureForceTranslucent != null) {
+            merged.textureForceTranslucent = new HashMap<>();
+            if (parent.textureForceTranslucent != null) {
+                merged.textureForceTranslucent.putAll(parent.textureForceTranslucent);
+            }
+            if (child.textureForceTranslucent != null) {
+                merged.textureForceTranslucent.putAll(child.textureForceTranslucent);
+            }
+        }
+
         // Display: child overrides parent per-slot, merge map
         if (parent.display != null || child.display != null) {
             merged.display = new HashMap<>();
@@ -369,15 +381,34 @@ public class ModelResolver {
         // Identifier of the Missingno texture
         final String MISSINGNO = "minecraft:missingno";
 
+        // Pre-resolution reference map (still holds "#var" links) and the declared per-variable
+        // force_translucent flags. Both are snapshotted before model.textures is overwritten below.
+        final Map<String, String> refs = model.textures;
+        final Map<String, Boolean> declaredForce = model.textureForceTranslucent;
+
         Map<String, String> resolved = new HashMap<>();
-        for (Map.Entry<String, String> entry : model.textures.entrySet()) {
+        Map<String, Boolean> effectiveForce = null;
+
+        for (Map.Entry<String, String> entry : refs.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
+
+            // An object-form variable declaring no "sprite" yields a null value; treat as missingno (defensive).
+            if (value == null) {
+                resolved.put(key, MISSINGNO);
+                continue;
+            }
 
             // Track the reference chain for cycle detection
             // LinkedHashSet provides O(1) contains and preserves insertion order (for logging the chain)
             Set<String> chain = new LinkedHashSet<>();
             chain.add(key);
+
+            // force_translucent applies along the whole reference chain: if this variable, or any
+            // variable it (transitively) references, declares force_translucent, the resolved texture
+            // is translucent. A variable may only carry a sprite (and the flag) at a chain leaf, yet a
+            // face referencing an earlier "#var" in the chain still ends up using that leaf texture.
+            boolean force = declaredForce != null && Boolean.TRUE.equals(declaredForce.get(key));
 
             while (value.startsWith("#")) {
                 String ref = value.substring(1);
@@ -402,7 +433,11 @@ public class ModelResolver {
                 }
                 chain.add(ref);
 
-                String refValue = model.textures.get(ref);
+                if (!force && declaredForce != null && Boolean.TRUE.equals(declaredForce.get(ref))) {
+                    force = true;
+                }
+
+                String refValue = refs.get(ref);
                 if (refValue == null) {
                     // The referenced texture variable does not exist; use missingno
                     value = MISSINGNO;
@@ -419,8 +454,17 @@ public class ModelResolver {
             }
 
             resolved.put(key, value);
+            if (force) {
+                if (effectiveForce == null) effectiveForce = new HashMap<>();
+                effectiveForce.put(key, Boolean.TRUE);
+            }
         }
         model.textures = resolved;
+        // Replace the declared flags with the chain-expanded effective set (only TRUE entries are kept);
+        // when nothing resolves to force_translucent the map is left as declared (null when none).
+        if (effectiveForce != null) {
+            model.textureForceTranslucent = effectiveForce;
+        }
     }
 
     /**
@@ -548,6 +592,9 @@ public class ModelResolver {
         }
         if (source.textures != null) {
             copy.textures = new HashMap<>(source.textures);
+        }
+        if (source.textureForceTranslucent != null) {
+            copy.textureForceTranslucent = new HashMap<>(source.textureForceTranslucent);
         }
         if (source.elements != null) {
             copy.elements = new ArrayList<>(source.elements);

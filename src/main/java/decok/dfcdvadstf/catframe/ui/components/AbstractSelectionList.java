@@ -420,11 +420,11 @@ public abstract class AbstractSelectionList<E extends AbstractSelectionList.Entr
         // ──── Component: events (defaults) ────
 
         @Override
-        public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
+        public void onMouseClicked(int mouseX, int mouseY, int mouseButton) {
         }
 
         @Override
-        public void keyTyped(char typedChar, int keyCode) {
+        public void onKeyTyped(char typedChar, int keyCode) {
         }
 
         // ──── Focus ────

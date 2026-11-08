@@ -1,9 +1,10 @@
 package decok.dfcdvadstf.catframe.ui.components.events;
 
 import decok.dfcdvadstf.catframe.ui.components.TabOrderedElement;
-import decok.dfcdvadstf.catframe.ui.layouts.ILayout;
 import decok.dfcdvadstf.catframe.ui.navigation.FocusNavigationEvent;
 import decok.dfcdvadstf.catframe.ui.navigation.ScreenRectangle;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.inventory.GuiContainer;
 
 import javax.annotation.Nullable;
 
@@ -35,7 +36,7 @@ public interface GuiEventListener extends TabOrderedElement {
      * Set both width and height in one call.
      */
     default void setSize(int width, int height) {
-        // subclasses may override for optimisation
+        // subclasses may override for optimization
     }
 
     // ──── Visibility / Active ────

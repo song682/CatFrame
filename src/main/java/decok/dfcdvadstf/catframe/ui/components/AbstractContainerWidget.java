@@ -78,7 +78,7 @@ public abstract class AbstractContainerWidget extends AbstractScrollArea impleme
     // We delegate to ContainerEventHandler's dispatch* methods internally.
 
     @Override
-    public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
+    public void onMouseClicked(int mouseX, int mouseY, int mouseButton) {
         // First check if we're starting to drag the scrollbar
         updateScrolling(mouseX, mouseY, mouseButton);
         // Then dispatch to children via ContainerEventHandler
@@ -98,7 +98,7 @@ public abstract class AbstractContainerWidget extends AbstractScrollArea impleme
     }
 
     @Override
-    public void keyTyped(char typedChar, int keyCode) {
+    public void onKeyTyped(char typedChar, int keyCode) {
         dispatchKeyTyped(typedChar, keyCode);
     }
 

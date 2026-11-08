@@ -252,12 +252,15 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
     // ──── Mouse events (vanilla → CatFrame dispatch) ────
 
     /**
-     * Overridden as {@code public} (widening the vanilla {@code protected}) to
-     * satisfy
-     * {@link GuiEventListener#mouseClicked(int, int, int)}. Forwards to vanilla
+     * Overrides the vanilla {@code protected} hook. Forwards to vanilla
      * buttons
      * first, then
      * dispatches to CatFrame children.
+     * <p>
+     * Declared {@code protected} like vanilla: the component-side receiver is
+     * {@link GuiEventListener#mouseClicked(int, int, int)}, so the vanilla hook no
+     * longer has to be widened to {@code public} to satisfy the interface.
+     * </p>
      */
     @Override
     public void mouseClicked(final int mouseX, final int mouseY, final int mouseButton) {
@@ -304,7 +307,7 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
      * {@code charTyped}) into the component tree, then delegates to vanilla.
      * The vanilla path drives {@code keyTyped} →
      * {@link #dispatchKeyTyped(char, int)}, the sole input channel for leaf
-     * components that override only {@code keyTyped}.
+     * components that override only {@code onKeyTyped}.
      * Reading LWJGL2's
      * current event here — inside the {@code while (Keyboard.next())} loop, before
      * vanilla's
@@ -331,13 +334,14 @@ public abstract class Screen extends GuiScreen implements GuiEventListener, Cont
     // ──── Keyboard (vanilla path: Esc only) ────
 
     /**
-     * Overridden as {@code public} to satisfy
-     * {@link GuiEventListener#keyTyped(char, int)}. Handles Esc-to-close and
+     * Overrides the vanilla {@code protected} hook (it no longer needs to be
+     * {@code public}: the component-side receiver is
+     * {@link GuiEventListener#keyTyped(char, int)}). Handles Esc-to-close and
      * then forwards to the focused child via {@link #dispatchKeyTyped(char, int)}.
      * <p>
      * Driven by {@code super.handleKeyboardInput()} (vanilla fires it only on key
      * press). Leaf components (edit boxes, buttons, etc.) override just
-     * {@code keyTyped} — they do not implement the split-method equivalents — so
+     * {@code onKeyTyped} — they do not implement the split-method equivalents — so
      * this dispatch is their <strong>only</strong> keyboard input channel. The
      * legacy {@code keyTyped} bridge inside
      * {@code ScreenKeyboardInput.handleCurrentEvent} was removed because it

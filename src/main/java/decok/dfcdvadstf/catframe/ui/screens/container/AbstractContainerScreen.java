@@ -160,16 +160,6 @@ public abstract class AbstractContainerScreen<T extends AbstractContainerMenu>
     }
 
     /**
-     * Draw the container background texture. Called by vanilla.
-     *
-     * @param partialTicks tick intervals
-     * @param mouseX       mouseX
-     * @param mouseY       mouseY
-     */
-    @Override
-    protected abstract void drawGuiContainerBackgroundLayer(float partialTicks, int mouseX, int mouseY);
-
-    /**
      * Draw the foreground layer (labels, overlays). Called by vanilla.
      *
      * @param mouseX mouse X

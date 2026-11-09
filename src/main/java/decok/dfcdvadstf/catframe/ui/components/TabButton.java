@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.ui.ContentPanelRenderer;
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
@@ -8,7 +9,6 @@ import decok.dfcdvadstf.catframe.ui.components.tab.Tab;
 import decok.dfcdvadstf.catframe.ui.components.tab.TabManager;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.ResourceLocation;
 
 /**
  * <p>
@@ -31,10 +31,10 @@ public class TabButton extends AbstractComponent.WithInactiveMessage {
      * tab_selected_highlighted | tab_highlighted}.
      */
     private static final WidgetSprites SPRITES = new WidgetSprites(
-            new ResourceLocation("catframe", "textures/gui/sprites/tabs/tab_selected.png"),
-            new ResourceLocation("catframe", "textures/gui/sprites/tabs/tab.png"),
-            new ResourceLocation("catframe", "textures/gui/sprites/tabs/tab_selected_highlighted.png"),
-            new ResourceLocation("catframe", "textures/gui/sprites/tabs/tab_highlighted.png"));
+            TextureLocation.set("catframe", "gui/sprites/tabs/tab_selected").build(),
+            TextureLocation.set("catframe", "gui/sprites/tabs/tab").build(),
+            TextureLocation.set("catframe", "gui/sprites/tabs/tab_selected_highlighted").build(),
+            TextureLocation.set("catframe", "gui/sprites/tabs/tab_highlighted").build());
 
     /** Nine-patch fallback parameters when the mcmeta is missing (nine_patch / 130x24 / edge 2) */
     private static final int TEX_DEFAULT_W = 130;

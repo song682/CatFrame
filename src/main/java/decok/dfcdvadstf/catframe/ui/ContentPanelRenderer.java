@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui;
 
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
@@ -16,25 +17,25 @@ public final class ContentPanelRenderer {
      * Header separator (top line), 32x2 tileable.
      */
     public static final ResourceLocation HEADER_SEPARATOR =
-            new ResourceLocation("catframe", "textures/gui/header_separator.png");
+            TextureLocation.set("catframe", "gui/header_separator").build();
 
     /**
      * Footer separator (bottom line), 32x2 tileable.
      */
     public static final ResourceLocation FOOTER_SEPARATOR =
-            new ResourceLocation("catframe", "textures/gui/footer_separator.png");
+            TextureLocation.set("catframe", "gui/footer_separator").build();
 
     /**
      * Panel background, 16x16 tileable.
      */
     public static final ResourceLocation PANEL_BACKGROUND =
-            new ResourceLocation("catframe", "textures/gui/menu_background.png");
+            TextureLocation.set("catframe", "gui/menu_background").build();
 
     /**
      * Tab header background (black), 16x16 tileable. Sits behind the tab navigation row.
      */
     public static final ResourceLocation TAB_HEADER_BACKGROUND =
-            new ResourceLocation("catframe", "textures/gui/tab_header_background.png");
+            TextureLocation.set("catframe", "gui/tab_header_background").build();
 
     /**
      * Separator height in GUI pixels.

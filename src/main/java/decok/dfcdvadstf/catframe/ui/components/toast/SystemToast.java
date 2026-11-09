@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
@@ -16,11 +17,11 @@ import java.util.List;
 public class SystemToast extends BaseToast {
 
     private static final ResourceLocation SYSTEM_TOAST_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/toast/system.png");
+            TextureLocation.set("catframe", "gui/toast/system").build();
 
     /** System icon texture */
     private static final ResourceLocation SYSTEM_ICON_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/toast/icons/system.png");
+            TextureLocation.set("catframe", "gui/toast/icons/system").build();
 
     /** Icon size in pixels */
     private static final int ICON_SIZE = 16;

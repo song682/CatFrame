@@ -178,6 +178,22 @@ public class TextureLocation extends ResourceLocation implements IIcon {
     }
 
     /**
+     * Model-domain resolution: probes only the vanilla blocks / items atlases, so a
+     * baked model can never receive a {@code catframe:gui} sprite whose UVs live in a
+     * texture the world / item render layers do not bind (the bind-vs-UV domain
+     * mismatch the three-domain architecture warns about).
+     * <p>
+     * Deliberately carries no missing fallback: model callers keep their own
+     * "texture not found" semantics and diagnostics.
+     *
+     * @return the vanilla atlas icon, or null when the id is stitched nowhere
+     */
+    @Nullable
+    public IIcon currentModelIcon() {
+        return findVanillaIcon();
+    }
+
+    /**
      * Probes the vanilla atlases, starting with the one owning this sprite id
      * ({@code items/} / legacy {@code item/} → items atlas, everything else → blocks
      * atlas) because the same flat key can exist in both maps with different UVs.

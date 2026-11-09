@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
@@ -19,14 +20,14 @@ public abstract class AbstractScrollArea extends AbstractComponent {
     public static final int SCROLLBAR_WIDTH = 6;
 
     /** Scroller (thumb) texture — 6x32, border 1 nine-patch */
-    protected static final ResourceLocation SCROLLER_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/sprites/widgets/scroll.png");
+    protected static final ResourceLocation SCROLLER_TEXTURE =
+            TextureLocation.set("catframe", "gui/sprites/widgets/scroll").build();
 
     /**
      * Scrollbar background track texture — 6x32, border 1 nine-patch
      */
-    protected static final ResourceLocation SCROLLER_BACKGROUND_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/sprites/widgets/scroll_background.png");
+    protected static final ResourceLocation SCROLLER_BACKGROUND_TEXTURE =
+            TextureLocation.set("catframe", "gui/sprites/widgets/scroll_background").build();
 
     /** Scrollbar texture dimensions */
     protected static final int SCROLLBAR_TEX_W = 6;

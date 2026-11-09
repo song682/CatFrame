@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components.toast;
 
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.components.AbstractComponent;
@@ -28,7 +29,7 @@ public abstract class BaseToast extends AbstractComponent implements Toast {
 
     /** Default toast background texture */
     protected static final ResourceLocation DEFAULT_TOAST_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/sprites/toast/default.png");
+            TextureLocation.set("catframe", "gui/sprites/toast/default").build();
 
     /**
      * Background texture for this toast. Null = use solid colour fallback.

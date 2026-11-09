@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
@@ -18,14 +19,14 @@ import net.minecraft.util.ResourceLocation;
  */
 public class Checkbox extends AbstractButton {
 
-    private static final ResourceLocation CHECKBOX_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/widgets/checkbox.png");
-    private static final ResourceLocation CHECKBOX_HIGHLIGHTED_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/widgets/checkbox_highlighted.png");
-    private static final ResourceLocation CHECKBOX_SELECTED_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/widgets/checkbox_checked.png");
-    private static final ResourceLocation CHECKBOX_SELECTED_HIGHLIGHTED_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/widgets/checkbox_checked_highlighted.png");
+    private static final ResourceLocation CHECKBOX_TEXTURE =
+            TextureLocation.set("catframe", "gui/widgets/checkbox").build();
+    private static final ResourceLocation CHECKBOX_HIGHLIGHTED_TEXTURE =
+            TextureLocation.set("catframe", "gui/widgets/checkbox_highlighted").build();
+    private static final ResourceLocation CHECKBOX_SELECTED_TEXTURE =
+            TextureLocation.set("catframe", "gui/widgets/checkbox_checked").build();
+    private static final ResourceLocation CHECKBOX_SELECTED_HIGHLIGHTED_TEXTURE =
+            TextureLocation.set("catframe", "gui/widgets/checkbox_checked_highlighted").build();
 
     /** Checkbox box size in screen pixels */
     private static final int BOX_SIZE = 16;

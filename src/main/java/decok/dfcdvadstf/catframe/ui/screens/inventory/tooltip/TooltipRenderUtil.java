@@ -3,6 +3,7 @@ package decok.dfcdvadstf.catframe.ui.screens.inventory.tooltip;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.Tags;
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.util.ResourceLocation;
 
@@ -36,9 +37,9 @@ public class TooltipRenderUtil {
     private static final int MARGIN = 9;
 
     /** Default background fill texture (tiled in the center) */
-    private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/sprites/tooltips/background.png");
+    private static final ResourceLocation BACKGROUND_TEXTURE = TextureLocation.set(Tags.MODID, "gui/sprites/tooltips/background").build();
     /** Default frame texture (stretched in the center) */
-    private static final ResourceLocation FRAME_TEXTURE = new ResourceLocation(Tags.MODID, "textures/gui/sprites/tooltips/frame.png");
+    private static final ResourceLocation FRAME_TEXTURE = TextureLocation.set(Tags.MODID, "gui/sprites/tooltips/frame").build();
 
     /**
      * Renders the tooltip background (no custom style).
@@ -94,8 +95,8 @@ public class TooltipRenderUtil {
      */
     private static ResourceLocation getBackgroundTexture(@Nullable ResourceLocation style) {
         if (style == null) return BACKGROUND_TEXTURE;
-        return new ResourceLocation(style.getResourceDomain(),
-                "textures/gui/tooltips/" + style.getResourcePath() + "_background.png");
+        return TextureLocation.set(style.getResourceDomain(),
+                "gui/tooltips/" + style.getResourcePath() + "_background").build();
     }
 
     /**
@@ -104,7 +105,7 @@ public class TooltipRenderUtil {
      */
     private static ResourceLocation getFrameTexture(@Nullable ResourceLocation style) {
         if (style == null) return FRAME_TEXTURE;
-        return new ResourceLocation(style.getResourceDomain(),
-                "textures/gui/tooltips/" + style.getResourcePath() + "_frame.png");
+        return TextureLocation.set(style.getResourceDomain(),
+                "gui/tooltips/" + style.getResourcePath() + "_frame").build();
     }
 }

@@ -2,6 +2,7 @@ package decok.dfcdvadstf.catframe.model.core;
 
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake;
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.resources.atlas.AtlasManager;
 import decok.dfcdvadstf.catframe.resources.atlas.Sprite;
 import net.minecraft.client.Minecraft;
@@ -225,10 +226,43 @@ public class TextureSlots {
             return icon;
         }
 
+        // Late resolution: the reference was never collected into the icon map (runtime
+        // built model, cross-namespace ref, ...). Ask the stitched vanilla atlases through
+        // a texture location handle before giving up.
+        IIcon late = resolveLate(texturePath);
+        if (late != null) {
+            CatFrame.logger.debug("[TextureSlots] texture '{}' resolved late via atlas lookup", texturePath);
+            return late;
+        }
+
         // Final fallback: missingno (vanilla-space purple-black square).
         // Final fallback: missingno (vanilla-space purple-black square).
         CatFrame.logger.warn("[TextureSlots] texture error: '{}' not found in texture table, using missingno", texturePath);
         return AtlasManager.getMissingIcon(texturePath);
+    }
+
+    /**
+     * Wrap a model texture reference ({@code block/stone} or {@code mod:block/stone}) as a
+     * {@link TextureLocation} and probe the stitched vanilla atlases.
+     * <p>
+     * Uses {@link TextureLocation#currentModelIcon()} (not {@code current()}) so the model
+     * domain never receives a {@code catframe:gui} sprite whose UVs live in a texture the
+     * world / item render layers do not bind.
+     *
+     * @return the atlas icon, or null when the id is stitched nowhere (caller keeps the
+     *         missingno semantics)
+     */
+    @Nullable
+    private static IIcon resolveLate(String texturePath) {
+        int colon = texturePath.indexOf(':');
+        String namespace = colon >= 0 ? texturePath.substring(0, colon) : TextureLocation.DEFAULT_NAMESPACE;
+        String spriteId = colon >= 0 ? texturePath.substring(colon + 1) : texturePath;
+        try {
+            return TextureLocation.set(namespace, spriteId).build().currentModelIcon();
+        } catch (RuntimeException e) {
+            // Malformed reference (empty id or extra namespace segment): not a texture location
+            return null;
+        }
     }
 
     // ==================== Object ====================

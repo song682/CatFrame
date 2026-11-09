@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
 import net.minecraft.client.Minecraft;
@@ -20,10 +21,10 @@ import org.lwjgl.opengl.GL11;
 public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
 
     /** CatFrame custom text field textures */
-    protected static final ResourceLocation TEXT_FIELD_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/sprites/widgets/text_field.png");
-    protected static final ResourceLocation TEXT_FIELD_HIGHLIGHTED_TEXTURE = new ResourceLocation("catframe",
-            "textures/gui/sprites/widgets/text_field_highlighted.png");
+    protected static final ResourceLocation TEXT_FIELD_TEXTURE =
+            TextureLocation.set("catframe", "gui/sprites/widgets/text_field").build();
+    protected static final ResourceLocation TEXT_FIELD_HIGHLIGHTED_TEXTURE =
+            TextureLocation.set("catframe", "gui/sprites/widgets/text_field_highlighted").build();
 
     /** Text field default size from mcmeta */
     protected static final int TEXT_FIELD_DEFAULT_W = 200;

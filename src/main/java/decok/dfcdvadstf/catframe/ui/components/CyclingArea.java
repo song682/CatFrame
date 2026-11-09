@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
@@ -28,10 +29,10 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /** Default button texture for normal state */
     protected static final ResourceLocation DEFAULT_BUTTON_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/button.png");
+            TextureLocation.set("catframe", "gui/widgets/button").build();
     /** Default button texture for hover state */
     protected static final ResourceLocation DEFAULT_BUTTON_HOVER_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/widgets/button_hover.png");
+            TextureLocation.set("catframe", "gui/widgets/button_hover").build();
     protected static final int BUTTON_DEFAULT_W = 200;
     protected static final int BUTTON_DEFAULT_H = 20;
     protected static final int BUTTON_BORDER = 2;

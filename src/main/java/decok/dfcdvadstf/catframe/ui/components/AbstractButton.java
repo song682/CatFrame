@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.ui.GuiDrawing;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
@@ -33,15 +34,16 @@ public abstract class AbstractButton extends AbstractComponent.WithInactiveMessa
     protected static final int TEXT_COLOR_HOVER = 0xFFFFA0;
 
     /** Vanilla button widgets texture */
-    protected static final ResourceLocation WIDGETS_TEXTURE = new ResourceLocation("textures/gui/widgets.png");
+    protected static final ResourceLocation WIDGETS_TEXTURE =
+            TextureLocation.setWithDefaultLocation("gui/widgets").build();
 
     /** CatFrame custom button textures */
     protected static final ResourceLocation BUTTON_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/sprites/widgets/button.png");
+            TextureLocation.set("catframe", "gui/sprites/widgets/button").build();
     protected static final ResourceLocation BUTTON_HIGHLIGHTED_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/sprites/widgets/button_highlighted.png");
+            TextureLocation.set("catframe", "gui/sprites/widgets/button_highlighted").build();
     protected static final ResourceLocation BUTTON_DISABLED_TEXTURE =
-            new ResourceLocation("catframe", "textures/gui/sprites/widgets/button_disabled.png");
+            TextureLocation.set("catframe", "gui/sprites/widgets/button_disabled").build();
 
     /** Button default size from mcmeta */
     protected static final int BUTTON_DEFAULT_W = 200;

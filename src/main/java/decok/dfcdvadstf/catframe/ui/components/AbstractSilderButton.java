@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
+import decok.dfcdvadstf.catframe.resources.TextureLocation;
 import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import decok.dfcdvadstf.catframe.ui.Text;
 import decok.dfcdvadstf.catframe.ui.util.TextureStretching;
@@ -34,10 +35,10 @@ import org.lwjgl.input.Keyboard;
  */
 public abstract class AbstractSilderButton extends AbstractComponent.WithInactiveMessage {
 
-    private static final ResourceLocation SLIDER_SPRITE = new ResourceLocation("catframe", "textures/gui/sprites/widgets/silder.png");
-    private static final ResourceLocation HIGHLIGHTED_SLIDER_SPRITE = new ResourceLocation("catframe", "textures/gui/sprites/widgets/silder_highlighted.png");
-    private static final ResourceLocation SLIDER_HANDLE_SPRITE = new ResourceLocation("catframe", "textures/gui/sprites/widgets/silder_handle.png");
-    private static final ResourceLocation HIGHLIGHTED_SLIDER_HANDLE_SPRITE = new ResourceLocation("catframe", "textures/gui/sprites/widgets/silder_handle_highlighted.png");
+    private static final ResourceLocation SLIDER_SPRITE = TextureLocation.set("catframe", "gui/sprites/widgets/silder").build();
+    private static final ResourceLocation HIGHLIGHTED_SLIDER_SPRITE = TextureLocation.set("catframe", "gui/sprites/widgets/silder_highlighted").build();
+    private static final ResourceLocation SLIDER_HANDLE_SPRITE = TextureLocation.set("catframe", "gui/sprites/widgets/silder_handle").build();
+    private static final ResourceLocation HIGHLIGHTED_SLIDER_HANDLE_SPRITE = TextureLocation.set("catframe", "gui/sprites/widgets/silder_handle_highlighted").build();
     protected static final int TEXT_MARGIN = 2;
     public static final int DEFAULT_HEIGHT = 20;
     protected static final int HANDLE_WIDTH = 8;

@@ -54,14 +54,14 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
     // ──── Event handling ────
 
     @Override
-    public void onMouseClicked(int mouseX, int mouseY, int mouseButton) {
+    public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         // Scrollbar dragging takes priority, then the default focus behaviour.
         updateScrolling(mouseX, mouseY, mouseButton);
-        super.onMouseClicked(mouseX, mouseY, mouseButton);
+        super.mouseClicked(mouseX, mouseY, mouseButton);
     }
 
     @Override
-    public void onKeyTyped(char typedChar, int keyCode) {
+    public void keyTyped(char typedChar, int keyCode) {
         // Up/Down scroll the content while focused; consume the key when the scroll
         // moved.
         if (focused && (keyCode == Keyboard.KEY_UP || keyCode == Keyboard.KEY_DOWN)) {
@@ -71,7 +71,7 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
                 return;
             }
         }
-        super.onKeyTyped(typedChar, keyCode);
+        super.keyTyped(typedChar, keyCode);
     }
 
     // ──── Rendering ────
@@ -126,7 +126,7 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
      * input: character filtering, length limits and the content refresh all
      * apply. Intended for bulk input such as IME commits.
      * <p>
-     * The default feeds characters through {@link #onKeyTyped(char, int)} so
+     * The default feeds characters through {@link #keyTyped(char, int)} so
      * unoverridden subclasses still validate and refresh; editable subclasses
      * with a single-pass insert (e.g. a bulk-insert backing model) should
      * override for one refresh per commit.
@@ -139,7 +139,7 @@ public abstract class AbstractTextAreaWidget extends AbstractScrollArea {
             return;
         }
         for (int i = 0; i < text.length(); i++) {
-            onKeyTyped(text.charAt(i), Keyboard.KEY_NONE);
+            keyTyped(text.charAt(i), Keyboard.KEY_NONE);
         }
     }
 

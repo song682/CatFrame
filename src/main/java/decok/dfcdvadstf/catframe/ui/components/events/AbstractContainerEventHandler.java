@@ -83,7 +83,7 @@ public abstract class AbstractContainerEventHandler extends AbstractComponent im
     // ──── Event handling (delegates to ContainerEventHandler dispatch) ────
 
     @Override
-    public void onMouseClicked(int mouseX, int mouseY, int mouseButton) {
+    public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         dispatchMouseClicked(mouseX, mouseY, mouseButton);
     }
 
@@ -104,7 +104,7 @@ public abstract class AbstractContainerEventHandler extends AbstractComponent im
     }
 
     @Override
-    public void onKeyTyped(char typedChar, int keyCode) {
+    public void keyTyped(char typedChar, int keyCode) {
         dispatchKeyTyped(typedChar, keyCode);
     }
 

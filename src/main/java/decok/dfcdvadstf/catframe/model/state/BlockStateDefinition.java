@@ -48,9 +48,8 @@ public final class BlockStateDefinition<O> {
     // Resident table: resolvedByMeta[meta] directly yields the CatBlockState for that meta (length 16)
     private BlockState[] resolvedByMeta;
     // Property name → property handle (backfilled by Builder.create(); name uniqueness is enforced
-    // by Builder.add). Lets typed value writers (e.g. DynamicPropertyResolver.resolveState) resolve a
-    // property by the same name the string-domain resolvers use, without assuming constant identity
-    // across inherited/merged definitions.
+    // by Builder.add). Lets typed value writers resolve a property by the same name the string-domain
+    // props use, without assuming constant identity across inherited/merged definitions.
     private Map<String, Property<?>> byName;
 
     // Render-time typed state updater (meta-decoded base state → world-resolved state); null when
@@ -205,12 +204,12 @@ public final class BlockStateDefinition<O> {
      * state index of this definition — the same mixed-radix numbering used by {@link #findStateIndex},
      * so the index doubles as a discrete "virtual palette" code for memoization.
      * <p>
-     * Takes <b>all</b> properties, not just the dynamic ones: runtime resolvers may override static
+     * Takes <b>all</b> properties, not just the dynamic ones: typed state updaters may override static
      * properties too (e.g. double plant's variant/half), and a code that omitted them would alias
      * different states onto one cached model.
      *
      * @param propsByName property name → serialized value name, as written by propsFromState and
-     *                    dynamic property resolvers
+     *                    typed state updaters
      * @return the state index in {@code 0..getStateCount()-1}, or {@code -1} when any defined
      *         property is missing from the map or its value is outside the property's value domain
      *         (callers must then bypass the code and take the uncached slow path)

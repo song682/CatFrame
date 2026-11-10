@@ -32,14 +32,14 @@ import java.util.*;
  *   <li>{@code LazyBlockstateModel} — regular variants / multipart (typed
  *       {@link BlockStateDefinition} driven properties)</li>
  *   <li>{@code LazyRedirectModel} — per-meta redirect to another blockstate ({@link IMetadataBlockstateRedirect})</li>
- *   <li>{@code StairsBlockModel} — runtime corner shape (dynamic properties + resolver)</li>
- *   <li>{@code PaneMultipartRedirectModel} — runtime connection state (dynamic properties + resolver, face-map merge)</li>
+ *   <li>{@code StairsBlockModel} — runtime corner shape (world-computed properties + typed updater)</li>
+ *   <li>{@code PaneMultipartRedirectModel} — runtime connection state (world-computed properties + typed updater, face-map merge)</li>
  * </ul>
  *
  * <h3>Property sources (priority)</h3>
  * <ol>
  *   <li>typed {@link BlockStateDefinition}: {@code def.getStateFromMeta(meta)} resolves the resident state,
- *       then {@link DynamicPropertyResolver} overrides dynamic properties</li>
+ *       then the {@link StateUpdater} overrides world-computed properties</li>
  *   <li>no typed definition but implements {@link IBlockStateProvider}: per-render fallback calls
  *       {@link IBlockStateProvider#getStateProperties}; a non-empty property table participates in variant matching</li>
  *   <li>neither: falls back to the blockstate's {@code meta=} / numeric key / {@code normal}</li>
@@ -52,55 +52,6 @@ import java.util.*;
 @SideOnly(Side.CLIENT)
 public final class ResidentStateModel implements BlockStateModel {
 
-    /**
-     * Runtime dynamic property resolver: writes properties computed from the world
-     * (e.g. stairs' {@code shape}, pane's {@code north/east/south/west}) into the property map.
-     */
-    @FunctionalInterface
-    public interface DynamicPropertyResolver {
-        void resolve(IBlockAccess world, int x, int y, int z, int meta, Map<String, String> props);
-
-        /**
-         * Typed re-resolution: folds this resolver's string output into the canonical (interned)
-         * state instance through the O(1) {@link BlockState#setValue} neighbor jumps, so the memo
-         * can key on the state reference itself (pointer equality, the 26.1.2 {@code modelByState}
-         * identity-hash equivalent).
-         * <p>
-         * The default implementation runs {@link #resolve} (single source of truth for the
-         * computation), then maps every name/value pair back onto the definition's domain.
-         * Returns {@code null} when there is no base state, or when any name / value lies outside
-         * the definition — the caller then falls back to the legacy string-code memo path, so
-         * behavior is never changed by a resolver that stays in-domain only.
-         */
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        default BlockState resolveState(IBlockAccess world, int x, int y, int z, int meta, BlockState base) {
-            if (base == null) return null;
-            BlockStateDefinition<?> def = base.getDefinition();
-            if (def == null) return null;
-            Map<String, String> out = new HashMap<>();
-            resolve(world, x, y, z, meta, out);
-            BlockState state = base;
-            for (Map.Entry<String, String> e : out.entrySet()) {
-                Property prop = def.getPropertyByName(e.getKey());
-                if (prop == null) return null;
-                Comparable value = prop.getValueByName(e.getValue());
-                if (value == null) return null;
-                state = state.setValue(prop, value);
-            }
-            return state;
-        }
-
-        /**
-         * Render veto hook: lets a resolver suppress rendering for the current world state.
-         * Returning false makes collectPartsWithProps emit an empty part, which the render
-         * caller treats as "nothing to draw" - the vanilla equivalent of a renderer
-         * returning false. Defaults to true; existing resolvers are unaffected.
-         */
-        default boolean shouldRender(IBlockAccess world, int x, int y, int z, int meta) {
-            return true;
-        }
-    }
-
     private final Block block;
     @Nullable
     private final BlockstateJson bs;
@@ -110,8 +61,6 @@ public final class ResidentStateModel implements BlockStateModel {
     private final IMetadataBlockstateRedirect redirect;
     @Nullable
     private final String namespace;
-    @Nullable
-    private final DynamicPropertyResolver dynamic;
     /** Explicit typed updater bound via {@link Builder#updater}; null falls back to the definition's own. */
     @Nullable
     private final StateUpdater updater;
@@ -133,9 +82,9 @@ public final class ResidentStateModel implements BlockStateModel {
      * colors — stay separate). Render thread only; cleared when the bake-cache generation
      * changes (resource reload / re-stitch).
      * <p>
-     * Legacy lane: only reached when {@link DynamicPropertyResolver#resolveState} is unavailable
-     * (no definition) or steps out of the property domain; the canonical-state memo below is
-     * the fast lane for in-domain typed resolvers.
+     * Fallback lane: reached when there is no typed definition, no state updater, or the state
+     * index falls outside the property domain; the canonical-state memo below is the fast lane
+     * for typed updaters.
      */
     private final Map<BlockstateJson, Map<Integer, BlockStateModelPart>> partMemo = new IdentityHashMap<>();
     private long partMemoGeneration = -1;
@@ -157,7 +106,6 @@ public final class ResidentStateModel implements BlockStateModel {
         this.def = b.def;
         this.redirect = b.redirect;
         this.namespace = b.namespace;
-        this.dynamic = b.dynamic;
         this.updater = b.updater;
         this.predicate = b.predicate;
         this.fullModel = b.fullModel;
@@ -221,10 +169,10 @@ public final class ResidentStateModel implements BlockStateModel {
 
         // Compile-window probe scratch: inside a chunk build (mixin-opened window) neighbor
         // reads of this resolution go through the per-thread (Block, meta) cache; outside a
-        // window wrap returns the world untouched. Only world-reading resolvers probe the world.
+        // window wrap returns the world untouched. Only world-reading updaters probe the world.
         StateUpdater upd = effectiveUpdater();
         RenderPredicate pred = effectivePredicate();
-        if ((upd != null || dynamic != null) && world != null) world = ChunkProbeCache.wrap(world);
+        if (upd != null && world != null) world = ChunkProbeCache.wrap(world);
 
         // Render veto, typed: an independent predicate may suppress rendering for the resolved
         // state (double plant upper half with a missing block below - renderBlockDoublePlant
@@ -234,11 +182,6 @@ public final class ResidentStateModel implements BlockStateModel {
             if (!pred.shouldRender(newContext(world, x, y, z, metadata), base)) {
                 return new CollectedPart(BlockStateModelPart.empty(), null);
             }
-        }
-
-        // Render veto, legacy: a dynamic resolver may suppress rendering for the current world state.
-        if (dynamic != null && !dynamic.shouldRender(world, x, y, z, metadata)) {
-            return new CollectedPart(BlockStateModelPart.empty(), null);
         }
 
         // Typed fast lane: one updater pass over the meta-decoded base state, then memo by the
@@ -255,22 +198,7 @@ public final class ResidentStateModel implements BlockStateModel {
             return collectResolved(target, resolved, world, x, y, z, metadata);
         }
 
-        // Legacy typed lane: the string-output resolver folded back into the canonical state.
-        // Out-of-domain resolvers return null and keep the legacy string-code lane below.
-        if (def != null && dynamic != null && isMemoEligible(target)) {
-            BlockState canonical = dynamic.resolveState(world, x, y, z, metadata,
-                    def.getStateFromMeta(metadata));
-            if (canonical != null) {
-                return collectResolved(target, canonical, world, x, y, z, metadata);
-            }
-        }
-
         Map<String, String> props = resolveProps(world, x, y, z, metadata);
-
-        if (dynamic != null) {
-            if (props == null) props = new HashMap<>();
-            dynamic.resolve(world, x, y, z, metadata, props);
-        }
 
         // Static-layer memoization: the resolved property table maps to a discrete code (the
         // full cartesian-product state index), and (target, code) → merged part is cached, so
@@ -310,7 +238,7 @@ public final class ResidentStateModel implements BlockStateModel {
 
         // After matching, wrap a read-only view carried along with the submission (guards
         // against extension tampering); stays null when props is null or empty (a plain
-        // block with neither def nor dynamic), at zero extra cost.
+        // block with no definition and no provider props), at zero extra cost.
         Map<String, String> exposed = (props == null || props.isEmpty())
                 ? null : Collections.unmodifiableMap(props);
         return new CollectedPart(part, exposed);
@@ -417,7 +345,7 @@ public final class ResidentStateModel implements BlockStateModel {
 
     /**
      * Shared dispatch of the three collect branches (used by both the canonical-state fast
-     * lane and the legacy string-code lane).
+     * lane and the string-code fallback lane).
      */
     private BlockStateModelPart collectForProps(IBlockAccess world, int x, int y, int z, int metadata,
                                                 BlockstateJson target, @Nullable Map<String, String> props) {
@@ -557,8 +485,8 @@ public final class ResidentStateModel implements BlockStateModel {
     private BlockStateModelPart collectVariants(IBlockAccess world, int x, int y, int z,
                                                 int metadata, BlockstateJson target,
                                                 @Nullable Map<String, String> props) {
-        // dynamic (e.g. stairs) produces weighted randomness by position; a pure mapper/def uses the meta seed (preserving prior behavior)
-        int seed = (dynamic != null || effectiveUpdater() != null)
+        // a world-reading updater (e.g. stairs) produces weighted randomness by position; a pure mapper/def uses the meta seed (preserving prior behavior)
+        int seed = (effectiveUpdater() != null)
                 ? (x * 3129871 ^ z * 116129781 ^ y) : (metadata * 31);
         BlockstateJson.Variant variant = resolveVariant(metadata, target, props, seed);
         if (variant == null || variant.model == null) {
@@ -721,7 +649,6 @@ public final class ResidentStateModel implements BlockStateModel {
         private BlockStateDefinition<?> def;
         private IMetadataBlockstateRedirect redirect;
         private String namespace;
-        private DynamicPropertyResolver dynamic;
         private StateUpdater updater;
         private RenderPredicate predicate;
         private boolean fullModel = true;
@@ -744,11 +671,6 @@ public final class ResidentStateModel implements BlockStateModel {
         public Builder redirect(IMetadataBlockstateRedirect redirect, String namespace) {
             this.redirect = redirect;
             this.namespace = namespace;
-            return this;
-        }
-
-        public Builder dynamic(DynamicPropertyResolver dynamic) {
-            this.dynamic = dynamic;
             return this;
         }
 

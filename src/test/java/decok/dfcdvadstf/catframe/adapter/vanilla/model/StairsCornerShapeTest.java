@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.adapter.vanilla.model;
 
+import decok.dfcdvadstf.catframe.model.state.StateUpdateContext;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockStairs;
 import net.minecraft.block.material.Material;
@@ -7,7 +8,6 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.biome.BiomeGenBase;
 import org.junit.Test;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,7 +15,7 @@ import static org.junit.Assert.assertEquals;
 
 /**
  * Regression tests for the stairs corner-shape detection in
- * {@link VanillaBlockResolvers#STAIRS} (private {@code computeShape}).
+ * {@link VanillaStateUpdaters#STAIRS} (package-private {@code computeShape}).
  *
  * <p>Guards the axis-grouping fix: with {@code STAIR_FACINGS = {east, west, south, north}}
  * the two facings on one axis share the high bit (0|1 = X, 2|3 = Z), so perpendicularity
@@ -35,7 +35,7 @@ public class StairsCornerShapeTest {
         }
     }
 
-    /** Standalone BlockStairs instance: the resolver's instanceof gate accepts any subclass. */
+    /** Standalone BlockStairs instance: the updater's instanceof gate accepts any subclass. */
     private static final class TestStairs extends BlockStairs {
         private TestStairs() {
             super(new PlainBlock(), 0);
@@ -117,34 +117,32 @@ public class StairsCornerShapeTest {
         return m;
     }
 
-    private static String shape(Map<Long, Integer> world, int facing, boolean top) throws Exception {
-        Method m = VanillaBlockResolvers.class.getDeclaredMethod("computeShape",
-                IBlockAccess.class, int.class, int.class, int.class, int.class, boolean.class);
-        m.setAccessible(true);
-        return (String) m.invoke(null, stairWorld(world), 0, 0, 0, facing, top);
+    private static String shape(Map<Long, Integer> world, int facing, boolean top) {
+        return VanillaStateUpdaters.computeShape(
+                new StateUpdateContext(stairWorld(world), 0, 0, 0, 0, null), facing, top ? 1 : 0);
     }
 
     @Test
-    public void highSideCwStairIsOuterRight() throws Exception {
+    public void highSideCwStairIsOuterRight() {
         // Self east, front cell (+X) is a south stair: south == CW(east) → outer_right
         assertEquals("outer_right", shape(cells(1, 0, 0, SOUTH), EAST, false));
     }
 
     @Test
-    public void highSideCcwStairIsOuterLeft() throws Exception {
+    public void highSideCcwStairIsOuterLeft() {
         // Self east, front cell is a north stair (CCW side) → outer_left
         assertEquals("outer_left", shape(cells(1, 0, 0, NORTH), EAST, false));
     }
 
     @Test
-    public void sameAxisFrontStairIsStraight() throws Exception {
+    public void sameAxisFrontStairIsStraight() {
         // Regression: old parity check treated east×west (opposite, SAME axis) as perpendicular
         // and produced a false corner. Must be straight.
         assertEquals("straight", shape(cells(1, 0, 0, WEST), EAST, false));
     }
 
     @Test
-    public void perpendicularEvenCodePairMissedByOldParityIsDetected() throws Exception {
+    public void perpendicularEvenCodePairMissedByOldParityIsDetected() {
         // Regression: self south (code 2) with an east (code 0) stair in front — both codes
         // are even, so the old parity check called them parallel and missed the corner.
         // Front of a south-rising stair is the +Z cell; east != CW(south)=west → outer_left.
@@ -152,7 +150,7 @@ public class StairsCornerShapeTest {
     }
 
     @Test
-    public void lowSideStairIsInnerCorner() throws Exception {
+    public void lowSideStairIsInnerCorner() {
         // Self east, low cell (-X) is a south stair: axis differs, side cell (z+1) empty → inner_right
         assertEquals("inner_right", shape(cells(-1, 0, 0, SOUTH), EAST, false));
         // …and a north one is inner_left
@@ -160,14 +158,14 @@ public class StairsCornerShapeTest {
     }
 
     @Test
-    public void sameFacingSideCellBlocksTheCorner() throws Exception {
+    public void sameFacingSideCellBlocksTheCorner() {
         // Inner corner suppressed when the side cell holds a stair with the same facing+half
         // (vanilla func_150146_f blocker check)
         assertEquals("straight", shape(cells(-1, 0, 0, SOUTH, 0, 0, 1, EAST), EAST, false));
     }
 
     @Test
-    public void halfMismatchNeighbourIsIgnored() throws Exception {
+    public void halfMismatchNeighbourIsIgnored() {
         // Front stair with the other top bit is not a corner partner at all
         assertEquals("straight", shape(cells(1, 0, 0, SOUTH | 4), EAST, false));
     }

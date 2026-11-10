@@ -36,8 +36,6 @@ public final class ModelSpec {
     public IMetadataBlockstateRedirect redirect;
     @Nullable
     public String redirectNamespace;
-    @Nullable
-    public ResidentStateModel.DynamicPropertyResolver dynamic;
     public boolean connectionMultipart = false;
     public boolean fullModel = true;
     /** Whether to export item {@code catframe:meta} decision tree from blockstate's 16 static states. */
@@ -60,7 +58,6 @@ public final class ModelSpec {
         if (bs != null) b.blockstate(bs);
         if (def != null) b.stateDefinition(def);
         if (redirect != null) b.redirect(redirect, redirectNamespace);
-        if (dynamic != null) b.dynamic(dynamic);
         if (connectionMultipart) {
             b.connectionMultipart();
         } else {
@@ -137,7 +134,7 @@ public final class ModelSpec {
         return t;
     }
 
-    /** Static props only (item export, no world/dynamic). */
+    /** Static props only (item export, no world context). */
     @Nullable
     private Map<String, String> resolveProps(int meta) {
         if (def != null) {

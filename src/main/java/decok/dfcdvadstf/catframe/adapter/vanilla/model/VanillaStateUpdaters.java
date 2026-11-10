@@ -107,7 +107,7 @@ public final class VanillaStateUpdaters {
      * @param facing decoded facing index
      * @param half   decoded half index (0 = bottom, 1 = top)
      */
-    private static String computeShape(StateUpdateContext ctx, int facing, int half) {
+    static String computeShape(StateUpdateContext ctx, int facing, int half) {
         int[] fwd = FRONT_OFFSET[facing];
 
         // Outer corner: high side (along facing)

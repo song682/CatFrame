@@ -3,7 +3,6 @@ package decok.dfcdvadstf.catframe.model;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
-import decok.dfcdvadstf.catframe.adapter.vanilla.model.VanillaBlockResolvers;
 import decok.dfcdvadstf.catframe.model.core.async.AsyncBakePipeline;
 import decok.dfcdvadstf.catframe.model.lazy.LazySingleBlockModel;
 import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
@@ -15,8 +14,6 @@ import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateNode;
 import decok.dfcdvadstf.catframe.model.state.item.tint.ItemStateTintBridge;
 import net.minecraft.block.Block;
-import net.minecraft.block.BlockPane;
-import net.minecraft.block.BlockStairs;
 import net.minecraft.item.Item;
 import net.minecraftforge.client.MinecraftForgeClient;
 
@@ -115,7 +112,6 @@ public class VanillaModelManager {
      *   <li>materialize the declarative Models spec (typed {@link BlockStateDefinition} resident table)</li>
      *   <li>create resident models for blockstates ({@link ResidentStateModel})</li>
      *   <li>create lazy models for model_mappings ({@link LazySingleBlockModel}, {@link ItemStateModel})</li>
-     *   <li>handle BlockPane special registration</li>
      *   <li>register the Forge IItemRenderer</li>
      * </ul>
      */
@@ -348,8 +344,8 @@ public class VanillaModelManager {
         }
 
         /**
-         * Registers a resident state model for a single block (Pane / Stairs / redirect /
-         * regular variants-multipart branches).
+         * Registers a resident state model for a single block (redirect / regular
+         * variants-multipart branches).
          * <p>
          * Extracted from {@link #registerAllModels} Step 2 so the blockstate traversal and
          * the {@code state_mapping} model_mappings share the same registration logic.
@@ -372,29 +368,6 @@ public class VanillaModelManager {
             // is the single choke point of every resident blockstate registration.
             BlockstateKeyValidator.validateRotations(bs, blockId);
             IMetadataBlockstateRedirect redirect = ModelManagerDataLoader.blockstateRedirects.get(block);
-
-            // BlockPane: runtime connection multipart (per-face merge + AtlasGuard)
-            if (block instanceof BlockPane) {
-                ResidentStateModel.Builder pb = ResidentStateModel.builder(block)
-                        .connectionMultipart()
-                        .dynamic(VanillaBlockResolvers.PANE);
-                if (redirect != null) {
-                    pb.redirect(redirect, ns);
-                } else {
-                    pb.blockstate(bs);
-                }
-                ModelRegistry.registerBlockModel(block, pb.build());
-                return;
-            }
-
-            // BlockStairs: runtime corner detection (facing/half/shape built by the resolver)
-            if (block instanceof BlockStairs) {
-                ModelRegistry.registerBlockModel(block, ResidentStateModel.builder(block)
-                        .blockstate(bs)
-                        .dynamic(VanillaBlockResolvers.STAIRS)
-                        .build());
-                return;
-            }
 
             // Blockstate redirect: per-meta redirect to another blockstate
             if (redirect != null) {

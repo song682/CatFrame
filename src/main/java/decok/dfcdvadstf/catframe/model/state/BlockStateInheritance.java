@@ -5,7 +5,6 @@ import cpw.mods.fml.relauncher.SideOnly;
 import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
-import decok.dfcdvadstf.catframe.model.state.block.ResidentStateModel;
 import decok.dfcdvadstf.catframe.model.state.property.MetaBlockProperty;
 import decok.dfcdvadstf.catframe.model.state.property.Property;
 import net.minecraft.block.Block;
@@ -82,8 +81,6 @@ public final class BlockStateInheritance {
         private IMetadataBlockstateRedirect redirect;
         @Nullable
         private String redirectNamespace;
-        @Nullable
-        private ResidentStateModel.DynamicPropertyResolver dynamic;
         private boolean connectionMultipart = false;
         private boolean fullModel = true;
 
@@ -101,12 +98,6 @@ public final class BlockStateInheritance {
         public BaseSpec redirect(IMetadataBlockstateRedirect redirect, String namespace) {
             this.redirect = redirect;
             this.redirectNamespace = namespace;
-            return this;
-        }
-
-        /** Sets this base class's runtime dynamic property resolver (stairs shape / pane connections etc.). */
-        public BaseSpec dynamic(ResidentStateModel.DynamicPropertyResolver dynamic) {
-            this.dynamic = dynamic;
             return this;
         }
 
@@ -130,7 +121,7 @@ public final class BlockStateInheritance {
                         "Base fragment for " + clazz.getName() + " requires .states(...) before register()");
             }
             BASE_FRAGMENTS.put(clazz, new Fragment(def, redirect, redirectNamespace,
-                    dynamic, connectionMultipart, fullModel));
+                    connectionMultipart, fullModel));
         }
     }
 
@@ -227,7 +218,6 @@ public final class BlockStateInheritance {
         // 5. Additional configuration: subclass fragments override superclass fragments (fragments are already in parent→child order)
         IMetadataBlockstateRedirect redirect = null;
         String redirectNamespace = null;
-        ResidentStateModel.DynamicPropertyResolver dynamicResolver = null;
         StateUpdater winningUpdater = null;
         RenderPredicate winningPredicate = null;
         boolean connectionMultipart = false;
@@ -236,9 +226,6 @@ public final class BlockStateInheritance {
             if (f.redirect != null) {
                 redirect = f.redirect;
                 redirectNamespace = f.redirectNamespace;
-            }
-            if (f.dynamicResolver != null) {
-                dynamicResolver = f.dynamicResolver;
             }
             // Typed updater / render predicate: last non-null fragment wins (subclass priority),
             // so a base fragment's typed state-update logic reaches the merged definition.
@@ -258,7 +245,7 @@ public final class BlockStateInheritance {
         builder.renderWhen(winningPredicate);
 
         return new Inherited(builder.create(), redirect, redirectNamespace,
-                dynamicResolver, connectionMultipart, fullModel);
+                connectionMultipart, fullModel);
     }
 
     /**
@@ -359,7 +346,7 @@ public final class BlockStateInheritance {
     /**
      * Immutable base-class fragment: extracts properties / MetaCodec / dynamic flags / typed
      * updater and render predicate from a {@link BlockStateDefinition}, plus additional
-     * model-behavior configuration (redirect / dynamic resolver / multipart).
+     * model-behavior configuration (redirect / multipart).
      */
     private static final class Fragment {
         final Property<?>[] properties;
@@ -372,8 +359,6 @@ public final class BlockStateInheritance {
         @Nullable
         final String redirectNamespace;
         @Nullable
-        final ResidentStateModel.DynamicPropertyResolver dynamicResolver;
-        @Nullable
         final StateUpdater updater;
         @Nullable
         final RenderPredicate renderPredicate;
@@ -383,7 +368,6 @@ public final class BlockStateInheritance {
         Fragment(BlockStateDefinition<?> def,
                  @Nullable IMetadataBlockstateRedirect redirect,
                  @Nullable String redirectNamespace,
-                 @Nullable ResidentStateModel.DynamicPropertyResolver dynamicResolver,
                  boolean connectionMultipart,
                  boolean fullModel) {
             this.properties = def.getProperties();
@@ -401,7 +385,6 @@ public final class BlockStateInheritance {
             this.staticProps = stat.toArray(new Property<?>[0]);
             this.redirect = redirect;
             this.redirectNamespace = redirectNamespace;
-            this.dynamicResolver = dynamicResolver;
             this.updater = def.getUpdater();
             this.renderPredicate = def.getRenderPredicate();
             this.connectionMultipart = connectionMultipart;
@@ -424,21 +407,17 @@ public final class BlockStateInheritance {
         public final IMetadataBlockstateRedirect redirect;
         @Nullable
         public final String redirectNamespace;
-        @Nullable
-        public final ResidentStateModel.DynamicPropertyResolver dynamic;
         public final boolean connectionMultipart;
         public final boolean fullModel;
 
         Inherited(BlockStateDefinition<?> def,
                   @Nullable IMetadataBlockstateRedirect redirect,
                   @Nullable String redirectNamespace,
-                  @Nullable ResidentStateModel.DynamicPropertyResolver dynamic,
                   boolean connectionMultipart,
                   boolean fullModel) {
             this.def = def;
             this.redirect = redirect;
             this.redirectNamespace = redirectNamespace;
-            this.dynamic = dynamic;
             this.connectionMultipart = connectionMultipart;
             this.fullModel = fullModel;
         }

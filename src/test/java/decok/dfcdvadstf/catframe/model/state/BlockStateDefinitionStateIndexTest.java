@@ -106,7 +106,7 @@ public class BlockStateDefinitionStateIndexTest {
                 Property.create("half", String.class, Arrays.asList("lower", "upper"));
         BlockStateDefinition<String> def = new BlockStateDefinition.Builder<>("double_plant")
                 .add(variant, half)
-                .dynamic(half) // variant stays static, yet the resolver overrides it at runtime
+                .dynamic(half) // variant stays static, yet the updater overrides it at runtime
                 .create();
 
         int a = def.stateIndexOf(mapOf("variant", "sunflower", "half", "lower"));

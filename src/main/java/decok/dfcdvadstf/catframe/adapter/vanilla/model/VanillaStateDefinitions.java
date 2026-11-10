@@ -36,10 +36,10 @@ import java.util.Arrays;
  * (the value is the string itself, so {@code toString()} aligns exactly with the variant key values in the
  * blockstate JSON).
  *
- * <h3>Dynamic properties</h3>
- * Stair {@code shape} and pane {@code north/east/south/west} are marked {@code .dynamic(...)}
- * (excluded from meta decoding) and are computed from the world and overridden at runtime by
- * {@link VanillaBlockResolvers}.
+ * <h3>World-computed properties</h3>
+ * Stair {@code shape}, pane {@code north/east/south/west}, door cross-half fields and the other
+ * connection flags are marked {@code .dynamic(...)} (excluded from meta decoding) and are resolved
+ * from the world at render time by {@link VanillaStateUpdaters}.
  */
 @SideOnly(Side.CLIENT)
 public final class VanillaStateDefinitions {
@@ -83,7 +83,7 @@ public final class VanillaStateDefinitions {
         public static final Property<String> TALLGRASS_VARIANT = StateDefinitions.stringProp("variant", "grass",
                         "fern");
 
-        // Grass block snow overlay (dynamic; computed at runtime by the SNOWY resolver from the block above)
+        // Grass block snow overlay (dynamic; computed at runtime by the SNOWY updater from the block above)
         public static final Property<String> SNOWY = StateDefinitions.stringProp("snowy", "false", "true");
 
         // Double plants (2 blocks tall)
@@ -143,7 +143,7 @@ public final class VanillaStateDefinitions {
                         "east", "west");
         public static final Property<String> OPEN = StateDefinitions.stringProp("open", "false", "true");
 
-        // Doors (iron + wooden): the facing values align with the DOOR resolver's 1.8 mapping table (east/south/west/north)
+        // Doors (iron + wooden): the facing values align with the DOOR updater's 1.8 mapping table (east/south/west/north)
         public static final Property<String> DOOR_FACING = StateDefinitions.stringProp("facing", "east", "south",
                         "west", "north");
         public static final Property<String> DOOR_HALF = StateDefinitions.stringProp("half", "lower", "upper");
@@ -424,7 +424,7 @@ public final class VanillaStateDefinitions {
                 Models.registerBase(BlockRotatedPillar.class).states(pillarDef).register();
 
                 // BlockStairs: facing[meta&3: 0=east,1=west,2=south,3=north] +
-                // half[bit2: 0=bottom,1=top] + shape dynamic (corner computed at runtime by the STAIRS resolver).
+                // half[bit2: 0=bottom,1=top] + shape (corner computed at runtime by the STAIRS updater).
                 BlockStateDefinition<Class<?>> stairsDef = new BlockStateDefinition.Builder<Class<?>>(
                                 BlockStairs.class)
                                 .add(STAIR_FACING_META, HALF_BOTTOM_TOP_B2, STAIR_SHAPE)
@@ -433,7 +433,6 @@ public final class VanillaStateDefinitions {
                                 .create();
                 Models.registerBase(BlockStairs.class)
                                 .states(stairsDef)
-                                .dynamic(VanillaBlockResolvers.STAIRS)
                                 .register();
 
                 // BlockSlab: half is encoded in meta bit3 (0=bottom,1=top), with the low 3 bits reserved for subclass variants.
@@ -580,7 +579,7 @@ public final class VanillaStateDefinitions {
                 };
                 for (Block stair : stairs) {
                         // facing={east,west,south,north}[meta&3], half=(meta&4)==0?bottom:top,
-                        // shape=dynamic
+                        // shape=world-computed by the STAIRS updater
                         BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(stair)
                                         .add(STAIR_FACING_META, HALF_BOTTOM_TOP_B2, STAIR_SHAPE)
                                         .dynamic(STAIR_SHAPE)
@@ -588,7 +587,6 @@ public final class VanillaStateDefinitions {
                                         .create();
                         Models.register(stair)
                                         .states(def)
-                                        .dynamic(VanillaBlockResolvers.STAIRS)
                                         .register();
                 }
         }
@@ -597,8 +595,8 @@ public final class VanillaStateDefinitions {
 
         private static void registerWall() {
                 // cobblestone_wall: meta 0/1 statically decodes the material variant; connection states are computed
-                // by the PANE resolver.
-                // 1.7.10 BlockWall is not a BlockPane, so it relies on the resolver's canConnectWallTo special case;
+                // by the PANE updater.
+                // 1.7.10 BlockWall is not a BlockPane, so it relies on the updater's canConnectWallTo special case;
                 // the blockstate is a 10-case multipart (2 materials × post + 4-way sides, with when matching variant+direction).
                 BlockStateDefinition<Block> wallDef = new BlockStateDefinition.Builder<Block>(Blocks.cobblestone_wall)
                                 .add(WALL_VARIANT_META, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
@@ -607,7 +605,6 @@ public final class VanillaStateDefinitions {
                                 .create();
                 Models.register(Blocks.cobblestone_wall)
                                 .states(wallDef)
-                                .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
                                 .register();
         }
@@ -615,7 +612,7 @@ public final class VanillaStateDefinitions {
         // ==================== Pane / fence (connections fully dynamic) ====================
 
         private static void registerPanes() {
-                // glass_pane: north/east/south/west fully dynamic (meta ignored, computed at runtime by the PANE resolver)
+                // glass_pane: north/east/south/west fully dynamic (meta ignored, computed at runtime by the PANE updater)
                 BlockStateDefinition<Block> paneDef = new BlockStateDefinition.Builder<Block>(Blocks.glass_pane)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
@@ -623,7 +620,6 @@ public final class VanillaStateDefinitions {
                                 .create();
                 Models.register(Blocks.glass_pane)
                                 .states(paneDef)
-                                .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
                                 .register();
 
@@ -636,13 +632,12 @@ public final class VanillaStateDefinitions {
                                 .create();
                 Models.register(Blocks.stained_glass_pane)
                                 .states(stainedPaneDef)
-                                .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
                                 .redirect(meta -> StateDefinitions.COLORS[meta & 15] + "_stained_glass_pane",
                                                 "minecraft")
                                 .register();
 
-                // fence: same connections as above (1.7.10 BlockFence is not a BlockPane, so it relies on the resolver's canConnectFenceTo special case)
+                // fence: same connections as above (1.7.10 BlockFence is not a BlockPane, so it relies on the updater's canConnectFenceTo special case)
                 BlockStateDefinition<Block> fenceDef = new BlockStateDefinition.Builder<Block>(Blocks.fence)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
@@ -650,7 +645,6 @@ public final class VanillaStateDefinitions {
                                 .create();
                 Models.register(Blocks.fence)
                                 .states(fenceDef)
-                                .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
                                 .register();
 
@@ -663,7 +657,6 @@ public final class VanillaStateDefinitions {
                                 .create();
                 Models.register(Blocks.iron_bars)
                                 .states(barsDef)
-                                .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
                                 .register();
 
@@ -676,7 +669,6 @@ public final class VanillaStateDefinitions {
                                 .create();
                 Models.register(Blocks.nether_brick_fence)
                                 .states(nbfDef)
-                                .dynamic(VanillaBlockResolvers.PANE)
                                 .connectionMultipart()
                                 .register();
         }
@@ -693,7 +685,6 @@ public final class VanillaStateDefinitions {
                                 .create();
                 Models.register(Blocks.grass)
                                 .states(def)
-                                .dynamic(VanillaBlockResolvers.SNOWY)
                                 .register();
         }
 
@@ -710,14 +701,13 @@ public final class VanillaStateDefinitions {
                 // double_plant: variant[min(meta&7, 5)] + half[(meta&8)==0?lower:upper]
                 // Clamp to 5: only 6 variants exist but meta&7 ranges 0~7 (vanilla BlockDoublePlant clamps too)
                 // The low 3 bits of the upper half are a facing residue written by onBlockPlacedBy rather than the variant;
-                // the real variant is read from the block below by the DOUBLE_PLANT dynamic resolver (matching vanilla func_149885_e)
+                // the real variant is read from the block below by the DOUBLE_PLANT updater (matching vanilla func_149885_e)
                 BlockStateDefinition<Block> doublePlantDef = new BlockStateDefinition.Builder<Block>(Blocks.double_plant)
                                 .add(DOUBLE_PLANT_VARIANT_META, HALF_LOWER_UPPER_B3)
                                 .updater(VanillaStateUpdaters.DOUBLE_PLANT)
                                 .renderWhen(VanillaStateUpdaters.DOUBLE_PLANT_PREDICATE)
                                 .create();
-                Models.register(Blocks.double_plant).states(doublePlantDef)
-                                .dynamic(VanillaBlockResolvers.DOUBLE_PLANT).register();
+                Models.register(Blocks.double_plant).states(doublePlantDef).register();
         }
 
         // ==================== Double slabs (double_stone_slab / double_wooden_slab)
@@ -768,7 +758,7 @@ public final class VanillaStateDefinitions {
         private static void registerDoors() {
                 // door: half[(meta&8)!=0?upper:lower] is statically decoded from its own meta;
                 // facing/open live in the lower half's meta and hinge in the upper half's,
-                // requiring a cross-block read of the other half → delegated to the runtime VanillaBlockResolvers.DOOR
+                // requiring a cross-block read of the other half → delegated to the runtime VanillaStateUpdaters.DOOR
                 Block[] doors = { Blocks.wooden_door, Blocks.iron_door };
                 for (Block door : doors) {
                         BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(door)
@@ -778,7 +768,6 @@ public final class VanillaStateDefinitions {
                                         .create();
                         Models.register(door)
                                         .states(def)
-                                        .dynamic(VanillaBlockResolvers.DOOR)
                                         .register();
                 }
         }
@@ -794,7 +783,7 @@ public final class VanillaStateDefinitions {
 
         private static void registerRedstoneWire() {
                 // redstone_wire: power[meta] 0-15 static; north/east/south/west connections + up_* climbing are
-                // fully dynamic, computed at runtime by the REDSTONE_WIRE resolver following 1.7.10
+                // fully dynamic, computed at runtime by the REDSTONE_WIRE updater following 1.7.10
                 // isPowerProviderOrWire and renderBlockRedstoneWire. metaCodec only decodes power.
                 BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.redstone_wire)
                                 .add(POWER_META, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST,
@@ -807,7 +796,6 @@ public final class VanillaStateDefinitions {
                                 .create();
                 Models.register(Blocks.redstone_wire)
                                 .states(def)
-                                .dynamic(VanillaBlockResolvers.REDSTONE_WIRE)
                                 .connectionMultipart()
                                 .register();
         }

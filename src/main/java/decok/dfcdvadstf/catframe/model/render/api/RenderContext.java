@@ -48,8 +48,8 @@ public final class RenderContext {
     public final ItemStack stack;
 
     /**
-     * Blockstate properties, computed at model resolution time by CatFrame's dynamic property
-     * resolver ({@code VanillaBlockResolvers}), for example the north/east/south/west connection
+     * Blockstate properties, computed at model resolution time by CatFrame's typed state
+     * updaters ({@code VanillaStateUpdaters}), for example the north/east/south/west connection
      * states of glass panes / iron bars, the facing/half/shape of stairs, the power of redstone wire, etc.
      * <p>
      * Available only during the {@link RenderPhase#BLOCK_WORLD} / {@link RenderPhase#BLOCK_DESTROY} phases;

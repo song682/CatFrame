@@ -30,9 +30,9 @@ import java.util.Map;
  *     .itemFromBlockstate()                // export item damage decision tree from 16 static states
  *     .register();
  *
- * Models.register(stairsBlock)
- *     .states(stairsDef)                   // facing/half + dynamic shape
- *     .dynamic(stairsShapeResolver)        // runtime corner shape
+ * Models.register(Blocks.glass_pane)
+ *     .states(paneDef)                     // connection flags + typed PANE updater
+ *     .connectionMultipart()               // per-face merged baking
  *     .register();
  * }</pre>
  *
@@ -94,12 +94,6 @@ public final class Models {
         public Spec redirect(IMetadataBlockstateRedirect redirect, String namespace) {
             spec.redirect = redirect;
             spec.redirectNamespace = namespace;
-            return this;
-        }
-
-        /** Set runtime dynamic property resolver (stairs shape / pane connections etc.). */
-        public Spec dynamic(ResidentStateModel.DynamicPropertyResolver dynamic) {
-            spec.dynamic = dynamic;
             return this;
         }
 
@@ -169,9 +163,6 @@ public final class Models {
      */
     private static void applyInherited(ModelSpec spec, BlockStateInheritance.Inherited inherited) {
         spec.def = inherited.def;
-        if (spec.dynamic == null) {
-            spec.dynamic = inherited.dynamic;
-        }
         if (spec.redirect == null && inherited.redirect != null) {
             spec.redirect = inherited.redirect;
             spec.redirectNamespace = inherited.redirectNamespace;

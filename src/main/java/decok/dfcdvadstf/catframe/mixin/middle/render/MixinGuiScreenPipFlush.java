@@ -24,16 +24,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * {@link GuiGraphicsExtractor#setTooltipForNextFrame}) never reach this method; their oversized
  * items stay queued and are flushed by the end-of-frame flush, followed by the deferred tooltip.
  * </p>
+ * <p>
+ * <b>{@code remap = false} is mandatory here</b>: {@code drawHoveringText(List,int,int,FontRenderer)}
+ * is a Forge-patch-added overload, so it has no entry in any of the SRG mapping tables (verified:
+ * zero hits for the name in {@code mcp-srg.srg} / {@code mcp-notch.srg} / {@code notch-srg.srg}),
+ * and the annotation processor fails with "Unable to locate obfuscation mapping" when asked to
+ * remap it. Forge-added methods keep their source name in both the dev and the production
+ * (FML-deobfuscated) namespace, which is why the literal name — and the MCP class name in the
+ * descriptor — resolves in both. Targeting the vanilla 3-argument {@code func_146283_a} instead is
+ * <b>not</b> an equivalent substitute: it only serves the creative tab / chat / FML-config
+ * tooltips, while {@code GuiScreen.renderToolTip} (i.e. every {@code GuiContainer} item tooltip)
+ * calls this 4-argument overload directly.
+ * </p>
  */
 @Mixin(GuiScreen.class)
 public class MixinGuiScreenPipFlush {
 
     /**
-     * Drains the PiP queue before the vanilla tooltip paints.
-     * <p>Overload-qualified descriptor: only the {@code FontRenderer}-taking variant draws, the
-     * 3-argument one delegates to it.</p>
+     * Drains the PiP queue before the vanilla tooltip paints. Single chokepoint: both
+     * {@code renderToolTip} and the 3-argument delegator funnel into this overload.
      */
-    @Inject(method = "drawHoveringText(Ljava/util/List;IILnet/minecraft/client/gui/FontRenderer;)V", at = @At("HEAD"))
+    @Inject(method = "drawHoveringText(Ljava/util/List;IILnet/minecraft/client/gui/FontRenderer;)V",
+            at = @At("HEAD"), remap = false)
     private void catframe$flushPipBeforeTooltip(CallbackInfo ci) {
         GuiGraphicsExtractor.getInstance().flushPip();
     }

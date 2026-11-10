@@ -9,6 +9,7 @@ import decok.dfcdvadstf.catframe.core.Direction;
 import decok.dfcdvadstf.catframe.model.BakedModelCache;
 import decok.dfcdvadstf.catframe.model.IBlockStateProvider;
 import decok.dfcdvadstf.catframe.model.ModelManagerDataLoader;
+import decok.dfcdvadstf.catframe.model.ModelRegistry;
 import decok.dfcdvadstf.catframe.model.ParticleIconResolver;
 import decok.dfcdvadstf.catframe.model.RenderDispatcher;
 import decok.dfcdvadstf.catframe.model.core.baking.AtlasGuard;
@@ -111,6 +112,14 @@ public final class ResidentStateModel implements BlockStateModel {
     private final String namespace;
     @Nullable
     private final DynamicPropertyResolver dynamic;
+    /** Explicit typed updater bound via {@link Builder#updater}; null falls back to the definition's own. */
+    @Nullable
+    private final StateUpdater updater;
+    /** Explicit render predicate bound via {@link Builder#renderWhen}; null falls back to the definition's own. */
+    @Nullable
+    private final RenderPredicate predicate;
+    /** Whether a null updater result has already been reported for this block (error once). */
+    private boolean reportedUpdaterNull = false;
     private final boolean fullModel;
     /** pane mode: per-face merge + AtlasGuard baking (aligned with the original PaneMultipartRedirectModel). */
     private final boolean connectionMultipart;
@@ -149,6 +158,8 @@ public final class ResidentStateModel implements BlockStateModel {
         this.redirect = b.redirect;
         this.namespace = b.namespace;
         this.dynamic = b.dynamic;
+        this.updater = b.updater;
+        this.predicate = b.predicate;
         this.fullModel = b.fullModel;
         this.connectionMultipart = b.connectionMultipart;
         // Validate variant keys against the typed state definition once at build time;
@@ -160,6 +171,40 @@ public final class ResidentStateModel implements BlockStateModel {
     private String describeOwner() {
         String id = Block.blockRegistry.getNameForObject(block);
         return "blockstate of " + (id != null ? id : String.valueOf(block));
+    }
+
+    /**
+     * Effective typed updater: an explicitly bound one wins, otherwise the definition's own.
+     * Null when this block needs no world-dependent update.
+     */
+    @Nullable
+    private StateUpdater effectiveUpdater() {
+        if (updater != null) return updater;
+        return def != null ? def.getUpdater() : null;
+    }
+
+    /**
+     * Effective render predicate: an explicitly bound one wins, otherwise the definition's own.
+     * Null when the resolved state always renders.
+     */
+    @Nullable
+    private RenderPredicate effectivePredicate() {
+        if (predicate != null) return predicate;
+        return def != null ? def.getRenderPredicate() : null;
+    }
+
+    /** One read-only context per resolution pass; the definition lookup feeds typed neighbour states. */
+    private StateUpdateContext newContext(@Nullable IBlockAccess world, int x, int y, int z, int metadata) {
+        return new StateUpdateContext(world, x, y, z, metadata, ModelRegistry::getStateDefinition);
+    }
+
+    /** Reports a null updater result once per block (error level), then the base state is used. */
+    private void reportUpdaterNull() {
+        if (!reportedUpdaterNull) {
+            reportedUpdaterNull = true;
+            CatFrame.logger.error("[ResidentStateModel] {}: state updater returned null; falling back to the base state",
+                    describeOwner());
+        }
     }
 
     // ==================== Render entry ====================
@@ -176,38 +221,47 @@ public final class ResidentStateModel implements BlockStateModel {
 
         // Compile-window probe scratch: inside a chunk build (mixin-opened window) neighbor
         // reads of this resolution go through the per-thread (Block, meta) cache; outside a
-        // window wrap returns the world untouched. Only dynamic resolvers probe the world.
-        if (dynamic != null && world != null) world = ChunkProbeCache.wrap(world);
+        // window wrap returns the world untouched. Only world-reading resolvers probe the world.
+        StateUpdater upd = effectiveUpdater();
+        RenderPredicate pred = effectivePredicate();
+        if ((upd != null || dynamic != null) && world != null) world = ChunkProbeCache.wrap(world);
 
-        // Render veto: a dynamic resolver may suppress rendering for the current world
+        // Render veto, typed: an independent predicate may suppress rendering for the resolved
         // state (double plant upper half with a missing block below - renderBlockDoublePlant
         // parity; avoids the phantom upper half during the post-break sync window).
+        if (pred != null) {
+            BlockState base = def != null ? def.getStateFromMeta(metadata) : null;
+            if (!pred.shouldRender(newContext(world, x, y, z, metadata), base)) {
+                return new CollectedPart(BlockStateModelPart.empty(), null);
+            }
+        }
+
+        // Render veto, legacy: a dynamic resolver may suppress rendering for the current world state.
         if (dynamic != null && !dynamic.shouldRender(world, x, y, z, metadata)) {
             return new CollectedPart(BlockStateModelPart.empty(), null);
         }
 
-        // Typed fast lane: with a definition present, fold the resolver output into the canonical
-        // (interned) state instance and key the memo by that reference. A miss builds the part once
-        // per distinct combination; every later position with the same combination hits the identity
-        // lookup (no props map is even built on a hit). Out-of-domain resolvers return null and
-        // keep the legacy string-code lane below.
+        // Typed fast lane: one updater pass over the meta-decoded base state, then memo by the
+        // canonical (interned) result state. A miss builds the part once per distinct combination;
+        // every later position with the same combination hits the identity lookup (no props map is
+        // even built on a hit).
+        if (def != null && upd != null && isMemoEligible(target)) {
+            BlockState base = def.getStateFromMeta(metadata);
+            BlockState resolved = upd.update(newContext(world, x, y, z, metadata), base);
+            if (resolved == null) {
+                reportUpdaterNull();
+                resolved = base;
+            }
+            return collectResolved(target, resolved, world, x, y, z, metadata);
+        }
+
+        // Legacy typed lane: the string-output resolver folded back into the canonical state.
+        // Out-of-domain resolvers return null and keep the legacy string-code lane below.
         if (def != null && dynamic != null && isMemoEligible(target)) {
             BlockState canonical = dynamic.resolveState(world, x, y, z, metadata,
                     def.getStateFromMeta(metadata));
             if (canonical != null) {
-                syncMemoGeneration();
-                IdentityHashMap<BlockState, MemoEntry> byState = stateMemo.get(target);
-                MemoEntry hit = (byState == null) ? null : byState.get(canonical);
-                if (hit != null) {
-                    return new CollectedPart(hit.part, hit.propsView);
-                }
-                Map<String, String> jumpedProps = propsFromState(canonical);
-                BlockStateModelPart jumped = collectForProps(world, x, y, z, metadata, target, jumpedProps);
-                Map<String, String> jumpedView = jumpedProps.isEmpty()
-                        ? null : Collections.unmodifiableMap(jumpedProps);
-                stateMemo.computeIfAbsent(target, k -> new IdentityHashMap<BlockState, MemoEntry>())
-                        .put(canonical, new MemoEntry(jumped, jumpedView));
-                return new CollectedPart(jumped, jumpedView);
+                return collectResolved(target, canonical, world, x, y, z, metadata);
             }
         }
 
@@ -260,6 +314,27 @@ public final class ResidentStateModel implements BlockStateModel {
         Map<String, String> exposed = (props == null || props.isEmpty())
                 ? null : Collections.unmodifiableMap(props);
         return new CollectedPart(part, exposed);
+    }
+
+    /**
+     * Shared typed fast lane: keys the canonical resolved state against the target blockstate's
+     * identity memo, building the part once per distinct state combination.
+     */
+    private CollectedPart collectResolved(BlockstateJson target, BlockState resolved,
+                                          IBlockAccess world, int x, int y, int z, int metadata) {
+        syncMemoGeneration();
+        IdentityHashMap<BlockState, MemoEntry> byState = stateMemo.get(target);
+        MemoEntry hit = (byState == null) ? null : byState.get(resolved);
+        if (hit != null) {
+            return new CollectedPart(hit.part, hit.propsView);
+        }
+        Map<String, String> jumpedProps = propsFromState(resolved);
+        BlockStateModelPart jumped = collectForProps(world, x, y, z, metadata, target, jumpedProps);
+        Map<String, String> jumpedView = jumpedProps.isEmpty()
+                ? null : Collections.unmodifiableMap(jumpedProps);
+        stateMemo.computeIfAbsent(target, k -> new IdentityHashMap<BlockState, MemoEntry>())
+                .put(resolved, new MemoEntry(jumped, jumpedView));
+        return new CollectedPart(jumped, jumpedView);
     }
 
     @Override
@@ -483,7 +558,8 @@ public final class ResidentStateModel implements BlockStateModel {
                                                 int metadata, BlockstateJson target,
                                                 @Nullable Map<String, String> props) {
         // dynamic (e.g. stairs) produces weighted randomness by position; a pure mapper/def uses the meta seed (preserving prior behavior)
-        int seed = (dynamic != null) ? (x * 3129871 ^ z * 116129781 ^ y) : (metadata * 31);
+        int seed = (dynamic != null || effectiveUpdater() != null)
+                ? (x * 3129871 ^ z * 116129781 ^ y) : (metadata * 31);
         BlockstateJson.Variant variant = resolveVariant(metadata, target, props, seed);
         if (variant == null || variant.model == null) {
             // Fall back to the meta 0 variant
@@ -646,6 +722,8 @@ public final class ResidentStateModel implements BlockStateModel {
         private IMetadataBlockstateRedirect redirect;
         private String namespace;
         private DynamicPropertyResolver dynamic;
+        private StateUpdater updater;
+        private RenderPredicate predicate;
         private boolean fullModel = true;
         private boolean connectionMultipart = false;
 
@@ -671,6 +749,18 @@ public final class ResidentStateModel implements BlockStateModel {
 
         public Builder dynamic(DynamicPropertyResolver dynamic) {
             this.dynamic = dynamic;
+            return this;
+        }
+
+        /** Binds an explicit typed state updater (overrides the definition's own updater). */
+        public Builder updater(StateUpdater updater) {
+            this.updater = updater;
+            return this;
+        }
+
+        /** Binds an explicit render predicate (overrides the definition's own predicate). */
+        public Builder renderWhen(RenderPredicate predicate) {
+            this.predicate = predicate;
             return this;
         }
 

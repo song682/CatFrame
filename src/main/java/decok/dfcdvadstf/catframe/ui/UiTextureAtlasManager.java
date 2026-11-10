@@ -88,11 +88,11 @@ public final class UiTextureAtlasManager {
                 ATLAS_ID, pending.size(), missing);
     }
 
-    /** On — Stitch: CatAtlas layout + CPU assembly + GL upload (no mipmap), register to TextureManager. */
+    /** On — Stitch: CatAtlas layout + CPU assembly + GL upload (mip chain enabled; its depth is capped by the smallest sprite), register to TextureManager. */
     @SubscribeEvent
     public void onOn(GuiTextureStitchEvent.On event) {
         if (atlas == null) {
-            atlas = new Atlas(ATLAS_ID, false);
+            atlas = new Atlas(ATLAS_ID, true);
         }
         int maxTextureSize = Math.min(GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE), 16384);
         atlas.stitch(pending, maxTextureSize);

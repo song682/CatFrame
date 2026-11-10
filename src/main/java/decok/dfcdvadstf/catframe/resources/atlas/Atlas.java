@@ -40,11 +40,10 @@ import java.util.Map;
  * [Render three-domain architecture] This class is now a <b>pure UI atlas tool</b>
  * (the in-house CatAtlas blocks/items stitching chain is retired): it is driven by
  * {@code UiTextureAtlasManager} to stitch the {@code catframe:gui} atlas. The
- * constructor parameter {@code mipmapEnabled} controls mip-chain generation: the
- * UI-domain red line is <b>no mipmap</b> (GUI assets are drawn 1:1 orthogonally;
- * mips bring no benefit and add bleed risk), so pass {@code false}; the mip path
- * from the old blocks/items era is kept as a generic capability (at mipLevel 0 the
- * whole chain short-circuits automatically).
+ * constructor parameter {@code mipmapEnabled} controls mip-chain generation: the UI
+ * atlas generates its mip chain, and the effective depth is capped by the smallest
+ * sprite in the set (the 32x2 separator assets currently cap it at level 1). At
+ * mipLevel 0 the whole chain short-circuits automatically.
  * <p>
  * <b>Channel conversion</b>: local pixels are Java int ARGB (bits 24-31=A, 16-23=R,
  * 8-15=G, 0-7=B) while GL expects R,G,B,A byte order — the upload reorders
@@ -75,7 +74,7 @@ public class Atlas implements IAtlas, ITextureObject {
 
     /** Atlas id (e.g. {@code minecraft:blocks} / {@code catframe:gui}). */
     private final String atlasId;
-    /** Whether to generate the mip chain (always false for the UI domain: the no-mipmap red line; when false every mip-related path short-circuits). */
+    /** Whether to generate the mip chain (the UI atlas enables it; when false every mip-related path short-circuits). */
     private final boolean mipmapEnabled;
     /** Sprite lookup table: texturePath (publish key) → CatSprite.
      *  The key is the publish key rather than iconName — a missing sprite's iconName is
@@ -100,7 +99,7 @@ public class Atlas implements IAtlas, ITextureObject {
 
     /**
      * @param atlasId       atlas id (this value is what {@code IAtlas#getAtlasName()} returns)
-     * @param mipmapEnabled whether to generate the mip chain; pass false for the UI atlas ({@code catframe:gui}, the no-mipmap red line)
+     * @param mipmapEnabled whether to generate the mip chain; the UI atlas passes {@code true}, {@code false} leaves the atlas mip-less
      */
     public Atlas(String atlasId, boolean mipmapEnabled) {
         this.atlasId = atlasId;

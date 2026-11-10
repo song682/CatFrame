@@ -29,10 +29,10 @@ public class CyclingArea<T> extends AbstractComponent {
 
     /** Default button texture for normal state */
     protected static final ResourceLocation DEFAULT_BUTTON_TEXTURE =
-            TextureLocation.set("catframe", "gui/widgets/button").build();
-    /** Default button texture for hover state */
+            TextureLocation.set("catframe", "gui/sprites/widgets/button").build();
+    /** Default button texture for hover state (no dedicated button_hover asset, reuses the highlighted sprite) */
     protected static final ResourceLocation DEFAULT_BUTTON_HOVER_TEXTURE =
-            TextureLocation.set("catframe", "gui/widgets/button_hover").build();
+            TextureLocation.set("catframe", "gui/sprites/widgets/button_highlighted").build();
     protected static final int BUTTON_DEFAULT_W = 200;
     protected static final int BUTTON_DEFAULT_H = 20;
     protected static final int BUTTON_BORDER = 2;

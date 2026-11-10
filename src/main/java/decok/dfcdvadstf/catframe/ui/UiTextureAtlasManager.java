@@ -117,7 +117,7 @@ public final class UiTextureAtlasManager {
     }
 
     /**
-     * Look up UI sprite by publish key (full texture path, e.g. {@code catframe:gui/widgets/button});
+     * Look up UI sprite by publish key (e.g. {@code catframe:gui/sprites/widgets/button});
      * returns null if not stitched / not found (caller falls back to {@link #getMissingSprite()}).
      */
     @Nullable

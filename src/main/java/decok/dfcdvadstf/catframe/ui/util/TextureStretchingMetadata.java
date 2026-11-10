@@ -138,7 +138,7 @@ public final class TextureStretchingMetadata {
      * </p>
      *
      * @param textureLocation texture ResourceLocation (e.g.
-     *                        catframe:textures/gui/toast/default.png)
+     *                        catframe:textures/gui/sprites/toast/default.png)
      * @return parsed metadata, or null
      */
     public static TextureStretchingMetadata load(ResourceLocation textureLocation) {

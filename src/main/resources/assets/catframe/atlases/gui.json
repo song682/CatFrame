@@ -7,33 +7,28 @@
         },
         {
             "type": "minecraft:directory",
-            "source": "gui/seperator",
-            "prefix": "gui/seperator/"
+            "source": "gui/sprites/tabs",
+            "prefix": "gui/sprites/tabs/"
         },
         {
             "type": "minecraft:directory",
-            "source": "gui/tabs",
-            "prefix": "gui/tabs/"
+            "source": "gui/sprites/toast",
+            "prefix": "gui/sprites/toast/"
         },
         {
             "type": "minecraft:directory",
-            "source": "gui/toast",
-            "prefix": "gui/toast/"
+            "source": "gui/sprites/toast/icons",
+            "prefix": "gui/sprites/toast/icons/"
         },
         {
             "type": "minecraft:directory",
-            "source": "gui/toast/icons",
-            "prefix": "gui/toast/icons/"
+            "source": "gui/sprites/tooltips",
+            "prefix": "gui/sprites/tooltips/"
         },
         {
             "type": "minecraft:directory",
-            "source": "gui/tooltips",
-            "prefix": "gui/tooltips/"
-        },
-        {
-            "type": "minecraft:directory",
-            "source": "gui/widgets",
-            "prefix": "gui/widgets/"
+            "source": "gui/sprites/widgets",
+            "prefix": "gui/sprites/widgets/"
         }
     ]
 }

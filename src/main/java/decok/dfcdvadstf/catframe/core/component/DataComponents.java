@@ -58,7 +58,7 @@ public final class DataComponents {
      * Tooltip style (mirrors 26.1.2 {@code minecraft:tooltip_style} / {@code DataComponents.TOOLTIP_STYLE}).
      * <p>
      * The value is a namespaced ID string (e.g. {@code "catframe:my_style"}); at render time it
-     * resolves to the texture pair {@code assets/<namespace>/textures/gui/tooltips/<path>_background.png}
+     * resolves to the texture pair {@code assets/<namespace>/textures/gui/sprites/tooltips/<path>_background.png}
      * and {@code _frame.png}; when unset, the default style textures are used.
      */
     public static final DataComponentType<String> TOOLTIP_STYLE =

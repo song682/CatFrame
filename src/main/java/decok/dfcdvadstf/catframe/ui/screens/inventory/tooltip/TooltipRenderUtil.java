@@ -96,7 +96,7 @@ public class TooltipRenderUtil {
     private static ResourceLocation getBackgroundTexture(@Nullable ResourceLocation style) {
         if (style == null) return BACKGROUND_TEXTURE;
         return TextureLocation.set(style.getResourceDomain(),
-                "gui/tooltips/" + style.getResourcePath() + "_background").build();
+                "gui/sprites/tooltips/" + style.getResourcePath() + "_background").build();
     }
 
     /**
@@ -106,6 +106,6 @@ public class TooltipRenderUtil {
     private static ResourceLocation getFrameTexture(@Nullable ResourceLocation style) {
         if (style == null) return FRAME_TEXTURE;
         return TextureLocation.set(style.getResourceDomain(),
-                "gui/tooltips/" + style.getResourcePath() + "_frame").build();
+                "gui/sprites/tooltips/" + style.getResourcePath() + "_frame").build();
     }
 }

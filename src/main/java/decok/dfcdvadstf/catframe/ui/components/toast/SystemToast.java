@@ -17,11 +17,11 @@ import java.util.List;
 public class SystemToast extends BaseToast {
 
     private static final ResourceLocation SYSTEM_TOAST_TEXTURE =
-            TextureLocation.set("catframe", "gui/toast/system").build();
+            TextureLocation.set("catframe", "gui/sprites/toast/system").build();
 
     /** System icon texture */
     private static final ResourceLocation SYSTEM_ICON_TEXTURE =
-            TextureLocation.set("catframe", "gui/toast/icons/system").build();
+            TextureLocation.set("catframe", "gui/sprites/toast/icons/system").build();
 
     /** Icon size in pixels */
     private static final int ICON_SIZE = 16;

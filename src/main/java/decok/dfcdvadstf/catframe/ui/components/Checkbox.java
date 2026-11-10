@@ -20,13 +20,13 @@ import net.minecraft.util.ResourceLocation;
 public class Checkbox extends AbstractButton {
 
     private static final ResourceLocation CHECKBOX_TEXTURE =
-            TextureLocation.set("catframe", "gui/widgets/checkbox").build();
+            TextureLocation.set("catframe", "gui/sprites/widgets/checkbox").build();
     private static final ResourceLocation CHECKBOX_HIGHLIGHTED_TEXTURE =
-            TextureLocation.set("catframe", "gui/widgets/checkbox_highlighted").build();
+            TextureLocation.set("catframe", "gui/sprites/widgets/checkbox_highlighted").build();
     private static final ResourceLocation CHECKBOX_SELECTED_TEXTURE =
-            TextureLocation.set("catframe", "gui/widgets/checkbox_checked").build();
+            TextureLocation.set("catframe", "gui/sprites/widgets/checkbox_checked").build();
     private static final ResourceLocation CHECKBOX_SELECTED_HIGHLIGHTED_TEXTURE =
-            TextureLocation.set("catframe", "gui/widgets/checkbox_checked_highlighted").build();
+            TextureLocation.set("catframe", "gui/sprites/widgets/checkbox_checked_highlighted").build();
 
     /** Checkbox box size in screen pixels */
     private static final int BOX_SIZE = 16;

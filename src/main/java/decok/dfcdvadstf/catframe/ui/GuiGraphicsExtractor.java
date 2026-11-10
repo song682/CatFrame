@@ -6,7 +6,10 @@ import decok.dfcdvadstf.catframe.utils.ObjectsUtil;
 import decok.dfcdvadstf.catframe.world.tooltip.ItemTooltipImages;
 import decok.dfcdvadstf.catframe.world.tooltip.TooltipComponent;
 import decok.dfcdvadstf.catframe.model.ModelRegistry;
+import decok.dfcdvadstf.catframe.model.render.RenderJsonItemModel;
 import decok.dfcdvadstf.catframe.model.render.api.RenderPhase;
+import decok.dfcdvadstf.catframe.model.render.extension.special.IItemRenderSpecialProvider;
+import decok.dfcdvadstf.catframe.model.render.extension.special.SpecialRenderRegistry;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
 import decok.dfcdvadstf.catframe.model.render.pipeline.QuadWriter;
 import decok.dfcdvadstf.catframe.model.render.pipeline.RenderSubmit;
@@ -29,6 +32,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
+import javax.vecmath.Matrix4d;
 import java.nio.FloatBuffer;
 import java.util.*;
 
@@ -61,6 +65,10 @@ import java.util.*;
  * gui.item(stack, x, y); // Immediate: draws the model right at the call site
  * gui.extractDeferredElements(); // End of frame (drawScreen RETURN) flush PiP entities and tooltips
  * }</pre>
+ * <p>
+ * Exception to the immediate path: {@code oversized_in_gui} items are queued with a modelview
+ * snapshot and drawn at the PiP flush, so that their overflow can sit above the rest of the frame
+ * (see {@link #deferOversizedGuiItem(ItemStack)}).
  */
 public class GuiGraphicsExtractor {
 
@@ -104,6 +112,22 @@ public class GuiGraphicsExtractor {
     /** PiP dispatch table: runtime type of state → corresponding renderer — corresponds to the 26.1.2 {@code PictureInPictureRenderer} registry. */
     private final Map<Class<? extends PictureInPictureRenderState>, PictureInPictureRenderer<?>> pipDispatchTable =
             new HashMap<>();
+
+    /**
+     * Whether the current screen frame's end-of-frame PiP flush will still run.
+     * <p>
+     * Set by {@link #resetForNewFrame()}, cleared once {@link #extractDeferredElements()} has flushed. Draws
+     * happening outside that window (HUD overlays / toasts behind {@code RenderGameOverlayEvent}, and overlay
+     * draws issued after the screen flush) have no end-of-frame flush, so deferred content must fall back to
+     * immediate drawing instead of being queued and silently cleared by the next {@link #resetForNewFrame()}.
+     */
+    private boolean frameActive;
+
+    /**
+     * Depth offset for GUI items drawn through {@link #item(ItemStack, int, int)}: keeps the model's 3D span
+     * (±8 px at the 16 px slot projection) in front of the 2D GUI content drawn at z=0.
+     */
+    private static final float GUI_ITEM_Z = 100.0F;
 
     /** GUI item drawing callback implementation — allows {@link OversizedItemPipRenderer} to reuse this class's item rendering logic. */
     private final ItemGuiDrawer itemDrawer = new ItemGuiDrawerImpl();
@@ -149,15 +173,20 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * Renders an item in the GUI <b>immediately</b> at the call site.
+     * Renders an item in the GUI at the given slot origin.
      * <p>
-     * Corresponds to 26.1.2 {@code GuiGraphics.item()}, but unlike the high-version which extracts
-     * render state into {@code GuiItemRenderState} for deferred pipeline consumption, this method
-     * draws the model directly using the current GL modelview matrix (which is valid at the call point,
-     * set up by the caller for the slot position). No matrix snapshot is needed.
+     * Corresponds to 26.1.2 {@code GuiGraphics.item()}. Unlike the high-version, which extracts a
+     * {@code GuiItemRenderState} for the deferred pipeline to consume, this method draws the model
+     * <b>immediately</b> using the current GL modelview matrix, translated to the slot origin — the
+     * matrix is valid at the call point, so no snapshot is needed for this path.
      * <p>
-     * Only items registered with CatFrame models (via {@link ModelRegistry#hasItemModel}) go through
-     * this path; other items are handled by the vanilla rendering pipeline.
+     * The single exception is {@code oversized_in_gui=true} items: their geometry overflows the 16×16
+     * slot, so they are queued into the PiP channel and drawn at the end-of-frame flush, above all
+     * content drawn later in the same frame (see {@link #deferOversizedGuiItem(ItemStack)}).
+     * <p>
+     * Only items with registered CatFrame models (via {@link ModelRegistry#hasItemModel}), or items
+     * owning a {@link IItemRenderSpecialProvider}, go through this path; other items are handled by
+     * the vanilla rendering pipeline.
      *
      * @param stack The item stack to render
      * @param x GUI slot X coordinate (pixels)
@@ -165,14 +194,50 @@ public class GuiGraphicsExtractor {
      */
     public void item(ItemStack stack, int x, int y) {
         if (stack == null || stack.getItem() == null) return;
+        if (!ModelRegistry.hasItemModel(stack.getItem())
+                && SpecialRenderRegistry.getProvider(stack.getItem()) == null) return;
 
-        // Only items with registered CatFrame models go through this path;
-        // everything else is handled by the vanilla rendering pipeline.
-        if (!ModelRegistry.hasItemModel(stack.getItem())) return;
+        GL11.glPushMatrix();
+        try {
+            GL11.glTranslatef(x, y, GUI_ITEM_Z);
+            // Oversized items leave through the PiP channel; everything else draws right here
+            if (deferOversizedGuiItem(stack)) return;
+            drawItemModel(stack, null);
+        } finally {
+            GL11.glPopMatrix();
+        }
+    }
 
-        // Immediate rendering: the GL modelview matrix is valid at the call site,
-        // so we draw directly — no matrix snapshot needed (pose = null).
-        drawItemModel(stack, null);
+    /**
+     * Hands a GUI item over to the PiP oversized channel, so its natural-size geometry can overflow
+     * the 16×16 slot above every element drawn later in the frame.
+     * <p>
+     * The item is positioned by the <b>current</b> GL modelview matrix (the slot transform of the
+     * caller), which is snapshotted and restored at flush time. Two callers feed this method:
+     * <ul>
+     *   <li>{@link #item(ItemStack, int, int)} — the CatFrame UI path, after translating to the slot;
+     *   <li>{@code RenderJsonItemModel} — the vanilla {@code IItemRenderer} INVENTORY path, where the
+     *       slot transform has already been applied by Forge.</li>
+     * </ul>
+     *
+     * @return {@code true} when the draw was queued; {@code false} when the item is not oversized,
+     *         is self-drawn by a special provider, or no end-of-frame flush is pending (HUD / overlay
+     *         draws) — in which case the caller keeps its own immediate drawing path.
+     */
+    public boolean deferOversizedGuiItem(ItemStack stack) {
+        if (stack == null || stack.getItem() == null) return false;
+        if (!ModelRegistry.isOversizedInGui(stack.getItem())) return false;
+        // A self-drawing provider owns its geometry — do not reroute it through the item model
+        IItemRenderSpecialProvider special = SpecialRenderRegistry.getProvider(stack.getItem());
+        if (special != null && special.handles(RenderPhase.ITEM_GUI)) return false;
+        // Nothing would flush the queue outside a screen frame
+        if (!this.frameActive) return false;
+
+        float[] pose = captureModelViewMatrix();
+        // Slot rectangle derived from the pose translation (GUI ortho: 1 unit == 1 pixel, no rotation)
+        ScreenRectangle bounds = new ScreenRectangle(Math.round(pose[12]), Math.round(pose[13]), 16, 16);
+        deferredPip.add(new OversizedItemRenderState(stack, pose, bounds));
+        return true;
     }
 
     /**
@@ -182,7 +247,9 @@ public class GuiGraphicsExtractor {
      *   <li>{@code glPushAttrib} saves GL state + sets up item rendering environment</li>
      *   <li>If {@code pose} is non-null, restores the modelview matrix from the snapshot
      *       (needed for deferred PiP rendering where the GL context has changed since capture)</li>
-     *   <li>Delegates to {@link ItemStateModel#render} for model rendering
+     *   <li>Applies the GUI slot projection ({@link RenderJsonItemModel#inventoryPreTransform()},
+     *       the same matrix the Forge INVENTORY path uses) and delegates to the special provider or
+     *       to {@link ItemStateModel#render} for model rendering
      *       (enchantment glint is driven by the pipeline's {@code FeatureRenderDispatcher}
      *       calling {@link #renderEnchantmentGlint(RenderSubmit, Tessellator)})</li>
      * </ol>
@@ -193,8 +260,6 @@ public class GuiGraphicsExtractor {
     private void drawItemModel(ItemStack stack, @Nullable float[] pose) {
         if (stack == null || stack.getItem() == null) return;
 
-        ItemStateModel model = ModelRegistry.getRegisteredItemModel(stack.getItem());
-
         // Save full GL state — no need to manually restore individual bits
         GL11.glPushAttrib(GL_SAVE_MASK);
         setupItemRenderState();
@@ -203,17 +268,19 @@ public class GuiGraphicsExtractor {
         try {
             // Restore modelview matrix from snapshot (deferred PiP path only;
             // immediate path passes null — the caller's matrix is already active)
-            if (pose != null) {
-                MATRIX_BUFFER.clear();
-                MATRIX_BUFFER.put(pose);
-                MATRIX_BUFFER.flip();
-                GL11.glLoadMatrix(MATRIX_BUFFER);
-            }
+            PipGl.restore(pose);
 
-            // No pre-transform cancellation needed in GUI context
-            // (Forge INVENTORY path has no Forge pre-transform)
-            // Enchantment glint is driven by FeatureRenderDispatcher → renderEnchantmentGlint
-            model.render(stack, RenderPhase.ITEM_GUI, null);
+            // Slot projection (model space [0,1]³ → 16×16 GUI pixels), identical to the Forge INVENTORY
+            // path; without it the model would render at 1-pixel scale
+            Matrix4d preTransform = RenderJsonItemModel.inventoryPreTransform();
+            IItemRenderSpecialProvider special = SpecialRenderRegistry.getProvider(stack.getItem());
+            if (special != null && special.handles(RenderPhase.ITEM_GUI)) {
+                special.renderItem(stack, RenderPhase.ITEM_GUI, preTransform);
+            } else {
+                // Enchantment glint is driven by FeatureRenderDispatcher → renderEnchantmentGlint
+                ItemStateModel model = ModelRegistry.getRegisteredItemModel(stack.getItem());
+                model.render(stack, RenderPhase.ITEM_GUI, preTransform);
+            }
         } finally {
             GL11.glPopMatrix();
             GL11.glPopAttrib();
@@ -615,24 +682,43 @@ public class GuiGraphicsExtractor {
      * <p>
      * Called at the end of screen rendering, drives the remaining deferred paths:
      * <ol>
-     *   <li><b>PiP</b>: renders 3D content (entities) that require deferred drawing.</li>
+     *   <li><b>PiP</b>: renders the content that requires deferred drawing — GUI entities and
+     *       {@code oversized_in_gui} items, whose geometry must overflow its slot above everything
+     *       drawn later in the frame.</li>
      *   <li><b>Tooltip</b>: rendered last in a new stratum, ensuring it's always on top.</li>
      * </ol>
-     * Note: item models are rendered immediately by {@link #item(ItemStack, int, int)},
-     * so no item flush is needed here.
+     * Non-oversized item models are rendered immediately by {@link #item(ItemStack, int, int)} and
+     * therefore never appear in the PiP queue.
      */
     public void extractDeferredElements() {
-        // PiP: render 3D content (entities) that still requires deferred drawing
+        try {
+            // PiP: render 3D content that still requires deferred drawing
+            flushPip();
+
+            // Tooltip: always on top — rendered last in a new stratum
+            if (this.deferredTooltip != null) {
+                this.renderState.nextStratum();
+                this.deferredTooltip.run();
+                this.deferredTooltip = null;
+            }
+        } finally {
+            this.frameActive = false;
+        }
+    }
+
+    /**
+     * Dispatches and drains the queued PiP states (oversized GUI items, GUI entities).
+     * <p>
+     * Called by {@link #extractDeferredElements()} at the end of the frame, and <b>also</b> before a
+     * vanilla tooltip is drawn: vanilla renders item tooltips inside {@code drawScreen} (e.g.
+     * {@code GuiContainer.renderToolTip}), i.e. before the end-of-frame flush, so without this split
+     * the overflow of an oversized item would paint over the tooltip.
+     */
+    public void flushPip() {
         for (PictureInPictureRenderState state : deferredPip) {
             dispatchPip(state);
         }
-
-        // Tooltip: always on top — rendered last in a new stratum
-        if (this.deferredTooltip != null) {
-            this.renderState.nextStratum();
-            this.deferredTooltip.run();
-            this.deferredTooltip = null;
-        }
+        deferredPip.clear();
     }
 
     /**
@@ -654,6 +740,7 @@ public class GuiGraphicsExtractor {
         this.renderState.reset();
         this.deferredPip.clear();
         this.deferredTooltip = null;
+        this.frameActive = true;
     }
 
     public static enum HoveredTextEffects {
@@ -683,7 +770,7 @@ public class GuiGraphicsExtractor {
         public ScreenRectangle push(final ScreenRectangle rectangle) {
             ScreenRectangle lastRectangle = this.stack.peekLast();
             if (lastRectangle != null) {
-                ScreenRectangle intersection = (ScreenRectangle)ObjectsUtil.requireNonNullElse(rectangle.intersection(lastRectangle), ScreenRectangle.empty());
+                ScreenRectangle intersection = ObjectsUtil.requireNonNullElse(rectangle.intersection(lastRectangle), ScreenRectangle.empty());
                 this.stack.addLast(intersection);
                 return intersection;
             } else {
@@ -698,17 +785,17 @@ public class GuiGraphicsExtractor {
                 throw new IllegalStateException("Scissor stack underflow");
             } else {
                 this.stack.removeLast();
-                return (ScreenRectangle)this.stack.peekLast();
+                return this.stack.peekLast();
             }
         }
 
         @Nullable
         public ScreenRectangle peek() {
-            return (ScreenRectangle)this.stack.peekLast();
+            return this.stack.peekLast();
         }
 
         public boolean containsPoint(final int x, final int y) {
-            return this.stack.isEmpty() ? true : ((ScreenRectangle)this.stack.peek()).containsPoint(x, y);
+            return this.stack.isEmpty() || (this.stack.peek()).containsPoint(x, y);
         }
     }
 }

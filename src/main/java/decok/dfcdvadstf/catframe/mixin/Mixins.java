@@ -34,7 +34,8 @@ public enum Mixins implements IMixins {
                 "middle.render.MixinRenderBlocks",
                 "middle.render.MixinWorldRenderer",
                 "middle.render.MixinBlock",
-                "middle.render.MixinEntityDiggingFX"
+                "middle.render.MixinEntityDiggingFX",
+                "middle.render.MixinGuiScreenPipFlush"
         ),
 
         /** Built-in pack startup bootstrap on the first vanilla refresh after preInit. */

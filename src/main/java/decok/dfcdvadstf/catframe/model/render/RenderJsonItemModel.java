@@ -6,6 +6,7 @@ import decok.dfcdvadstf.catframe.model.render.extension.DisplayTransformExtensio
 import decok.dfcdvadstf.catframe.model.render.extension.special.IItemRenderSpecialProvider;
 import decok.dfcdvadstf.catframe.model.render.extension.special.SpecialRenderRegistry;
 import decok.dfcdvadstf.catframe.model.state.item.ItemStateModel;
+import decok.dfcdvadstf.catframe.ui.GuiGraphicsExtractor;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.entity.Render;
@@ -297,6 +298,15 @@ public class RenderJsonItemModel implements IItemRenderer {
             return;
         }
 
+        // GUI oversized items ({@code oversized_in_gui=true}) are handed to the PiP channel: their
+        // natural-size geometry must overflow the 16x16 slot above the slots/overlays drawn later in
+        // the frame. Forge's INVENTORY translate already sits on the modelview matrix, so the captured
+        // pose carries the exact slot position. Returns false outside a screen frame (HUD / overlay
+        // draws, where nothing runs the end-of-frame flush) -> the immediate path below is used.
+        if (phase == RenderPhase.ITEM_GUI && GuiGraphicsExtractor.getInstance().deferOversizedGuiItem(stack)) {
+            return;
+        }
+
         // getRegisteredItemModel returns only explicitly registered item models (no block fallback)
         ItemStateModel model = ModelRegistry.getRegisteredItemModel(stack.getItem());
         if (model == null) return;
@@ -322,6 +332,39 @@ public class RenderJsonItemModel implements IItemRenderer {
     // ==================== Internal mappings ====================
 
     /**
+     * GUI slot projection matrix — {@code T(8,8,0) × S(16,-16,16)}, mapping display-centered model
+     * space {@code [-0.5,0.5]³} into the 16×16 pixel slot.
+     * <p>
+     * Forge has already set {@code glTranslatef(x, y, -3+zLevel)} to position the slot origin, so
+     * display-centered vertices must end up in the {@code [0,16]×[16,0]×[-8,8]} pixel space:
+     * <pre>
+     *   v' = T(8,8,0) × S(16,-16,16) × T(-0.5) × v
+     *   v(0,0,0) → (0, 16, -8) top-left corner
+     *   v(1,1,1) → (16, 0, 8)  bottom-right corner
+     * </pre>
+     * <p>
+     * Shared by the Forge {@code INVENTORY} path (through {@link #computePreTransform}) and
+     * {@code GuiGraphicsExtractor}'s own-UI item path, so both project into the slot identically.
+     */
+    public static Matrix4d inventoryPreTransform() {
+        Matrix4d m = new Matrix4d();
+        m.setIdentity();
+        Matrix4d tmp = new Matrix4d();
+
+        // first translate (8, 8, 0)
+        tmp.setIdentity();
+        tmp.setTranslation(new Vector3d(8.0, 8.0, 0.0));
+        m.mul(tmp);
+
+        // then scale (16, -16, 16) — flip Y so GUI Y-down matches model Y-up
+        tmp.setIdentity();
+        tmp.m00 = 16.0; tmp.m11 = -16.0; tmp.m22 = 16.0;
+        m.mul(tmp);
+
+        return m;
+    }
+
+    /**
      * Computes the inverse-cancellation pre-transform matrix.
      * <p>
      * Before calling {@code renderItem}, Forge has already applied a batch of GL transforms (see {@link #shouldUseRenderHelper}),
@@ -342,29 +385,7 @@ public class RenderJsonItemModel implements IItemRenderer {
                                                  @javax.annotation.Nullable EntityLivingBase entity,
                                                  @javax.annotation.Nullable ItemStack stack) {
         if (type == ItemRenderType.INVENTORY) {
-            // GUI: map model space [0,1]³ to a 16×16 pixel GUI slot
-            // Forge has already set glTranslatef(x, y, -3+zLevel) to position at the slot origin
-            // display-centered vertices [-0.5,0.5]³ must be mapped to the [0,16]×[16,0]×[-8,8] pixel space
-            // transform: T(8,8,0) × S(16,-16,16)
-            // combined with the display transform T(-0.5):
-            //   v' = T(8,8,0) × S(16,-16,16) × T(-0.5) × v
-            //   v(0,0,0) → (0, 16, -8) top-left corner
-            //   v(1,1,1) → (16, 0, 8)  bottom-right corner
-            Matrix4d m = new Matrix4d();
-            m.setIdentity();
-            Matrix4d tmp = new Matrix4d();
-
-            // first translate (8, 8, 0)
-            tmp.setIdentity();
-            tmp.setTranslation(new Vector3d(8.0, 8.0, 0.0));
-            m.mul(tmp);
-
-            // then scale (16, -16, 16) — flip Y so GUI Y-down matches model Y-up
-            tmp.setIdentity();
-            tmp.m00 = 16.0; tmp.m11 = -16.0; tmp.m22 = 16.0;
-            m.mul(tmp);
-
-            return m;
+            return inventoryPreTransform();
         } else if (type == ItemRenderType.EQUIPPED_FIRST_PERSON) {
             // Forge call chain: rotate(45°Y) → swing_rot → scale(0.4) → [FHClient: translate(-0.5)]
             // inverse-cancellation matrix: T(0.5) × S(2.5) × RY(-45)

@@ -20,6 +20,9 @@ public enum Mixins implements IMixins {
                 "middle.resource.MixinBuiltinResourcePackRepositoryEntry",
                 "middle.resource.MixinBuiltinResourcePackListEntryFound"),
 
+        /** Registration of the CatFrame {@code stretching} mcmeta section in the vanilla pipeline. */
+        TEXTURE_METADATA(Side.CLIENT, "middle.resource.MixinMinecraftMetadataSection"),
+
         /** Keyboard dispatch and the public keyboard event bridge for screens. */
         SCREEN_INPUT(Side.CLIENT,
                 "middle.event.MixinGuiScreen",

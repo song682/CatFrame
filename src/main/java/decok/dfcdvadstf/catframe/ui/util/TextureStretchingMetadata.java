@@ -1,7 +1,6 @@
 package decok.dfcdvadstf.catframe.ui.util;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import decok.dfcdvadstf.catframe.exception.WrongMetadataError;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IResource;
@@ -11,8 +10,6 @@ import net.minecraft.client.resources.data.IMetadataSerializer;
 import net.minecraft.util.ResourceLocation;
 
 import java.io.Closeable;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -150,13 +147,11 @@ public final class TextureStretchingMetadata implements IMetadataSection {
     /**
      * Load stretching metadata for the given texture.
      * <p>
-     * Prefers the vanilla metadata pipeline: once the {@code stretching} section is
-     * registered (see {@link #registerSection(IMetadataSerializer)}),
-     * {@link IResource#getMetadata(String)} parses the {@code .mcmeta} file and this
-     * method only asks for the result. While unregistered — or when the resource
-     * manager cannot hand out the texture — it falls back to reading the
-     * {@code .mcmeta} file directly, so stretching data also works before the first
-     * resource refresh.
+     * Asks the vanilla metadata pipeline: {@link IResource#getMetadata(String)} parses
+     * the {@code .mcmeta} file through the section registered by
+     * {@link #registerSection(IMetadataSerializer)}. Until that registration happens
+     * there is no stretching data — the section is registered from the
+     * {@code Minecraft.refreshResources()} hook, which always runs before a GUI draws.
      * </p>
      * <p>
      * Results are cached. Returns {@code null} if no mcmeta or no "stretching" key.
@@ -176,7 +171,7 @@ public final class TextureStretchingMetadata implements IMetadataSection {
 
         TextureStretchingMetadata metadata = registeredSerializer != null
                 ? loadFromResourceMetadata(textureLocation)
-                : loadFromRawMcmeta(textureLocation);
+                : null;
 
         CACHE.put(textureLocation, metadata);
         return metadata;
@@ -204,8 +199,8 @@ public final class TextureStretchingMetadata implements IMetadataSection {
     /**
      * Parse a {@code "stretching"} JSON object.
      * <p>
-     * Shared by {@link StretchingMetadataSectionSerializer} and the bare-mcmeta
-     * fallback, so the section format lives in exactly one place.
+     * Called by {@link StretchingMetadataSectionSerializer}, so the section format
+     * lives in exactly one place.
      * </p>
      *
      * @param s the {@code stretching} object of an mcmeta file
@@ -322,39 +317,6 @@ public final class TextureStretchingMetadata implements IMetadataSection {
         } finally {
             if (resource != null)
                 closeQuietly(resource.getInputStream());
-        }
-    }
-
-    /**
-     * Fallback reader: parse the {@code .mcmeta} file next to the texture directly.
-     * <p>
-     * Used while the section is not registered with the vanilla serializer.
-     * </p>
-     */
-    private static TextureStretchingMetadata loadFromRawMcmeta(ResourceLocation textureLocation) {
-        ResourceLocation mcmetaLocation = new ResourceLocation(
-                textureLocation.getResourceDomain(),
-                textureLocation.getResourcePath() + ".mcmeta");
-
-        InputStream stream = null;
-        try {
-            IResourceManager rm = Minecraft.getMinecraft().getResourceManager();
-            stream = rm.getResource(mcmetaLocation).getInputStream();
-            JsonObject root = new JsonParser().parse(new InputStreamReader(stream)).getAsJsonObject();
-
-            if (!root.has(SECTION_NAME))
-                return null;
-
-            JsonObject s = root.getAsJsonObject(SECTION_NAME);
-            return s == null ? null : parse(s);
-        } catch (WrongMetadataError e) {
-            // Validation error — must propagate, not swallowed
-            throw e;
-        } catch (Exception e) {
-            // No mcmeta file or parse error — return null
-            return null;
-        } finally {
-            closeQuietly(stream);
         }
     }
 

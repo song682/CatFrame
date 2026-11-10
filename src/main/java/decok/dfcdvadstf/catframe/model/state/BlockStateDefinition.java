@@ -53,6 +53,16 @@ public final class BlockStateDefinition<O> {
     // across inherited/merged definitions.
     private Map<String, Property<?>> byName;
 
+    // Render-time typed state updater (meta-decoded base state → world-resolved state); null when
+    // every property decodes from meta and no world-dependent update is needed. Aligned with 26.x
+    // BlockBehaviour#updateShape. Backfilled by Builder.create().
+    @Nullable
+    private StateUpdater updater;
+    // Independent render veto (whether to draw the resolved state); null means always render.
+    // Aligned with 26.x BlockBehaviour#skipRendering. Backfilled by Builder.create().
+    @Nullable
+    private RenderPredicate renderPredicate;
+
     /**
      * Meta codec. Only responsible for decoding metadata into the value array of the
      * "static properties" (in static property declaration order); dynamic properties do
@@ -255,6 +265,29 @@ public final class BlockStateDefinition<O> {
     }
 
     /**
+     * Returns the render-time typed state updater, or {@code null} when this definition needs no
+     * world-dependent update (every property decodes from meta). The render side applies it once
+     * per resolution: {@code state = updater.update(ctx, def.getStateFromMeta(meta))}.
+     *
+     * @return the state updater, or {@code null}
+     */
+    @Nullable
+    public StateUpdater getUpdater() {
+        return updater;
+    }
+
+    /**
+     * Returns the independent render predicate, or {@code null} when the state always renders.
+     * The render side consults it with the resolved state to decide whether to emit geometry.
+     *
+     * @return the render predicate, or {@code null}
+     */
+    @Nullable
+    public RenderPredicate getRenderPredicate() {
+        return renderPredicate;
+    }
+
+    /**
      * Looks up the corresponding resident CatBlockState by metadata.
      * <p>Dynamic properties take their default values (first value) and can be jumped to at
      * runtime in O(1) via {@link BlockState#setValue}.
@@ -347,6 +380,10 @@ public final class BlockStateDefinition<O> {
         private final Set<String> usedNames = new HashSet<>();
         private final Set<Property<?>> dynamicProps = new HashSet<>();
         private MetaCodec metaCodec;
+        @Nullable
+        private StateUpdater updater;
+        @Nullable
+        private RenderPredicate renderPredicate;
 
         /**
          * @param owner the owner of the state definition (e.g. a Block instance)
@@ -400,6 +437,33 @@ public final class BlockStateDefinition<O> {
          */
         public Builder<O> metaCodec(MetaCodec codec) {
             this.metaCodec = codec;
+            return this;
+        }
+
+        /**
+         * Sets the render-time typed state updater (meta-decoded base state → world-resolved
+         * state), aligned with 26.x {@code BlockBehaviour#updateShape}. The updater reads the
+         * values it needs from the base state and from the {@link StateUpdateContext}, then
+         * returns the world-resolved state through O(1) {@link BlockState#setValue} jumps.
+         *
+         * @param updater the state updater, or {@code null} to clear
+         * @return this Builder instance (chainable)
+         */
+        public Builder<O> updater(@Nullable StateUpdater updater) {
+            this.updater = updater;
+            return this;
+        }
+
+        /**
+         * Sets the independent render predicate, aligned with 26.x
+         * {@code BlockBehaviour#skipRendering}. Kept separate from the updater: computing the
+         * state and deciding whether to draw it are distinct concerns.
+         *
+         * @param predicate the render predicate, or {@code null} to clear
+         * @return this Builder instance (chainable)
+         */
+        public Builder<O> renderWhen(@Nullable RenderPredicate predicate) {
+            this.renderPredicate = predicate;
             return this;
         }
 
@@ -487,6 +551,10 @@ public final class BlockStateDefinition<O> {
                 nameMap.put(p.getName(), p);
             }
             definition.byName = nameMap;
+
+            // Render-time typed hooks (null when unset: no world-dependent update / always render)
+            definition.updater = this.updater;
+            definition.renderPredicate = this.renderPredicate;
 
             // Detect per-property byte mapping: enabled only when there is at least one static
             // property and every static property carries its own decode(int). A positional

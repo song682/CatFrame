@@ -707,18 +707,43 @@ public class GuiGraphicsExtractor {
     }
 
     /**
-     * Dispatches and drains the queued PiP states (oversized GUI items, GUI entities).
+     * Dispatches and drains the whole PiP queue (oversized GUI items, GUI entities).
      * <p>
-     * Called by {@link #extractDeferredElements()} at the end of the frame, and <b>also</b> before a
-     * vanilla tooltip is drawn: vanilla renders item tooltips inside {@code drawScreen} (e.g.
-     * {@code GuiContainer.renderToolTip}), i.e. before the end-of-frame flush, so without this split
-     * the overflow of an oversized item would paint over the tooltip.
+     * Called by {@link #extractDeferredElements()} at the end of the frame — the only point where
+     * every queued state is drawn at its intended layering. A draw that has to happen <b>earlier</b>
+     * than the end of the frame uses {@link #flushOversizedGuiItems()} instead, so unrelated states
+     * are never pulled ahead of their own layer.
      */
     public void flushPip() {
         for (PictureInPictureRenderState state : deferredPip) {
             dispatchPip(state);
         }
         deferredPip.clear();
+    }
+
+    /**
+     * Dispatches and drains only the {@code oversized_in_gui} item states, leaving the GUI entity
+     * states queued for {@link #flushPip()}.
+     * <p>
+     * Called before a vanilla tooltip is drawn: vanilla renders item tooltips inside
+     * {@code drawScreen} ({@code GuiContainer.renderToolTip} → {@code GuiScreen.drawHoveringText}),
+     * i.e. before the end-of-frame flush, so without this early drain the overflow of an oversized
+     * item would paint over the tooltip. Entities deliberately keep their end-of-frame slot — moving
+     * them here would change layering for any screen that combines an entity portrait with content
+     * drawn later in the same frame.
+     */
+    public void flushOversizedGuiItems() {
+        for (int i = 0; i < this.deferredPip.size(); ) {
+            PictureInPictureRenderState state = this.deferredPip.get(i);
+            if (state instanceof OversizedItemRenderState) {
+                // Remove first: the queue must not still hold the state while it is being drawn
+                this.deferredPip.remove(i);
+                dispatchPip(state);
+            } else {
+                // Not ours — leave it in place and move on (do not skip the shifted neighbour)
+                i++;
+            }
+        }
     }
 
     /**

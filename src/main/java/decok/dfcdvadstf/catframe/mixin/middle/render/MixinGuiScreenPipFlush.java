@@ -8,15 +8,16 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Mixin into {@link GuiScreen} to flush the PiP queue before a vanilla tooltip is drawn.
+ * Mixin into {@link GuiScreen} to drain the oversized GUI item queue before a vanilla tooltip is
+ * drawn.
  * <p>
  * Vanilla draws item tooltips <b>inside</b> {@code drawScreen} ({@code GuiContainer.renderToolTip}
  * → this method), i.e. before the end-of-frame flush these screens never reach. An oversized
  * {@code oversized_in_gui} item is queued exactly so that it overflows its 16×16 slot, and the
- * PiP flush would then paint that overflow <b>over</b> the tooltip. Flushing at the head of
- * {@code drawHoveringText} puts the item behind the tooltip instead, which is also why this hook
- * is a correct place: the method disables {@code GL_DEPTH_TEST} for its whole body, so ordering —
- * not depth — decides the result.
+ * PiP flush would then paint that overflow <b>over</b> the tooltip. Draining only those item states
+ * at the head of {@code drawHoveringText} puts the item behind the tooltip instead, which is also
+ * why this hook is a correct place: the method disables {@code GL_DEPTH_TEST} for its whole body,
+ * so ordering — not depth — decides the result.
  * </p>
  * <p>
  * Screens that own the tooltip pipeline themselves (CatFrame's {@code AbstractContainerScreen}
@@ -41,12 +42,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinGuiScreenPipFlush {
 
     /**
-     * Drains the PiP queue before the vanilla tooltip paints. Single chokepoint: both
-     * {@code renderToolTip} and the 3-argument delegator funnel into this overload.
+     * Drains the oversized GUI item states before the vanilla tooltip paints. Single chokepoint:
+     * both {@code renderToolTip} and the 3-argument delegator funnel into this overload.
+     * <p>
+     * Deliberately calls {@link GuiGraphicsExtractor#flushOversizedGuiItems()} rather than
+     * {@link GuiGraphicsExtractor#flushPip()}: GUI entity PiP states must keep their end-of-frame
+     * slot, otherwise this tooltip hook would silently reorder them.
      */
     @Inject(method = "drawHoveringText(Ljava/util/List;IILnet/minecraft/client/gui/FontRenderer;)V",
             at = @At("HEAD"), remap = false)
     private void catframe$flushPipBeforeTooltip(CallbackInfo ci) {
-        GuiGraphicsExtractor.getInstance().flushPip();
+        GuiGraphicsExtractor.getInstance().flushOversizedGuiItems();
     }
 }

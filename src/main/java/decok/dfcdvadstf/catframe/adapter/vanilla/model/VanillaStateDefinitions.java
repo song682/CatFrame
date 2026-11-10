@@ -429,6 +429,7 @@ public final class VanillaStateDefinitions {
                                 BlockStairs.class)
                                 .add(STAIR_FACING_META, HALF_BOTTOM_TOP_B2, STAIR_SHAPE)
                                 .dynamic(STAIR_SHAPE)
+                                .updater(VanillaStateUpdaters.STAIRS)
                                 .create();
                 Models.registerBase(BlockStairs.class)
                                 .states(stairsDef)
@@ -583,6 +584,7 @@ public final class VanillaStateDefinitions {
                         BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(stair)
                                         .add(STAIR_FACING_META, HALF_BOTTOM_TOP_B2, STAIR_SHAPE)
                                         .dynamic(STAIR_SHAPE)
+                                        .updater(VanillaStateUpdaters.STAIRS)
                                         .create();
                         Models.register(stair)
                                         .states(def)
@@ -601,6 +603,7 @@ public final class VanillaStateDefinitions {
                 BlockStateDefinition<Block> wallDef = new BlockStateDefinition.Builder<Block>(Blocks.cobblestone_wall)
                                 .add(WALL_VARIANT_META, PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                                .updater(VanillaStateUpdaters.PANE)
                                 .create();
                 Models.register(Blocks.cobblestone_wall)
                                 .states(wallDef)
@@ -616,6 +619,7 @@ public final class VanillaStateDefinitions {
                 BlockStateDefinition<Block> paneDef = new BlockStateDefinition.Builder<Block>(Blocks.glass_pane)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                                .updater(VanillaStateUpdaters.PANE)
                                 .create();
                 Models.register(Blocks.glass_pane)
                                 .states(paneDef)
@@ -628,6 +632,7 @@ public final class VanillaStateDefinitions {
                                 Blocks.stained_glass_pane)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                                .updater(VanillaStateUpdaters.PANE)
                                 .create();
                 Models.register(Blocks.stained_glass_pane)
                                 .states(stainedPaneDef)
@@ -641,6 +646,7 @@ public final class VanillaStateDefinitions {
                 BlockStateDefinition<Block> fenceDef = new BlockStateDefinition.Builder<Block>(Blocks.fence)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                                .updater(VanillaStateUpdaters.PANE)
                                 .create();
                 Models.register(Blocks.fence)
                                 .states(fenceDef)
@@ -653,6 +659,7 @@ public final class VanillaStateDefinitions {
                 BlockStateDefinition<Block> barsDef = new BlockStateDefinition.Builder<Block>(Blocks.iron_bars)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                                .updater(VanillaStateUpdaters.PANE)
                                 .create();
                 Models.register(Blocks.iron_bars)
                                 .states(barsDef)
@@ -665,6 +672,7 @@ public final class VanillaStateDefinitions {
                 BlockStateDefinition<Block> nbfDef = new BlockStateDefinition.Builder<Block>(Blocks.nether_brick_fence)
                                 .add(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST)
+                                .updater(VanillaStateUpdaters.PANE)
                                 .create();
                 Models.register(Blocks.nether_brick_fence)
                                 .states(nbfDef)
@@ -681,6 +689,7 @@ public final class VanillaStateDefinitions {
                 BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(Blocks.grass)
                                 .add(SNOWY)
                                 .dynamic(SNOWY)
+                                .updater(VanillaStateUpdaters.SNOWY)
                                 .create();
                 Models.register(Blocks.grass)
                                 .states(def)
@@ -704,6 +713,8 @@ public final class VanillaStateDefinitions {
                 // the real variant is read from the block below by the DOUBLE_PLANT dynamic resolver (matching vanilla func_149885_e)
                 BlockStateDefinition<Block> doublePlantDef = new BlockStateDefinition.Builder<Block>(Blocks.double_plant)
                                 .add(DOUBLE_PLANT_VARIANT_META, HALF_LOWER_UPPER_B3)
+                                .updater(VanillaStateUpdaters.DOUBLE_PLANT)
+                                .renderWhen(VanillaStateUpdaters.DOUBLE_PLANT_PREDICATE)
                                 .create();
                 Models.register(Blocks.double_plant).states(doublePlantDef)
                                 .dynamic(VanillaBlockResolvers.DOUBLE_PLANT).register();
@@ -763,6 +774,7 @@ public final class VanillaStateDefinitions {
                         BlockStateDefinition<Block> def = new BlockStateDefinition.Builder<Block>(door)
                                         .add(DOOR_FACING, HALF_LOWER_UPPER_B3, DOOR_HINGE, OPEN)
                                         .dynamic(DOOR_FACING, DOOR_HINGE, OPEN)
+                                        .updater(VanillaStateUpdaters.DOOR)
                                         .create();
                         Models.register(door)
                                         .states(def)
@@ -791,6 +803,7 @@ public final class VanillaStateDefinitions {
                                 .dynamic(PANE_NORTH, PANE_EAST, PANE_SOUTH, PANE_WEST,
                                                 REDSTONE_UP_NORTH, REDSTONE_UP_EAST, REDSTONE_UP_SOUTH,
                                                 REDSTONE_UP_WEST)
+                                .updater(VanillaStateUpdaters.REDSTONE_WIRE)
                                 .create();
                 Models.register(Blocks.redstone_wire)
                                 .states(def)

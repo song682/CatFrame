@@ -1,6 +1,8 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import com.google.common.collect.Lists;
+import decok.dfcdvadstf.catframe.ui.StringSplitter;
+import decok.dfcdvadstf.catframe.ui.Style;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiScreen;
 import org.apache.logging.log4j.LogManager;
@@ -29,6 +31,7 @@ public class MultilineTextField {
     private static final int LINE_SEEK_PIXEL_BIAS = 2;
 
     private final FontRenderer font;
+    private final StringSplitter splitter;
     private final List<StringView> displayLines = Lists.newArrayList();
     private String value;
     private int cursor;
@@ -44,6 +47,7 @@ public class MultilineTextField {
 
     public MultilineTextField(FontRenderer font, int width) {
         this.font = font;
+        this.splitter = StringSplitter.forFont(font);
         this.width = width;
         this.setValue("");
     }
@@ -406,36 +410,21 @@ public class MultilineTextField {
     }
 
     /**
-     * Wrap the value into display lines, honouring hard '\n' breaks and soft
-     * width-based breaks. Format codes (§x) advance no pen width.
+     * Wrap the value into display lines with {@link StringSplitter}, honouring hard
+     * '\n' breaks and soft width-based breaks; a break prefers the last space so words
+     * are kept whole, and format codes (§x) advance no pen width. A trailing '\n'
+     * opens one extra empty line.
      */
     private void reflowDisplayLines() {
         this.displayLines.clear();
         if (this.value.isEmpty()) {
             this.displayLines.add(StringView.EMPTY);
         } else {
-            int lineStart = 0;
-            int lineWidth = 0;
-            for (int i = 0; i < this.value.length(); i++) {
-                char c = this.value.charAt(i);
-                if (c == '\n') {
-                    this.displayLines.add(new StringView(lineStart, i));
-                    lineStart = i + 1;
-                    lineWidth = 0;
-                } else if (c == '\u00a7' && i + 1 < this.value.length()) {
-                    i++; // format code: colours the next char, advances no pen
-                } else {
-                    int w = this.font.getCharWidth(c);
-                    if (lineWidth + w > this.width && lineWidth > 0) {
-                        this.displayLines.add(new StringView(lineStart, i));
-                        lineStart = i;
-                        lineWidth = w;
-                    } else {
-                        lineWidth += w;
-                    }
-                }
+            this.splitter.splitLines(this.value, this.width, Style.EMPTY, false,
+                    (style, start, end) -> this.displayLines.add(new StringView(start, end)));
+            if (this.value.charAt(this.value.length() - 1) == '\n') {
+                this.displayLines.add(new StringView(this.value.length(), this.value.length()));
             }
-            this.displayLines.add(new StringView(lineStart, this.value.length()));
         }
     }
 
@@ -447,26 +436,8 @@ public class MultilineTextField {
         if (text.isEmpty()) {
             return 1;
         }
-        int lineWidth = 0;
-        int lines = 0;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '\n') {
-                lines++;
-                lineWidth = 0;
-            } else if (c == '\u00a7' && i + 1 < text.length()) {
-                i++;
-            } else {
-                int w = this.font.getCharWidth(c);
-                if (lineWidth + w > this.width && lineWidth > 0) {
-                    lines++;
-                    lineWidth = w;
-                } else {
-                    lineWidth += w;
-                }
-            }
-        }
-        return lines + 1;
+        return this.splitter.splitLines(text, this.width, Style.EMPTY).size()
+                + (text.charAt(text.length() - 1) == '\n' ? 1 : 0);
     }
 
     private String truncateFullText(String input) {

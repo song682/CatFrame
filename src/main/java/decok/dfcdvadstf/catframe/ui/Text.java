@@ -531,9 +531,10 @@ public class Text {
 
     /**
      * Converts a style into its legacy {@code §} code prefix (colour first, then flags,
-     * matching the vanilla emission order {@code k l m n o}).
+     * matching the vanilla emission order {@code k l m n o}). Package-private so that
+     * {@link StringSplitter} emits line prefixes with the very same order.
      */
-    private static String legacyCodes(Style style) {
+    static String legacyCodes(Style style) {
         if (style == null || style.isEmpty()) {
             return "";
         }

@@ -1,6 +1,26 @@
 {
     "model": {
-        "type": "minecraft:model",
-        "model": "minecraft:block/sand"
+        "type": "minecraft:select",
+        "property": "catframe:meta",
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:item/oak_sapling"
+        },
+        "cases": [
+            {
+                "when": "0",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/sand"
+                }
+            },
+            {
+                "when": "1",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/red_sand"
+                }
+            }
+        ]
     }
 }

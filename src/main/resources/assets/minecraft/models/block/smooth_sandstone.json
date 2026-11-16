@@ -1,6 +1,7 @@
 {
-    "parent": "block/cube_all",
+    "parent": "block/cube_column",
     "textures": {
-        "all": "minecraft:blocks/sandstone_top"
+        "end": "minecraft:blocks/sandstone_top",
+        "side": "minecraft:blocks/sandstone_smooth"
     }
 }

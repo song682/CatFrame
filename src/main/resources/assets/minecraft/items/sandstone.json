@@ -1,6 +1,33 @@
 {
     "model": {
-        "type": "minecraft:model",
-        "model": "minecraft:block/sandstone"
+        "type": "minecraft:select",
+        "property": "catframe:meta",
+        "fallback": {
+            "type": "minecraft:model",
+            "model": "minecraft:block/sandstone"
+        },
+        "cases": [
+            {
+                "when": "0",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/sandstone"
+                }
+            },
+            {
+                "when": "1",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/chiseled_sandstone"
+                }
+            },
+            {
+                "when": "2",
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/smooth_sandstone"
+                }
+            }
+        ]
     }
 }

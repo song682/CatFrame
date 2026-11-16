@@ -57,10 +57,13 @@ public class StringWidget extends AbstractStringWidget {
      * Creates a StringWidget from a {@link Text} and a colour.
      */
     public StringWidget(Text text, int color) {
-        super(0, 0, formattedWidth(text),
+        // Width is measured below, once the splitter exists, so the constructor reports the
+        // same width as setMessage instead of the font's plain-text approximation.
+        super(0, 0, 0,
                 Minecraft.getMinecraft().fontRenderer.FONT_HEIGHT,
                 text, Minecraft.getMinecraft().fontRenderer);
         this.splitter = StringSplitter.forFont(getFont());
+        this.width = formattedWidth(text, this.splitter);
         this.color = color;
     }
 
@@ -80,19 +83,26 @@ public class StringWidget extends AbstractStringWidget {
     @Override
     public void setMessage(Text message) {
         super.setMessage(message);
-        // The base measures getString() — codes stripped, bold not expanded — so re-measure
-        // the formatted form to keep the reported width equal to the drawn one.
-        this.width = formattedWidth(message);
+        // The base measures getString() — codes stripped, bold not expanded, and each half of
+        // a surrogate pair counted — so re-measure through the splitter, the very provider
+        // reflow() lays out with, to keep the reported width equal to the drawn one.
+        this.width = formattedWidth(message, this.splitter);
         this.cacheDirty = true;
     }
 
     /**
-     * Width of the message exactly as it is drawn: the legacy {@code §} form measured by
-     * the font ({@code §} pairs contribute nothing, bold contributes its extra pixel).
+     * Width of the message exactly as it is drawn: the legacy {@code §} form measured with
+     * the splitter's {@code WidthProvider}. Sharing the provider with {@link #layout} is
+     * what keeps the two consistent for characters the font counts but the renderer cannot
+     * draw — a non-BMP code point advances no pixels on 1.7.10.
+     *
+     * @param text     the message ({@code null} is treated as empty)
+     * @param splitter the splitter to measure with
+     * @return the rounded width in pixels
      */
-    private static int formattedWidth(@Nullable Text text) {
+    static int formattedWidth(@Nullable Text text, StringSplitter splitter) {
         String formatted = (text != null) ? text.getFormattedString() : "";
-        return Minecraft.getMinecraft().fontRenderer.getStringWidth(formatted);
+        return Math.round(splitter.stringWidth(formatted));
     }
 
     /**

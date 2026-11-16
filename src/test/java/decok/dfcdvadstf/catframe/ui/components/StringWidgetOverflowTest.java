@@ -198,4 +198,30 @@ public class StringWidgetOverflowTest {
             }
         }
     }
+
+    @Test
+    public void reportedWidthMatchesLayoutForStyledText() {
+        Text bold = Text.literal("aa").withStyle(Style.EMPTY.withBold(true));
+
+        assertEquals(4, StringWidget.formattedWidth(bold, SPLITTER));
+        assertEquals(4, StringWidget.layout(bold, 0, StringWidget.TextOverflow.CLAMPED,
+                ELLIPSIS_WIDTH, SPLITTER).textWidth);
+    }
+
+    @Test
+    public void reportedWidthAndLayoutAgreeOnNonBmpCharacters() {
+        // An astral code point: the font counts both surrogate halves while the splitter
+        // counts neither, so this is where the two metrologies used to disagree.
+        StringSplitter nonBmpAware = new StringSplitter(
+                (codepoint, style) -> Character.isBmpCodePoint(codepoint) ? 1.0F : 0.0F);
+        Text message = Text.literal("a\uD835\uDD1Eb");
+
+        int reported = StringWidget.formattedWidth(message, nonBmpAware);
+        StringWidget.Layout layout = StringWidget.layout(message, 0,
+                StringWidget.TextOverflow.CLAMPED, ELLIPSIS_WIDTH, nonBmpAware);
+
+        assertEquals(2, reported);
+        assertEquals(reported, layout.textWidth);
+        assertEquals(reported, layout.width);
+    }
 }

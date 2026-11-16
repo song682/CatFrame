@@ -1,11 +1,14 @@
 package decok.dfcdvadstf.catframe.ui.components;
 
 import decok.dfcdvadstf.catframe.ui.StringSplitter;
+import decok.dfcdvadstf.catframe.ui.Style;
+import decok.dfcdvadstf.catframe.ui.Text;
 import org.junit.Test;
 
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -129,5 +132,70 @@ public class StringWidgetOverflowTest {
         }
         assertEquals(0, StringWidget.scrollingOffset(0, 1234L));
         assertEquals(0, StringWidget.scrollingOffset(-5, 1234L));
+    }
+
+    // ──── Style-aware path: layout() works on the legacy § form ────
+
+    @Test
+    public void layoutMeasuresAndDrawsTheLegacyFormSoStylesReachTheRenderer() {
+        Text bold = Text.literal("abc").withStyle(Style.EMPTY.withBold(true));
+
+        StringWidget.Layout layout = StringWidget.layout(bold, 0, StringWidget.TextOverflow.CLAMPED,
+                ELLIPSIS_WIDTH, SPLITTER);
+
+        assertEquals("§labc", layout.lines.get(0));
+        // bold advances 2px per glyph under the synthetic provider
+        assertEquals(6, layout.textWidth);
+        assertEquals(6, layout.width);
+    }
+
+    @Test
+    public void wrapLinesCarryTheCodeInEffectAtTheirStart() {
+        StringWidget.Layout layout = StringWidget.layout(Text.literal("§caa bb cc"), 5,
+                StringWidget.TextOverflow.WRAP, ELLIPSIS_WIDTH, SPLITTER);
+
+        assertEquals(2, layout.lines.size());
+        assertEquals("§caa bb", layout.lines.get(0));
+        assertEquals("§ccc", layout.lines.get(1));
+        // the codes cost no width: 8 visible glyphs, reported width clamped to the limit
+        assertEquals(8, layout.textWidth);
+        assertEquals(5, layout.width);
+    }
+
+    @Test
+    public void clampedAppendsTheSuffixAfterTheSurvivingCodes() {
+        StringWidget.Layout layout = StringWidget.layout(Text.literal("§cabcdefghij"), 6,
+                StringWidget.TextOverflow.CLAMPED, ELLIPSIS_WIDTH, SPLITTER);
+
+        assertEquals(1, layout.lines.size());
+        assertEquals("§cabc...", layout.lines.get(0));
+        assertFalse(layout.lines.get(0).endsWith("§"));
+    }
+
+    @Test
+    public void scrollingKeepsTheStyledTextWhole() {
+        StringWidget.Layout layout = StringWidget.layout(Text.literal("§caa bb cc"), 5,
+                StringWidget.TextOverflow.SCROLLING, ELLIPSIS_WIDTH, SPLITTER);
+
+        assertEquals(1, layout.lines.size());
+        assertEquals("§caa bb cc", layout.lines.get(0));
+        assertEquals(8, layout.textWidth);
+        assertEquals(5, layout.width);
+    }
+
+    @Test
+    public void clippingNeverLeavesADanglingCodePrefix() {
+        String text = "§cab§lcd§refgh";
+
+        for (int limit = 1; limit <= 12; limit++) {
+            for (StringWidget.TextOverflow mode : StringWidget.TextOverflow.values()) {
+                StringWidget.Layout layout = StringWidget.layout(Text.literal(text), limit, mode,
+                        ELLIPSIS_WIDTH, SPLITTER);
+                assertFalse(mode + "@" + limit, layout.lines.isEmpty());
+                for (String line : layout.lines) {
+                    assertFalse(mode + "@" + limit + " -> " + line, line.endsWith("§"));
+                }
+            }
+        }
     }
 }

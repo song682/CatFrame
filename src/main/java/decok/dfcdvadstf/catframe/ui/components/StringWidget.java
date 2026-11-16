@@ -19,7 +19,10 @@ import java.util.List;
  * {@link Text} objects and renders its message with no interaction currently.
  * Its drawn width is limited through {@link #setMaxWidth(int, TextOverflow)}, which also
  * chooses what happens to the overflowing text (ellipsis, hard cut, folding into
- * lines, or scrolling). Can be added directly to the layout system.
+ * lines, or scrolling). The message is flattened once to its legacy {@code §} form
+ * ({@link Text#getFormattedString()}) and both measured and drawn in that form, so
+ * styles reach the renderer and the codes cost no width — the same assumption the
+ * splitter folds with. Can be added directly to the layout system.
  * </p>
  */
 public class StringWidget extends AbstractStringWidget {
@@ -54,7 +57,7 @@ public class StringWidget extends AbstractStringWidget {
      * Creates a StringWidget from a {@link Text} and a colour.
      */
     public StringWidget(Text text, int color) {
-        super(0, 0, Minecraft.getMinecraft().fontRenderer.getStringWidth(text.getString()),
+        super(0, 0, formattedWidth(text),
                 Minecraft.getMinecraft().fontRenderer.FONT_HEIGHT,
                 text, Minecraft.getMinecraft().fontRenderer);
         this.splitter = StringSplitter.forFont(getFont());
@@ -77,7 +80,19 @@ public class StringWidget extends AbstractStringWidget {
     @Override
     public void setMessage(Text message) {
         super.setMessage(message);
+        // The base measures getString() — codes stripped, bold not expanded — so re-measure
+        // the formatted form to keep the reported width equal to the drawn one.
+        this.width = formattedWidth(message);
         this.cacheDirty = true;
+    }
+
+    /**
+     * Width of the message exactly as it is drawn: the legacy {@code §} form measured by
+     * the font ({@code §} pairs contribute nothing, bold contributes its extra pixel).
+     */
+    private static int formattedWidth(@Nullable Text text) {
+        String formatted = (text != null) ? text.getFormattedString() : "";
+        return Minecraft.getMinecraft().fontRenderer.getStringWidth(formatted);
     }
 
     /**
@@ -244,18 +259,56 @@ public class StringWidget extends AbstractStringWidget {
         if (!this.cacheDirty) {
             return;
         }
-        String text = (getMessage() != null) ? getMessage().getString() : "";
-        int textWidth = getFont().getStringWidth(text);
-        this.cachedTextWidth = textWidth;
-        if (this.maxWidth > 0) {
-            this.cachedWidth = Math.min(this.maxWidth, textWidth);
-            this.cachedLines = fold(text, this.maxWidth, textWidth,
-                    getFont().getStringWidth(ELLIPSIS), this.textOverflow, this.splitter);
-        } else {
-            this.cachedWidth = textWidth;
-            this.cachedLines = Collections.singletonList(text);
-        }
+        Layout layout = layout(getMessage(), this.maxWidth, this.textOverflow,
+                Math.round(this.splitter.stringWidth(ELLIPSIS)), this.splitter);
+        this.cachedWidth = layout.width;
+        this.cachedTextWidth = layout.textWidth;
+        this.cachedLines = layout.lines;
         this.cacheDirty = false;
+    }
+
+    /**
+     * Lays out a message for one width limit: the width it occupies and the lines to
+     * draw. Pure — the message is flattened to legacy {@code §} codes and measured with
+     * the injected splitter — so the code-aware path is testable without a
+     * {@code FontRenderer}.
+     *
+     * @param message       the message ({@code null} is treated as empty)
+     * @param maxWidth      the width limit; {@code <= 0} means unlimited
+     * @param overflow      the overflow mode ({@code null} falls back to CLAMPED)
+     * @param ellipsisWidth the width of {@link #ELLIPSIS}
+     * @param splitter      the splitter used for measuring, clipping and folding
+     * @return the drawn lines (carrying {@code §} codes), the full text width and the
+     * reported width
+     */
+    static Layout layout(@Nullable Text message, int maxWidth, @Nullable TextOverflow overflow,
+                         int ellipsisWidth, StringSplitter splitter) {
+        String text = (message != null) ? message.getFormattedString() : "";
+        int textWidth = Math.round(splitter.stringWidth(text));
+        if (maxWidth > 0) {
+            List<String> lines = fold(text, maxWidth, textWidth, ellipsisWidth, overflow, splitter);
+            return new Layout(lines, textWidth, Math.min(maxWidth, textWidth));
+        }
+        return new Layout(Collections.singletonList(text), textWidth, textWidth);
+    }
+
+    /**
+     * Result of {@link #layout} — everything {@link #renderWidget} and {@link #getWidth()}
+     * need, computed once per message or width change.
+     */
+    static final class Layout {
+        /** Lines to draw in order; every line carries its own {@code §} prefix when needed. */
+        final List<String> lines;
+        /** Full width of the whole message. */
+        final int textWidth;
+        /** Width the widget reports: the limit when it clamps, the text width otherwise. */
+        final int width;
+
+        Layout(List<String> lines, int textWidth, int width) {
+            this.lines = lines;
+            this.textWidth = textWidth;
+            this.width = width;
+        }
     }
 
     /**

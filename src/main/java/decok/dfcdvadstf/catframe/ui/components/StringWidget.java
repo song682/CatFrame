@@ -5,6 +5,8 @@ import decok.dfcdvadstf.catframe.ui.StringSplitter;
 import decok.dfcdvadstf.catframe.ui.Style;
 import decok.dfcdvadstf.catframe.ui.Text;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ScaledResolution;
+import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -16,11 +18,17 @@ import java.util.List;
  * {@code StringWidget}. Extends {@link AbstractStringWidget}; accepts
  * {@link Text} objects and renders its message with no interaction currently.
  * Its drawn width is limited through {@link #setMaxWidth(int, TextOverflow)}, which also
- * chooses what happens to the overflowing text (ellipsis, hard cut, or folding into
- * lines). Can be added directly to the layout system.
+ * chooses what happens to the overflowing text (ellipsis, hard cut, folding into
+ * lines, or scrolling). Can be added directly to the layout system.
  * </p>
  */
 public class StringWidget extends AbstractStringWidget {
+
+    /**
+     * Horizontal inset used by the scrolling mode, matching the reference
+     * {@code extractScrollingStringOverContents(output, message, 2)}.
+     */
+    private static final int TEXT_MARGIN = 2;
 
     /**
      * Appended by {@link TextOverflow#CLAMPED}. The reference uses
@@ -37,6 +45,7 @@ public class StringWidget extends AbstractStringWidget {
     private int maxWidth;
     private TextOverflow textOverflow = TextOverflow.CLAMPED;
     private int cachedWidth;
+    private int cachedTextWidth;
     private boolean cacheDirty = true;
     @Nullable
     private List<String> cachedLines;
@@ -150,6 +159,11 @@ public class StringWidget extends AbstractStringWidget {
         if (lines == null) {
             return;
         }
+        if (this.textOverflow == TextOverflow.SCROLLING
+                && this.maxWidth > 0 && this.cachedTextWidth > this.maxWidth) {
+            this.renderScrolling(lines.get(0));
+            return;
+        }
         int lineY = this.y;
         for (String line : lines) {
             if (shadow) {
@@ -159,6 +173,66 @@ public class StringWidget extends AbstractStringWidget {
             }
             lineY += getFont().FONT_HEIGHT;
         }
+    }
+
+    /**
+     * Draws the text sliding inside the {@link #TEXT_MARGIN}-inset box and clipped to it.
+     * Counterpart of the reference {@code AbstractWidget#extractScrollingStringOverContents}
+     * combined with {@code ActiveTextCollector#defaultScrollingHelper} (the overflowing
+     * branch only — {@code StringWidget} never enters the centred branch).
+     */
+    private void renderScrolling(String text) {
+        int left = this.x + TEXT_MARGIN;
+        int right = this.x + getWidth() - TEXT_MARGIN;
+        int top = this.y;
+        int bottom = this.y + getHeight();
+        int available = right - left;
+        if (available <= 0) {
+            return;
+        }
+        int maxPosition = this.cachedTextWidth - available;
+        int offset = scrollingOffset(maxPosition, Minecraft.getSystemTime());
+        int drawX = left - offset;
+
+        // Scissor rectangles are framebuffer pixels with a bottom-left origin, so the
+        // GUI-scale geometry is scaled here (same recipe as AbstractTextAreaWidget).
+        Minecraft mc = Minecraft.getMinecraft();
+        int scaleFactor = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaleFactor();
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        GL11.glScissor(left * scaleFactor,
+                mc.displayHeight - bottom * scaleFactor,
+                available * scaleFactor,
+                (bottom - top) * scaleFactor);
+        if (shadow) {
+            getFont().drawStringWithShadow(text, drawX, this.y, color);
+        } else {
+            getFont().drawString(text, drawX, this.y, color);
+        }
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+    }
+
+    /**
+     * Horizontal scroll offset of the scrolling mode at a point in time. Pure so the
+     * timing curve is testable without a widget.
+     * <p>
+     * The period and the eased sine are the reference
+     * {@code ActiveTextCollector#defaultScrollingHelper} formulas: one period lasts
+     * {@code max(0.5 * maxPosition, 3)} seconds and the offset sweeps between {@code 0}
+     * and {@code maxPosition} with a cosine-eased sine, starting at {@code maxPosition}.
+     * </p>
+     *
+     * @param maxPosition the furthest the text has to travel, in pixels
+     * @param millis      the current wall-clock time in milliseconds
+     * @return the offset in {@code [0, maxPosition]}, or {@code 0} when nothing overflows
+     */
+    static int scrollingOffset(int maxPosition, long millis) {
+        if (maxPosition <= 0) {
+            return 0;
+        }
+        double period = Math.max(maxPosition * 0.5, 3.0);
+        double time = millis / 1000.0;
+        double alpha = Math.sin((Math.PI / 2) * Math.cos((Math.PI * 2) * time / period)) / 2.0 + 0.5;
+        return (int) (maxPosition * alpha);
     }
 
     /**
@@ -172,6 +246,7 @@ public class StringWidget extends AbstractStringWidget {
         }
         String text = (getMessage() != null) ? getMessage().getString() : "";
         int textWidth = getFont().getStringWidth(text);
+        this.cachedTextWidth = textWidth;
         if (this.maxWidth > 0) {
             this.cachedWidth = Math.min(this.maxWidth, textWidth);
             this.cachedLines = fold(text, this.maxWidth, textWidth,
@@ -208,6 +283,9 @@ public class StringWidget extends AbstractStringWidget {
         switch (mode) {
             case TRUNCATED:
                 return Collections.singletonList(splitter.plainHeadByWidth(text, maxWidth, Style.EMPTY));
+            case SCROLLING:
+                // Scrolling keeps the full text; renderWidget clips and offsets it.
+                return Collections.singletonList(text);
             case WRAP: {
                 List<String> lines = splitter.splitLines(text, maxWidth, Style.EMPTY);
                 return lines.isEmpty() ? Collections.singletonList("") : lines;
@@ -224,15 +302,16 @@ public class StringWidget extends AbstractStringWidget {
      * <p>
      * The reference 26.1.2 enum is {@code {CLAMPED, SCROLLING}}: CLAMPED clips the text
      * and appends an ellipsis ({@code ComponentRenderUtils#clipText}), SCROLLING slides
-     * the text back and forth over the widget. This port keeps CLAMPED with the same
-     * meaning, replaces the unimplemented scrolling mode with a hard {@link #TRUNCATED}
-     * cut, and adds {@link #WRAP} — the single-widget form of the reference's separate
-     * {@code MultiLineTextWidget}.
+     * the text back and forth inside the widget. This port keeps both with the same
+     * meaning and adds {@link #TRUNCATED} (a hard cut without a suffix) and {@link #WRAP}
+     * — the single-widget form of the reference's separate {@code MultiLineTextWidget}.
      * </p>
      */
     public enum TextOverflow {
         /** Clips to the limit and appends {@link StringWidget#ELLIPSIS} — reference CLAMPED semantics. */
         CLAMPED,
+        /** Slides the text back and forth, clipped to the width — reference SCROLLING semantics. */
+        SCROLLING,
         /** Hard cut at the limit, nothing appended. */
         TRUNCATED,
         /** Folds into as many lines as needed; {@link #getHeight()} grows accordingly. */

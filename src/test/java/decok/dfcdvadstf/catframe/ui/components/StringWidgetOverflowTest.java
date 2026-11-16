@@ -98,4 +98,36 @@ public class StringWidgetOverflowTest {
     public void nullModeFallsBackToClamped() {
         assertEquals("abc...", StringWidget.fold("abcdefghij", 6, 10, ELLIPSIS_WIDTH, null, SPLITTER).get(0));
     }
+
+    @Test
+    public void scrollingKeepsTheWholeTextBecauseDrawingClipsIt() {
+        List<String> lines = fold("abcdefghij", 6, StringWidget.TextOverflow.SCROLLING);
+
+        assertEquals(1, lines.size());
+        assertEquals("abcdefghij", lines.get(0));
+    }
+
+    @Test
+    public void scrollingOffsetStartsAtTheEndOfTravel() {
+        // period = max(0.5 * 8, 3) = 4s; at t = 0 the eased sine peaks at alpha = 1
+        assertEquals(8, StringWidget.scrollingOffset(8, 0L));
+    }
+
+    @Test
+    public void scrollingOffsetReturnsToZeroAtHalfPeriod() {
+        assertEquals(0, StringWidget.scrollingOffset(8, 2000L));
+        // the 3s floor applies below maxPosition = 6
+        assertEquals(0, StringWidget.scrollingOffset(2, 1500L));
+    }
+
+    @Test
+    public void scrollingOffsetNeverLeavesTheTravelDistance() {
+        int maxPosition = 11;
+        for (long millis = 0L; millis <= 20000L; millis += 37L) {
+            int offset = StringWidget.scrollingOffset(maxPosition, millis);
+            assertTrue("t=" + millis + " offset=" + offset, offset >= 0 && offset <= maxPosition);
+        }
+        assertEquals(0, StringWidget.scrollingOffset(0, 1234L));
+        assertEquals(0, StringWidget.scrollingOffset(-5, 1234L));
+    }
 }

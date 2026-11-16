@@ -52,11 +52,18 @@ public class Text {
     private String fallback;
 
     /**
-     * Matches one format conversion inside a translation template — plain or
-     * indexed (e.g. {@code %s}, {@code %1$s}), and {@code %%}, mirroring the
-     * vanilla {@code ChatComponentTranslation#stringVariablePattern}.
+     * Matches one format specifier inside a translation template:
+     * {@code %[index$][flags][width][.precision][tT]conversion}.
+     * <p>
+     * The flags class deliberately leaves out the space flag ({@code ' '}): with it
+     * included, prose such as {@code "50% off"} would parse as {@code % (space) o} —
+     * an octal conversion — and the whole template would be handed to
+     * {@link String#format}. A trailing {@code %} with nothing after it still matches
+     * with an empty conversion, so it keeps degrading to the flat legacy path.
+     * </p>
      */
-    private static final Pattern FORMAT_PATTERN = Pattern.compile("%(?:(\\d+)\\$)?([A-Za-z%]|$)");
+    private static final Pattern FORMAT_PATTERN = Pattern.compile(
+            "%(?:(\\d+)\\$)?([-#+0,(<]*)(\\d+)?(\\.\\d+)?([tT])?([A-Za-z%]|$)");
 
     /**
      * Child components appended after this one — counterpart of the raw JSON text
@@ -212,7 +219,20 @@ public class Text {
         if (!translatable) {
             return key;
         }
-        String template = resolvedTemplate();
+        return formatFlat(resolvedTemplate(), args);
+    }
+
+    /**
+     * Formats a template with {@link String#format} semantics, reproducing vanilla's
+     * {@code "Format error: "} prefix instead of letting a mismatch escape to the
+     * renderer. Side-effect free and package-private so the formatting rules stay
+     * testable without the {@code StatCollector} chain.
+     *
+     * @param template the resolved template
+     * @param args     the format arguments
+     * @return the formatted text, or {@code "Format error: " + template}
+     */
+    static String formatFlat(String template, Object[] args) {
         try {
             return String.format(template, args);
         } catch (IllegalFormatException e) {
@@ -380,50 +400,70 @@ public class Text {
      * are decomposed; any other conversion, a stray {@code %}, or an out-of-range
      * index degrades the whole node to a single flat segment formatted with
      * {@link String#format} semantics (mirroring the legacy {@code I18n} behaviour,
-     * including {@code "Format error: "} on failure).
+     * including {@code "Format error: "} on failure). The same degradation now also
+     * covers specifiers carrying flags, width, precision or a {@code t}/{@code T}
+     * prefix, which are recognised by {@link #FORMAT_PATTERN} but never split.
      * </p>
      */
     private List<Object> decompose() {
         if (!translatable || args.length == 0) {
             return Collections.<Object>singletonList(ownFlatText());
         }
-        String template = resolvedTemplate();
+        return decomposeTemplate(resolvedTemplate(), args);
+    }
+
+    /**
+     * Splits the given template into render-ordered parts, or returns a single flat
+     * segment when the template cannot be split faithfully.
+     * <p>
+     * Splitting is only attempted while every specifier is a bare {@code %s}, an
+     * indexed {@code %N$s}, or {@code %%}. Any flags, width, precision or
+     * {@code t}/{@code T} prefix makes that specifier unsplittable — width and
+     * precision apply to the formatted argument as a whole and cannot survive being
+     * rendered as separate segments — so the whole template falls back to
+     * {@link #formatFlat(String, Object[])}. Returning the parts collected so far
+     * would leave the remaining specifiers unrendered, which is exactly the
+     * partial-substitution defect this rule exists to prevent.
+     * </p>
+     *
+     * @param template the resolved translation template
+     * @param args     the format arguments
+     * @return plain strings and embedded Text arguments, or a single flat string
+     */
+    static List<Object> decomposeTemplate(String template, Object[] args) {
         List<Object> parts = new ArrayList<Object>();
         Matcher matcher = FORMAT_PATTERN.matcher(template);
         int lastEnd = 0;
         int nextArg = 0;
-        try {
-            while (matcher.find()) {
-                int start = matcher.start();
-                if (start > lastEnd) {
-                    parts.add(template.substring(lastEnd, start));
-                }
-                lastEnd = matcher.end();
-                String conversion = matcher.group(2);
-                if ("%".equals(conversion)) {
-                    parts.add("%");
-                    continue;
-                }
-                if (!"s".equals(conversion)) {
-                    throw new IllegalArgumentException("Unsupported conversion: " + conversion);
-                }
-                String indexGroup = matcher.group(1);
-                int index = (indexGroup != null) ? Integer.parseInt(indexGroup) - 1 : nextArg++;
-                if (index < 0 || index >= args.length) {
-                    throw new IllegalArgumentException("Argument index out of range: " + index);
-                }
-                Object arg = args[index];
-                parts.add((arg instanceof Text) ? arg : String.valueOf(arg));
+        while (matcher.find()) {
+            boolean plain = matcher.group(2).isEmpty()
+                    && matcher.group(3) == null
+                    && matcher.group(4) == null
+                    && matcher.group(5) == null;
+            String conversion = matcher.group(6);
+            if (!plain || (!"s".equals(conversion) && !"%".equals(conversion))) {
+                return Collections.<Object>singletonList(formatFlat(template, args));
             }
-            if (lastEnd < template.length()) {
-                parts.add(template.substring(lastEnd));
+            if (matcher.start() > lastEnd) {
+                parts.add(template.substring(lastEnd, matcher.start()));
             }
-            return parts;
-        } catch (IllegalArgumentException e) {
-            // Degrade to the flat legacy string — e.g. "%d"/"%f" conversions or a
-            // malformed template that String.format would reject.
-            return Collections.<Object>singletonList(ownFlatText());
+            lastEnd = matcher.end();
+            if ("%".equals(conversion)) {
+                parts.add("%");
+                continue;
+            }
+            String indexGroup = matcher.group(1);
+            int index = (indexGroup != null) ? Integer.parseInt(indexGroup) - 1 : nextArg++;
+            if (index < 0 || index >= args.length) {
+                return Collections.<Object>singletonList(formatFlat(template, args));
+            }
+            Object arg = args[index];
+            parts.add((arg instanceof Text) ? arg : String.valueOf(arg));
         }
+        if (lastEnd < template.length()) {
+            parts.add(template.substring(lastEnd));
+        }
+        return parts;
     }
 
     // ──── Legacy-formatted output  ────

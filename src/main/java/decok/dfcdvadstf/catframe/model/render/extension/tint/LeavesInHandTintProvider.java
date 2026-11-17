@@ -8,7 +8,7 @@ import net.minecraft.world.ColorizerFoliage;
 
 import static decok.dfcdvadstf.catframe.model.render.extension.tint.LeavesTintProvider.getLeaves2Block;
 
-public class LeavesInHandTintProvider implements IItemTintProvider{
+public class LeavesInHandTintProvider implements IItemTintProvider {
     @Override
     public int getTint(ItemStack stack, int tintIndex) {
         Item item = stack.getItem();

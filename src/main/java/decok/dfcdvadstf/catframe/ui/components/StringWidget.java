@@ -6,9 +6,11 @@ import decok.dfcdvadstf.catframe.ui.Style;
 import decok.dfcdvadstf.catframe.ui.Text;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
+import java.nio.IntBuffer;
 import java.util.Collections;
 import java.util.List;
 
@@ -191,12 +193,20 @@ public class StringWidget extends AbstractStringWidget {
         }
         int lineY = this.y;
         for (String line : lines) {
-            if (shadow) {
-                getFont().drawStringWithShadow(line, x, lineY, color);
-            } else {
-                getFont().drawString(line, x, lineY, color);
-            }
+            drawLine(line, x, lineY);
             lineY += getFont().FONT_HEIGHT;
+        }
+    }
+
+    /**
+     * Draws one line at the given position, with or without the shadow as configured by
+     * {@link #setShadow(boolean)}.
+     */
+    private void drawLine(String text, int x, int y) {
+        if (shadow) {
+            getFont().drawStringWithShadow(text, x, y, color);
+        } else {
+            getFont().drawString(text, x, y, color);
         }
     }
 
@@ -213,6 +223,9 @@ public class StringWidget extends AbstractStringWidget {
         int bottom = this.y + getHeight();
         int available = right - left;
         if (available <= 0) {
+            // Narrower than the two insets: the scrolling box would be empty, so the text is
+            // cut to the reported width instead of silently disappearing.
+            drawLine(scrollingFallback(text, getWidth(), this.splitter), this.x, this.y);
             return;
         }
         int maxPosition = this.cachedTextWidth - available;
@@ -223,17 +236,43 @@ public class StringWidget extends AbstractStringWidget {
         // GUI-scale geometry is scaled here (same recipe as AbstractTextAreaWidget).
         Minecraft mc = Minecraft.getMinecraft();
         int scaleFactor = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaleFactor();
+        // A container (AbstractScrollArea, AbstractTextAreaWidget) may already be clipping this
+        // widget, so the previous box and the enabled state are restored instead of switching
+        // the test off unconditionally — otherwise every later sibling would lose its clip.
+        boolean scissorWasEnabled = GL11.glIsEnabled(GL11.GL_SCISSOR_TEST);
+        IntBuffer previousBox = null;
+        if (scissorWasEnabled) {
+            previousBox = BufferUtils.createIntBuffer(16);
+            GL11.glGetInteger(GL11.GL_SCISSOR_BOX, previousBox);
+        }
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
         GL11.glScissor(left * scaleFactor,
                 mc.displayHeight - bottom * scaleFactor,
                 available * scaleFactor,
                 (bottom - top) * scaleFactor);
-        if (shadow) {
-            getFont().drawStringWithShadow(text, drawX, this.y, color);
+        drawLine(text, drawX, this.y);
+        if (previousBox != null) {
+            GL11.glScissor(previousBox.get(0), previousBox.get(1), previousBox.get(2), previousBox.get(3));
         } else {
-            getFont().drawString(text, drawX, this.y, color);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
         }
-        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+    }
+
+    /**
+     * Text drawn when the scrolling box degenerates: a width limit so small that the two
+     * {@link #TEXT_MARGIN} insets leave nothing to scroll in. Pure, so the degradation is
+     * testable without a {@code FontRenderer}.
+     *
+     * @param text     the full text
+     * @param width    the width the widget reports (positive)
+     * @param splitter the splitter used to clip
+     * @return the head of {@code text} that fits {@code width}, never wider than it
+     */
+    static String scrollingFallback(@Nullable String text, int width, StringSplitter splitter) {
+        if (text == null) {
+            return "";
+        }
+        return splitter.plainHeadByWidth(text, Math.max(width, 0), Style.EMPTY);
     }
 
     /**
@@ -355,6 +394,11 @@ public class StringWidget extends AbstractStringWidget {
             }
             case CLAMPED:
             default:
+                if (maxWidth <= ellipsisWidth) {
+                    // The ellipsis alone would already be wider than the limit, so a hard cut is
+                    // the only way to keep the drawn width inside the width the widget reports.
+                    return Collections.singletonList(splitter.plainHeadByWidth(text, maxWidth, Style.EMPTY));
+                }
                 return Collections.singletonList(
                         splitter.plainHeadByWidth(text, maxWidth - ellipsisWidth, Style.EMPTY) + ELLIPSIS);
         }

@@ -82,6 +82,26 @@ public class MultiLineTextWidgetTest {
     }
 
     @Test
+    public void rowLimitKeepsANarrowerThanEllipsisLineWhole() {
+        // "ii" is 2px, narrower than the 3px ellipsis: appending it would make the kept line
+        // wider than it was and wider than the limit, so the line stays unchanged.
+        MultiLineTextWidget.Layout layout = layout("ii ii ii", 2, 1);
+
+        assertEquals(1, layout.lines.size());
+        assertEquals("ii", layout.lines.get(0));
+        assertEquals(2, layout.width);
+    }
+
+    @Test
+    public void rowLimitStillEllipsizesALineExactlyAsWideAsTheEllipsis() {
+        // budget = 3 - 3 = 0: no glyph survives, but "..." is exactly as wide as the line.
+        MultiLineTextWidget.Layout layout = layout("iii ii", 3, 1);
+
+        assertEquals("...", layout.lines.get(0));
+        assertEquals(3, layout.width);
+    }
+
+    @Test
     public void aRowLimitAtOrAboveTheLineCountChangesNothing() {
         assertEquals(2, layout("aaaa bbbb", 4, 2).lines.size());
         assertEquals(2, layout("aaaa bbbb", 4, 5).lines.size());

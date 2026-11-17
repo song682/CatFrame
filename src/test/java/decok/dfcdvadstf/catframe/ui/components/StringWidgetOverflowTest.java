@@ -54,8 +54,34 @@ public class StringWidgetOverflowTest {
     }
 
     @Test
-    public void clampFallsBackToBareEllipsisWhenNothingElseFits() {
-        assertEquals("...", fold("abcdefghij", 2, StringWidget.TextOverflow.CLAMPED).get(0));
+    public void clampedHardCutsWhenTheEllipsisDoesNotFit() {
+        // The limit (2) is narrower than the ellipsis (3), so a suffix could not be drawn inside
+        // it: the text is cut instead of overflowing the width the widget reports.
+        List<String> lines = fold("abcdefghij", 2, StringWidget.TextOverflow.CLAMPED);
+
+        assertEquals(1, lines.size());
+        assertEquals("ab", lines.get(0));
+        assertTrue(SPLITTER.stringWidth(lines.get(0)) <= 2);
+    }
+
+    @Test
+    public void clampedHardCutsWhenTheEllipsisOnlyJustFits() {
+        // Limit == ellipsis width: the suffix would fit but leave no room for a glyph, so the cut
+        // text is kept whole rather than being replaced by a bare "...".
+        assertEquals("abc", fold("abcdefghij", 3, StringWidget.TextOverflow.CLAMPED).get(0));
+    }
+
+    @Test
+    public void clampFallsBackToBareEllipsisOnlyWhenItStillFits() {
+        // Bold advances 2px per glyph, so a 1px budget lets no glyph through — yet "..." (3px)
+        // still fits the 4px limit, which is the only case the bare ellipsis is allowed in.
+        Text bold = Text.literal("abcdef").withStyle(Style.EMPTY.withBold(true));
+
+        StringWidget.Layout layout = StringWidget.layout(bold, 4, StringWidget.TextOverflow.CLAMPED,
+                ELLIPSIS_WIDTH, SPLITTER);
+
+        assertEquals("...", layout.lines.get(0));
+        assertTrue(SPLITTER.stringWidth(layout.lines.get(0)) <= 4);
     }
 
     @Test
@@ -121,6 +147,16 @@ public class StringWidgetOverflowTest {
         assertEquals(0, StringWidget.scrollingOffset(8, 2000L));
         // the 3s floor applies below maxPosition = 6
         assertEquals(0, StringWidget.scrollingOffset(2, 1500L));
+    }
+
+    @Test
+    public void scrollingFallbackCutsToTheReportedWidth() {
+        // A limit of 6 leaves at most 2px between the insets, so scrolling degrades to a cut
+        // instead of drawing nothing.
+        assertEquals("abcdef", StringWidget.scrollingFallback("abcdefghij", 6, SPLITTER));
+        assertEquals(2, Math.round(SPLITTER.stringWidth(
+                StringWidget.scrollingFallback("abcdefghij", 2, SPLITTER))));
+        assertEquals("", StringWidget.scrollingFallback(null, 6, SPLITTER));
     }
 
     @Test

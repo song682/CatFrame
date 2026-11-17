@@ -211,7 +211,11 @@ public class MultiLineTextWidget extends AbstractStringWidget {
             // The reference clips the last kept line to its own width minus the ellipsis,
             // not to maxWidth, so a short line loses as little as possible.
             int budget = Math.round(splitter.stringWidth(lastLine)) - ellipsisWidth;
-            kept.set(last, splitter.plainHeadByWidth(lastLine, budget, Style.EMPTY) + ELLIPSIS);
+            if (budget >= 0) {
+                // A negative budget means the line is narrower than the ellipsis itself: keeping
+                // it whole is the only choice that does not make it wider than it already was.
+                kept.set(last, splitter.plainHeadByWidth(lastLine, budget, Style.EMPTY) + ELLIPSIS);
+            }
             lines = kept;
         }
         int widest = 0;

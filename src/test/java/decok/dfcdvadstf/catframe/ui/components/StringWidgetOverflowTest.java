@@ -115,11 +115,34 @@ public class StringWidgetOverflowTest {
     }
 
     @Test
-    public void emptyTextYieldsOneEmptyLine() {
+    public void emptyTextYieldsNoLines() {
         for (StringWidget.TextOverflow mode : StringWidget.TextOverflow.values()) {
             List<String> lines = StringWidget.fold("", 5, 0, ELLIPSIS_WIDTH, mode, SPLITTER);
-            assertEquals(mode.name(), 1, lines.size());
-            assertEquals(mode.name(), "", lines.get(0));
+            assertTrue(mode.name(), lines.isEmpty());
+        }
+    }
+
+    @Test
+    public void emptyTextReportsNoLinesInEitherWidthMode() {
+        for (StringWidget.TextOverflow mode : StringWidget.TextOverflow.values()) {
+            assertTrue(mode.name(), StringWidget.layout(Text.literal(""), 5, mode,
+                    ELLIPSIS_WIDTH, SPLITTER).lines.isEmpty());
+            assertTrue(mode.name(), StringWidget.layout(Text.literal(""), 0, mode,
+                    ELLIPSIS_WIDTH, SPLITTER).lines.isEmpty());
+        }
+    }
+
+    @Test
+    public void emptyMessageAgreesWithTheMultiLineWidget() {
+        // Both widgets report zero lines for an empty message, so a WRAP StringWidget and a
+        // MultiLineTextWidget no longer disagree on height (9 vs 0) in the same layout.
+        for (int maxWidth : new int[] {0, 5}) {
+            assertTrue("maxWidth=" + maxWidth,
+                    StringWidget.layout(Text.literal(""), maxWidth, StringWidget.TextOverflow.WRAP,
+                            ELLIPSIS_WIDTH, SPLITTER).lines.isEmpty());
+            assertTrue("maxWidth=" + maxWidth,
+                    MultiLineTextWidget.layout(Text.literal(""), maxWidth, 0,
+                            ELLIPSIS_WIDTH, SPLITTER).lines.isEmpty());
         }
     }
 
@@ -134,6 +157,19 @@ public class StringWidgetOverflowTest {
 
         assertEquals(1, lines.size());
         assertEquals("abcdefghij", lines.get(0));
+    }
+
+    @Test
+    public void scissorBoxCoversTheShadowRowBelowTheLine() {
+        int[] box = StringWidget.scissorBox(10, 20, 60, 29, 2, 400);
+
+        assertEquals(20, box[0]);
+        // one extra pixel below the bottom edge so the shadow drawn at y + 1 is not shaved
+        assertEquals(400 - (29 + 1) * 2, box[1]);
+        assertEquals((60 - 10) * 2, box[2]);
+        assertEquals((29 - 20 + 1) * 2, box[3]);
+        // the top edge stays where the widget's top is: y + height == displayHeight - top * scale
+        assertEquals(400 - 20 * 2, box[1] + box[3]);
     }
 
     @Test

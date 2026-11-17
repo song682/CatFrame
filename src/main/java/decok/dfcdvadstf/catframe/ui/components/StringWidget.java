@@ -43,6 +43,12 @@ public class StringWidget extends AbstractStringWidget {
      */
     private static final String ELLIPSIS = "...";
 
+    /**
+     * Extra framebuffer rows added below the scrolling box. The shadow is drawn one pixel
+     * below the glyphs, so a box of exactly one font height would shave its last row.
+     */
+    private static final int SHADOW_OVERHANG = 1;
+
     private final StringSplitter splitter;
     private int color;
     private boolean shadow = true;
@@ -174,7 +180,7 @@ public class StringWidget extends AbstractStringWidget {
         if (this.maxWidth > 0 && this.textOverflow == TextOverflow.WRAP) {
             this.reflow();
             List<String> lines = this.cachedLines;
-            return (lines != null ? lines.size() : 1) * getFont().FONT_HEIGHT;
+            return (lines != null ? lines.size() : 0) * getFont().FONT_HEIGHT;
         }
         return super.getHeight();
     }
@@ -183,7 +189,7 @@ public class StringWidget extends AbstractStringWidget {
     protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
         this.reflow();
         List<String> lines = this.cachedLines;
-        if (lines == null) {
+        if (lines == null || lines.isEmpty()) {
             return;
         }
         if (this.textOverflow == TextOverflow.SCROLLING
@@ -246,16 +252,36 @@ public class StringWidget extends AbstractStringWidget {
             GL11.glGetInteger(GL11.GL_SCISSOR_BOX, previousBox);
         }
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
-        GL11.glScissor(left * scaleFactor,
-                mc.displayHeight - bottom * scaleFactor,
-                available * scaleFactor,
-                (bottom - top) * scaleFactor);
+        int[] box = scissorBox(left, top, right, bottom, scaleFactor, mc.displayHeight);
+        GL11.glScissor(box[0], box[1], box[2], box[3]);
         drawLine(text, drawX, this.y);
         if (previousBox != null) {
             GL11.glScissor(previousBox.get(0), previousBox.get(1), previousBox.get(2), previousBox.get(3));
         } else {
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
         }
+    }
+
+    /**
+     * Framebuffer scissor box for the scrolling area, as {@code {x, y, width, height}} with
+     * the bottom-left origin {@code glScissor} expects. Pure, so the GUI-to-framebuffer
+     * conversion and the {@link #SHADOW_OVERHANG} allowance are testable without a GL context.
+     *
+     * @param left         left edge in GUI coordinates
+     * @param top          top edge in GUI coordinates
+     * @param right        right edge in GUI coordinates
+     * @param bottom       bottom edge in GUI coordinates (the shadow row starts here)
+     * @param scaleFactor  GUI scale factor
+     * @param displayHeight framebuffer height in pixels
+     * @return the four scissor values to hand to {@code glScissor}
+     */
+    static int[] scissorBox(int left, int top, int right, int bottom, int scaleFactor, int displayHeight) {
+        return new int[] {
+                left * scaleFactor,
+                displayHeight - (bottom + SHADOW_OVERHANG) * scaleFactor,
+                (right - left) * scaleFactor,
+                (bottom - top + SHADOW_OVERHANG) * scaleFactor
+        };
     }
 
     /**
@@ -334,6 +360,11 @@ public class StringWidget extends AbstractStringWidget {
                          int ellipsisWidth, StringSplitter splitter) {
         String text = (message != null) ? message.getFormattedString() : "";
         int textWidth = Math.round(splitter.stringWidth(text));
+        if (text.isEmpty()) {
+            // No lines at all, so getHeight() reports 0 — the same contract
+            // MultiLineTextWidget uses for an empty message, in either width mode.
+            return new Layout(Collections.<String>emptyList(), textWidth, textWidth);
+        }
         if (maxWidth > 0) {
             List<String> lines = fold(text, maxWidth, textWidth, ellipsisWidth, overflow, splitter);
             return new Layout(lines, textWidth, Math.min(maxWidth, textWidth));
@@ -371,12 +402,13 @@ public class StringWidget extends AbstractStringWidget {
      * @param ellipsisWidth the width of {@link #ELLIPSIS}
      * @param overflow      the overflow mode
      * @param splitter      the splitter used to clip and fold
-     * @return one or more lines to draw, none wider than {@code maxWidth}
+     * @return one or more lines to draw, none wider than {@code maxWidth}; empty when
+     *         {@code text} is empty
      */
     static List<String> fold(String text, int maxWidth, int textWidth, int ellipsisWidth,
                              @Nullable TextOverflow overflow, StringSplitter splitter) {
         if (text.isEmpty()) {
-            return Collections.singletonList("");
+            return Collections.emptyList();
         }
         if (textWidth <= maxWidth) {
             return Collections.singletonList(text);

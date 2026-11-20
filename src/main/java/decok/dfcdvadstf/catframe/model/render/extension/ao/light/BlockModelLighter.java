@@ -18,6 +18,9 @@ import java.util.Map;
  *   <li><b>Flat path</b> ({@link #prepareQuadFlat}): single brightness + directional shading</li>
  * </ul>
  *
+ * <p>The AO path also has a legacy variant ({@link #prepareQuadAmbientOcclusionLegacy}) implementing the
+ * vanilla 1.7.10 {@code RenderBlocks} lighting model, selected by the {@code modernLightAndShadow} config option.
+ *
  * <p>Core design:
  * <ol>
  *   <li>{@link AdjacencyInfo} — the 4 corner directions of each face + 4 sets of vertex weight indices (SizeInfo)</li>
@@ -80,6 +83,36 @@ public final class BlockModelLighter {
             Block block, BakedQuad quad,
             RenderContext ctx) {
 
+        prepareQuadAmbientOcclusion(world, bx, by, bz, block, quad, ctx, false);
+    }
+
+    /**
+     * Legacy AO path: same sampling topology as {@link #prepareQuadAmbientOcclusion}, but with the
+     * lighting model of the vanilla 1.7.10 renderer ({@code RenderBlocks.renderStandardBlockWithAmbientOcclusion}):
+     * <ul>
+     *   <li>light coords are blended with {@code RenderBlocks.getAoBrightness} — a zero-valued neighbor is
+     *       replaced by the center coord as a whole, instead of modern per-component inheritance;</li>
+     *   <li>corner occlusion uses {@code Block.getCanBlockGrass()} (1.7.10 solidity test) instead of
+     *       {@code isOpaqueCube()}.</li>
+     * </ul>
+     * Selected by the {@code modernLightAndShadow} config option (false = legacy).
+     */
+    public void prepareQuadAmbientOcclusionLegacy(
+            IBlockAccess world, int bx, int by, int bz,
+            Block block, BakedQuad quad,
+            RenderContext ctx) {
+
+        prepareQuadAmbientOcclusion(world, bx, by, bz, block, quad, ctx, true);
+    }
+
+    /**
+     * Shared AO implementation; {@code legacy} switches the light blending and corner occlusion rules.
+     */
+    private void prepareQuadAmbientOcclusion(
+            IBlockAccess world, int bx, int by, int bz,
+            Block block, BakedQuad quad,
+            RenderContext ctx, boolean legacy) {
+
         prepareQuadShape(world, bx, by, bz, block, quad, true);
 
         Direction direction = quad.face;
@@ -107,21 +140,24 @@ public final class BlockModelLighter {
         }
 
         // --- 4 outer corners of the face (used for corner-fallback decisions) ---
-        boolean[] translucent = new boolean[4];
+        // blocking[i]: whether the block straight out from corner i counts as solid for the diagonal fallback.
+        // Legacy 1.7.10 reads Block.getCanBlockGrass() here (material based: glass and leaves count as solid);
+        // the modern path reads isOpaqueCube().
+        boolean[] blocking = new boolean[4];
         for (int i = 0; i < 4; i++) {
             int ox = cx[i] + direction.getStepX();
             int oy = cy[i] + direction.getStepY();
             int oz = cz[i] + direction.getStepZ();
             Block outerBlock = world.getBlock(ox, oy, oz);
-            translucent[i] = !outerBlock.isOpaqueCube();
+            blocking[i] = legacy ? !outerBlock.getCanBlockGrass() : outerBlock.isOpaqueCube();
         }
 
-        // --- Corner shade/light (with translucent fallback) ---
+        // --- Corner shade/light (reuse the side sample when the corner cell is enclosed) ---
         float shadeCorner02, shadeCorner03, shadeCorner12, shadeCorner13;
         int lightCorner02, lightCorner03, lightCorner12, lightCorner13;
 
         // corner 0-2
-        if (!translucent[2] && !translucent[0]) {
+        if (blocking[2] && blocking[0]) {
             shadeCorner02 = shade[0]; lightCorner02 = light[0];
         } else {
             int dx = baseX + info.corners[0].getStepX() + info.corners[2].getStepX();
@@ -132,7 +168,7 @@ public final class BlockModelLighter {
             lightCorner02 = cache.getBrightness(b02, world, dx, dy, dz);
         }
         // corner 0-3
-        if (!translucent[3] && !translucent[0]) {
+        if (blocking[3] && blocking[0]) {
             shadeCorner03 = shade[0]; lightCorner03 = light[0];
         } else {
             int dx = baseX + info.corners[0].getStepX() + info.corners[3].getStepX();
@@ -143,7 +179,7 @@ public final class BlockModelLighter {
             lightCorner03 = cache.getBrightness(b03, world, dx, dy, dz);
         }
         // corner 1-2
-        if (!translucent[2] && !translucent[1]) {
+        if (blocking[2] && blocking[1]) {
             shadeCorner12 = shade[0]; lightCorner12 = light[0];
         } else {
             int dx = baseX + info.corners[1].getStepX() + info.corners[2].getStepX();
@@ -154,7 +190,7 @@ public final class BlockModelLighter {
             lightCorner12 = cache.getBrightness(b12, world, dx, dy, dz);
         }
         // corner 1-3
-        if (!translucent[3] && !translucent[1]) {
+        if (blocking[3] && blocking[1]) {
             shadeCorner13 = shade[0]; lightCorner13 = light[0];
         } else {
             int dx = baseX + info.corners[1].getStepX() + info.corners[3].getStepX();
@@ -202,10 +238,10 @@ public final class BlockModelLighter {
             };
 
             // 4 smooth-blended light coordinates (one set per corner)
-            int tc1 = LightCoordsUtil.smoothBlend(light[3], light[0], lightCorner03, lightCenter);
-            int tc2 = LightCoordsUtil.smoothBlend(light[2], light[0], lightCorner02, lightCenter);
-            int tc3 = LightCoordsUtil.smoothBlend(light[2], light[1], lightCorner12, lightCenter);
-            int tc4 = LightCoordsUtil.smoothBlend(light[3], light[1], lightCorner13, lightCenter);
+            int tc1 = blend(light[3], light[0], lightCorner03, lightCenter, legacy);
+            int tc2 = blend(light[2], light[0], lightCorner02, lightCenter, legacy);
+            int tc3 = blend(light[2], light[1], lightCorner12, lightCenter, legacy);
+            int tc4 = blend(light[3], light[1], lightCorner13, lightCenter, legacy);
 
             // Write each vertex according to the remap
             writeVertexAO(ctx, remap.vert0, ts1, ts2, ts3, ts4, tc1, tc2, tc3, tc4,
@@ -223,10 +259,10 @@ public final class BlockModelLighter {
             float ll3 = (shade[2] + shade[1] + shadeCorner12 + shadeCenter) * 0.25F;
             float ll4 = (shade[3] + shade[1] + shadeCorner13 + shadeCenter) * 0.25F;
 
-            int tc1 = LightCoordsUtil.smoothBlend(light[3], light[0], lightCorner03, lightCenter);
-            int tc2 = LightCoordsUtil.smoothBlend(light[2], light[0], lightCorner02, lightCenter);
-            int tc3 = LightCoordsUtil.smoothBlend(light[2], light[1], lightCorner12, lightCenter);
-            int tc4 = LightCoordsUtil.smoothBlend(light[3], light[1], lightCorner13, lightCenter);
+            int tc1 = blend(light[3], light[0], lightCorner03, lightCenter, legacy);
+            int tc2 = blend(light[2], light[0], lightCorner02, lightCenter, legacy);
+            int tc3 = blend(light[2], light[1], lightCorner12, lightCenter, legacy);
+            int tc4 = blend(light[3], light[1], lightCorner13, lightCenter, legacy);
 
             // Write each vertex according to the remap (equal weight, no weighting needed; aoColorMul contains only AO shade)
             ctx.aoColorMul[remap.vert0] = clamp(ll1);
@@ -369,6 +405,26 @@ public final class BlockModelLighter {
 
     private static float clamp(float v) {
         return Math.max(0.0F, Math.min(1.0F, v));
+    }
+
+    /**
+     * Blends the 3 neighbor light coords with the center coord.
+     *
+     * <p>Modern (26.1.2 {@code LightCoordsUtil.smoothBlend}): each component of a zero neighbor inherits
+     * the center component when the center is brighter than 2.
+     *
+     * <p>Legacy (1.7.10 {@code RenderBlocks.getAoBrightness}): a neighbor whose packed value is exactly 0 is
+     * replaced by the center coord as a whole, then the four coords are averaged and masked with
+     * {@code 0xFF00FF}. Both rules share the same average expression, so only the substitution differs.
+     */
+    private static int blend(int neighbor1, int neighbor2, int neighbor3, int center, boolean legacy) {
+        if (legacy) {
+            if (neighbor1 == 0) neighbor1 = center;
+            if (neighbor2 == 0) neighbor2 = center;
+            if (neighbor3 == 0) neighbor3 = center;
+            return (neighbor1 + neighbor2 + neighbor3 + center) >> 2 & 0x00FF00FF;
+        }
+        return LightCoordsUtil.smoothBlend(neighbor1, neighbor2, neighbor3, center);
     }
 
     // ==================== Face direction offsets ====================

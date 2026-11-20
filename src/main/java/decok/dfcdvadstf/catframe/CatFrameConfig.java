@@ -16,6 +16,8 @@ public class CatFrameConfig {
     /** Whether to show the welcome Toast when joining a world */
     public boolean welcomeToast;
     public boolean enableBuiltinExampleResource;
+    /** true = 26.x style block lighting (brighter, softer AO); false = legacy 1.7.10 RenderBlocks lighting */
+    public boolean modernLightAndShadow;
     public static boolean debugLogThingsEnabled = false;
 
     public CatFrameConfig(File file){
@@ -24,6 +26,7 @@ public class CatFrameConfig {
         config.addCustomCategoryComment("dev", "Developer things");
         config.addCustomCategoryComment("experimental",
                 "Experimental settings. May break compatibility with third-party render mods.");
+        config.addCustomCategoryComment("rendering", "Some rendering feelings type");
         Options();
         config.save();
     }
@@ -52,5 +55,9 @@ public class CatFrameConfig {
         enableBlueyPlushy = config.getBoolean("enableBlueyPlushy", "features", false, "Set to true to enable the Bluey plushy item.");
         welcomeToast = config.getBoolean("welcomeToast", "features", true, "Set to true to show the CatFrame welcome toast when joining a world.");
         debugLogThingsEnabled = config.getBoolean("debugLogThingsEnabled", "dev", false, "Set to true to enable debug logging for the render system (Mixin logs, etc.).");
+        modernLightAndShadow = config.getBoolean("modernLightAndShadow", "rendering", false,
+                "Use the modern (26.x) block lighting model: brighter directional light and softer ambient occlusion.\n"
+                        + "Set to false to keep the legacy 1.7.10 renderer lighting: whole-value light blending and\n"
+                        + "canBlockGrass-based corner occlusion.");
     }
 }

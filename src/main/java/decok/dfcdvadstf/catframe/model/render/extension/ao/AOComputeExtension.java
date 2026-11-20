@@ -1,5 +1,6 @@
 package decok.dfcdvadstf.catframe.model.render.extension.ao;
 
+import decok.dfcdvadstf.catframe.CatFrame;
 import decok.dfcdvadstf.catframe.model.core.baking.JsonModelBake.BakedQuad;
 import decok.dfcdvadstf.catframe.model.render.IModelRenderExtension;
 import decok.dfcdvadstf.catframe.model.render.api.RenderContext;
@@ -15,6 +16,11 @@ import decok.dfcdvadstf.catframe.model.render.extension.ao.light.BlockModelLight
  *
  * <p>Output is written to {@link RenderContext#aoBrightness}[4] and {@link RenderContext#aoColorMul}[4].
  * aoColorMul contains only AO shade; directional lighting (CardinalLighting) is carried by {@link RenderContext#shade}.
+ *
+ * <p>Which lighting model runs is decided by the {@code modernLightAndShadow} config option: when it is off
+ * (default), {@link BlockModelLighter#prepareQuadAmbientOcclusionLegacy} reproduces the vanilla 1.7.10
+ * {@code RenderBlocks} lighting (whole-value light blending, {@code getCanBlockGrass} corner occlusion); when it
+ * is on, the 26.1.2 algorithm runs.
  *
  * <p>This extension is forced to be the first extension in the extension chain, ensuring that subsequent extensions (such as AOShadeExtension)
  * can read/modify the AO computation results.
@@ -40,8 +46,22 @@ public final class AOComputeExtension implements IModelRenderExtension {
         // The degrade brightness/shade is written by LightPolicyExtension / AOShadeExtension instead.
         if (q.ambientOcclusion != null && !q.ambientOcclusion) return;
 
-        BlockModelLighter.get().prepareQuadAmbientOcclusion(
-                ctx.world, ctx.x, ctx.y, ctx.z,
-                ctx.block, q, ctx);
+        if (isLegacyLighting()) {
+            BlockModelLighter.get().prepareQuadAmbientOcclusionLegacy(
+                    ctx.world, ctx.x, ctx.y, ctx.z,
+                    ctx.block, q, ctx);
+        } else {
+            BlockModelLighter.get().prepareQuadAmbientOcclusion(
+                    ctx.world, ctx.x, ctx.y, ctx.z,
+                    ctx.block, q, ctx);
+        }
+    }
+
+    /**
+     * @return whether the legacy (1.7.10) lighting model is selected by the {@code modernLightAndShadow}
+     * config option; false when the config has not been loaded yet
+     */
+    private static boolean isLegacyLighting() {
+        return CatFrame.config != null && !CatFrame.config.modernLightAndShadow;
     }
 }
